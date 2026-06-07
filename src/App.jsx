@@ -8,6 +8,8 @@ import PlayerPage from './components/PlayerPage'
 import ChannelsPage from './components/ChannelsPage'
 import CalendarPage from './components/CalendarPage'
 
+import AntiAdBlock from './components/AntiAdBlock'
+
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
@@ -168,6 +170,7 @@ function App() {
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
       </Routes>
+      <AntiAdBlock />
     </div>
   )
 }
