@@ -5,24 +5,43 @@ export default function AntiAdBlock() {
 
   useEffect(() => {
     const checkAdBlock = async () => {
-      // Cria um elemento "isca" para o AdBlock
-      const dummy = document.createElement('div');
-      dummy.id = 'ad-detection-box';
-      dummy.innerHTML = '&nbsp;';
-      dummy.className = 'adsbox ad-zone ad-space';
-      dummy.style.position = 'absolute';
-      dummy.style.left = '-9999px';
-      dummy.style.top = '-9999px';
-      document.body.appendChild(dummy);
+      let isBlocked = false;
 
-      // Espera um pouco para o AdBlock agir
-      setTimeout(() => {
+      // 1. Checagem de Rede (Pega AdGuard DNS e outros bloqueadores de rede)
+      try {
+        const testRequest = new Request('https://pl29672000.effectivecpmnetwork.com/favicon.ico', {
+          method: 'HEAD',
+          mode: 'no-cors'
+        });
+        await fetch(testRequest);
+      } catch (error) {
+        // Se falhar o fetch para um domínio de anúncio conhecido, é AdBlock de rede
+        isBlocked = true;
+      }
+
+      // 2. Checagem Visual (Pega extensões como uBlock, AdBlock Plus)
+      if (!isBlocked) {
+        const dummy = document.createElement('div');
+        dummy.id = 'ad-detection-box';
+        dummy.innerHTML = '&nbsp;';
+        dummy.className = 'adsbox ad-zone ad-space';
+        dummy.style.position = 'absolute';
+        dummy.style.left = '-9999px';
+        dummy.style.top = '-9999px';
+        document.body.appendChild(dummy);
+
+        await new Promise(resolve => setTimeout(resolve, 150));
+
         if (dummy.offsetHeight === 0 || dummy.style.display === 'none' || !document.getElementById('ad-detection-box')) {
-          setIsAdBlockActive(true);
-          document.body.style.overflow = 'hidden'; // Trava o scroll do site
+          isBlocked = true;
         }
         document.body.removeChild(dummy);
-      }, 100);
+      }
+
+      if (isBlocked) {
+        setIsAdBlockActive(true);
+        document.body.style.overflow = 'hidden';
+      }
     };
 
     checkAdBlock();
