@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithProxy } from '../utils/api';
 
 export default function ChannelsPage() {
   const [channels, setChannels] = useState([]);
@@ -8,29 +9,17 @@ export default function ChannelsPage() {
 
   useEffect(() => {
     const url = 'https://superflixapi.fit/lista?category=canais&format=json';
-    // Usando corsproxy.io que é bem estável
-    fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
-      .then(r => r.json())
-      .then(resp => {
-        if (resp && resp.data) {
-          setChannels(resp.data);
-          setLoading(false);
-        } else {
-          throw new Error("Failed");
+    
+    fetchWithProxy(url)
+      .then(data => {
+        if (data && data.data) {
+          setChannels(data.data);
         }
+        setLoading(false);
       })
-      .catch(() => {
-        // Fallback AllOrigins se falhar
-        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
-          .then(r => r.json())
-          .then(resp => {
-            if (resp.contents) {
-              const parsed = JSON.parse(resp.contents);
-              if (parsed && parsed.data) setChannels(parsed.data);
-            }
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("Erro ao carregar canais:", err);
+        setLoading(false);
       });
   }, []);
 

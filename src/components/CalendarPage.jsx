@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithProxy } from '../utils/api';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
@@ -10,26 +11,17 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const url = 'https://superflixapi.fit/calendario.php';
-    fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`)
-      .then(r => r.json())
+    
+    fetchWithProxy(url)
       .then(data => {
         if (Array.isArray(data)) {
           setReleases(data);
         }
         setLoading(false);
       })
-      .catch(e => {
-        console.error("Erro calendário:", e);
-        fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`)
-          .then(r => r.json())
-          .then(resp => {
-            if (resp.contents) {
-              const parsed = JSON.parse(resp.contents);
-              if (Array.isArray(parsed)) setReleases(parsed);
-            }
-            setLoading(false);
-          })
-          .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("Erro ao carregar calendário:", err);
+        setLoading(false);
       });
   }, []);
 
