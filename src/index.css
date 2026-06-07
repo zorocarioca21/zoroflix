@@ -830,3 +830,111 @@ body {
   font-weight: 800;
   text-transform: uppercase;
 }
+
+/* ==========================================================================
+   MEDIA QUERIES (RESPONSIVIDADE)
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .details-content {
+    flex-direction: column;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  .details-info {
+    align-items: center;
+  }
+
+  .details-play-btn {
+    align-self: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem;
+  }
+
+  .main-header {
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    font-size: 1.8rem;
+  }
+
+  .header-search {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .navbar-search-input {
+    width: 100%;
+    max-width: none;
+  }
+
+  .navbar-search-input:focus {
+    width: 100%;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+
+  .hero-content {
+    bottom: 10%;
+    left: 5%;
+    right: 5%;
+    text-align: center;
+  }
+
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .hero-overview {
+    font-size: 1rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .search-dropdown {
+    width: 95vw;
+    left: 2.5vw;
+    right: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  
+  .row-title {
+    font-size: 1.2rem;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .details-title {
+    font-size: 2rem;
+  }
+
+  .details-poster-wrap {
+    width: 180px;
+  }
+
+  .btn-live {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
