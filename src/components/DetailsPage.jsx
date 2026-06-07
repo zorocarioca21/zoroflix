@@ -83,16 +83,18 @@ export default function DetailsPage() {
               <span className="details-type">{isMovie ? 'Filme' : 'Série'}</span>
             </div>
             <p className="details-overview">{details.overview || "Nenhuma sinopse disponível em português para este título."}</p>
-            {/* Ad banner placeholder */}
-            <AdBanner adId="details-top" />
             
             {isMovie && (
-              <button 
-                className="btn btn-primary btn-large details-play-btn"
-                onClick={() => navigate(`/filme/${id}/player`, { state: { title: details.title } })}
-              >
-                ▶ ASSISTIR FILME
-              </button>
+              <>
+                <button 
+                  className="btn btn-primary btn-large details-play-btn"
+                  onClick={() => navigate(`/filme/${id}/player`, { state: { title: details.title } })}
+                >
+                  ▶ ASSISTIR FILME
+                </button>
+                {/* Anúncio abaixo do botão nos filmes */}
+                <AdBanner adId="details-movie-bottom" />
+              </>
             )}
           </div>
         </div>
@@ -145,6 +147,9 @@ export default function DetailsPage() {
               </div>
             </div>
           )}
+          
+          {/* Anúncio ao final de todas as temporadas nas séries */}
+          <AdBanner adId="details-series-bottom" />
         </div>
       )}
     </div>
