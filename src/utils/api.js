@@ -1,14 +1,14 @@
 
 export async function fetchWithProxy(url) {
   const proxies = [
-    // 1. AllOrigins (Versão Raw - mais chance de passar)
+    // 1. Sua Proxy Interna (Porta 4000) - Super estável e sem limites
+    (u) => `/api-proxy?url=${encodeURIComponent(u)}`,
+    // 2. AllOrigins (Versão Raw) - Fallback
     (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    // 2. CodeTabs Proxy
+    // 3. CodeTabs Proxy
     (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    // 3. CorsProxy.io
-    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    // 4. AllOrigins (Versão JSON)
-    (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`
+    // 4. CorsProxy.io
+    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`
   ];
 
   for (const getProxyUrl of proxies) {
