@@ -1076,3 +1076,30 @@ body {
   color: var(--text);
   font-weight: 500;
 }
+
+/* --- Ad Banner Responsive --- */
+.ad-container-wrapper {
+  margin: 1.5rem auto;
+  text-align: center;
+  width: 100%;
+  max-width: 900px;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  background: rgba(0,0,0,0.2);
+}
+
+@media (max-width: 768px) {
+  .ad-container-wrapper {
+    margin: 1rem auto;
+    max-width: 100%;
+  }
+  
+  /* Força os elementos internos do Adsterra a não estourarem */
+  .ad-container-wrapper div, 
+  .ad-container-wrapper iframe {
+    max-width: 100% !important;
+    height: auto !important;
+    transform: scale(0.95); /* Reduz levemente o anúncio no mobile */
+    transform-origin: center;
+  }
+}
