@@ -104,20 +104,21 @@ function App() {
     <div className="app-container">
       {!location.pathname.includes('/player') && (
         <header className="main-header">
-          <Link to="/" className="logo" style={{ textDecoration: 'none' }} onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
+          <Link to="/" className="logo" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
             Zoro<span>flix</span>
           </Link>
           
-          <div style={{display: 'flex', gap: '0.8rem', alignItems: 'center'}}>
-            
-            <Link to="/lancamentos" className="btn btn-live" style={{background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', boxShadow: 'none', textDecoration: 'none'}}>
-              📅 Lançamentos
-            </Link>
+          <div className="header-right">
+            <div className="nav-buttons">
+              <Link to="/lancamentos" className="btn-nav btn-lancamentos">
+                📅 Lançamentos
+              </Link>
 
-            <Link to="/canais" className="btn btn-live" style={{ textDecoration: 'none' }}>
-              <div className="live-dot"></div>
-              CANAIS AO VIVO
-            </Link>
+              <Link to="/canais" className="btn-nav btn-live-nav">
+                <div className="live-dot"></div>
+                AO VIVO
+              </Link>
+            </div>
 
             <div className="header-search">
               <input 
