@@ -621,6 +621,8 @@ body::before {
   flex-direction: column;
   gap: 2rem;
   animation: fadeIn 0.4s ease;
+  position: relative; /* ensure hero is positioned within */
+  z-index: 1;
 }
 
 /* ... Badges ... */
@@ -679,14 +681,16 @@ body::before {
 }
 
 .details-hero {
-  position: relative;
+  position: absolute; /* make it a background layer */
+  top: 0;
+  left: 0;
   width: 100%;
-  min-height: 50vh;
-  border-radius: 1.5rem;
+  height: 100%;
   background-size: cover;
   background-position: center;
-  overflow: hidden;
-  border: var(--border-neon);
+  z-index: -1; /* behind content */
+  opacity: 0.3; /* 30% opacity */
+  border: none; /* remove border */
 }
 
 .details-overlay {
