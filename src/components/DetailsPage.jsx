@@ -89,6 +89,19 @@ export default function DetailsPage() {
   if (!details) return <div className="details-loading">Erro ao carregar as informações.</div>;
 
   const year = (details.release_date || details.first_air_date)?.split('-')[0];
+  
+  const statusMap = {
+    'Returning Series': 'Em Lançamento',
+    'Ended': 'Finalizada',
+    'Canceled': 'Cancelada',
+    'In Production': 'Em Produção',
+    'Released': 'Lançado',
+    'Planned': 'Planejada',
+    'Post Production': 'Pós-Produção',
+    'Released': 'Lançado',
+    'In Production': 'Em Produção'
+  };
+  const statusTranslated = statusMap[details.status] || details.status;
 
   return (
     <div className="details-container">
@@ -117,7 +130,7 @@ export default function DetailsPage() {
             <div className="details-meta">
               <span><Calendar size={16} /> {year}</span>
               {details.runtime && <span><Clock size={16} /> {details.runtime} min</span>}
-              <span><Activity size={16} /> {details.status}</span>
+              <span><Activity size={16} /> {statusTranslated}</span>
             </div>
 
             <p className="details-overview">{details.overview || "Nenhuma sinopse disponível em português para este título."}</p>
