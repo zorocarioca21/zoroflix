@@ -76,6 +76,15 @@ export default function DetailsPage() {
       });
   }
 
+  const castRef = useRef(null);
+
+  const scrollCast = (direction) => {
+    if (castRef.current) {
+      const scrollAmount = direction === 'left' ? -300 : 300;
+      castRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   if (loading) return <div className="details-loading">Buscando informações...</div>;
   if (!details) return <div className="details-loading">Erro ao carregar as informações.</div>;
 
@@ -92,7 +101,10 @@ export default function DetailsPage() {
         
         <div className="details-content">
           <div className="details-poster-wrap">
-            <AgeBadge rating={brCertification} />
+            <div className="details-badges-overlay">
+              <AgeBadge rating={brCertification} />
+              <RatingCircle rating={details.vote_average} />
+            </div>
             <img 
               src={`${IMAGE_BASE_URL}${details.poster_path}`} 
               alt={details.title || details.name} 
@@ -100,10 +112,7 @@ export default function DetailsPage() {
             />
           </div>
           <div className="details-info">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
-              <RatingCircle rating={details.vote_average} />
-              <h1 className="details-title">{details.title || details.name}</h1>
-            </div>
+            <h1 className="details-title">{details.title || details.name}</h1>
             
             <div className="details-meta">
               <span><Calendar size={16} /> {year}</span>
@@ -113,11 +122,17 @@ export default function DetailsPage() {
 
             <p className="details-overview">{details.overview || "Nenhuma sinopse disponível em português para este título."}</p>
             
-            {/* Elenco Horizontal na Info */}
+            {/* Elenco com Navegação */}
             {cast.length > 0 && (
-              <div className="details-cast-preview">
-                <h3 className="section-small-title"><Users size={16} /> Elenco Principal</h3>
-                <div className="cast-scroll">
+              <div className="details-cast-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h3 className="section-small-title" style={{ margin: 0 }}><Users size={16} /> Elenco Principal</h3>
+                  <div className="cast-nav-btns">
+                    <button onClick={() => scrollCast('left')}>&#10094;</button>
+                    <button onClick={() => scrollCast('right')}>&#10095;</button>
+                  </div>
+                </div>
+                <div className="cast-scroll" ref={castRef}>
                   {cast.map(actor => (
                     <div key={actor.id} className="cast-mini-card">
                       <img 

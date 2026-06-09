@@ -1316,9 +1316,92 @@ body {
   box-shadow: var(--glow);
 }
 
-/* Details Extra Styles */
-.details-cast-preview {
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.details-poster-wrap {
+  position: relative;
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.details-badges-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+}
+
+.details-cast-section {
   margin-top: 1.5rem;
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.cast-nav-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.cast-nav-btns button {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.cast-nav-btns button:hover {
+  background: var(--primary);
+  color: #000;
+}
+
+.cast-scroll {
+  display: flex;
+  gap: 15px;
+  overflow-x: hidden;
+  padding-bottom: 5px;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 600px) {
+  .catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Ad Banner Adjustments */
+.ad-banner-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  margin: 2rem 0;
+  display: flex;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+}
+
+.ad-banner-container iframe, 
+.ad-banner-container ins {
+  max-width: 100% !important;
 }
 
 .section-small-title {

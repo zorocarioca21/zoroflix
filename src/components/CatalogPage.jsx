@@ -42,7 +42,14 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
       url = `${BASE_URL}/search/${mediaType}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}&page=${page}`;
     } else {
       url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
-      if (selectedGenre) url += `&with_genres=${selectedGenre}`;
+      
+      // LÓGICA ESTRITA: Combina o gênero inicial (ex: Animação) com o selecionado (ex: Ação)
+      let combinedGenres = initialGenreId;
+      if (selectedGenre && selectedGenre !== initialGenreId) {
+        combinedGenres = combinedGenres ? `${combinedGenres},${selectedGenre}` : selectedGenre;
+      }
+      
+      if (combinedGenres) url += `&with_genres=${combinedGenres}`;
       if (initialLanguage) url += `&with_original_language=${initialLanguage}`;
     }
     
@@ -51,8 +58,7 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
       .then(data => {
         let results = data.results || [];
         
-        // FILTRAGEM ESTRITA DE CONTEXTO
-        // Se estivermos em uma página específica (Animes, Doramas), filtramos a busca
+        // FILTRAGEM ESTRITA DE CONTEXTO NA BUSCA
         if (query) {
           if (initialGenreId) {
             results = results.filter(item => item.genre_ids?.includes(parseInt(initialGenreId)));
@@ -60,7 +66,7 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
           if (initialLanguage) {
             results = results.filter(item => item.original_language === initialLanguage);
           }
-          // Se o usuário selecionou UM GÊNERO extra no seletor/pills durante a busca
+          // Filtro extra selecionado pelo usuário durante a busca
           if (selectedGenre && selectedGenre !== initialGenreId) {
             results = results.filter(item => item.genre_ids?.includes(parseInt(selectedGenre)));
           }
