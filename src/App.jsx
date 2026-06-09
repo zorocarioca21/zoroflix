@@ -27,13 +27,27 @@ export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    if (user?.role && user.role !== 'free') return; // Hide social bar for VIPs
+    
+    const scriptId = 'adsterra-social-bar';
+    if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = "https://pl29672002.effectivecpmnetwork.com/8d/85/2f/8d852f7cb5b1fbe6a38a6e9cd915610d.js";
+        script.async = true;
+        document.body.appendChild(script);
+    }
+  }, [user, loading]);
 
   const handleTyping = async (query) => {
     setSearchQuery(query);
