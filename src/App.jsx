@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 import HeroSlider from './components/HeroSlider'
 import ContentRow from './components/ContentRow'
@@ -114,7 +114,7 @@ function App() {
           
           <nav className="nav-pill">
             <Link to="/" className="nav-item">
-              <span className="nav-icon"><Home size={20} color="currentColor" /></span>
+              <span className="nav-icon"><HomeIcon size={20} color="currentColor" /></span>
               <span className="nav-label">Home</span>
             </Link>
             <Link to="/filmes" className="nav-item">
