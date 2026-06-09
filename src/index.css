@@ -621,8 +621,9 @@ body::before {
   flex-direction: column;
   gap: 2rem;
   animation: fadeIn 0.4s ease;
-  position: relative; /* ensure hero is positioned within */
+  position: relative;
   z-index: 1;
+  margin-top: -3rem; /* Sobe para encostar no header */
 }
 
 /* ... Badges ... */
@@ -683,24 +684,26 @@ body::before {
 .details-hero {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
-  height: 550px; /* Altura máxima da imagem */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 520px; /* Altura ajustada para bater abaixo do trailer */
   background-size: cover;
   background-position: center 20%;
   z-index: -1;
-  opacity: 0.4;
+  opacity: 0.35;
   border: none;
 }
 
 .details-overlay {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 100%;
-  height: 550px;
-  background: linear-gradient(to right, rgba(5,25,18,1) 10%, rgba(5,25,18,0.7) 60%, rgba(5,25,18,0.1) 100%),
-              linear-gradient(to bottom, transparent 70%, var(--bg) 100%);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 520px;
+  background: linear-gradient(to right, var(--bg) 10%, rgba(5,25,18,0.7) 60%, transparent 100%),
+              linear-gradient(to bottom, transparent 60%, var(--bg) 100%);
 }
 
 .details-content {
