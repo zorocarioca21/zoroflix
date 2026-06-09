@@ -108,7 +108,7 @@ function App() {
       {!location.pathname.includes('/player') && (
         <header className="main-header">
           <Link to="/" className="logo" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
-            Zoro<span>flix</span>
+            Cine<span>geek</span>
           </Link>
           
           <nav className="nav-pill">
@@ -127,6 +127,10 @@ function App() {
             <Link to="/animes" className="nav-item">
               <span className="nav-icon">🐉</span>
               <span className="nav-label">Animes</span>
+            </Link>
+            <Link to="/doramas" className="nav-item">
+              <span className="nav-icon">🇰🇷</span>
+              <span className="nav-label">Doramas</span>
             </Link>
             <Link to="/canais" className="nav-item">
               <span className="nav-icon">📡</span>
@@ -183,6 +187,7 @@ function App() {
         <Route path="/filmes" element={<CatalogPage type="movie" title="Filmes" />} />
         <Route path="/series" element={<CatalogPage type="tv" title="Séries" />} />
         <Route path="/animes" element={<CatalogPage type="tv" title="Animes" initialGenreId="16" />} />
+        <Route path="/doramas" element={<CatalogPage type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
         <Route path="/filme/:id" element={<DetailsPage />} />
         <Route path="/serie/:id" element={<DetailsPage />} />
         <Route path="/filme/:id/player" element={<PlayerPage />} />

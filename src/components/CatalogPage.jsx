@@ -5,7 +5,7 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
-export default function CatalogPage({ type, title, initialGenreId = '' }) {
+export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '' }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +13,7 @@ export default function CatalogPage({ type, title, initialGenreId = '' }) {
   const [genres, setGenres] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState(initialGenreId);
   const [sortBy, setSortBy] = useState('popularity.desc');
+  const [query, setQuery] = useState('');
 
   // Carrega gêneros ao iniciar
   useEffect(() => {
@@ -22,31 +23,49 @@ export default function CatalogPage({ type, title, initialGenreId = '' }) {
       .then(data => setGenres(data.genres || []));
   }, [type]);
 
-  // Carrega itens quando filtros mudam
+  // Carrega itens quando filtros ou busca mudam
   useEffect(() => {
     setLoading(true);
     const mediaType = type === 'movie' ? 'movie' : 'tv';
-    let url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
-    
-    if (selectedGenre) {
-      url += `&with_genres=${selectedGenre}`;
+    let url;
+
+    if (query) {
+      // Busca Local: Usa o endpoint de search mas mantendo o contexto do tipo
+      url = `${BASE_URL}/search/${mediaType}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}&page=${page}`;
+    } else {
+      // Navegação por Catálogo
+      url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
+      if (selectedGenre) url += `&with_genres=${selectedGenre}`;
+      if (initialLanguage) url += `&with_original_language=${initialLanguage}`;
     }
     
     fetch(url)
       .then(r => r.json())
       .then(data => {
+        let results = data.results || [];
+        
+        // Se estivermos em busca, ainda precisamos filtrar por gênero localmente se um estiver selecionado
+        if (query && selectedGenre) {
+          results = results.filter(item => item.genre_ids?.includes(parseInt(selectedGenre)));
+        }
+
         if (page === 1) {
-          setItems(data.results || []);
+          setItems(results);
         } else {
-          setItems(prev => [...prev, ...(data.results || [])]);
+          setItems(prev => [...prev, ...results]);
         }
         setLoading(false);
       });
-  }, [type, selectedGenre, sortBy, page]);
+  }, [type, selectedGenre, sortBy, page, query, initialLanguage]);
 
-  // Reset de página ao mudar filtro
+  // Reset de página ao mudar filtro ou busca
   const handleFilterChange = (genreId) => {
     setSelectedGenre(genreId);
+    setPage(1);
+  };
+
+  const handleSearchChange = (val) => {
+    setQuery(val);
     setPage(1);
   };
 
@@ -61,6 +80,16 @@ export default function CatalogPage({ type, title, initialGenreId = '' }) {
         <h1 className="row-title">{title}</h1>
         
         <div className="filters-bar">
+          <div className="filter-group search-local-group">
+            <input 
+              type="text" 
+              className="local-search-input" 
+              placeholder={`Pesquisar em ${title}...`}
+              value={query}
+              onChange={(e) => handleSearchChange(e.target.value)}
+            />
+          </div>
+
           <div className="filter-group">
             <label>Gênero:</label>
             <select value={selectedGenre} onChange={(e) => handleFilterChange(e.target.value)}>
@@ -71,14 +100,16 @@ export default function CatalogPage({ type, title, initialGenreId = '' }) {
             </select>
           </div>
 
-          <div className="filter-group">
-            <label>Ordem:</label>
-            <select value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
-              <option value="popularity.desc">Mais Populares</option>
-              <option value="vote_average.desc">Melhor Avaliados</option>
-              <option value="first_air_date.desc">Lançamentos</option>
-            </select>
-          </div>
+          {!query && (
+            <div className="filter-group">
+              <label>Ordem:</label>
+              <select value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
+                <option value="popularity.desc">Mais Populares</option>
+                <option value="vote_average.desc">Melhor Avaliados</option>
+                <option value="first_air_date.desc">Lançamentos</option>
+              </select>
+            </div>
+          )}
         </div>
       </header>
 

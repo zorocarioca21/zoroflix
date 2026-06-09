@@ -55,7 +55,7 @@ export default function AntiAdBlock() {
         <div className="anti-adblock-icon">🚫</div>
         <h2>AdBlock Detectado!</h2>
         <p>
-          Notamos que você está usando um bloqueador de anúncios. Para manter o <strong>ZoroFlix</strong> gratuito e com a melhor qualidade, precisamos que você desative o AdBlock para o nosso site.
+          Notamos que você está usando um bloqueador de anúncios. Para manter o <strong>CineGeek</strong> gratuito e com a melhor qualidade, precisamos que você desative o AdBlock para o nosso site.
         </p>
         <div className="anti-adblock-steps">
           <div className="step">1. Clique no ícone do AdBlock no seu navegador.</div>

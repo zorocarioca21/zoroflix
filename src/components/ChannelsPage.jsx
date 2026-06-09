@@ -5,6 +5,7 @@ import { fetchWithProxy } from '../utils/api';
 export default function ChannelsPage() {
   const [channels, setChannels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,13 +24,31 @@ export default function ChannelsPage() {
       });
   }, []);
 
+  const filteredChannels = channels.filter(ch => 
+    ch.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) return <div className="details-loading">Buscando canais...</div>;
 
   return (
     <div className="search-page-container">
-      <h2 className="row-title" style={{marginBottom: '2rem'}}>TV Ao Vivo - Canais Disponíveis</h2>
+      <div className="catalog-header">
+        <h2 className="row-title">TV Ao Vivo</h2>
+        <div className="filters-bar">
+          <div className="filter-group">
+            <input 
+              type="text" 
+              className="local-search-input" 
+              placeholder="Pesquisar canal..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="search-grid">
-        {channels.map((ch) => (
+        {filteredChannels.map((ch) => (
           <div 
             className="search-card" 
             key={ch.id} 
