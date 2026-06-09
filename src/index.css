@@ -1777,3 +1777,50 @@ body {
   overflow: hidden;
   line-height: 1.4;
 }
+
+/* Logo Brand Styles */
+.logo-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.logo-brand:hover {
+  transform: scale(1.05);
+}
+
+.logo-text-cine {
+  color: var(--primary);
+  text-shadow: 0 0 10px rgba(0, 230, 118, 0.5);
+}
+
+.logo-text-geek {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.logo-icon-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  margin: 0 -15px; /* Sobrepõe levemente o texto */
+  z-index: 2;
+  filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.6));
+}
+
+@media (max-width: 600px) {
+  .logo-brand {
+    font-size: 1.4rem;
+  }
+  .logo-icon-img {
+    width: 35px;
+    height: 35px;
+    margin: 0 -10px;
+  }
+}

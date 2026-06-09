@@ -111,8 +111,10 @@ function App() {
     <div className="app-container">
       {!location.pathname.includes('/player') && (
         <header className="main-header">
-          <Link to="/" className="logo" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
-            Cine<span>geek</span>
+          <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
+            <span className="logo-text-cine">CINE</span>
+            <img src="/cinegeek-icon.png" alt="CineGeek Icon" className="logo-icon-img" />
+            <span className="logo-text-geek">GEEK</span>
           </Link>
           
           <nav className="nav-pill">
