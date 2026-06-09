@@ -3,13 +3,12 @@ import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircl
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminPanel() {
-    const { user, loading: authLoading } = useAuth();
-
-    if (authLoading) {
-        return <div className="admin-loading-screen">Verificando credenciais...</div>;
-    }
-
-    // Se não for admin, pede nick/email para verificação
+    const { user } = useAuth();
+    // Estado para verificação manual
+    const [identifier, setIdentifier] = useState('');
+    const [isAdminVerified, setIsAdminVerified] = useState(false);
+    const [verifyLoading, setVerifyLoading] = useState(false);
+    const [verifyError, setVerifyError] = useState('');
     if (!user || (user.role !== 'admin' && !isAdminVerified)) {
         const handleVerify = async () => {
             if (!identifier) return;
