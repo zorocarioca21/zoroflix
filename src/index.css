@@ -2805,6 +2805,8 @@ body::before {
   background: var(--bg-card);
   position: relative;
   z-index: 1;
+  min-height: 100vh; /* cover full viewport, hide green */
+  width: 100%;
 }
 .admin-header-main { margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
 .admin-title-wrap { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
