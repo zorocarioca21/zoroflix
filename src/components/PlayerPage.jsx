@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft } from 'lucide-react';
 import CommentSection from './CommentSection';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -17,21 +17,15 @@ export default function PlayerPage() {
   const [episodes, setEpisodes] = useState([]);
   const [showList, setShowList] = useState(false);
 
-  // Injetar anúncio pop-under APENAS se o usuário for 'free'
   useEffect(() => {
-    if (user?.role && user.role !== 'free') return; // Pula anúncios para VIP/Admin
-
+    if (user?.role && user.role !== 'free') return;
     const script = document.createElement('script');
     script.src = "https://pl29672000.effectivecpmnetwork.com/d7/32/c1/d732c1442b56faa1946720b33505fca5.js";
     script.async = true;
     document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
+    return () => { document.body.removeChild(script); };
   }, [user]);
 
-  // Carregar lista de episódios se for série
   useEffect(() => {
     if (season && id) {
         fetch(`${BASE_URL}/tv/${id}/season/${season}?api_key=${API_KEY}&language=pt-BR`)
@@ -48,7 +42,6 @@ export default function PlayerPage() {
   } else {
     const isMovie = location.pathname.includes('/filme/');
     const apiType = isMovie ? 'filme' : 'serie';
-
     if (season && episode) {
       playerUrl = `https://superflixapi.fit/${apiType}/${id}/${season}/${episode}#noEpList`;
     } else {
@@ -72,23 +65,15 @@ export default function PlayerPage() {
     }
   };
 
+  const handleGoBack = () => {
+    if (canalId) navigate('/canais');
+    else if (season) navigate(`/serie/${id}`);
+    else navigate(`/filme/${id}`);
+  }
+
   return (
     <div className="player-page-container">
-      <div className="player-page-header">
-        <button className="btn-back-player" onClick={() => navigate(-1)}>
-          &#8592; VOLTAR
-        </button>
-        <span className="player-title-label">Assistindo: {title}</span>
-        
-        {!canalId && season && (
-            <div className="player-controls-nav">
-                <button onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft /> Anterior</button>
-                <button onClick={() => setShowList(!showList)}><List /> Episódios</button>
-                <button onClick={handleNext}>Próximo <ChevronRight /></button>
-            </div>
-        )}
-      </div>
-
+      {/* Player Area (Top) */}
       <div className="player-view-layout">
           <div className="fullscreen-player-wrapper">
             <iframe src={playerUrl} allowFullScreen title="Zoroflix Player"></iframe>
@@ -114,6 +99,26 @@ export default function PlayerPage() {
                   </div>
               </div>
           )}
+      </div>
+
+      {/* Info & Controls Area (Below Player) */}
+      <div className="player-bottom-controls-area">
+        <div className="player-info-row">
+            <h1 className="player-title">{title}</h1>
+            {!canalId && season && (
+                <div className="player-nav-group">
+                    <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
+                    <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20}/> Episódios</button>
+                    <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20}/></button>
+                </div>
+            )}
+        </div>
+
+        <div className="player-back-row">
+            <button className="btn-back-to-info" onClick={handleGoBack}>
+                <ArrowLeft size={18} /> VOLTAR PARA DETALHES
+            </button>
+        </div>
       </div>
 
       <div className="player-comments-area">

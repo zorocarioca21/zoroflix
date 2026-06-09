@@ -808,74 +808,14 @@ body {
 .player-page-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
   padding: 1.5rem;
 }
 
-.player-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.btn-back-player {
-  background: transparent;
-  color: var(--primary);
-  border: 1px solid var(--primary);
-  padding: 0.8rem 1.5rem;
-  border-radius: 2rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-back-player:hover {
-  background: var(--primary);
-  color: #000;
-  box-shadow: var(--glow);
-}
-
-.player-title-label {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text);
-  flex: 1;
-}
-
-.player-controls-nav {
-  display: flex;
-  gap: 1rem;
-}
-
-.player-controls-nav button {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #fff;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.player-controls-nav button:hover:not(:disabled) {
-  border-color: var(--primary);
-  background: rgba(0, 230, 118, 0.1);
-}
-
-.player-controls-nav button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
+/* Layout do Player & Sidebar */
 .player-view-layout {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   height: 70vh;
   min-height: 500px;
 }
@@ -894,6 +834,86 @@ body {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+/* Área de Controles Abaixo do Player */
+.player-bottom-controls-area {
+  background: rgba(0,0,0,0.3);
+  padding: 2rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.player-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.player-title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #fff;
+  flex: 1;
+}
+
+.player-nav-group {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn-modern {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.nav-btn-modern:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: rgba(0, 230, 118, 0.1);
+}
+
+.nav-btn-modern:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.player-back-row {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.btn-back-to-info {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.btn-back-to-info:hover {
+  background: var(--primary);
+  color: #000;
+  box-shadow: var(--glow);
 }
 
 .player-ep-sidebar {
@@ -1513,7 +1533,7 @@ body {
 }
 
 .details-hero {
-  position: fixed; /* Mudar para fixed para cobrir o fundo durante o scroll */
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -1521,7 +1541,7 @@ body {
   background-size: cover;
   background-position: center;
   z-index: -1;
-  opacity: 0.4; /* Deixar mais suave */
+  opacity: 0.3; /* Opacidade 30% como pedido */
   mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
 
