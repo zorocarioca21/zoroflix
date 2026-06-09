@@ -9,16 +9,33 @@
     <script>
       (function() {
         const _open = window.open;
+        const adPattern = 'aboveboardcomplicate.com';
+        
         window.open = function() {
-          const win = _open.apply(this, arguments);
           const url = arguments[0];
-          if (url && typeof url === 'string' && url.indexOf('aboveboardcomplicate.com') !== -1) {
-            setTimeout(function() {
-              if (win && !win.closed) win.close();
-            }, 1000);
+          if (url && typeof url === 'string' && url.indexOf(adPattern) !== -1) {
+            console.log("Anti-Ad: Bloqueio Total.");
+            // Retorna um objeto "fake" para o script de anúncio não quebrar
+            return { 
+              closed: false, 
+              close: function(){}, 
+              focus: function(){}, 
+              blur: function(){},
+              postMessage: function(){} 
+            };
           }
-          return win;
+          return _open.apply(this, arguments);
         };
+
+        // Bloqueia cliques diretos em links de anúncios criados dinamicamente
+        document.addEventListener('click', function(e) {
+          let t = e.target;
+          while (t && t.tagName !== 'A') t = t.parentNode;
+          if (t && t.href && t.href.indexOf(adPattern) !== -1) {
+            e.preventDefault();
+            console.log("Anti-Ad: Clique em link bloqueado.");
+          }
+        }, true);
       })();
     </script>
   </head>
