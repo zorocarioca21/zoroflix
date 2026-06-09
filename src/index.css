@@ -1978,10 +1978,33 @@ body {
 }
 
 /* User Nav & Avatar */
+.login-btn-header-circle {
+  width: 45px;
+  height: 45px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.login-btn-header-circle:hover {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+  transform: scale(1.1);
+  box-shadow: var(--glow);
+}
+
 .user-nav {
   display: flex;
   align-items: center;
-  margin-left: 1.5rem;
+  margin-left: 1rem;
 }
 
 .login-btn-header {

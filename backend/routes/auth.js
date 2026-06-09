@@ -22,8 +22,9 @@ export default function authRoutes(db) {
                 [nick, email, hashedPassword, uuid, 'free']
             );
             
+            const defaultAvatar = 'https://api.zorobot.shop/avatars/default.png?v=1';
             const token = jwt.sign({ id: result.lastID, role: 'free' }, JWT_SECRET, { expiresIn: '30d' });
-            res.json({ token, user: { id: result.lastID, nick, email, role: 'free' } });
+            res.json({ token, user: { id: result.lastID, nick, email, role: 'free', avatar: defaultAvatar } });
         } catch (err) {
             if (err.message.includes('unique')) {
                 return res.status(400).json({ error: 'Email já cadastrado.' });

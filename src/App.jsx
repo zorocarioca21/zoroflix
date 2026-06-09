@@ -107,17 +107,32 @@ function AppContent() {
             <div className="user-nav">
               {user ? (
                 <div className="user-profile-wrap">
-                  <img src={user.avatar} alt="Perfil" className="user-avatar" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}/>
+                  <img 
+                    src={user.avatar} 
+                    alt="Perfil" 
+                    className="user-avatar" 
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }}
+                  />
                   {isUserMenuOpen && (
                     <div className="user-dropdown">
-                      <div className="user-info-head"><p className="user-nick">{user.nick}</p><p className="user-tag">{user.role?.toUpperCase()}</p></div>
-                      <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}><UserIcon size={16} /> Meu Perfil</Link>
-                      <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}><LogOut size={16} /> Sair</button>
+                      <div className="user-info-head">
+                        <p className="user-nick">{user.nick}</p>
+                        <p className="user-tag">{user.role?.toUpperCase() || 'FREE'}</p>
+                      </div>
+                      <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
+                        <UserIcon size={16} /> Meu Perfil
+                      </Link>
+                      <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}>
+                        <LogOut size={16} /> Sair
+                      </button>
                     </div>
                   )}
                 </div>
               ) : (
-                <button className="login-btn-header" onClick={() => setIsAuthOpen(true)}><LogIn size={20} /><span>ENTRAR</span></button>
+                <button className="login-btn-header-circle" onClick={() => setIsAuthOpen(true)}>
+                  <UserIcon size={24} />
+                </button>
               )}
             </div>
           </div>
