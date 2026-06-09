@@ -11,20 +11,21 @@ export default function PlayerPage() {
   const { id, season, episode, canalId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const state = location.state || {};
 
   const [episodes, setEpisodes] = useState([]);
   const [showList, setShowList] = useState(false);
 
   useEffect(() => {
+    if (loading) return;
     if (user?.role && user.role !== 'free') return;
     const script = document.createElement('script');
     script.src = "https://pl29672000.effectivecpmnetwork.com/d7/32/c1/d732c1442b56faa1946720b33505fca5.js";
     script.async = true;
     document.body.appendChild(script);
     return () => { document.body.removeChild(script); };
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
     if (season && id) {

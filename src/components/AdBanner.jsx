@@ -1,9 +1,13 @@
 import React, { useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdBanner({ adId }) {
   const adContainerRef = useRef(null);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
+    if (loading) return;
+    if (user?.role && user.role !== 'free') return;
     // Evita carregar múltiplas vezes se o componente remontar rapidamente
     if (adContainerRef.current && adContainerRef.current.innerHTML === '') {
       const script = document.createElement('script');
@@ -14,7 +18,11 @@ export default function AdBanner({ adId }) {
       
       adContainerRef.current.appendChild(script);
     }
-  }, []);
+  }, [user, loading]);
+
+  if (!loading && user?.role && user.role !== 'free') {
+    return null;
+  }
 
   return (
     <div className="ad-container-wrapper" style={{ margin: '2rem 0', textAlign: 'center', width: '100%' }}>
