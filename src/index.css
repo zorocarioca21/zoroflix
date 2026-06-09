@@ -33,7 +33,20 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: var(--bg); /* Cor sólida como base */
+  position: relative;
+}
+
+/* Fundo Gradiente Global (Atrás de tudo) */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: radial-gradient(circle at top, #092c1d 0%, var(--bg) 100%);
+  z-index: -2; /* Fica atrás até da foto do filme */
 }
 
 .app-container {
@@ -1530,6 +1543,8 @@ body {
 .details-container {
   min-height: 100vh;
   padding-bottom: 5rem;
+  background: transparent; /* Garante que nada aqui cubra o fundo */
+  position: relative;
 }
 
 .details-hero {
@@ -1540,8 +1555,9 @@ body {
   height: 100vh;
   background-size: cover;
   background-position: center;
-  z-index: -1;
-  opacity: 0.3; /* Opacidade 30% como pedido */
+  z-index: -1; /* Entre o gradiente global (-2) e o conteúdo (0) */
+  opacity: 0.3;
+  pointer-events: none;
   mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
 
@@ -2806,3 +2822,48 @@ body {
 .role-tag.admin { background: #ff4444; }
 .role-tag.vip { background: gold; color: #000; }
 .role-tag.free { background: #555; }
+
+/* Mensagens de Acesso ADM */
+.admin-access-denied, .admin-loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  z-index: 9999;
+}
+
+.admin-access-denied h1 {
+  font-size: 3rem;
+  color: #ff4444;
+  text-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+}
+
+.admin-access-denied p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.admin-access-denied button {
+  background: var(--primary);
+  color: #000;
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.admin-access-denied button:hover {
+  box-shadow: var(--glow);
+  transform: translateY(-2px);
+}

@@ -3,7 +3,11 @@ import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircl
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminPanel() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+
+    if (authLoading) {
+        return <div className="admin-loading-screen">Verificando credenciais...</div>;
+    }
 
     if (!user || user.role !== 'admin') {
         return (
