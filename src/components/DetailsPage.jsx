@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft } from 'lucide-react';
 import AdBanner from './AdBanner';
-import RatingCircle from './RatingCircle';
-import AgeBadge from './AgeBadge';
+import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
