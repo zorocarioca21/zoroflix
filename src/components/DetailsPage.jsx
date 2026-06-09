@@ -17,6 +17,7 @@ export default function DetailsPage() {
   const [episodes, setEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSeason, setSelectedSeason] = useState(1);
+  const [certification, setCertification] = useState('');
 
   const isMovie = location.pathname.includes('/filme/');
 
@@ -42,6 +43,16 @@ export default function DetailsPage() {
 
       if (!isMovie) {
         fetchEpisodes(1);
+        const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
+        const certData = await certResp.json();
+        const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
+        setCertification(br?.rating || 'L');
+      } else {
+        const certResp = await fetch(`${BASE_URL}/movie/${id}/release_dates?api_key=${API_KEY}`);
+        const certData = await certResp.json();
+        const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
+        const cert = br?.release_dates?.find(d => d.certification)?.certification;
+        setCertification(cert || 'L');
       }
     } catch (error) {
       console.error(error);
@@ -92,8 +103,8 @@ export default function DetailsPage() {
                     className="details-main-poster"
                 />
                 <div className="details-badges-overlay">
+                    <AgeBadge rating={certification} />
                     <RatingCircle rating={data.vote_average} />
-                    <AgeBadge contentId={data.id} mediaType={isMovie ? 'movie' : 'tv'} />
                 </div>
             </div>
             
