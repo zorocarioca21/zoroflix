@@ -18,6 +18,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthModal from './components/AuthModal';
 import UserProfile from './components/UserProfile';
 import AdminPanel from './components/AdminPanel';
+import WhatsappPopup from './components/WhatsappPopup';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -159,6 +160,7 @@ function AppContent() {
         <Route path="/paineladm" element={<AdminPanel />} />
       </Routes>
       <AntiAdBlock />
+      <WhatsappPopup />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   )
