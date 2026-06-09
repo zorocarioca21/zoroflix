@@ -9,6 +9,7 @@ import ChannelsPage from './components/ChannelsPage'
 import CalendarPage from './components/CalendarPage'
 
 import AntiAdBlock from './components/AntiAdBlock'
+import CatalogPage from './components/CatalogPage'
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -110,18 +111,34 @@ function App() {
             Zoro<span>flix</span>
           </Link>
           
+          <nav className="nav-pill">
+            <Link to="/" className="nav-item">
+              <span className="nav-icon">🏠</span>
+              <span className="nav-label">Home</span>
+            </Link>
+            <Link to="/filmes" className="nav-item">
+              <span className="nav-icon">🎬</span>
+              <span className="nav-label">Filmes</span>
+            </Link>
+            <Link to="/series" className="nav-item">
+              <span className="nav-icon">📺</span>
+              <span className="nav-label">Séries</span>
+            </Link>
+            <Link to="/animes" className="nav-item">
+              <span className="nav-icon">🐉</span>
+              <span className="nav-label">Animes</span>
+            </Link>
+            <Link to="/canais" className="nav-item">
+              <span className="nav-icon">📡</span>
+              <span className="nav-label">Canais</span>
+            </Link>
+            <Link to="/lancamentos" className="nav-item">
+              <span className="nav-icon">📅</span>
+              <span className="nav-label">Calendário</span>
+            </Link>
+          </nav>
+
           <div className="header-right">
-            <div className="nav-buttons">
-              <Link to="/lancamentos" className="btn-nav btn-lancamentos">
-                📅 Lançamentos
-              </Link>
-
-              <Link to="/canais" className="btn-nav btn-live-nav">
-                <div className="live-dot"></div>
-                AO VIVO
-              </Link>
-            </div>
-
             <div className="header-search">
               <input 
                 type="text" 
@@ -132,7 +149,7 @@ function App() {
                 onKeyDown={handleKeyPress}
               />
               <button className="navbar-search-btn" onClick={handleFullSearch}>
-                {isSearching ? '...' : 'Buscar'}
+                {isSearching ? '...' : '🔍'}
               </button>
 
               {searchResults.length > 0 && searchQuery && (
@@ -163,6 +180,9 @@ function App() {
         <Route path="/search" element={<SearchPage results={searchResults} />} />
         <Route path="/canais" element={<ChannelsPage />} />
         <Route path="/lancamentos" element={<CalendarPage />} />
+        <Route path="/filmes" element={<CatalogPage type="movie" title="Filmes" />} />
+        <Route path="/series" element={<CatalogPage type="tv" title="Séries" />} />
+        <Route path="/animes" element={<CatalogPage type="tv" title="Animes" initialGenreId="16" />} />
         <Route path="/filme/:id" element={<DetailsPage />} />
         <Route path="/serie/:id" element={<DetailsPage />} />
         <Route path="/filme/:id/player" element={<PlayerPage />} />

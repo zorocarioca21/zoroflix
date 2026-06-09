@@ -57,9 +57,6 @@ export default function DetailsPage() {
 
   return (
     <div className="details-container">
-      <button className="btn-back-details" onClick={() => navigate(-1)}>
-        &#8592; VOLTAR
-      </button>
       
       <div 
         className="details-hero"
