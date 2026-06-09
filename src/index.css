@@ -45,21 +45,29 @@ body {
 }
 
 .main-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   margin-bottom: 3rem;
   padding-bottom: 1.5rem;
   border-bottom: var(--border-neon);
-  flex-wrap: wrap;
   gap: 1.5rem;
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 1.5rem;
   flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
 }
 
 .nav-pill {
