@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Home, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 import HeroSlider from './components/HeroSlider'
 import ContentRow from './components/ContentRow'
@@ -113,31 +114,31 @@ function App() {
           
           <nav className="nav-pill">
             <Link to="/" className="nav-item">
-              <span className="nav-icon">🏠</span>
+              <span className="nav-icon"><Home size={20} color="currentColor" /></span>
               <span className="nav-label">Home</span>
             </Link>
             <Link to="/filmes" className="nav-item">
-              <span className="nav-icon">🎬</span>
+              <span className="nav-icon"><Film size={20} color="currentColor" /></span>
               <span className="nav-label">Filmes</span>
             </Link>
             <Link to="/series" className="nav-item">
-              <span className="nav-icon">📺</span>
+              <span className="nav-icon"><MonitorPlay size={20} color="currentColor" /></span>
               <span className="nav-label">Séries</span>
             </Link>
             <Link to="/animes" className="nav-item">
-              <span className="nav-icon">🐉</span>
+              <span className="nav-icon"><Sword size={20} color="currentColor" /></span>
               <span className="nav-label">Animes</span>
             </Link>
             <Link to="/doramas" className="nav-item">
-              <span className="nav-icon">🇰🇷</span>
+              <span className="nav-icon"><Heart size={20} color="currentColor" /></span>
               <span className="nav-label">Doramas</span>
             </Link>
             <Link to="/canais" className="nav-item">
-              <span className="nav-icon">📡</span>
+              <span className="nav-icon"><Radio size={20} color="currentColor" /></span>
               <span className="nav-label">Canais</span>
             </Link>
             <Link to="/lancamentos" className="nav-item">
-              <span className="nav-icon">📅</span>
+              <span className="nav-icon"><Calendar size={20} color="currentColor" /></span>
               <span className="nav-label">Calendário</span>
             </Link>
           </nav>
@@ -153,7 +154,7 @@ function App() {
                 onKeyDown={handleKeyPress}
               />
               <button className="navbar-search-btn" onClick={handleFullSearch}>
-                {isSearching ? '...' : '🔍'}
+                {isSearching ? '...' : <Search size={18} />}
               </button>
 
               {searchResults.length > 0 && searchQuery && (

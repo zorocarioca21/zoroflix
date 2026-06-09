@@ -4,9 +4,13 @@ import { fetchWithProxy } from '../utils/api';
 
 export default function ChannelsPage() {
   const [channels, setChannels] = useState([]);
+  const [filteredChannels, setFilteredChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
   const navigate = useNavigate();
+
+  const categories = ['Todos', 'Canais Abertos', 'Esportes', 'Filmes e Séries', 'Documentários', 'Infantil', '24 horas', 'Adulto'];
 
   useEffect(() => {
     const url = 'https://superflixapi.fit/lista?category=canais&format=json';
@@ -15,6 +19,7 @@ export default function ChannelsPage() {
       .then(data => {
         if (data && data.data) {
           setChannels(data.data);
+          setFilteredChannels(data.data);
         }
         setLoading(false);
       })
@@ -24,9 +29,19 @@ export default function ChannelsPage() {
       });
   }, []);
 
-  const filteredChannels = channels.filter(ch => 
-    ch.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    let result = channels;
+    
+    if (selectedCategory !== 'Todos') {
+      result = result.filter(ch => ch.category?.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    
+    if (searchTerm) {
+      result = result.filter(ch => ch.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    
+    setFilteredChannels(result);
+  }, [searchTerm, selectedCategory, channels]);
 
   if (loading) return <div className="details-loading">Buscando canais...</div>;
 
@@ -45,6 +60,18 @@ export default function ChannelsPage() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="category-pills-container">
+        {categories.map(cat => (
+          <button 
+            key={cat} 
+            className={`category-pill ${selectedCategory === cat ? 'active' : ''}`}
+            onClick={() => setSelectedCategory(cat)}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       <div className="search-grid">

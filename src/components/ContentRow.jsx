@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { RatingCircle } from './Badges';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -46,6 +47,7 @@ export default function ContentRow({ title, endpoint, type, onPlay }) {
               className="row-poster-card"
               onClick={() => onPlay(item.id, type)}
             >
+              <RatingCircle rating={item.vote_average} />
               <img 
                 className="row-poster-img"
                 src={`${IMAGE_BASE_URL}${item.poster_path}`} 

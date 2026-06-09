@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import AdBanner from './AdBanner';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { RatingCircle, AgeBadge } from './Badges';
+import { Users, Calendar, Clock, Activity, DollarSign, TrendingUp } from 'lucide-react';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -14,6 +16,8 @@ export default function DetailsPage() {
   const isMovie = location.pathname.includes('/filme/');
   
   const [details, setDetails] = useState(null);
+  const [cast, setCast] = useState([]);
+  const [brCertification, setBrCertification] = useState('');
   const [loading, setLoading] = useState(true);
   
   const [selectedSeason, setSelectedSeason] = useState(null);
@@ -27,11 +31,24 @@ export default function DetailsPage() {
     setEpisodes([]);
     
     const endpoint = isMovie ? `/movie/${id}` : `/tv/${id}`;
+    const append = isMovie ? 'credits,release_dates' : 'credits,content_ratings';
     
-    fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&language=pt-BR`)
+    fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&language=pt-BR&append_to_response=${append}`)
       .then(r => r.json())
       .then(data => {
         setDetails(data);
+        setCast(data.credits?.cast?.slice(0, 6) || []);
+        
+        // Determinar classificação etária BR
+        let cert = '';
+        if (isMovie) {
+          const br = data.release_dates?.results?.find(r => r.iso_3166_1 === 'BR');
+          cert = br?.release_dates?.[0]?.certification;
+        } else {
+          const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
+          cert = br?.rating;
+        }
+        setBrCertification(cert || '');
         setLoading(false);
       })
       .catch(err => {
@@ -55,6 +72,8 @@ export default function DetailsPage() {
   if (loading) return <div className="details-loading">Buscando informações...</div>;
   if (!details) return <div className="details-loading">Erro ao carregar as informações.</div>;
 
+  const year = (details.release_date || details.first_air_date)?.split('-')[0];
+
   return (
     <div className="details-container">
       
@@ -66,6 +85,7 @@ export default function DetailsPage() {
         
         <div className="details-content">
           <div className="details-poster-wrap">
+            <AgeBadge rating={brCertification} />
             <img 
               src={`${IMAGE_BASE_URL}${details.poster_path}`} 
               alt={details.title || details.name} 
@@ -73,25 +93,52 @@ export default function DetailsPage() {
             />
           </div>
           <div className="details-info">
-            <h1 className="details-title">{details.title || details.name}</h1>
-            <div className="details-meta">
-              <span className="hero-rating">TMDB {details.vote_average?.toFixed(1)}</span>
-              <span className="details-date">{details.release_date?.split('-')[0] || details.first_air_date?.split('-')[0]}</span>
-              <span className="details-type">{isMovie ? 'Filme' : 'Série'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '15px' }}>
+              <RatingCircle rating={details.vote_average} />
+              <h1 className="details-title">{details.title || details.name}</h1>
             </div>
+            
+            <div className="details-meta">
+              <span><Calendar size={16} /> {year}</span>
+              {details.runtime && <span><Clock size={16} /> {details.runtime} min</span>}
+              <span><Activity size={16} /> {details.status}</span>
+            </div>
+
             <p className="details-overview">{details.overview || "Nenhuma sinopse disponível em português para este título."}</p>
             
+            {/* Elenco Horizontal na Info */}
+            {cast.length > 0 && (
+              <div className="details-cast-preview">
+                <h3 className="section-small-title"><Users size={16} /> Elenco Principal</h3>
+                <div className="cast-scroll">
+                  {cast.map(actor => (
+                    <div key={actor.id} className="cast-mini-card">
+                      <img 
+                        src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://via.placeholder.com/185x278?text=N/A'} 
+                        alt={actor.name} 
+                      />
+                      <span>{actor.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="details-extra-row">
+              {details.budget > 0 && <span><DollarSign size={14} /> Orçamento: ${details.budget.toLocaleString()}</span>}
+              {details.revenue > 0 && <span><TrendingUp size={14} /> Receita: ${details.revenue.toLocaleString()}</span>}
+            </div>
+            
             {isMovie && (
-              <>
+              <div style={{ marginTop: '2rem' }}>
                 <button 
                   className="btn btn-primary btn-large details-play-btn"
                   onClick={() => navigate(`/filme/${id}/player`, { state: { title: details.title } })}
                 >
                   ▶ ASSISTIR FILME
                 </button>
-                {/* Anúncio abaixo do botão nos filmes */}
                 <AdBanner adId="details-movie-bottom" />
-              </>
+              </div>
             )}
           </div>
         </div>

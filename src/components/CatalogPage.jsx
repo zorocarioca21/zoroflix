@@ -5,6 +5,8 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
+import { RatingCircle } from './Badges';
+
 export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '' }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -20,7 +22,13 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     const genreType = type === 'movie' ? 'movie' : 'tv';
     fetch(`${BASE_URL}/genre/${genreType}/list?api_key=${API_KEY}&language=pt-BR`)
       .then(r => r.json())
-      .then(data => setGenres(data.genres || []));
+      .then(data => {
+        // Filtra gêneros populares/relevantes para os pills
+        const relevantGenres = data.genres?.filter(g => 
+          ['Ação', 'Comédia', 'Terror', 'Drama', 'Animação', 'Aventura', 'Documentário', 'Ficção científica'].includes(g.name)
+        ) || [];
+        setGenres(data.genres || []);
+      });
   }, [type]);
 
   // Carrega itens quando filtros ou busca mudam
@@ -30,10 +38,8 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     let url;
 
     if (query) {
-      // Busca Local: Usa o endpoint de search mas mantendo o contexto do tipo
       url = `${BASE_URL}/search/${mediaType}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}&page=${page}`;
     } else {
-      // Navegação por Catálogo
       url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
       if (selectedGenre) url += `&with_genres=${selectedGenre}`;
       if (initialLanguage) url += `&with_original_language=${initialLanguage}`;
@@ -44,9 +50,19 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
       .then(data => {
         let results = data.results || [];
         
-        // Se estivermos em busca, ainda precisamos filtrar por gênero localmente se um estiver selecionado
-        if (query && selectedGenre) {
-          results = results.filter(item => item.genre_ids?.includes(parseInt(selectedGenre)));
+        // FILTRAGEM ESTRITA DE CONTEXTO
+        // Se estivermos em uma página específica (Animes, Doramas), filtramos a busca
+        if (query) {
+          if (initialGenreId) {
+            results = results.filter(item => item.genre_ids?.includes(parseInt(initialGenreId)));
+          }
+          if (initialLanguage) {
+            results = results.filter(item => item.original_language === initialLanguage);
+          }
+          // Se o usuário selecionou UM GÊNERO extra no seletor/pills durante a busca
+          if (selectedGenre && selectedGenre !== initialGenreId) {
+            results = results.filter(item => item.genre_ids?.includes(parseInt(selectedGenre)));
+          }
         }
 
         if (page === 1) {
@@ -56,9 +72,8 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
         }
         setLoading(false);
       });
-  }, [type, selectedGenre, sortBy, page, query, initialLanguage]);
+  }, [type, selectedGenre, sortBy, page, query, initialLanguage, initialGenreId]);
 
-  // Reset de página ao mudar filtro ou busca
   const handleFilterChange = (genreId) => {
     setSelectedGenre(genreId);
     setPage(1);
@@ -69,13 +84,8 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     setPage(1);
   };
 
-  const handleSortChange = (sort) => {
-    setSortBy(sort);
-    setPage(1);
-  };
-
   return (
-    <div className="catalog-container" style={{ animation: 'fadeIn 0.5s ease' }}>
+    <div className="catalog-container">
       <header className="catalog-header">
         <h1 className="row-title">{title}</h1>
         
@@ -93,27 +103,35 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
           <div className="filter-group">
             <label>Gênero:</label>
             <select value={selectedGenre} onChange={(e) => handleFilterChange(e.target.value)}>
-              <option value="">Todos</option>
+              <option value={initialGenreId}>Todos</option>
               {genres.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
           </div>
-
-          {!query && (
-            <div className="filter-group">
-              <label>Ordem:</label>
-              <select value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
-                <option value="popularity.desc">Mais Populares</option>
-                <option value="vote_average.desc">Melhor Avaliados</option>
-                <option value="first_air_date.desc">Lançamentos</option>
-              </select>
-            </div>
-          )}
         </div>
       </header>
 
-      <div className="search-grid">
+      {/* CATEGORY PILLS */}
+      <div className="category-pills-container">
+        <button 
+          className={`category-pill ${selectedGenre === initialGenreId ? 'active' : ''}`}
+          onClick={() => handleFilterChange(initialGenreId)}
+        >
+          Todos
+        </button>
+        {genres.slice(0, 10).map(g => (
+          <button 
+            key={g.id} 
+            className={`category-pill ${selectedGenre == g.id ? 'active' : ''}`}
+            onClick={() => handleFilterChange(g.id)}
+          >
+            {g.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="catalog-grid">
         {items.map(item => (
           <div 
             key={item.id} 
@@ -121,16 +139,18 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
             onClick={() => navigate(`/${type === 'movie' ? 'filme' : 'serie'}/${item.id}`)}
           >
             <div className="search-card-img-wrapper">
-              <img src={`${IMAGE_BASE_URL}${item.poster_path}`} alt={item.title || item.name} className="search-card-img" />
+              <RatingCircle rating={item.vote_average} />
+              <img 
+                src={`${IMAGE_BASE_URL}${item.poster_path}`} 
+                alt={item.title || item.name} 
+                className="search-card-img"
+              />
               <div className="search-card-overlay">
                 <span className="row-play-icon">▶</span>
               </div>
             </div>
             <div className="search-card-info">
               <div className="search-card-title">{item.title || item.name}</div>
-              <div className="search-card-type">
-                TMDB {item.vote_average?.toFixed(1)}
-              </div>
             </div>
           </div>
         ))}
