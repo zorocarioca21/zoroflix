@@ -2,7 +2,6 @@ import express from 'express';
 const router = express.Router();
 
 export default function adminRoutes(db) {
-
     // Ver todas as denúncias pendentes
     router.get('/reports', async (req, res) => {
         try {
@@ -36,7 +35,7 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Buscar usuários
+    // Buscar usuários (por nick ou email)
     router.get('/users', async (req, res) => {
         const { query } = req.query;
         try {
@@ -68,9 +67,7 @@ export default function adminRoutes(db) {
     router.patch('/comments/:id/delete', async (req, res) => {
         const { id } = req.params;
         try {
-            // "Apagado por um ADM" mas mantém no DB
             await db.run("UPDATE comments SET text = '[Comentário apagado por um Administrador]' WHERE id = ?", [id]);
-            // Também resolve denúncias ligadas a ele
             await db.run("UPDATE reports SET status = 'resolved' WHERE comment_id = ?", [id]);
             res.json({ success: true });
         } catch (err) {
@@ -85,6 +82,24 @@ export default function adminRoutes(db) {
             res.json({ success: true });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao ignorar denúncia.' });
+        }
+    });
+
+    // Verificar se um usuário (por nick ou email) é admin
+    router.post('/verify', async (req, res) => {
+        const { identifier } = req.body; // pode ser nick ou email
+        try {
+            const user = await db.get(`
+                SELECT id, role FROM users 
+                WHERE (nick = ? OR email = ?) AND role = 'admin'
+            `, [identifier, identifier]);
+            if (user) {
+                res.json({ isAdmin: true, userId: user.id });
+            } else {
+                res.json({ isAdmin: false });
+            }
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao verificar admin.' });
         }
     });
 

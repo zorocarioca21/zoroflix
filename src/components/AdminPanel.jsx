@@ -9,16 +9,51 @@ export default function AdminPanel() {
         return <div className="admin-loading-screen">Verificando credenciais...</div>;
     }
 
-    if (!user || user.role !== 'admin') {
+    // Se não for admin, pede nick/email para verificação
+    if (!user || (user.role !== 'admin' && !isAdminVerified)) {
+        const handleVerify = async () => {
+            if (!identifier) return;
+            setVerifyLoading(true);
+            setVerifyError('');
+            try {
+                const resp = await fetch('/api/admin/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier })
+                });
+                const data = await resp.json();
+                if (data.isAdmin) {
+                    setIsAdminVerified(true);
+                } else {
+                    setVerifyError('Usuário não é administrador.');
+                }
+            } catch (err) {
+                setVerifyError('Erro ao verificar administrador.');
+            } finally {
+                setVerifyLoading(false);
+            }
+        };
+
         return (
             <div className="admin-access-denied">
                 <Shield size={64} color="#ff4444" />
                 <h1>Acesso Negado</h1>
                 <p>Este painel é exclusivo para administradores da Zoroflix.</p>
-                <button onClick={() => window.location.href = '/'}>Voltar para o Início</button>
+                <div className="admin-verify-form" style={{ marginTop: '1rem' }}>
+                    <input
+                        type="text"
+                        placeholder="Nick ou Email"
+                        value={identifier}
+                        onChange={e => setIdentifier(e.target.value)}
+                        disabled={verifyLoading}
+                    />
+                    <button onClick={handleVerify} disabled={verifyLoading}>Verificar</button>
+                </div>
+                {verifyError && <p style={{ color: '#ff4444', marginTop: '0.5rem' }}>{verifyError}</p>}
             </div>
         );
     }
+
 
     const [activeTab, setActiveTab] = useState('reports');
     const [comments, setComments] = useState([]);
