@@ -17,6 +17,7 @@ import CatalogPage from './components/CatalogPage'
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthModal from './components/AuthModal';
 import UserProfile from './components/UserProfile';
+import AdminPanel from './components/AdminPanel';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -155,6 +156,7 @@ function AppContent() {
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
         <Route path="/perfil" element={<UserProfile />} />
+        <Route path="/paineladm" element={<AdminPanel />} />
       </Routes>
       <AntiAdBlock />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />

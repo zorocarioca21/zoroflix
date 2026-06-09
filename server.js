@@ -7,6 +7,7 @@ import { initDB, UPLOADS_PATH } from './backend/db.js';
 import authRoutes from './backend/routes/auth.js';
 import commentRoutes from './backend/routes/comments.js';
 import profileRoutes from './backend/routes/profile.js';
+import adminRoutes from './backend/routes/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,7 @@ initDB().then((db) => {
     app.use('/api/auth', authRoutes(db));
     app.use('/api/comments', commentRoutes(db));
     app.use('/api/profile', profileRoutes(db));
+    app.use('/api/admin', adminRoutes(db));
 
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));

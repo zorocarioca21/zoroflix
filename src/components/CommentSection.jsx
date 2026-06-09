@@ -92,6 +92,14 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
         } catch (err) { console.error(err); }
     };
 
+    const handleDeleteADM = async (commentId) => {
+        if (!window.confirm("Apagar comentário definitivamente (como Admin)?")) return;
+        try {
+            const resp = await fetch(`/api/admin/comments/${commentId}/delete`, { method: 'PATCH' });
+            if (resp.ok) fetchComments();
+        } catch (err) { console.error(err); }
+    };
+
     return (
         <div className="comments-section-wrap">
             <h3>Comentários ({comments.length})</h3>
@@ -136,6 +144,11 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                     <button className="btn-report" onClick={() => handleReport(c.id)}>
                                         <AlertTriangle size={14} /> Denunciar
                                     </button>
+                                    {user?.role === 'admin' && (
+                                        <button className="btn-delete-adm" onClick={() => handleDeleteADM(c.id)}>
+                                            <Trash2 size={14} /> Apagar
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -152,6 +165,11 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                                 <span className="comment-date">{new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
                                             <div className="comment-text">{r.text}</div>
+                                            {user?.role === 'admin' && (
+                                                <button className="btn-delete-adm mini" onClick={() => handleDeleteADM(r.id)}>
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
