@@ -9,31 +9,55 @@
     <script>
       (function() {
         const _open = window.open;
-        const adPattern = 'aboveboardcomplicate.com';
+        // Lista negra de domínios conhecidos por pop-unders chatos
+        const blacklist = ['aboveboardcomplicate.com', 'profitablegatecpm.com', 'effectivecpmnetwork.com', 'fortnightlyrejection.com'];
         
         window.open = function() {
           const url = arguments[0];
-          if (url && typeof url === 'string' && url.indexOf(adPattern) !== -1) {
-            console.log("Anti-Ad: Bloqueio Total.");
-            // Retorna um objeto "fake" para o script de anúncio não quebrar
-            return { 
-              closed: false, 
-              close: function(){}, 
-              focus: function(){}, 
-              blur: function(){},
-              postMessage: function(){} 
-            };
+          
+          // Se o link já for conhecido, mata na hora
+          if (url && typeof url === 'string') {
+            if (blacklist.some(domain => url.indexOf(domain) !== -1)) {
+              console.log("Anti-Ad: Bloqueio de URL conhecida.");
+              return { closed: true, close: function(){}, focus: function(){} };
+            }
           }
-          return _open.apply(this, arguments);
+
+          // Abre a janela (pode ser uma aba em branco)
+          const win = _open.apply(this, arguments);
+
+          // Se a janela abriu, vamos vigiar para onde ela tenta ir
+          if (win) {
+            try {
+              let checkCount = 0;
+              const timer = setInterval(() => {
+                checkCount++;
+                try {
+                  // Tenta ler a URL da aba aberta (se for mesma origem ou em branco)
+                  const currentUrl = win.location.href;
+                  if (blacklist.some(domain => currentUrl.indexOf(domain) !== -1)) {
+                    win.close();
+                    clearInterval(timer);
+                    console.log("Anti-Ad: Aba capturada e fechada.");
+                  }
+                } catch(e) {
+                  // Se der erro de Cross-Origin, significa que ela já navegou para fora
+                  // Nesses casos, se não for um link que a gente conhece, é difícil fechar aqui
+                }
+                if (checkCount > 20) clearInterval(timer); // Monitora por ~2 segundos
+              }, 100);
+            } catch(err) {}
+          }
+          return win;
         };
 
-        // Bloqueia cliques diretos em links de anúncios criados dinamicamente
+        // Bloqueia cliques e envios de formulários para os domínios da lista negra
         document.addEventListener('click', function(e) {
           let t = e.target;
           while (t && t.tagName !== 'A') t = t.parentNode;
-          if (t && t.href && t.href.indexOf(adPattern) !== -1) {
+          if (t && t.href && blacklist.some(domain => t.href.indexOf(domain) !== -1)) {
             e.preventDefault();
-            console.log("Anti-Ad: Clique em link bloqueado.");
+            console.log("Anti-Ad: Clique bloqueado.");
           }
         }, true);
       })();
