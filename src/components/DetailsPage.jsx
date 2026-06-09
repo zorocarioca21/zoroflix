@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import AdBanner from './AdBanner';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { RatingCircle, AgeBadge } from './Badges';
-import { Users, Calendar, Clock, Activity, DollarSign, TrendingUp } from 'lucide-react';
+import TrailerModal from './TrailerModal';
+import { Users, Calendar, Clock, Activity, DollarSign, TrendingUp, PlayCircle } from 'lucide-react';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -18,6 +19,8 @@ export default function DetailsPage() {
   const [details, setDetails] = useState(null);
   const [cast, setCast] = useState([]);
   const [brCertification, setBrCertification] = useState('');
+  const [trailerKey, setTrailerKey] = useState(null);
+  const [showTrailer, setShowTrailer] = useState(false);
   const [loading, setLoading] = useState(true);
   
   const [selectedSeason, setSelectedSeason] = useState(null);
@@ -31,7 +34,7 @@ export default function DetailsPage() {
     setEpisodes([]);
     
     const endpoint = isMovie ? `/movie/${id}` : `/tv/${id}`;
-    const append = isMovie ? 'credits,release_dates' : 'credits,content_ratings';
+    const append = isMovie ? 'credits,release_dates,videos' : 'credits,content_ratings,videos';
     
     fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&language=pt-BR&append_to_response=${append}`)
       .then(r => r.json())
@@ -39,6 +42,10 @@ export default function DetailsPage() {
         setDetails(data);
         setCast(data.credits?.cast?.slice(0, 6) || []);
         
+        // Trailer
+        const trailer = data.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube') || data.videos?.results?.[0];
+        setTrailerKey(trailer?.key);
+
         // Determinar classificação etária BR
         let cert = '';
         if (isMovie) {
@@ -129,17 +136,35 @@ export default function DetailsPage() {
               {details.revenue > 0 && <span><TrendingUp size={14} /> Receita: ${details.revenue.toLocaleString()}</span>}
             </div>
             
-            {isMovie && (
-              <div style={{ marginTop: '2rem' }}>
+            <div style={{ marginTop: '2rem', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+              {isMovie && (
                 <button 
                   className="btn btn-primary btn-large details-play-btn"
                   onClick={() => navigate(`/filme/${id}/player`, { state: { title: details.title } })}
                 >
                   ▶ ASSISTIR FILME
                 </button>
-                <AdBanner adId="details-movie-bottom" />
-              </div>
+              )}
+              
+              {trailerKey && (
+                <button 
+                  className="btn btn-secondary btn-large"
+                  onClick={() => setShowTrailer(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+                >
+                  <PlayCircle size={20} /> VER TRAILER
+                </button>
+              )}
+            </div>
+
+            {showTrailer && (
+              <TrailerModal 
+                videoKey={trailerKey} 
+                onClose={() => setShowTrailer(false)} 
+              />
             )}
+            
+            {isMovie && <AdBanner adId="details-movie-bottom" />}
           </div>
         </div>
       </div>

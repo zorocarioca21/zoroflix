@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { RatingCircle } from './Badges';
+import HoverVideoCard from './HoverVideoCard';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -39,25 +40,17 @@ export default function ContentRow({ title, endpoint, type, onPlay }) {
         <button className="row-nav-btn left" onClick={() => handleScroll('left')}>
           &#10094;
         </button>
-        
         <div className="row-posters" ref={rowRef}>
           {items.map((item) => (
-            <div 
-              key={item.id} 
-              className="row-poster-card"
+            <HoverVideoCard 
+              key={item.id}
+              id={item.id}
+              type={type}
+              title={item.title || item.name}
+              poster={`${IMAGE_BASE_URL}${item.poster_path}`}
               onClick={() => onPlay(item.id, type)}
-            >
-              <RatingCircle rating={item.vote_average} />
-              <img 
-                className="row-poster-img"
-                src={`${IMAGE_BASE_URL}${item.poster_path}`} 
-                alt={item.title || item.name} 
-                loading="lazy"
-              />
-              <div className="row-poster-overlay">
-                <span className="row-play-icon">▶</span>
-              </div>
-            </div>
+              badges={<RatingCircle rating={item.vote_average} />}
+            />
           ))}
         </div>
 

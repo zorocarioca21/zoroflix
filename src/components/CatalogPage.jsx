@@ -6,6 +6,7 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
 import { RatingCircle } from './Badges';
+import HoverVideoCard from './HoverVideoCard';
 
 export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '' }) {
   const navigate = useNavigate();
@@ -133,26 +134,15 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
 
       <div className="catalog-grid">
         {items.map(item => (
-          <div 
-            key={item.id} 
-            className="search-card" 
+          <HoverVideoCard 
+            key={item.id}
+            id={item.id}
+            type={type}
+            title={item.title || item.name}
+            poster={`${IMAGE_BASE_URL}${item.poster_path}`}
             onClick={() => navigate(`/${type === 'movie' ? 'filme' : 'serie'}/${item.id}`)}
-          >
-            <div className="search-card-img-wrapper">
-              <RatingCircle rating={item.vote_average} />
-              <img 
-                src={`${IMAGE_BASE_URL}${item.poster_path}`} 
-                alt={item.title || item.name} 
-                className="search-card-img"
-              />
-              <div className="search-card-overlay">
-                <span className="row-play-icon">▶</span>
-              </div>
-            </div>
-            <div className="search-card-info">
-              <div className="search-card-title">{item.title || item.name}</div>
-            </div>
-          </div>
+            badges={<RatingCircle rating={item.vote_average} />}
+          />
         ))}
       </div>
 
