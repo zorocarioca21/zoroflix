@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 export default function PlayerPage() {
@@ -5,6 +6,20 @@ export default function PlayerPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state || {};
+
+  // Injetar anúncio pop-under apenas nesta página
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://pl29672000.effectivecpmnetwork.com/d7/32/c1/d732c1442b56faa1946720b33505fca5.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      // Remove o script ao sair, embora pop-unders bindem no document
+      // mas ajuda a manter o DOM limpo.
+      document.body.removeChild(script);
+    };
+  }, []);
 
   let playerUrl = '';
   let title = state.title || 'Carregando...';
