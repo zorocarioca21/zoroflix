@@ -121,9 +121,11 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
             )}
 
             <div className="comments-list">
-                {comments.map((c) => (
-                    <div key={c.id} className="comment-item">
-                        <div className="comment-main">
+                {comments.map((c) => {
+                    const isDeleted = c.text === '[Comentário apagado por um Administrador]';
+                    return (
+                        <div key={c.id} className={`comment-item ${isDeleted ? 'deleted-by-adm' : ''}`}>
+                            <div className="comment-main">
                             <img src={c.avatar} alt="" className="comment-avatar" />
                             <div className="comment-content">
                                 <div className="comment-meta">
@@ -132,19 +134,19 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                 </div>
                                 <div className="comment-text">{c.text}</div>
                                 <div className="comment-actions">
-                                    <button onClick={() => handleReact(c.id, 'like')}>
+                                    <button onClick={() => !isDeleted && handleReact(c.id, 'like')} disabled={isDeleted}>
                                         <ThumbsUp size={14} /> {c.likes}
                                     </button>
-                                    <button onClick={() => handleReact(c.id, 'dislike')}>
+                                    <button onClick={() => !isDeleted && handleReact(c.id, 'dislike')} disabled={isDeleted}>
                                         <ThumbsDown size={14} /> {c.dislikes}
                                     </button>
-                                    <button onClick={() => setReplyingTo({ id: c.id, nick: c.nick, text: '' })}>
+                                    <button onClick={() => !isDeleted && setReplyingTo({ id: c.id, nick: c.nick, text: '' })} disabled={isDeleted}>
                                         <Reply size={14} /> Responder
                                     </button>
-                                    <button className="btn-report" onClick={() => handleReport(c.id)}>
+                                    <button className="btn-report" onClick={() => !isDeleted && handleReport(c.id)} disabled={isDeleted}>
                                         <AlertTriangle size={14} /> Denunciar
                                     </button>
-                                    {user?.role === 'admin' && (
+                                    {user?.role === 'admin' && !isDeleted && (
                                         <button className="btn-delete-adm" onClick={() => handleDeleteADM(c.id)}>
                                             <Trash2 size={14} /> Apagar
                                         </button>
@@ -190,8 +192,9 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                 </div>
                             </div>
                         )}
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

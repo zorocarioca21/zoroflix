@@ -4,8 +4,19 @@ import { useAuth } from '../context/AuthContext';
 
 export default function AdminPanel() {
     const { user } = useAuth();
+
+    if (!user || user.role !== 'admin') {
+        return (
+            <div className="admin-access-denied">
+                <Shield size={64} color="#ff4444" />
+                <h1>Acesso Negado</h1>
+                <p>Este painel é exclusivo para administradores da Zoroflix.</p>
+                <button onClick={() => window.location.href = '/'}>Voltar para o Início</button>
+            </div>
+        );
+    }
+
     const [activeTab, setActiveTab] = useState('reports');
-    const [reports, setReports] = useState([]);
     const [comments, setComments] = useState([]);
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
