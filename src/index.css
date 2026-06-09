@@ -2989,3 +2989,22 @@ body::before {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(37, 211, 102, 0.6);
 }
+
+
+/* --- MOBILE FIXES --- */
+@media (max-width: 600px) {
+  .details-content-main { flex-direction: column; padding: 1rem; }
+  .details-poster-area { flex-direction: column; width: 100%; align-items: center; }
+  .details-info-area { padding-top: 1rem; }
+  .details-title { font-size: 1.8rem; }
+  .details-overview { max-width: 100%; font-size: 1rem; }
+  .episodes-grid-modern { grid-template-columns: 1fr !important; }
+  .player-view-layout { flex-direction: column; height: auto; min-height: auto; }
+  .fullscreen-player-wrapper { height: 40vh; min-height: 250px; }
+  .player-bottom-controls-area { padding: 1rem; gap: 1rem; }
+  .player-info-row { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .player-title { font-size: 1.5rem; }
+  .player-nav-group { flex-wrap: wrap; justify-content: center; width: 100%; }
+  .player-nav-group button { flex: 1; text-align: center; justify-content: center; }
+  .player-ep-sidebar { width: 100%; max-height: 250px; }
+}
