@@ -27,6 +27,9 @@ function App() {
     setSearchQuery(query);
     if (!query) {
       setSearchResults([]);
+      if (location.pathname === '/search') {
+        navigate('/');
+      }
       return;
     }
     

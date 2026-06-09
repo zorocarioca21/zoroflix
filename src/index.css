@@ -1546,6 +1546,18 @@ body {
   background: #1a1a1a;
 }
 
+.card-badges-top {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+  pointer-events: none;
+}
+
 .card-poster-img {
   width: 100%;
   height: 100%;

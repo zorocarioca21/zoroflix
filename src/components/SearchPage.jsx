@@ -9,7 +9,8 @@ export default function SearchPage({ results }) {
   if (results.length === 0) {
     return (
       <div className="search-page-empty">
-        <h2 style={{color: 'var(--text)', textAlign: 'center', marginTop: '4rem'}}>Nenhum feitiço ou obra encontrado.</h2>
+        <h2 style={{color: 'var(--text)', textAlign: 'center', marginTop: '6rem'}}>Nenhuma obra encontrada.</h2>
+        <p style={{textAlign: 'center', color: 'var(--text-muted)'}}>Tente pesquisar com outros termos.</p>
       </div>
     );
   }

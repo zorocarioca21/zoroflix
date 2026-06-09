@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AgeBadge } from './Badges';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -6,7 +7,27 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 export default function HoverVideoCard({ id, type, poster, title, onClick, badges }) {
   const [videoKey, setVideoKey] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [certification, setCertification] = useState('');
   const timeoutRef = useRef(null);
+
+  // Busca classificação etária no carregamento inicial
+  useEffect(() => {
+    const append = type === 'movie' ? 'release_dates' : 'content_ratings';
+    fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=${append}`)
+      .then(r => r.json())
+      .then(data => {
+        let cert = '';
+        if (type === 'movie') {
+          const br = data.release_dates?.results?.find(r => r.iso_3166_1 === 'BR');
+          cert = br?.release_dates?.[0]?.certification;
+        } else {
+          const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
+          cert = br?.rating;
+        }
+        setCertification(cert || '');
+      })
+      .catch(() => {});
+  }, [id, type]);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -35,7 +56,10 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       onClick={onClick}
     >
       <div className="card-media-wrapper">
-        {badges}
+        <div className="card-badges-top">
+          <AgeBadge rating={certification} />
+          {badges}
+        </div>
         
         {!videoKey ? (
           <img src={poster} alt={title} className="card-poster-img" />
