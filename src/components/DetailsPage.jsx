@@ -139,7 +139,10 @@ export default function DetailsPage() {
                         src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://via.placeholder.com/185x278?text=N/A'} 
                         alt={actor.name} 
                       />
-                      <span>{actor.name}</span>
+                      <div className="cast-info-text">
+                        <span className="actor-real-name">{actor.name}</span>
+                        <span className="actor-character-name">{actor.character}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -212,20 +215,31 @@ export default function DetailsPage() {
           {selectedSeason !== null && (
             <div className="episodes-section" ref={episodesRef} style={{marginTop: '3rem'}}>
               <h2 className="row-title">Episódios da Temporada {selectedSeason}</h2>
-              <div className="episodes-list" style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem'}}>
+              <div className="episodes-grid-modern">
                 {episodes.map(ep => (
                   <div 
                     key={ep.id} 
-                    className="episode-row" 
+                    className="episode-card-modern" 
                     onClick={() => navigate(`/serie/${id}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${details.name} - ${ep.name}` } })}
-                    style={{display: 'flex', gap: '1.5rem', background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '1rem', cursor: 'pointer', alignItems: 'center'}}
                   >
-                    <div style={{fontWeight: '900', fontSize: '1.5rem', color: 'var(--primary)', width: '40px'}}>{ep.episode_number}</div>
-                    <div style={{flexGrow: 1}}>
-                      <h4 style={{fontSize: '1.1rem', margin: '0 0 0.5rem 0'}}>{ep.name}</h4>
-                      <p style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{ep.overview || "Sem descrição disponível."}</p>
+                    <div className="ep-image-wrap">
+                      <img 
+                        src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `${IMAGE_BASE_URL}${details.backdrop_path}`} 
+                        alt={ep.name} 
+                      />
+                      <div className="ep-badges-overlay">
+                        <div className="ep-lang-badges">
+                          <span className="badge-dub">DUB</span>
+                          <span className="badge-leg">LEG</span>
+                        </div>
+                        <span className="ep-runtime-badge">{ep.runtime || '24'} min</span>
+                      </div>
+                      <div className="ep-play-overlay">▶</div>
                     </div>
-                    <button className="btn btn-primary" style={{padding: '0.5rem 1rem', fontSize:'0.8rem'}}>▶ LIGAR</button>
+                    <div className="ep-info-modern">
+                      <h4 className="ep-title-meta">T{selectedSeason}:E{ep.episode_number} <span className="ep-real-title">{ep.name}</span></h4>
+                      <p className="ep-overview-modern">{ep.overview || "Nenhuma sinopse disponível para este episódio."}</p>
+                    </div>
                   </div>
                 ))}
               </div>

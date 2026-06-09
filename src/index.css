@@ -1627,3 +1627,141 @@ body {
   justify-content: center !important;
   overflow: visible !important;
 }
+
+/* Cast Character Names */
+.cast-info-text {
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  gap: 2px;
+}
+
+.actor-real-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.actor-character-name {
+  font-size: 0.75rem;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+/* Modern Episode Grid */
+.episodes-grid-modern {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 1.5rem;
+}
+
+.episode-card-modern {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.episode-card-modern:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--primary);
+}
+
+.ep-image-wrap {
+  position: relative;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+}
+
+.ep-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ep-badges-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* Badges na parte de baixo da imagem */
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent 40%);
+}
+
+.ep-lang-badges {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.badge-dub, .badge-leg {
+  background: rgba(0,0,0,0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.badge-dub { border-color: var(--primary); color: var(--primary); }
+
+.ep-runtime-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.8);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: #eee;
+}
+
+.ep-play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.episode-card-modern:hover .ep-play-overlay {
+  opacity: 1;
+}
+
+.ep-info-modern {
+  padding: 12px;
+}
+
+.ep-title-meta {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: var(--primary);
+}
+
+.ep-real-title {
+  color: #fff;
+  font-weight: 400;
+  margin-left: 5px;
+}
+
+.ep-overview-modern {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
