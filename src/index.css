@@ -3008,3 +3008,47 @@ body::before {
   .player-nav-group button { flex: 1; text-align: center; justify-content: center; }
   .player-ep-sidebar { width: 100%; max-height: 250px; }
 }
+
+
+/* --- MORE PLAYER FIXES --- */
+@media (max-width: 600px) {
+  .fullscreen-player-wrapper { height: auto !important; aspect-ratio: 16 / 9; min-height: unset !important; }
+}
+
+
+/* --- FAVORITES BUTTON OVERLAY --- */
+.favorite-btn-overlay {
+  position: absolute;
+  bottom: -45px;
+  left: -5px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.3s;
+  backdrop-filter: blur(5px);
+}
+.favorite-btn-overlay:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.9);
+}
+.favorite-btn-overlay.active {
+  color: #ff3333;
+  border-color: #ff3333;
+}
+.favorite-btn-overlay svg {
+  transition: all 0.3s;
+}
+.favorite-btn-overlay.active svg {
+  fill: #ff3333;
+}
+
+.favorite-btn-overlay { bottom: 10px !important; left: 10px !important; }
+

@@ -107,6 +107,21 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Favoritos
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            user_id INTEGER,
+            content_id TEXT,
+            media_type TEXT,
+            title TEXT,
+            poster_path TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     return db;
 }
 

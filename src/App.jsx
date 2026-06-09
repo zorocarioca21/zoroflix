@@ -167,10 +167,43 @@ function AppContent() {
 }
 
 function Home({ onOpenDetails }) {
+    const { uuid } = useAuth();
+    const [favorites, setFavorites] = useState([]);
+
+    useEffect(() => {
+        const fetchFavs = async () => {
+            const token = localStorage.getItem('cinegeek_token');
+            const headers = { 'x-device-uuid': uuid || localStorage.getItem('cinegeek_uuid') };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            try {
+                const res = await fetch('/api/favorites', { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    setFavorites(data);
+                }
+            } catch (err) {}
+        };
+        fetchFavs();
+    }, [uuid]);
+
     return (
         <>
           <HeroSlider onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
           <div className="rows-section" style={{ marginTop: '3rem' }}>
+            {favorites.length > 0 && (
+                <div className="content-row-container">
+                    <h2 className="row-title">Meus Favoritos</h2>
+                    <div className="row-wrapper">
+                        <div className="row-posters">
+                            {favorites.map(item => (
+                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, media_type: item.media_type})}>
+                                    <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
             <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
             <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
             <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart } from 'lucide-react';
 import AdBanner from './AdBanner';
 import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
+import { useAuth } from '../context/AuthContext';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -18,8 +19,55 @@ export default function DetailsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [certification, setCertification] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const { user, uuid, loading: authLoading } = useAuth();
 
   const isMovie = location.pathname.includes('/filme/');
+
+  useEffect(() => {
+    if (!id || authLoading) return;
+    const checkFavorite = async () => {
+       const token = localStorage.getItem('cinegeek_token');
+       const headers = { 'x-device-uuid': uuid };
+       if (token) headers['Authorization'] = `Bearer ${token}`;
+       
+       try {
+           const res = await fetch(`/api/favorites/check/${id}`, { headers });
+           if (res.ok) {
+               const data = await res.json();
+               setIsFavorite(data.isFavorite);
+           }
+       } catch (err) {}
+    };
+    checkFavorite();
+  }, [id, user, uuid, authLoading]);
+
+  const toggleFavorite = async (e) => {
+      e.stopPropagation();
+      if (!data) return;
+      const token = localStorage.getItem('cinegeek_token');
+      const headers = { 'x-device-uuid': uuid, 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
+      try {
+          if (isFavorite) {
+              await fetch(`/api/favorites/${id}`, { method: 'DELETE', headers });
+              setIsFavorite(false);
+          } else {
+              await fetch('/api/favorites', {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({
+                      content_id: id,
+                      media_type: isMovie ? 'movie' : 'tv',
+                      title: data.title || data.name,
+                      poster_path: data.poster_path
+                  })
+              });
+              setIsFavorite(true);
+          }
+      } catch (err) { console.error(err); }
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -109,6 +157,9 @@ export default function DetailsPage() {
                     <div className="details-badges-overlay">
                         <AgeBadge rating={certification} />
                         <RatingCircle rating={data.vote_average} />
+                    </div>
+                    <div className={`favorite-btn-overlay ${isFavorite ? 'active' : ''}`} onClick={toggleFavorite}>
+                        <Heart size={22} fill={isFavorite ? 'currentColor' : 'none'} />
                     </div>
                 </div>
                 
