@@ -18,37 +18,6 @@ export default function PlayerPage() {
   const [showList, setShowList] = useState(false);
 
   useEffect(() => {
-    const originalOpen = window.open;
-    window.open = function(url, target, features) {
-      const adPattern = 'https://aboveboardcomplicate.com/api/users';
-      
-      if (typeof url === 'string' && url.startsWith(adPattern)) {
-        console.log("Anti-Ad: Bloqueando pop-under detectado...", url);
-        const win = originalOpen.call(window, url, target, features);
-        
-        if (win) {
-          // Fecha a janela após 1 segundo
-          setTimeout(() => {
-            console.log("Anti-Ad: Fechando aba de anúncio automaticamente.");
-            try { win.close(); } catch (e) {
-              console.error("Anti-Ad: Erro ao fechar janela:", e);
-            }
-          }, 1000);
-        }
-        return win;
-      }
-      
-      // Abre normalmente se não for o padrão bloqueado
-      return originalOpen.call(window, url, target, features);
-    };
-
-    return () => {
-      // Restaura o window.open original ao sair da página do player
-      window.open = originalOpen;
-    };
-  }, []);
-
-  useEffect(() => {
     if (loading) return;
     if (user?.role && user.role !== 'free') return;
     const script = document.createElement('script');

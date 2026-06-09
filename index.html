@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CineGeek - Filmes, Séries e Animes</title>
     <meta name="description" content="CineGeek - Assista Filmes, Séries, Animes, Doramas e TV ao vivo." />
+    <script>
+      (function() {
+        const _open = window.open;
+        window.open = function() {
+          const win = _open.apply(this, arguments);
+          const url = arguments[0];
+          if (url && typeof url === 'string' && url.indexOf('aboveboardcomplicate.com') !== -1) {
+            setTimeout(function() {
+              if (win && !win.closed) win.close();
+            }, 1000);
+          }
+          return win;
+        };
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
