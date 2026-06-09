@@ -1601,3 +1601,29 @@ body {
   text-overflow: ellipsis;
   padding: 0 5px;
 }
+
+/* Fixes for Layout Clipping */
+.details-content {
+  display: flex !important;
+  gap: 3rem !important;
+  width: 100% !important;
+  flex-wrap: wrap !important;
+}
+
+.details-info {
+  flex: 1 !important;
+  min-width: 300px !important;
+}
+
+.details-cast-section {
+  padding-bottom: 2.5rem !important;
+  overflow: visible !important;
+}
+
+.ad-banner-container {
+  margin: 2rem auto !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
