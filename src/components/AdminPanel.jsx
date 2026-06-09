@@ -55,6 +55,7 @@ export default function AdminPanel() {
 
 
     const [activeTab, setActiveTab] = useState('reports');
+    const [reports, setReports] = useState([]);
     const [comments, setComments] = useState([]);
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
