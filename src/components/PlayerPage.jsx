@@ -77,12 +77,7 @@ export default function PlayerPage() {
       {/* Player Area (Top) */}
       <div className="player-view-layout">
           <div className="fullscreen-player-wrapper">
-            <iframe 
-                src={playerUrl} 
-                allowFullScreen 
-                title="Zoroflix Player"
-                sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
-            ></iframe>
+            <iframe src={playerUrl} allowFullScreen title="Zoroflix Player"></iframe>
           </div>
 
           {showList && (
