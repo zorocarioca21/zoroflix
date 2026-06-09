@@ -1,0 +1,180 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2 } from 'lucide-react';
+
+export default function CommentSection({ contentId, mediaType, episodeId }) {
+    const { user } = useAuth();
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchComments();
+    }, [contentId, episodeId]);
+
+    const fetchComments = async () => {
+        try {
+            const url = `/api/comments/${mediaType}/${contentId}${episodeId ? `?episodeId=${episodeId}` : ''}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            
+            // Organizar em Threads (Pai -> Filhos)
+            const parents = data.filter(c => !c.parent_id);
+            const children = data.filter(c => c.parent_id);
+            
+            const threads = parents.map(p => ({
+                ...p,
+                replies: children.filter(c => c.parent_id === p.id).reverse()
+            }));
+
+            setComments(threads);
+        } catch (err) {
+            console.error("Erro ao carregar comentários", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSend = async (parentId = null) => {
+        if (!user) return alert("Você precisa estar logado para comentar.");
+        const text = parentId ? replyingTo?.text : newComment;
+        if (!text?.trim()) return;
+
+        try {
+            const resp = await fetch('/api/comments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    parentId,
+                    contentId,
+                    mediaType,
+                    episodeId,
+                    text
+                })
+            });
+
+            if (resp.ok) {
+                setNewComment('');
+                setReplyingTo(null);
+                fetchComments();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleReact = async (commentId, type) => {
+        if (!user) return alert("Faça login para reagir.");
+        try {
+            await fetch('/api/comments/react', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, commentId, type })
+            });
+            fetchComments();
+        } catch (err) { console.error(err); }
+    };
+
+    const handleReport = async (commentId) => {
+        if (!user) return;
+        const reason = prompt("Por que você quer denunciar este comentário?");
+        if (!reason) return;
+
+        try {
+            await fetch('/api/comments/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, commentId, reason })
+            });
+            alert("Denúncia enviada com sucesso.");
+        } catch (err) { console.error(err); }
+    };
+
+    return (
+        <div className="comments-section-wrap">
+            <h3>Comentários ({comments.length})</h3>
+
+            {user ? (
+                <div className="comment-input-box">
+                    <img src={user.avatar} alt="" className="comment-avatar-small" />
+                    <textarea 
+                        placeholder="O que achou deste conteúdo?"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                    ></textarea>
+                    <button className="comment-send-btn" onClick={() => handleSend()}>
+                        <Send size={18} />
+                    </button>
+                </div>
+            ) : (
+                <div className="comment-locked">Faça login para participar da conversa.</div>
+            )}
+
+            <div className="comments-list">
+                {comments.map((c) => (
+                    <div key={c.id} className="comment-item">
+                        <div className="comment-main">
+                            <img src={c.avatar} alt="" className="comment-avatar" />
+                            <div className="comment-content">
+                                <div className="comment-meta">
+                                    <span className="comment-author">{c.nick}</span>
+                                    <span className="comment-date">{new Date(c.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <div className="comment-text">{c.text}</div>
+                                <div className="comment-actions">
+                                    <button onClick={() => handleReact(c.id, 'like')}>
+                                        <ThumbsUp size={14} /> {c.likes}
+                                    </button>
+                                    <button onClick={() => handleReact(c.id, 'dislike')}>
+                                        <ThumbsDown size={14} /> {c.dislikes}
+                                    </button>
+                                    <button onClick={() => setReplyingTo({ id: c.id, nick: c.nick, text: '' })}>
+                                        <Reply size={14} /> Responder
+                                    </button>
+                                    <button className="btn-report" onClick={() => handleReport(c.id)}>
+                                        <AlertTriangle size={14} /> Denunciar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thread de Respostas */}
+                        {c.replies.length > 0 && (
+                            <div className="comment-replies">
+                                {c.replies.map(r => (
+                                    <div key={r.id} className="comment-item reply">
+                                        <img src={r.avatar} alt="" className="comment-avatar-mini" />
+                                        <div className="comment-content">
+                                            <div className="comment-meta">
+                                                <span className="comment-author">{r.nick}</span>
+                                                <span className="comment-date">{new Date(r.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className="comment-text">{r.text}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Input de Resposta */}
+                        {replyingTo?.id === c.id && (
+                            <div className="reply-box">
+                                <textarea 
+                                    placeholder={`Respondendo para ${c.nick}...`}
+                                    value={replyingTo.text}
+                                    onChange={(e) => setReplyingTo({...replyingTo, text: e.target.value})}
+                                ></textarea>
+                                <div className="reply-btns">
+                                    <button onClick={() => setReplyingTo(null)}>Cancelar</button>
+                                    <button onClick={() => handleSend(c.id)}>Responder</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

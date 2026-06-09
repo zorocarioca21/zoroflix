@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
+
+// Layout/Page Components
 import HeroSlider from './components/HeroSlider'
 import ContentRow from './components/ContentRow'
 import SearchPage from './components/SearchPage'
@@ -8,103 +10,60 @@ import DetailsPage from './components/DetailsPage'
 import PlayerPage from './components/PlayerPage'
 import ChannelsPage from './components/ChannelsPage'
 import CalendarPage from './components/CalendarPage'
-
 import AntiAdBlock from './components/AntiAdBlock'
 import CatalogPage from './components/CatalogPage'
+
+// Auth & User Components
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthModal from './components/AuthModal';
+import UserProfile from './components/UserProfile';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
 
-function App() {
+function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+  
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleTyping = async (query) => {
     setSearchQuery(query);
     if (!query) {
       setSearchResults([]);
-      if (location.pathname === '/search') {
-        navigate('/');
-      }
+      if (location.pathname === '/search') navigate('/');
       return;
     }
-    
     try {
       const resp = await fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`);
       const data = await resp.json();
-      const filtered = data.results?.filter(item => 
-        (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
-      ).slice(0, 5) || [];
-      setSearchResults(filtered);
-    } catch (e) {
-      console.log(e);
-    }
+      setSearchResults(data.results?.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path).slice(0, 5) || []);
+    } catch (e) { console.log(e); }
   }
 
   const handleFullSearch = async () => {
     if (!searchQuery) return;
-    
-    setIsSearching(true)
+    setIsSearching(true);
     navigate('/search');
     try {
       const fetchOriginal = fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(searchQuery)}`).then(r => r.json());
-      
-      let fetchTranslated = Promise.resolve({ results: [] });
-      try {
-        const translateResp = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(searchQuery)}&langpair=pt|en`);
-        const translateData = await translateResp.json();
-        const translatedQuery = translateData.responseData?.translatedText;
-        
-        if (translatedQuery && translatedQuery.toLowerCase() !== searchQuery.toLowerCase()) {
-          fetchTranslated = fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(translatedQuery)}`).then(r => r.json());
-        }
-      } catch (e) {
-        console.log("Falha na tradução", e);
-      }
-
-      const [dataOrig, dataTrans] = await Promise.all([fetchOriginal, fetchTranslated]);
-
-      const allResults = [...(dataOrig.results || []), ...(dataTrans.results || [])];
-      const uniqueResults = [];
-      const map = new Map();
-      
-      for (const item of allResults) {
-        if (!map.has(item.id)) {
-          map.set(item.id, true);
-          uniqueResults.push(item);
-        }
-      }
-      
-      const filtered = uniqueResults.filter(item => 
-        (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path
-      );
-      
-      setSearchResults(filtered)
-    } catch (err) {
-      console.error("Erro na busca geral", err)
-    } finally {
-      setIsSearching(false)
-    }
+      const [dataOrig] = await Promise.all([fetchOriginal]);
+      setSearchResults(dataOrig.results?.filter(item => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path) || []);
+    } catch (err) { console.error(err) } finally { setIsSearching(false) }
   }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleFullSearch();
-    }
-  }
-
+  const handleKeyPress = (e) => { if (e.key === 'Enter') handleFullSearch(); }
   const handleSelectItem = (item) => {
     setSearchResults([]);
     setSearchQuery('');
-    if (item.media_type === 'movie') {
-        navigate(`/filme/${item.id}`);
-    } else {
-        navigate(`/serie/${item.id}`);
-    }
+    if (item.media_type === 'movie') navigate(`/filme/${item.id}`);
+    else navigate(`/serie/${item.id}`);
   }
 
   return (
@@ -118,60 +77,23 @@ function App() {
           </Link>
           
           <nav className="nav-pill">
-            <Link to="/" className="nav-item">
-              <span className="nav-icon"><HomeIcon size={20} color="currentColor" /></span>
-              <span className="nav-label">Home</span>
-            </Link>
-            <Link to="/filmes" className="nav-item">
-              <span className="nav-icon"><Film size={20} color="currentColor" /></span>
-              <span className="nav-label">Filmes</span>
-            </Link>
-            <Link to="/series" className="nav-item">
-              <span className="nav-icon"><MonitorPlay size={20} color="currentColor" /></span>
-              <span className="nav-label">Séries</span>
-            </Link>
-            <Link to="/animes" className="nav-item">
-              <span className="nav-icon"><Sword size={20} color="currentColor" /></span>
-              <span className="nav-label">Animes</span>
-            </Link>
-            <Link to="/doramas" className="nav-item">
-              <span className="nav-icon"><Heart size={20} color="currentColor" /></span>
-              <span className="nav-label">Doramas</span>
-            </Link>
-            <Link to="/canais" className="nav-item">
-              <span className="nav-icon"><Radio size={20} color="currentColor" /></span>
-              <span className="nav-label">Canais</span>
-            </Link>
-            <Link to="/lancamentos" className="nav-item">
-              <span className="nav-icon"><Calendar size={20} color="currentColor" /></span>
-              <span className="nav-label">Calendário</span>
-            </Link>
+            <Link to="/" className="nav-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
+            <Link to="/filmes" className="nav-item"><span className="nav-icon"><Film size={20} /></span><span className="nav-label">Filmes</span></Link>
+            <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
+            <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
+            <Link to="/doramas" className="nav-item"><span className="nav-icon"><Heart size={20} /></span><span className="nav-label">Doramas</span></Link>
+            <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
           </nav>
 
           <div className="header-right">
             <div className="header-search">
-              <input 
-                type="text" 
-                className="navbar-search-input" 
-                placeholder="Pesquisar..."
-                value={searchQuery}
-                onChange={(e) => handleTyping(e.target.value)}
-                onKeyDown={handleKeyPress}
-              />
-              <button className="navbar-search-btn" onClick={handleFullSearch}>
-                {isSearching ? '...' : <Search size={18} />}
-              </button>
-
+              <input type="text" className="navbar-search-input" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => handleTyping(e.target.value)} onKeyDown={handleKeyPress}/>
+              <button className="navbar-search-btn" onClick={handleFullSearch}>{isSearching ? '...' : <Search size={18} />}</button>
               {searchResults.length > 0 && searchQuery && (
                 <div className="search-dropdown">
                   {searchResults.map((item) => (
                     <div className="dropdown-item" key={item.id} onClick={() => handleSelectItem(item)}>
-                      <img 
-                        src={`${IMAGE_BASE_URL}${item.poster_path}`} 
-                        alt={item.title || item.name} 
-                        className="dropdown-poster"
-                        loading="lazy"
-                      />
+                      <img src={`${IMAGE_BASE_URL}${item.poster_path}`} alt="" className="dropdown-poster" />
                       <div className="dropdown-info">
                         <div className="dropdown-title">{item.title || item.name}</div>
                         <div className="dropdown-type">{item.media_type === 'movie' ? '🎬 Filme' : '📺 Série'}</div>
@@ -179,6 +101,23 @@ function App() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="user-nav">
+              {user ? (
+                <div className="user-profile-wrap">
+                  <img src={user.avatar} alt="Perfil" className="user-avatar" onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}/>
+                  {isUserMenuOpen && (
+                    <div className="user-dropdown">
+                      <div className="user-info-head"><p className="user-nick">{user.nick}</p><p className="user-tag">{user.role?.toUpperCase()}</p></div>
+                      <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}><UserIcon size={16} /> Meu Perfil</Link>
+                      <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}><LogOut size={16} /> Sair</button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button className="login-btn-header" onClick={() => setIsAuthOpen(true)}><LogIn size={20} /><span>ENTRAR</span></button>
               )}
             </div>
           </div>
@@ -200,8 +139,10 @@ function App() {
         <Route path="/serie/:id/player" element={<PlayerPage />} />
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
+        <Route path="/perfil" element={<UserProfile />} />
       </Routes>
       <AntiAdBlock />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   )
 }
@@ -220,4 +161,10 @@ function Home({ onOpenDetails }) {
     );
 }
 
-export default App
+export default function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
+    );
+}

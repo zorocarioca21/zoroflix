@@ -1,268 +1,201 @@
-import { useState, useEffect, useRef } from 'react';
-import AdBanner from './AdBanner';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { RatingCircle, AgeBadge } from './Badges';
-import TrailerModal from './TrailerModal';
-import { Users, Calendar, Clock, Activity, DollarSign, TrendingUp, PlayCircle } from 'lucide-react';
+import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft } from 'lucide-react';
+import AdBanner from './AdBanner';
+import RatingCircle from './RatingCircle';
+import AgeBadge from './AgeBadge';
+import CommentSection from './CommentSection';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
-const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
 export default function DetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMovie = location.pathname.includes('/filme/');
-  
-  const [details, setDetails] = useState(null);
+  const [data, setData] = useState(null);
   const [cast, setCast] = useState([]);
-  const [brCertification, setBrCertification] = useState('');
-  const [trailerKey, setTrailerKey] = useState(null);
-  const [showTrailer, setShowTrailer] = useState(false);
-  const [loading, setLoading] = useState(true);
-  
-  const [selectedSeason, setSelectedSeason] = useState(null);
   const [episodes, setEpisodes] = useState([]);
-  const episodesRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedSeason, setSelectedSeason] = useState(1);
+
+  const isMovie = location.pathname.includes('/filme/');
 
   useEffect(() => {
-    if (!id) return;
+    window.scrollTo(0, 0);
+    fetchDetails();
+  }, [id, location.pathname]);
+
+  const fetchDetails = async () => {
     setLoading(true);
-    setSelectedSeason(null);
-    setEpisodes([]);
-    
-    const endpoint = isMovie ? `/movie/${id}` : `/tv/${id}`;
-    const append = isMovie ? 'credits,release_dates,videos' : 'credits,content_ratings,videos';
-    
-    fetch(`${BASE_URL}${endpoint}?api_key=${API_KEY}&language=pt-BR&append_to_response=${append}`)
-      .then(r => r.json())
-      .then(data => {
-        setDetails(data);
-        setCast(data.credits?.cast?.slice(0, 6) || []);
-        
-        // Trailer
-        const trailer = data.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube') || data.videos?.results?.[0];
-        setTrailerKey(trailer?.key);
+    try {
+      const type = isMovie ? 'movie' : 'tv';
+      const [detailsResp, creditsResp] = await Promise.all([
+        fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
+        fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`)
+      ]);
 
-        // Determinar classificação etária BR
-        let cert = '';
-        if (isMovie) {
-          const br = data.release_dates?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.release_dates?.[0]?.certification;
-        } else {
-          const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.rating;
-        }
-        setBrCertification(cert || '');
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [id, isMovie]);
+      const detailsData = await detailsResp.json();
+      const creditsData = await creditsResp.json();
 
-  const loadEpisodes = (seasonNumber) => {
-    fetch(`${BASE_URL}/tv/${id}/season/${seasonNumber}?api_key=${API_KEY}&language=pt-BR`)
-      .then(r => r.json())
-      .then(data => {
-        setSelectedSeason(seasonNumber);
-        setEpisodes(data.episodes || []);
-        setTimeout(() => {
-          if (episodesRef.current) episodesRef.current.scrollIntoView({ behavior: 'smooth' })
-        }, 100);
-      });
-  }
+      setData(detailsData);
+      setCast(creditsData.cast?.slice(0, 15) || []);
 
-  const castRef = useRef(null);
-
-  const scrollCast = (direction) => {
-    if (castRef.current) {
-      const scrollAmount = direction === 'left' ? -300 : 300;
-      castRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      if (!isMovie) {
+        fetchEpisodes(1);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="details-loading">Buscando informações...</div>;
-  if (!details) return <div className="details-loading">Erro ao carregar as informações.</div>;
+  const fetchEpisodes = async (seasonNumber) => {
+    try {
+      const resp = await fetch(`${BASE_URL}/tv/${id}/season/${seasonNumber}?api_key=${API_KEY}&language=pt-BR`);
+      const data = await resp.json();
+      setEpisodes(data.episodes || []);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-  const year = (details.release_date || details.first_air_date)?.split('-')[0];
-  
+  const handleSeasonChange = (season) => {
+    setSelectedSeason(season);
+    fetchEpisodes(season);
+  };
+
   const statusMap = {
     'Returning Series': 'Em Lançamento',
     'Ended': 'Finalizada',
     'Canceled': 'Cancelada',
     'In Production': 'Em Produção',
-    'Released': 'Lançado',
     'Planned': 'Planejada',
-    'Post Production': 'Pós-Produção',
-    'Released': 'Lançado',
-    'In Production': 'Em Produção'
+    'Released': 'Lançado'
   };
-  const statusTranslated = statusMap[details.status] || details.status;
+
+  if (loading) return <div className="loading">Carregando detalhes...</div>;
+  if (!data) return <div className="error">Conteúdo não encontrado.</div>;
 
   return (
     <div className="details-container">
-      
-      <div 
-        className="details-hero"
-        style={{ backgroundImage: `url(${BACKDROP_BASE_URL}${details.backdrop_path})` }}
-      >
-        <div className="details-overlay"></div>
-        
-        <div className="details-content">
-          <div className="details-poster-wrap">
-            <div className="details-badges-overlay">
-              <AgeBadge rating={brCertification} />
-              <RatingCircle rating={details.vote_average} />
-            </div>
-            <img 
-              src={`${IMAGE_BASE_URL}${details.poster_path}`} 
-              alt={details.title || details.name} 
-              className="details-poster" 
-            />
-          </div>
-          <div className="details-info">
-            <h1 className="details-title">{details.title || details.name}</h1>
-            
-            <div className="details-meta">
-              <span><Calendar size={16} /> {year}</span>
-              {details.runtime && <span><Clock size={16} /> {details.runtime} min</span>}
-              <span><Activity size={16} /> {statusTranslated}</span>
-            </div>
+      <div className="details-hero" style={{ 
+        backgroundImage: `linear-gradient(to bottom, rgba(10,11,15,0.4), var(--bg)), url(https://image.tmdb.org/t/p/original${data.backdrop_path})` 
+      }}></div>
 
-            <p className="details-overview">{details.overview || "Nenhuma sinopse disponível em português para este título."}</p>
+      <div className="details-content-main">
+        <div className="details-poster-area">
+            <div className="details-poster-wrap">
+                <img 
+                    src={`https://image.tmdb.org/t/p/w500${data.poster_path}`} 
+                    alt={data.title || data.name} 
+                    className="details-main-poster"
+                />
+                <div className="details-badges-overlay">
+                    <RatingCircle rating={data.vote_average} />
+                    <AgeBadge contentId={data.id} mediaType={isMovie ? 'movie' : 'tv'} />
+                </div>
+            </div>
             
-            {/* Elenco com Navegação */}
-            {cast.length > 0 && (
-              <div className="details-cast-section">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <h3 className="section-small-title" style={{ margin: 0 }}><Users size={16} /> Elenco Principal</h3>
-                  <div className="cast-nav-btns">
-                    <button onClick={() => scrollCast('left')}>&#10094;</button>
-                    <button onClick={() => scrollCast('right')}>&#10095;</button>
+            <button className="btn-main-play" onClick={() => navigate(`${location.pathname}/player`, { state: { title: data.title || data.name } })}>
+                <Play fill="currentColor" /> ASSISTIR AGORA
+            </button>
+            <button className="btn-trailer-popup">VER TRAILER</button>
+        </div>
+
+        <div className="details-info-area">
+          <h1 className="details-title">{data.title || data.name}</h1>
+          <div className="details-meta">
+            <span className="meta-item"><Calendar size={16} /> {new Date(data.release_date || data.first_air_date).getFullYear()}</span>
+            {data.runtime && <span className="meta-item"><Clock size={16} /> {data.runtime} min</span>}
+            <span className="meta-item status-badge">{statusMap[data.status] || data.status}</span>
+          </div>
+
+          <div className="details-genres">
+            {data.genres?.map(g => <span key={g.id} className="genre-tag">{g.name}</span>)}
+          </div>
+
+          <p className="details-overview">{data.overview || "Sinopse não disponível em português."}</p>
+
+          <div className="details-cast-section">
+            <div className="section-header">
+                <h3>Elenco Principal</h3>
+                <div className="scroll-controls">
+                    <button className="scroll-btn"><ChevronLeft size={20} /></button>
+                    <button className="scroll-btn"><ChevronRight size={20} /></button>
+                </div>
+            </div>
+            <div className="cast-grid-scroll">
+              {cast.map(person => (
+                <div key={person.id} className="cast-card">
+                  <div className="cast-img-wrap">
+                    <img src={person.profile_path ? `https://image.tmdb.org/t/p/w185${person.profile_path}` : 'https://via.placeholder.com/185x278?text=Sem+Foto'} alt={person.name} />
+                  </div>
+                  <div className="cast-info">
+                    <p className="cast-real-name">{person.name}</p>
+                    <p className="cast-character">{person.character}</p>
                   </div>
                 </div>
-                <div className="cast-scroll" ref={castRef}>
-                  {cast.map(actor => (
-                    <div key={actor.id} className="cast-mini-card">
-                      <img 
-                        src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://via.placeholder.com/185x278?text=N/A'} 
-                        alt={actor.name} 
-                      />
-                      <div className="cast-info-text">
-                        <span className="actor-real-name">{actor.name}</span>
-                        <span className="actor-character-name">{actor.character}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="details-extra-row">
-              {details.budget > 0 && <span><DollarSign size={14} /> Orçamento: ${details.budget.toLocaleString()}</span>}
-              {details.revenue > 0 && <span><TrendingUp size={14} /> Receita: ${details.revenue.toLocaleString()}</span>}
+              ))}
             </div>
-            
-            <div style={{ marginTop: '2rem', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-              {isMovie && (
-                <button 
-                  className="btn btn-primary btn-large details-play-btn"
-                  onClick={() => navigate(`/filme/${id}/player`, { state: { title: details.title } })}
-                >
-                  ▶ ASSISTIR FILME
-                </button>
-              )}
-              
-              {trailerKey && (
-                <button 
-                  className="btn btn-secondary btn-large"
-                  onClick={() => setShowTrailer(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
-                >
-                  <PlayCircle size={20} /> VER TRAILER
-                </button>
-              )}
-            </div>
-
-            {showTrailer && (
-              <TrailerModal 
-                videoKey={trailerKey} 
-                onClose={() => setShowTrailer(false)} 
-              />
-            )}
-            
-            {isMovie && <AdBanner adId="details-movie-bottom" />}
           </div>
         </div>
       </div>
 
-      {!isMovie && details.seasons && (
-        <div className="details-seasons">
-          <h2 className="row-title">Temporadas Disponíveis</h2>
-          <p className="seasons-warning">Clique numa temporada para revelar os episódios.</p>
-          <div className="seasons-grid">
-            {details.seasons.filter(s => s.name !== "Especiais" && s.name !== "Specials").map(season => (
-              <div 
-                key={season.id} 
-                className={`season-card ${selectedSeason === season.season_number ? 'active' : ''}`}
-                onClick={() => loadEpisodes(season.season_number)}
-                style={{cursor: 'pointer', border: selectedSeason === season.season_number ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.05)'}}
-              >
-                {season.poster_path ? (
-                  <img src={`${IMAGE_BASE_URL}${season.poster_path}`} className="season-img" alt={season.name} />
-                ) : (
-                  <div className="season-noimg">Sem Imagem</div>
-                )}
-                <div className="season-info">
-                  <h3 className="season-name">{season.name}</h3>
-                  <span className="season-eps">{season.episode_count} Episódios</span>
+      {!isMovie && (
+        <div className="episodes-section">
+          <div className="episodes-header">
+            <h3>Episódios</h3>
+            <select 
+              className="season-select"
+              value={selectedSeason}
+              onChange={(e) => handleSeasonChange(e.target.value)}
+            >
+              {data.seasons?.filter(s => s.season_number > 0).map(s => (
+                <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="episodes-grid-modern">
+            {episodes.map(ep => (
+              <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}` } })}>
+                <div className="ep-image-wrap">
+                  <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
+                  <div className="ep-badges-overlay">
+                    <div className="ep-lang-badges">
+                        <span className="badge-dub">DUB</span>
+                        <span className="badge-leg">LEG</span>
+                    </div>
+                  </div>
+                  <span className="ep-runtime-badge">{ep.runtime || '??'} min</span>
+                  <div className="ep-play-overlay"><Play fill="currentColor" /></div>
+                </div>
+                <div className="ep-info-modern">
+                    <p className="ep-title-meta">EP {ep.episode_number} <span className="ep-real-title">{ep.name}</span></p>
+                    <p className="ep-overview-modern">{ep.overview || "Sinopse indisponível."}</p>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      )}
 
-          {selectedSeason !== null && (
-            <div className="episodes-section" ref={episodesRef} style={{marginTop: '3rem'}}>
-              <h2 className="row-title">Episódios da Temporada {selectedSeason}</h2>
-              <div className="episodes-grid-modern">
-                {episodes.map(ep => (
-                  <div 
-                    key={ep.id} 
-                    className="episode-card-modern" 
-                    onClick={() => navigate(`/serie/${id}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${details.name} - ${ep.name}` } })}
-                  >
-                    <div className="ep-image-wrap">
-                      <img 
-                        src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `${IMAGE_BASE_URL}${details.backdrop_path}`} 
-                        alt={ep.name} 
-                      />
-                      <div className="ep-badges-overlay">
-                        <div className="ep-lang-badges">
-                          <span className="badge-dub">DUB</span>
-                          <span className="badge-leg">LEG</span>
-                        </div>
-                        <span className="ep-runtime-badge">{ep.runtime || '24'} min</span>
-                      </div>
-                      <div className="ep-play-overlay">▶</div>
-                    </div>
-                    <div className="ep-info-modern">
-                      <h4 className="ep-title-meta">T{selectedSeason}:E{ep.episode_number} <span className="ep-real-title">{ep.name}</span></h4>
-                      <p className="ep-overview-modern">{ep.overview || "Nenhuma sinopse disponível para este episódio."}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Anúncio ao final de todas as temporadas nas séries */}
+      {isMovie ? (
+        <div className="ad-section-details">
+          <AdBanner adId="details-movie-bottom" />
+        </div>
+      ) : (
+        <div className="ad-section-details">
           <AdBanner adId="details-series-bottom" />
         </div>
       )}
+
+      <CommentSection 
+        contentId={id} 
+        mediaType={isMovie ? 'movie' : 'tv'} 
+      />
     </div>
   );
 }
