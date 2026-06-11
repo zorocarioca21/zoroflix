@@ -32,23 +32,22 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [globalAdsEnabled, setGlobalAdsEnabled] = useState(false);
-  const [adsReady, setAdsReady] = useState(false);
+  const [globalConfigs, setGlobalConfigs] = useState({});
+  const [configsReady, setConfigsReady] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/config/ads')
+    fetch('/api/admin/config/all')
       .then(r => r.json())
       .then(data => {
-        setGlobalAdsEnabled(data.ads_enabled);
-        setAdsReady(true);
+        setGlobalConfigs(data);
+        setConfigsReady(true);
       });
   }, []);
 
   useEffect(() => {
-    if (loading || !adsReady) return;
-    if (!globalAdsEnabled) return;
+    if (loading || !configsReady) return;
+    if (!globalConfigs.ads_enabled || !globalConfigs.ads_socialbar) return;
     if (user?.role && user.role !== 'free') return; // Hide social bar for VIPs
     
     const scriptId = 'adsterra-social-bar';
@@ -59,7 +58,7 @@ function AppContent() {
         script.async = true;
         document.body.appendChild(script);
     }
-  }, [user, loading, globalAdsEnabled, adsReady]);
+  }, [user, loading, globalConfigs, configsReady]);
 
   const handleTyping = async (query) => {
     setSearchQuery(query);
@@ -185,7 +184,7 @@ function AppContent() {
         <Route path="/perfil" element={<UserProfile />} />
         <Route path="/paineladm" element={<AdminPanel />} />
       </Routes>
-      <AntiAdBlock />
+      {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       <WhatsappPopup />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>

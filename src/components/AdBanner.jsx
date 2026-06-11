@@ -4,21 +4,21 @@ import { useAuth } from '../context/AuthContext';
 export default function AdBanner({ adId }) {
   const adContainerRef = useRef(null);
   const { user, loading } = useAuth();
-  const [globalAdsEnabled, setGlobalAdsEnabled] = useState(false);
+  const [configs, setConfigs] = useState({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/config/ads')
+    fetch('/api/admin/config/all')
       .then(r => r.json())
       .then(data => {
-        setGlobalAdsEnabled(data.ads_enabled);
+        setConfigs(data);
         setReady(true);
       });
   }, []);
 
   useEffect(() => {
     if (loading || !ready) return;
-    if (!globalAdsEnabled) return;
+    if (!configs.ads_enabled || !configs.ads_banner) return;
     if (user?.role && user.role !== 'free') return;
     // Evita carregar múltiplas vezes se o componente remontar rapidamente
     if (adContainerRef.current && adContainerRef.current.innerHTML === '') {
@@ -30,9 +30,9 @@ export default function AdBanner({ adId }) {
       
       adContainerRef.current.appendChild(script);
     }
-  }, [user, loading, globalAdsEnabled, ready]);
+  }, [user, loading, configs, ready]);
 
-  if (!ready || !globalAdsEnabled || (!loading && user?.role && user.role !== 'free')) {
+  if (!ready || !configs.ads_enabled || !configs.ads_banner || (!loading && user?.role && user.role !== 'free')) {
     return null;
   }
 

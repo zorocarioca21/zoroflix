@@ -102,22 +102,23 @@ export default function adminRoutes(db) {
             res.status(500).json({ error: 'Erro ao verificar admin.' });
         }
     });
-    
-    // Obter configuração de anúncios (Público)
-    router.get('/config/ads', async (req, res) => {
+    // Obter todas as configurações (Geral)
+    router.get('/config/all', async (req, res) => {
         try {
-            const config = await db.get("SELECT value FROM configs WHERE key = 'ads_enabled'");
-            res.json({ ads_enabled: config ? config.value === '1' : false });
+            const configs = await db.all("SELECT * FROM configs");
+            const configMap = {};
+            configs.forEach(c => { configMap[c.key] = c.value === '1'; });
+            res.json(configMap);
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao buscar config.' });
+            res.status(500).json({ error: 'Erro ao buscar configs.' });
         }
     });
 
-    // Alterar configuração de anúncios (Admin)
-    router.post('/config/ads', async (req, res) => {
-        const { enabled } = req.body;
+    // Alterar uma configuração específica (Admin)
+    router.post('/config/update', async (req, res) => {
+        const { key, enabled } = req.body;
         try {
-            await db.run("UPDATE configs SET value = ? WHERE key = 'ads_enabled'", [enabled ? '1' : '0']);
+            await db.run("UPDATE configs SET value = ? WHERE key = ?", [enabled ? '1' : '0', key]);
             res.json({ success: true });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao salvar config.' });

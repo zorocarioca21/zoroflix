@@ -130,8 +130,12 @@ export async function initDB() {
         )
     `);
 
-    // Inserir configuração padrão de anúncios se não existir
+    // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
+    await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");
+    await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_banner', '0')");
+    await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_socialbar', '0')");
+    await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('anti_adblock', '0')");
 
     return db;
 }

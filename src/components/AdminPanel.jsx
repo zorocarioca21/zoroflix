@@ -13,29 +13,29 @@ export default function AdminPanel() {
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
-    const [adsEnabled, setAdsEnabled] = useState(false);
+    const [configs, setConfigs] = useState({});
 
     useEffect(() => {
         if (!isAuthorized) return;
         if (activeTab === 'reports') fetchReports();
         if (activeTab === 'comments') fetchComments();
-        if (activeTab === 'settings') fetchAdConfig();
+        if (activeTab === 'settings') fetchConfigs();
     }, [activeTab, isAuthorized]);
 
-    const fetchAdConfig = async () => {
-        const resp = await fetch('/api/admin/config/ads');
+    const fetchConfigs = async () => {
+        const resp = await fetch('/api/admin/config/all');
         const data = await resp.json();
-        setAdsEnabled(data.ads_enabled);
+        setConfigs(data);
     };
 
-    const toggleAds = async () => {
-        const newValue = !adsEnabled;
-        const resp = await fetch('/api/admin/config/ads', {
+    const updateConfig = async (key) => {
+        const newValue = !configs[key];
+        const resp = await fetch('/api/admin/config/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: newValue })
+            body: JSON.stringify({ key, enabled: newValue })
         });
-        if (resp.ok) setAdsEnabled(newValue);
+        if (resp.ok) setConfigs(prev => ({ ...prev, [key]: newValue }));
     };
 
     const fetchReports = async () => {
@@ -214,17 +214,57 @@ export default function AdminPanel() {
                 {activeTab === 'settings' && (
                     <div className="admin-settings-section">
                         <h2>Configurações Globais</h2>
-                        <div className="settings-row-card">
-                            <div className="setting-info">
-                                <h3>Sistema de Anúncios</h3>
-                                <p>Ativar ou desativar todos os anúncios (Banners, Pop-unders e Social Bar) para usuários sem VIP.</p>
+                        
+                        <div className="settings-grid-admin">
+                            <div className="settings-row-card">
+                                <div className="setting-info">
+                                    <h3>Master Ads Switch</h3>
+                                    <p>Ativa/Desativa todos os anúncios de uma vez.</p>
+                                </div>
+                                <button className={`btn-toggle-ads ${configs.ads_enabled ? 'active' : ''}`} onClick={() => updateConfig('ads_enabled')}>
+                                    {configs.ads_enabled ? 'ON' : 'OFF'}
+                                </button>
                             </div>
-                            <button 
-                                className={`btn-toggle-ads ${adsEnabled ? 'active' : ''}`} 
-                                onClick={toggleAds}
-                            >
-                                {adsEnabled ? 'ATIVADOS' : 'DESATIVADOS'}
-                            </button>
+
+                            <div className="settings-row-card">
+                                <div className="setting-info">
+                                    <h3>Banners (Imagens)</h3>
+                                    <p>Anúncios visuais nas páginas de info.</p>
+                                </div>
+                                <button className={`btn-toggle-ads ${configs.ads_banner ? 'active' : ''}`} onClick={() => updateConfig('ads_banner')}>
+                                    {configs.ads_banner ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
+
+                            <div className="settings-row-card">
+                                <div className="setting-info">
+                                    <h3>Pop-Unders (Player)</h3>
+                                    <p>Anúncios que abrem novas abas no player.</p>
+                                </div>
+                                <button className={`btn-toggle-ads ${configs.ads_popunder ? 'active' : ''}`} onClick={() => updateConfig('ads_popunder')}>
+                                    {configs.ads_popunder ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
+
+                            <div className="settings-row-card">
+                                <div className="setting-info">
+                                    <h3>Social Bar (Flutuante)</h3>
+                                    <p>Notificação de anúncio global no canto.</p>
+                                </div>
+                                <button className={`btn-toggle-ads ${configs.ads_socialbar ? 'active' : ''}`} onClick={() => updateConfig('ads_socialbar')}>
+                                    {configs.ads_socialbar ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
+
+                            <div className="settings-row-card warning">
+                                <div className="setting-info">
+                                    <h3>Anti-Adblock</h3>
+                                    <p>Exibir aviso para quem usar bloqueadores.</p>
+                                </div>
+                                <button className={`btn-toggle-ads ${configs.anti_adblock ? 'active' : ''}`} onClick={() => updateConfig('anti_adblock')}>
+                                    {configs.anti_adblock ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
