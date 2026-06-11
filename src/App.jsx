@@ -32,6 +32,7 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [globalConfigs, setGlobalConfigs] = useState({});
   const [configsReady, setConfigsReady] = useState(false);
