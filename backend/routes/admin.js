@@ -24,12 +24,17 @@ export default function adminRoutes(db) {
     // Ver comentários com suporte a paginação, busca e status (active, moderated, hidden)
     router.get('/comments', async (req, res) => {
         const { limit = 5, offset = 0, search = '', status = 'active' } = req.query;
-        let whereClause = "c.status = ?";
-        let params = [status];
+        let whereClause = "1=1";
+        let params = [];
 
-        if (status === 'deleted') {
-            whereClause = "(c.status = 'moderated' OR c.status = 'hidden')";
-            params = [];
+        if (status === 'active') {
+            whereClause += " AND c.status = 'active'";
+        } else if (status === 'moderated') {
+            whereClause += " AND c.status = 'moderated'";
+        } else if (status === 'hidden') {
+            whereClause += " AND c.status = 'hidden'";
+        } else if (status === 'deleted') {
+            whereClause += " AND (c.status = 'moderated' OR c.status = 'hidden')";
         }
 
         if (search) {

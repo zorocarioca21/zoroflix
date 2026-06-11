@@ -14,18 +14,21 @@ export default function AdminPanel() {
     // Estados de Listagem
     const [reports, setReports] = useState([]);
     const [comments, setComments] = useState([]);
-    const [deletedComments, setDeletedComments] = useState([]);
+    const [moderatedList, setModeratedList] = useState([]);
+    const [hiddenList, setHiddenList] = useState([]);
     const [usersList, setUsersList] = useState([]);
 
     // Estados de Busca e Paginação
     const [searchReports, setSearchReports] = useState('');
     const [searchComments, setSearchComments] = useState('');
-    const [searchDeleted, setSearchDeleted] = useState('');
+    const [searchModerated, setSearchModerated] = useState('');
+    const [searchHidden, setSearchHidden] = useState('');
     const [searchUsers, setSearchUsers] = useState('');
 
     const [offsetReports, setOffsetReports] = useState(0);
     const [offsetComments, setOffsetComments] = useState(0);
-    const [offsetDeleted, setOffsetDeleted] = useState(0);
+    const [offsetModerated, setOffsetModerated] = useState(0);
+    const [offsetHidden, setOffsetHidden] = useState(0);
     const [offsetUsers, setOffsetUsers] = useState(0);
 
     const LIMIT_INITIAL = 5;
@@ -35,21 +38,18 @@ export default function AdminPanel() {
         if (!isAuthorized) return;
         if (activeTab === 'reports') fetchReports(true);
         if (activeTab === 'comments') fetchComments(true);
-        if (activeTab === 'deleted') fetchDeleted(true);
+        if (activeTab === 'moderated') fetchModerated(true);
+        if (activeTab === 'hidden') fetchHidden(true);
         if (activeTab === 'users') fetchUsersList(true);
         if (activeTab === 'settings') fetchConfigs();
     }, [activeTab, isAuthorized]);
-
-    // --- FUNÇÕES DE BUSCA (API) ---
 
     const fetchReports = async (reset = false) => {
         setLoading(true);
         const currentOffset = reset ? 0 : offsetReports;
         const currentLimit = reset ? LIMIT_INITIAL : LIMIT_MORE;
-        
         const resp = await fetch(`/api/admin/reports?limit=${currentLimit}&offset=${currentOffset}&search=${searchReports}`);
         const data = await resp.json();
-        
         setReports(reset ? data : [...reports, ...data]);
         setOffsetReports(currentOffset + data.length);
         setLoading(false);
@@ -59,25 +59,32 @@ export default function AdminPanel() {
         setLoading(true);
         const currentOffset = reset ? 0 : offsetComments;
         const currentLimit = reset ? LIMIT_INITIAL : LIMIT_MORE;
-        
         const resp = await fetch(`/api/admin/comments?status=active&limit=${currentLimit}&offset=${currentOffset}&search=${searchComments}`);
         const data = await resp.json();
-        
         setComments(reset ? data : [...comments, ...data]);
         setOffsetComments(currentOffset + data.length);
         setLoading(false);
     };
 
-    const fetchDeleted = async (reset = false) => {
+    const fetchModerated = async (reset = false) => {
         setLoading(true);
-        const currentOffset = reset ? 0 : offsetDeleted;
+        const currentOffset = reset ? 0 : offsetModerated;
         const currentLimit = reset ? LIMIT_INITIAL : LIMIT_MORE;
-        
-        const resp = await fetch(`/api/admin/comments?status=deleted&limit=${currentLimit}&offset=${currentOffset}&search=${searchDeleted}`);
+        const resp = await fetch(`/api/admin/comments?status=moderated&limit=${currentLimit}&offset=${currentOffset}&search=${searchModerated}`);
         const data = await resp.json();
-        
-        setDeletedComments(reset ? data : [...deletedComments, ...data]);
-        setOffsetDeleted(currentOffset + data.length);
+        setModeratedList(reset ? data : [...moderatedList, ...data]);
+        setOffsetModerated(currentOffset + data.length);
+        setLoading(false);
+    };
+
+    const fetchHidden = async (reset = false) => {
+        setLoading(true);
+        const currentOffset = reset ? 0 : offsetHidden;
+        const currentLimit = reset ? LIMIT_INITIAL : LIMIT_MORE;
+        const resp = await fetch(`/api/admin/comments?status=hidden&limit=${currentLimit}&offset=${currentOffset}&search=${searchHidden}`);
+        const data = await resp.json();
+        setHiddenList(reset ? data : [...hiddenList, ...data]);
+        setOffsetHidden(currentOffset + data.length);
         setLoading(false);
     };
 
@@ -85,10 +92,8 @@ export default function AdminPanel() {
         setLoading(true);
         const currentOffset = reset ? 0 : offsetUsers;
         const currentLimit = reset ? LIMIT_INITIAL : LIMIT_MORE;
-        
         const resp = await fetch(`/api/admin/users?query=${searchUsers}&limit=${currentLimit}&offset=${currentOffset}`);
         const data = await resp.json();
-        
         setUsersList(reset ? data : [...usersList, ...data]);
         setOffsetUsers(currentOffset + data.length);
         setLoading(false);
@@ -110,10 +115,8 @@ export default function AdminPanel() {
         if (resp.ok) setConfigs(prev => ({ ...prev, [key]: newValue }));
     };
 
-    // --- AÇÕES ---
-
     const handleModeration = async (commentId, mode) => {
-        const confirmMsg = mode === 'moderated' ? "Marcar como 'Apagado por Admin'?" : "Esconder comentário completamente do site?";
+        const confirmMsg = mode === 'moderated' ? "Marcar como 'Apagado por Admin'?" : mode === 'hidden' ? "Esconder comentário completamente do site?" : "Restaurar comentário?";
         if (!window.confirm(confirmMsg)) return;
 
         const resp = await fetch(`/api/admin/comments/${commentId}/moderation`, {
@@ -123,20 +126,11 @@ export default function AdminPanel() {
         });
         
         if (resp.ok) {
-            if (activeTab === 'reports') fetchReports(true);
-            if (activeTab === 'comments') fetchComments(true);
-            if (activeTab === 'deleted') fetchDeleted(true);
+            fetchReports(true);
+            fetchComments(true);
+            fetchModerated(true);
+            fetchHidden(true);
         }
-    };
-
-    const handleRestore = async (commentId) => {
-        if (!window.confirm("Restaurar este comentário no site?")) return;
-        const resp = await fetch(`/api/admin/comments/${commentId}/moderation`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'active' })
-        });
-        if (resp.ok) fetchDeleted(true);
     };
 
     const handleDismissReport = async (reportId) => {
@@ -186,8 +180,11 @@ export default function AdminPanel() {
                     <button className={activeTab === 'comments' ? 'active' : ''} onClick={() => setActiveTab('comments')}>
                         <MessageSquare size={18} /> Comentários
                     </button>
-                    <button className={activeTab === 'deleted' ? 'active' : ''} onClick={() => setActiveTab('deleted')}>
-                        <Ghost size={18} /> Apagados
+                    <button className={activeTab === 'moderated' ? 'active' : ''} onClick={() => setActiveTab('moderated')}>
+                        <Trash2 size={18} /> Apagados
+                    </button>
+                    <button className={activeTab === 'hidden' ? 'active' : ''} onClick={() => setActiveTab('hidden')}>
+                        <EyeOff size={18} /> Escondidos
                     </button>
                     <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
                         <Users size={18} /> Usuários
@@ -223,7 +220,7 @@ export default function AdminPanel() {
                                 </div>
                             </div>
                         ))}
-                        <button className="admin-pagination-btn" onClick={() => fetchReports()}>Ver Mais</button>
+                        {reports.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchReports()}>Ver Mais</button>}
                     </div>
                 )}
 
@@ -259,35 +256,35 @@ export default function AdminPanel() {
                                 </tbody>
                             </table>
                         </div>
-                        <button className="admin-pagination-btn" onClick={() => fetchComments()}>Ver Mais</button>
+                        {comments.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchComments()}>Ver Mais</button>}
                     </div>
                 )}
 
                 {/* ABA APAGADOS */}
-                {activeTab === 'deleted' && (
+                {activeTab === 'moderated' && (
                     <div className="admin-card-list">
                         <div className="admin-tab-header">
-                            <h2>Histórico de Moderação</h2>
+                            <h2>Comentários com Aviso</h2>
                             <div className="admin-search-bar">
-                                <input type="text" placeholder="Buscar..." value={searchDeleted} onChange={e => setSearchDeleted(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchDeleted(true)} />
-                                <button onClick={() => fetchDeleted(true)}><Search size={18}/></button>
+                                <input type="text" placeholder="Buscar..." value={searchModerated} onChange={e => setSearchModerated(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchModerated(true)} />
+                                <button onClick={() => fetchModerated(true)}><Search size={18}/></button>
                             </div>
                         </div>
                         <div className="admin-table-wrap">
                             <table className="admin-table">
                                 <thead>
-                                    <tr><th>Usuário</th><th>Texto Original</th><th>Modo</th><th>Ações</th></tr>
+                                    <tr><th>Usuário</th><th>Texto Original</th><th>Ações</th></tr>
                                 </thead>
                                 <tbody>
-                                    {deletedComments.map(c => (
+                                    {moderatedList.map(c => (
                                         <tr key={c.id}>
                                             <td>{c.user_nick}</td>
                                             <td className="comment-txt-cell">{c.text}</td>
-                                            <td><span className={`role-tag ${c.status === 'moderated' ? 'vip' : 'free'}`}>{c.status === 'moderated' ? 'Avisado' : 'Escondido'}</span></td>
                                             <td>
                                                 <div className="action-row-mini">
                                                     {getLocalLink(c)}
-                                                    <button onClick={() => handleRestore(c.id)} title="Restaurar" className="btn-adm-safe mini-rest"><CheckCircle size={16}/></button>
+                                                    <button onClick={() => handleModeration(c.id, 'active')} title="Restaurar" className="btn-adm-safe mini-rest"><CheckCircle size={16}/></button>
+                                                    <button onClick={() => handleModeration(c.id, 'hidden')} title="Mudar para Escondido"><EyeOff size={16} color="#ff4444"/></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -295,7 +292,43 @@ export default function AdminPanel() {
                                 </tbody>
                             </table>
                         </div>
-                        <button className="admin-pagination-btn" onClick={() => fetchDeleted()}>Ver Mais</button>
+                        {moderatedList.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchModerated()}>Ver Mais</button>}
+                    </div>
+                )}
+
+                {/* ABA ESCONDIDOS */}
+                {activeTab === 'hidden' && (
+                    <div className="admin-card-list">
+                        <div className="admin-tab-header">
+                            <h2>Comentários Ocultos</h2>
+                            <div className="admin-search-bar">
+                                <input type="text" placeholder="Buscar..." value={searchHidden} onChange={e => setSearchHidden(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchHidden(true)} />
+                                <button onClick={() => fetchHidden(true)}><Search size={18}/></button>
+                            </div>
+                        </div>
+                        <div className="admin-table-wrap">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr><th>Usuário</th><th>Texto Original</th><th>Ações</th></tr>
+                                </thead>
+                                <tbody>
+                                    {hiddenList.map(c => (
+                                        <tr key={c.id}>
+                                            <td>{c.user_nick}</td>
+                                            <td className="comment-txt-cell">{c.text}</td>
+                                            <td>
+                                                <div className="action-row-mini">
+                                                    {getLocalLink(c)}
+                                                    <button onClick={() => handleModeration(c.id, 'active')} title="Restaurar" className="btn-adm-safe mini-rest"><CheckCircle size={16}/></button>
+                                                    <button onClick={() => handleModeration(c.id, 'moderated')} title="Mudar para Avisar"><Trash2 size={16} color="#ffab00"/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        {hiddenList.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchHidden()}>Ver Mais</button>}
                     </div>
                 )}
 
@@ -332,7 +365,7 @@ export default function AdminPanel() {
                                 </tbody>
                             </table>
                         </div>
-                        <button className="admin-pagination-btn" onClick={() => fetchUsersList()}>Ver Mais</button>
+                        {usersList.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchUsersList()}>Ver Mais</button>}
                     </div>
                 )}
 
@@ -341,7 +374,6 @@ export default function AdminPanel() {
                     <div className="admin-settings-section">
                         <h2>Configurações Globais</h2>
                         <div className="settings-grid-admin">
-                            {/* ... (mesmo grid anterior mas mantendo a estrutura) ... */}
                             <div className="settings-row-card">
                                 <div className="setting-info"><h3>Master Ads Switch</h3><p>Ativa/Desativa todos os anúncios.</p></div>
                                 <button className={`btn-toggle-ads ${configs.ads_enabled ? 'active' : ''}`} onClick={() => updateConfig('ads_enabled')}>{configs.ads_enabled ? 'ON' : 'OFF'}</button>
