@@ -34,9 +34,21 @@ function AppContent() {
   const [isSearching, setIsSearching] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [globalAdsEnabled, setGlobalAdsEnabled] = useState(false);
+  const [adsReady, setAdsReady] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    fetch('/api/admin/config/ads')
+      .then(r => r.json())
+      .then(data => {
+        setGlobalAdsEnabled(data.ads_enabled);
+        setAdsReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (loading || !adsReady) return;
+    if (!globalAdsEnabled) return;
     if (user?.role && user.role !== 'free') return; // Hide social bar for VIPs
     
     const scriptId = 'adsterra-social-bar';
@@ -47,7 +59,7 @@ function AppContent() {
         script.async = true;
         document.body.appendChild(script);
     }
-  }, [user, loading]);
+  }, [user, loading, globalAdsEnabled, adsReady]);
 
   const handleTyping = async (query) => {
     setSearchQuery(query);

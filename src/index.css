@@ -3052,3 +3052,34 @@ body::before {
 
 .favorite-btn-overlay { bottom: 10px !important; left: 10px !important; }
 
+
+
+/* --- ADMIN SETTINGS TOGGLE --- */
+.settings-row-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+.setting-info h3 { margin: 0 0 5px 0; color: #fff; }
+.setting-info p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.btn-toggle-ads {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #ff4444;
+  color: #fff;
+}
+.btn-toggle-ads.active {
+  background: #00e676;
+  color: #000;
+  box-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+}
+

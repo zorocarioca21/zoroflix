@@ -13,12 +13,30 @@ export default function AdminPanel() {
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
+    const [adsEnabled, setAdsEnabled] = useState(false);
 
     useEffect(() => {
         if (!isAuthorized) return;
         if (activeTab === 'reports') fetchReports();
         if (activeTab === 'comments') fetchComments();
+        if (activeTab === 'settings') fetchAdConfig();
     }, [activeTab, isAuthorized]);
+
+    const fetchAdConfig = async () => {
+        const resp = await fetch('/api/admin/config/ads');
+        const data = await resp.json();
+        setAdsEnabled(data.ads_enabled);
+    };
+
+    const toggleAds = async () => {
+        const newValue = !adsEnabled;
+        const resp = await fetch('/api/admin/config/ads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: newValue })
+        });
+        if (resp.ok) setAdsEnabled(newValue);
+    };
 
     const fetchReports = async () => {
         setLoading(true);
@@ -94,6 +112,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
                         <Users size={18} /> Usuários
+                    </button>
+                    <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
+                        <Shield size={18} /> Configurações
                     </button>
                 </div>
             </div>
@@ -186,6 +207,24 @@ export default function AdminPanel() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'settings' && (
+                    <div className="admin-settings-section">
+                        <h2>Configurações Globais</h2>
+                        <div className="settings-row-card">
+                            <div className="setting-info">
+                                <h3>Sistema de Anúncios</h3>
+                                <p>Ativar ou desativar todos os anúncios (Banners, Pop-unders e Social Bar) para usuários sem VIP.</p>
+                            </div>
+                            <button 
+                                className={`btn-toggle-ads ${adsEnabled ? 'active' : ''}`} 
+                                onClick={toggleAds}
+                            >
+                                {adsEnabled ? 'ATIVADOS' : 'DESATIVADOS'}
+                            </button>
                         </div>
                     </div>
                 )}

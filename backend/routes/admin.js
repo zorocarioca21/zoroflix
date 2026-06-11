@@ -102,6 +102,27 @@ export default function adminRoutes(db) {
             res.status(500).json({ error: 'Erro ao verificar admin.' });
         }
     });
+    
+    // Obter configuração de anúncios (Público)
+    router.get('/config/ads', async (req, res) => {
+        try {
+            const config = await db.get("SELECT value FROM configs WHERE key = 'ads_enabled'");
+            res.json({ ads_enabled: config ? config.value === '1' : false });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar config.' });
+        }
+    });
+
+    // Alterar configuração de anúncios (Admin)
+    router.post('/config/ads', async (req, res) => {
+        const { enabled } = req.body;
+        try {
+            await db.run("UPDATE configs SET value = ? WHERE key = 'ads_enabled'", [enabled ? '1' : '0']);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao salvar config.' });
+        }
+    });
 
     return router;
 }

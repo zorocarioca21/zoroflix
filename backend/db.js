@@ -122,6 +122,17 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Configurações Globais
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS configs (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    `);
+
+    // Inserir configuração padrão de anúncios se não existir
+    await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
+
     return db;
 }
 

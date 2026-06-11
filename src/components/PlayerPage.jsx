@@ -16,16 +16,28 @@ export default function PlayerPage() {
 
   const [episodes, setEpisodes] = useState([]);
   const [showList, setShowList] = useState(false);
+  const [globalAdsEnabled, setGlobalAdsEnabled] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    fetch('/api/admin/config/ads')
+      .then(r => r.json())
+      .then(data => {
+        setGlobalAdsEnabled(data.ads_enabled);
+        setReady(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (loading || !ready) return;
+    if (!globalAdsEnabled) return;
     if (user?.role && user.role !== 'free') return;
     const script = document.createElement('script');
     script.src = "https://pl29672000.effectivecpmnetwork.com/d7/32/c1/d732c1442b56faa1946720b33505fca5.js";
     script.async = true;
     document.body.appendChild(script);
-    return () => { document.body.removeChild(script); };
-  }, [user, loading]);
+    return () => { try { document.body.removeChild(script); } catch(e){} };
+  }, [user, loading, globalAdsEnabled, ready]);
 
   useEffect(() => {
     if (season && id) {
