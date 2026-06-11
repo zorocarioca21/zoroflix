@@ -3118,3 +3118,14 @@ body::before {
 .mini-rest { background: #00e67622 !important; color: #00e676 !important; border-color: #00e676 !important; }
 
 
+
+
+/* --- ADMIN QUICK ACTIONS IN COMMENTS --- */
+.admin-quick-actions { display: flex; gap: 8px; margin-left: 10px; align-items: center; }
+.admin-quick-actions .btn-delete-adm { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: 0.3s; background: transparent; }
+.admin-quick-actions .btn-delete-adm.warn { background: rgba(255, 171, 0, 0.1); color: #ffab00; border: 1px solid rgba(255, 171, 0, 0.3); }
+.admin-quick-actions .btn-delete-adm.hide { background: rgba(255, 68, 68, 0.1); color: #ff4444; border: 1px solid rgba(255, 68, 68, 0.3); }
+.admin-quick-actions .btn-delete-adm:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.admin-quick-actions.mini { margin-left: 10px; gap: 5px; }
+.admin-quick-actions.mini .btn-delete-adm { width: 24px; height: 24px; }
+

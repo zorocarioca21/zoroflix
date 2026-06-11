@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2, Crown, ShieldCheck } from 'lucide-react';
+import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2, Crown, ShieldCheck, EyeOff } from 'lucide-react';
 
 export default function CommentSection({ contentId, mediaType, episodeId }) {
     const { user } = useAuth();
@@ -104,6 +104,18 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
         } catch (err) { console.error(err); }
     };
 
+    const handleHideADM = async (commentId) => {
+        if (!window.confirm("Esconder comentário completamente?")) return;
+        try {
+            const resp = await fetch(`/api/admin/comments/${commentId}/moderation`, { 
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'hidden' })
+            });
+            if (resp.ok) fetchComments();
+        } catch (err) { console.error(err); }
+    };
+
     return (
         <div className="comments-section-wrap">
             <h3>Comentários ({comments.length})</h3>
@@ -157,9 +169,14 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                         <AlertTriangle size={14} /> Denunciar
                                     </button>
                                     {user?.role === 'admin' && !isDeleted && (
-                                        <button className="btn-delete-adm" onClick={() => handleDeleteADM(c.id)}>
-                                            <Trash2 size={14} /> Apagar
-                                        </button>
+                                        <div className="admin-quick-actions">
+                                            <button className="btn-delete-adm warn" onClick={() => handleDeleteADM(c.id)} title="Apagar (Avisar)">
+                                                <Trash2 size={14} />
+                                            </button>
+                                            <button className="btn-delete-adm hide" onClick={() => handleHideADM(c.id)} title="Esconder (Sumir)">
+                                                <EyeOff size={14} />
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -184,9 +201,14 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                             </div>
                                             <div className="comment-text">{r.text}</div>
                                             {user?.role === 'admin' && (
-                                                <button className="btn-delete-adm mini" onClick={() => handleDeleteADM(r.id)}>
-                                                    <Trash2 size={12} />
-                                                </button>
+                                                <div className="admin-quick-actions mini">
+                                                    <button className="btn-delete-adm mini warn" onClick={() => handleDeleteADM(r.id)}>
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                    <button className="btn-delete-adm mini hide" onClick={() => handleHideADM(r.id)}>
+                                                        <EyeOff size={12} />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
