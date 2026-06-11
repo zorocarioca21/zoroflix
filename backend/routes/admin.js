@@ -2,49 +2,69 @@ import express from 'express';
 const router = express.Router();
 
 export default function adminRoutes(db) {
-    // Ver todas as denúncias pendentes
+    // Ver denúncias com suporte a paginação e busca
     router.get('/reports', async (req, res) => {
+        const { limit = 5, offset = 0, search = '' } = req.query;
         try {
             const reports = await db.all(`
-                SELECT r.*, u.nick as reporter_nick, c.text as comment_text, c.content_id, c.media_type
+                SELECT r.*, u.nick as reporter_nick, c.text as comment_text, c.content_id, c.media_type, c.episode_id
                 FROM reports r
                 JOIN users u ON r.user_id = u.id
                 JOIN comments c ON r.comment_id = c.id
-                WHERE r.status = 'pending'
+                WHERE r.status = 'pending' AND (u.nick LIKE ? OR c.text LIKE ? OR r.reason LIKE ?)
                 ORDER BY r.created_at DESC
-            `);
+                LIMIT ? OFFSET ?
+            `, [`%${search}%`, `%${search}%`, `%${search}%`, parseInt(limit), parseInt(offset)]);
             res.json(reports);
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar denúncias.' });
         }
     });
 
-    // Ver últimos comentários
+    // Ver comentários com suporte a paginação, busca e status (active, moderated, hidden)
     router.get('/comments', async (req, res) => {
+        const { limit = 5, offset = 0, search = '', status = 'active' } = req.query;
+        let whereClause = "c.status = ?";
+        let params = [status];
+
+        if (status === 'deleted') {
+            whereClause = "(c.status = 'moderated' OR c.status = 'hidden')";
+            params = [];
+        }
+
+        if (search) {
+            whereClause += ` AND (u.nick LIKE ? OR c.text LIKE ?)`;
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        params.push(parseInt(limit), parseInt(offset));
+
         try {
             const comments = await db.all(`
                 SELECT c.*, u.nick as user_nick, u.avatar as user_avatar
                 FROM comments c
                 JOIN users u ON c.user_id = u.id
+                WHERE ${whereClause}
                 ORDER BY c.created_at DESC
-                LIMIT 50
-            `);
+                LIMIT ? OFFSET ?
+            `, params);
             res.json(comments);
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar comentários.' });
         }
     });
 
-    // Buscar usuários (por nick ou email)
+    // Buscar usuários com paginação automática
     router.get('/users', async (req, res) => {
-        const { query } = req.query;
+        const { query = '', limit = 5, offset = 0 } = req.query;
         try {
             const users = await db.all(`
                 SELECT id, nick, email, role, banned_until, uuid, created_at 
                 FROM users 
                 WHERE nick LIKE ? OR email LIKE ?
-                LIMIT 20
-            `, [`%${query}%`, `%${query}%`]);
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            `, [`%${query}%`, `%${query}%`, parseInt(limit), parseInt(offset)]);
             res.json(users);
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar usuários.' });
@@ -63,15 +83,20 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Soft Delete de Comentário
-    router.patch('/comments/:id/delete', async (req, res) => {
+    // Moderação de Comentário (Granular: moderated ou hidden)
+    router.patch('/comments/:id/moderation', async (req, res) => {
         const { id } = req.params;
+        const { mode } = req.body; // 'moderated' (mostra aviso) ou 'hidden' (some total)
         try {
-            await db.run("UPDATE comments SET text = '[Comentário apagado por um Administrador]' WHERE id = ?", [id]);
+            if (mode === 'moderated') {
+                await db.run("UPDATE comments SET status = 'moderated' WHERE id = ?", [id]);
+            } else if (mode === 'hidden') {
+                await db.run("UPDATE comments SET status = 'hidden' WHERE id = ?", [id]);
+            }
             await db.run("UPDATE reports SET status = 'resolved' WHERE comment_id = ?", [id]);
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao apagar comentário.' });
+            res.status(500).json({ error: 'Erro na moderação.' });
         }
     });
 
@@ -87,7 +112,7 @@ export default function adminRoutes(db) {
 
     // Verificar se um usuário (por nick ou email) é admin
     router.post('/verify', async (req, res) => {
-        const { identifier } = req.body; // pode ser nick ou email
+        const { identifier } = req.body; 
         try {
             const user = await db.get(`
                 SELECT id, role FROM users 
@@ -102,7 +127,8 @@ export default function adminRoutes(db) {
             res.status(500).json({ error: 'Erro ao verificar admin.' });
         }
     });
-    // Obter todas as configurações (Geral)
+
+    // Obter todas as configurações
     router.get('/config/all', async (req, res) => {
         try {
             const configs = await db.all("SELECT * FROM configs");
@@ -114,7 +140,7 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Alterar uma configuração específica (Admin)
+    // Alterar uma configuração específica
     router.post('/config/update', async (req, res) => {
         const { key, enabled } = req.body;
         try {

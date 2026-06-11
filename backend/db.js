@@ -137,6 +137,13 @@ export async function initDB() {
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_socialbar', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('anti_adblock', '0')");
 
+    // Adicionar coluna status nos comentários (se não existir)
+    try {
+        await db.exec("ALTER TABLE comments ADD COLUMN status TEXT DEFAULT 'active'");
+    } catch (err) {
+        // Já existe
+    }
+
     return db;
 }
 

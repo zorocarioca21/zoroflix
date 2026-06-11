@@ -16,7 +16,7 @@ export default function commentRoutes(db) {
                 (SELECT COUNT(*) FROM reactions WHERE comment_id = c.id AND type = 'dislike') as dislikes
                 FROM comments c
                 JOIN users u ON c.user_id = u.id
-                WHERE c.media_type = ? AND c.content_id = ?
+                WHERE c.media_type = ? AND c.content_id = ? AND c.status != 'hidden'
             `;
             const params = [mediaType, contentId];
 
@@ -30,7 +30,14 @@ export default function commentRoutes(db) {
             query += " ORDER BY c.created_at DESC";
 
             const comments = await db.all(query, params);
-            res.json(comments);
+
+            // Se o comentário estiver moderado, substitui o texto na resposta pública mas mantém no DB
+            const results = comments.map(c => ({
+                ...c,
+                text: c.status === 'moderated' ? '[Comentário apagado por um Administrador]' : c.text
+            }));
+
+            res.json(results);
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar comentários.' });
         }
