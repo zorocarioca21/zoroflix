@@ -3108,7 +3108,7 @@ body::before {
 
 
 
-/* --- COMENTÁRIOS: CARGOS E EFEITOS --- */
+/* --- COMENTï¿½RIOS: CARGOS E EFEITOS --- */
 .comment-author { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .comment-author.role-vip { background: linear-gradient(90deg, #ffd700, #ffae00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.4)); font-weight: 900; }
 .icon-crown { color: #ffd700; filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6)); margin-left: 4px; -webkit-text-fill-color: initial; }
