@@ -86,12 +86,14 @@ export default function adminRoutes(db) {
     // Moderação de Comentário (Granular: moderated ou hidden)
     router.patch('/comments/:id/moderation', async (req, res) => {
         const { id } = req.params;
-        const { mode } = req.body; // 'moderated' (mostra aviso) ou 'hidden' (some total)
+        const { mode } = req.body; // 'moderated', 'hidden' ou 'active'
         try {
             if (mode === 'moderated') {
                 await db.run("UPDATE comments SET status = 'moderated' WHERE id = ?", [id]);
             } else if (mode === 'hidden') {
                 await db.run("UPDATE comments SET status = 'hidden' WHERE id = ?", [id]);
+            } else if (mode === 'active') {
+                await db.run("UPDATE comments SET status = 'active' WHERE id = ?", [id]);
             }
             await db.run("UPDATE reports SET status = 'resolved' WHERE comment_id = ?", [id]);
             res.json({ success: true });

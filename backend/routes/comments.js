@@ -11,7 +11,7 @@ export default function commentRoutes(db) {
 
         try {
             let query = `
-                SELECT c.*, u.nick, u.avatar,
+                SELECT c.*, u.nick, u.avatar, u.role,
                 (SELECT COUNT(*) FROM reactions WHERE comment_id = c.id AND type = 'like') as likes,
                 (SELECT COUNT(*) FROM reactions WHERE comment_id = c.id AND type = 'dislike') as dislikes
                 FROM comments c

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2 } from 'lucide-react';
+import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2, Crown, ShieldCheck } from 'lucide-react';
 
 export default function CommentSection({ contentId, mediaType, episodeId }) {
     const { user } = useAuth();
@@ -93,9 +93,13 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
     };
 
     const handleDeleteADM = async (commentId) => {
-        if (!window.confirm("Apagar comentário definitivamente (como Admin)?")) return;
+        if (!window.confirm("Apagar comentário (Aviso de moderado)?")) return;
         try {
-            const resp = await fetch(`/api/admin/comments/${commentId}/delete`, { method: 'PATCH' });
+            const resp = await fetch(`/api/admin/comments/${commentId}/moderation`, { 
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'moderated' })
+            });
             if (resp.ok) fetchComments();
         } catch (err) { console.error(err); }
     };
@@ -126,10 +130,16 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                     return (
                         <div key={c.id} className={`comment-item ${isDeleted ? 'deleted-by-adm' : ''}`}>
                             <div className="comment-main">
-                            <img src={c.avatar} alt="" className="comment-avatar" />
+                            <div className={`avatar-wrapper-role role-${c.role}`}>
+                                <img src={c.avatar} alt="" className="comment-avatar" />
+                            </div>
                             <div className="comment-content">
                                 <div className="comment-meta">
-                                    <span className="comment-author">{c.nick}</span>
+                                    <span className={`comment-author role-${c.role}`}>
+                                        {c.nick}
+                                        {c.role === 'admin' && <span className="badge-admin"><ShieldCheck size={12}/> ADMIN</span>}
+                                        {c.role === 'vip' && <Crown size={14} className="icon-crown" />}
+                                    </span>
                                     <span className="comment-date">{new Date(c.created_at).toLocaleDateString()}</span>
                                 </div>
                                 <div className="comment-text">{c.text}</div>
@@ -160,10 +170,16 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                             <div className="comment-replies">
                                 {c.replies.map(r => (
                                     <div key={r.id} className="comment-item reply">
-                                        <img src={r.avatar} alt="" className="comment-avatar-mini" />
+                                        <div className={`avatar-wrapper-role role-${r.role} mini`}>
+                                            <img src={r.avatar} alt="" className="comment-avatar-mini" />
+                                        </div>
                                         <div className="comment-content">
                                             <div className="comment-meta">
-                                                <span className="comment-author">{r.nick}</span>
+                                                <span className={`comment-author role-${r.role}`}>
+                                                    {r.nick}
+                                                    {r.role === 'admin' && <span className="badge-admin mini"><ShieldCheck size={10}/></span>}
+                                                    {r.role === 'vip' && <Crown size={12} className="icon-crown" />}
+                                                </span>
                                                 <span className="comment-date">{new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
                                             <div className="comment-text">{r.text}</div>

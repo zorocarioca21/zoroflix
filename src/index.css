@@ -3106,3 +3106,17 @@ body::before {
 .btn-moderation-hidden { background: rgba(255, 68, 68, 0.1) !important; color: #ff4444 !important; border-color: #ff4444 !important; }
 .no-data { text-align: center; color: var(--text-muted); padding: 3rem; font-style: italic; }
 
+
+
+/* --- COMENTÁRIOS: CARGOS E EFEITOS --- */
+.comment-author { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.comment-author.role-vip { background: linear-gradient(90deg, #ffd700, #ffae00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.4)); font-weight: 900; }
+.icon-crown { color: #ffd700; filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6)); margin-left: 4px; -webkit-text-fill-color: initial; }
+.badge-admin { background: #ff4444; color: #fff; font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; margin-left: 5px; -webkit-text-fill-color: initial; border: 1px solid rgba(255,255,255,0.2); }
+.avatar-wrapper-role { border-radius: 50%; padding: 2px; display: inline-flex; border: 2px solid transparent; }
+.avatar-wrapper-role.role-vip { background: linear-gradient(45deg, #ffd700, #ffae00); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+.avatar-wrapper-role.role-admin { background: linear-gradient(45deg, #ff4444, #ff8888); box-shadow: 0 0 15px rgba(255, 68, 68, 0.3); }
+.avatar-wrapper-role.mini { padding: 1.5px; }
+.avatar-wrapper-role img { border: 2px solid var(--bg-card); }
+.mini-rest { background: #00e67622 !important; color: #00e676 !important; border-color: #00e676 !important; }
+

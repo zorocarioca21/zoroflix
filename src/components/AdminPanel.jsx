@@ -129,6 +129,16 @@ export default function AdminPanel() {
         }
     };
 
+    const handleRestore = async (commentId) => {
+        if (!window.confirm("Restaurar este comentário no site?")) return;
+        const resp = await fetch(`/api/admin/comments/${commentId}/moderation`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: 'active' })
+        });
+        if (resp.ok) fetchDeleted(true);
+    };
+
     const handleDismissReport = async (reportId) => {
         const resp = await fetch(`/api/admin/reports/${reportId}/dismiss`, { method: 'PATCH' });
         if (resp.ok) fetchReports(true);
@@ -274,7 +284,12 @@ export default function AdminPanel() {
                                             <td>{c.user_nick}</td>
                                             <td className="comment-txt-cell">{c.text}</td>
                                             <td><span className={`role-tag ${c.status === 'moderated' ? 'vip' : 'free'}`}>{c.status === 'moderated' ? 'Avisado' : 'Escondido'}</span></td>
-                                            <td>{getLocalLink(c)}</td>
+                                            <td>
+                                                <div className="action-row-mini">
+                                                    {getLocalLink(c)}
+                                                    <button onClick={() => handleRestore(c.id)} title="Restaurar" className="btn-adm-safe mini-rest"><CheckCircle size={16}/></button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
