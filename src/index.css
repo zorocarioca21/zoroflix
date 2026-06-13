@@ -3139,6 +3139,11 @@ body::before {
 .live-dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; display: inline-block; animation: pulse-red 1.5s infinite; }
 @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 68, 68, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); } }
 .sports-section-standard { margin: 1rem 0 2rem 0; clear: both; }
+.sports-custom-limit { 
+  max-width: 860px; /* 4 cards de 200px + 60px de gaps/paddings */
+  margin: 0 auto;
+}
+.sports-custom-limit .row-wrapper { overflow: visible; }
 .match-card-standard { 
   width: 200px;
   min-width: 200px; 
@@ -3157,12 +3162,9 @@ body::before {
   flex-shrink: 0;
   margin-right: 12px;
 }
-@media (max-width: 768px) {
-  .match-card-standard {
-    width: 170px;
-    min-width: 170px;
-    max-width: 170px;
-  }
+@media (max-width: 900px) {
+  .sports-custom-limit { max-width: 100%; }
+  .match-card-standard { width: 180px; min-width: 180px; max-width: 180px; }
 }
 .match-card-standard:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--glow); }
 .match-card-standard.live { border-bottom: 3px solid #ff4444; }

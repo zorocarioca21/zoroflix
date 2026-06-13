@@ -28,20 +28,32 @@ export default function SportsFixtures() {
         const upcoming = [];
 
         const ALLOWED_LEAGUES = [
-            // Brasil
-            'Série A', 'Série B', 'Copa do Brasil', 'Paulista', 'Brasileirão',
-            // Europa
-            'Premier League', 'La Liga', 'Ligue 1', 'Serie A',
-            // Copas/Mundo
-            'Copa Libertadores', 'Copa Sudamericana', 'UEFA Champions League', 
-            'UEFA Europa League', 'Copa América', 'World Cup', 'Campeonato do Mundo'
+            { name: ['Série A', 'Serie A', 'Brasileirão', 'Betano'], country: 'Brazil' },
+            { name: ['Série B', 'Serie B'], country: 'Brazil' },
+            { name: ['Paulista'], country: 'Brazil' },
+            { name: ['Copa do Brasil', 'Copa Betano'], country: 'Brazil' },
+            { name: ['La Liga', 'LaLiga'], country: 'Spain' },
+            { name: ['Ligue 1'], country: 'France' },
+            { name: ['Premier League'], country: 'England' },
+            { name: ['Serie A'], country: 'Italy' },
+            { name: ['Copa América', 'Copa America'], country: 'World' },
+            { name: ['Champions League', 'Liga dos Campeões'], country: 'World' },
+            { name: ['Europa League', 'Liga Europa'], country: 'World' },
+            { name: ['Copa Libertadores', 'Libertadores'], country: 'World' },
+            { name: ['Sul-Americana', 'Copa Sudamericana', 'Sul Americana'], country: 'World' },
+            { name: ['World Cup', 'Campeonato do Mundo', 'Copa do Mundo'], country: 'World' }
         ];
 
         allToday.forEach(f => {
             const leagueName = f.league.name;
-            const isAllowed = ALLOWED_LEAGUES.some(allowed => 
-                leagueName.toLowerCase().includes(allowed.toLowerCase())
-            );
+            const leagueCountry = f.league.country;
+
+            const isAllowed = ALLOWED_LEAGUES.some(allowed => {
+                const nameMatches = allowed.name.some(n => leagueName.toLowerCase().includes(n.toLowerCase()));
+                // Se for liga nacional, checa país. Se for internacional (World), ignora país.
+                const countryMatches = allowed.country === 'World' || leagueCountry.toLowerCase() === allowed.country.toLowerCase();
+                return nameMatches && countryMatches;
+            });
 
             if (!isAllowed) return;
 
@@ -57,7 +69,6 @@ export default function SportsFixtures() {
 
         upcoming.sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date));
 
-        // Limitar para não ficar gigante
         setLiveMatches(live.slice(0, 20));
         setUpcomingMatches(upcoming.slice(0, 30));
 
@@ -77,7 +88,6 @@ export default function SportsFixtures() {
   const handleScroll = (ref, direction) => {
     if (ref.current) {
       const { scrollLeft, clientWidth } = ref.current;
-      // Scroll exatamente a largura visível para trocar os 4 cards
       const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
       ref.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
     }
@@ -129,7 +139,7 @@ export default function SportsFixtures() {
     <div className="sports-section-standard">
       
       {liveMatches.length > 0 && (
-        <div className="content-row-container">
+        <div className="content-row-container sports-custom-limit">
           <h3 className="row-title" style={{fontSize: '1.2rem'}}><span className="live-dot"></span> Ao Vivo</h3>
           <div className="row-wrapper">
             <button className="row-nav-btn left" onClick={() => handleScroll(liveRowRef, 'left')}>&#10094;</button>
@@ -142,7 +152,7 @@ export default function SportsFixtures() {
       )}
 
       {upcomingMatches.length > 0 && (
-        <div className="content-row-container">
+        <div className="content-row-container sports-custom-limit">
           <h3 className="row-title" style={{fontSize: '1.2rem'}}><Timer size={16} /> Próximos Jogos</h3>
           <div className="row-wrapper">
             <button className="row-nav-btn left" onClick={() => handleScroll(upcomingRowRef, 'left')}>&#10094;</button>
