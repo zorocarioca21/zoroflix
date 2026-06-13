@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithProxy } from '../utils/api';
+import SportsFixtures from './SportsFixtures';
 
 export default function ChannelsPage() {
   const [channels, setChannels] = useState([]);
@@ -49,6 +50,9 @@ export default function ChannelsPage() {
     <div className="search-page-container">
       <div className="catalog-header">
         <h2 className="row-title">TV Ao Vivo</h2>
+        
+        <SportsFixtures />
+
         <div className="filters-bar">
           <div className="filter-group">
             <input 
