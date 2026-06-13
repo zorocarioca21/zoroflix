@@ -59,9 +59,8 @@ export default function SportsFixtures() {
   const handleScroll = (ref, direction) => {
     if (ref.current) {
       const { scrollLeft, clientWidth } = ref.current;
-      // Scroll exactly 4 cards (approx 180px each including gap)
-      const scrollAmount = clientWidth * 0.8; 
-      const scrollTo = direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
+      // Scroll exatamente a largura visível para trocar os 4 cards
+      const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
       ref.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
     }
   };
