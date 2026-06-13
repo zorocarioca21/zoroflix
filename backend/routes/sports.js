@@ -8,7 +8,7 @@ let sportsCache = {
     lastUpdate: 0
 };
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache (agora temos chaves suficientes)
+const CACHE_DURATION = 1 * 60 * 60 * 1000; // 1 hora de cache
 
 const API_KEYS = [
     "2b7ddfd9c2bfad3e6180307031e776e2", // Original
@@ -42,14 +42,14 @@ export default function sportsRoutes() {
                 const activeKey = API_KEYS[currentKeyIndex];
                 console.log(`Buscando jogos do dia na API-Sports... (Tentativa ${attempts + 1}, Chave index: ${currentKeyIndex})`);
                 const today = new Date().toISOString().split('T')[0];
-                
+
                 const headers = {
                     'x-rapidapi-key': activeKey,
                     'x-rapidapi-host': 'v3.football.api-sports.io'
                 };
 
                 const apiResponse = await axios.get(`https://v3.football.api-sports.io/fixtures?date=${today}`, { headers });
-                
+
                 // Checa se a API retornou erro de limite na Key
                 if (apiResponse.data.errors && apiResponse.data.errors.requests) {
                     console.log(`Chave atual esgotou o limite. Trocando de chave...`);
