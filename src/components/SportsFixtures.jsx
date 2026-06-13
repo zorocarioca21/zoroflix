@@ -20,7 +20,6 @@ export default function SportsFixtures() {
         }
 
         const now = new Date().getTime();
-
         const allToday = data.daily || [];
         const live = [];
         const upcoming = [];
@@ -29,18 +28,18 @@ export default function SportsFixtures() {
             const matchTime = new Date(f.fixture.date).getTime();
             const diffMinutes = (now - matchTime) / (1000 * 60);
 
-            // Jogo está "Ao Vivo" se começou há menos de 105 minutos (contando intervalo)
             if (diffMinutes >= 0 && diffMinutes <= 105) {
                 live.push(f);
-            } 
-            // Jogo é "Próximo" se ainda não começou
-            else if (diffMinutes < 0) {
+            } else if (diffMinutes < 0) {
                 upcoming.push(f);
             }
         });
 
-        setLiveMatches(live.slice(0, 10));
-        setUpcomingMatches(upcoming.sort((a,b) => new Date(a.fixture.date) - new Date(b.fixture.date)).slice(0, 15));
+        // Ordenar upcoming por horário
+        upcoming.sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date));
+
+        setLiveMatches(live.slice(0, 12));
+        setUpcomingMatches(upcoming.slice(0, 15));
 
       } catch (err) {
         console.error("Erro ao processar dados esportivos:", err);
@@ -51,7 +50,6 @@ export default function SportsFixtures() {
     };
 
     fetchSportsData();
-    // Atualizar a cada minuto para mover os jogos de categoria sem nova requisição à API
     const interval = setInterval(fetchSportsData, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -59,12 +57,9 @@ export default function SportsFixtures() {
   if (error) {
     return (
         <div className="sports-no-key">
-            <Radio size={40} />
+            <Radio size={30} />
             <h3>Jogos do Dia</h3>
-            <p>{error.includes("Key não configurada") ? 
-               "O campo API_KEY no servidor está vazio." : 
-               "Erro ao conectar com o serviço de esportes."}
-            </p>
+            <p>Erro ao conectar com o serviço de esportes.</p>
         </div>
     );
   }
@@ -78,8 +73,7 @@ export default function SportsFixtures() {
       {liveMatches.length > 0 && (
         <div className="sports-row">
           <div className="sports-row-header">
-            <h3 className="sports-title"><span className="live-dot"></span> Ao Vivo (Estimado)</h3>
-            <span className="sports-count">{liveMatches.length} em andamento</span>
+            <h3 className="sports-title"><span className="live-dot"></span> Ao Vivo</h3>
           </div>
           <div className="sports-grid-scroll">
             {liveMatches.map(m => {
@@ -88,19 +82,13 @@ export default function SportsFixtures() {
                 
                 return (
                     <div key={m.fixture.id} className="match-card live">
-                        <div className="match-league">{m.league.name}</div>
-                        <div className="match-teams-live-simple">
-                            <div className="team-row">
-                                <img src={m.teams.home.logo} alt="" />
-                                <span>{m.teams.home.name}</span>
-                            </div>
-                            <div className="match-vs-simple">v</div>
-                            <div className="team-row">
-                                <img src={m.teams.away.logo} alt="" />
-                                <span>{m.teams.away.name}</span>
-                            </div>
+                        <div className="match-league-mini">{m.league.name}</div>
+                        <div className="match-teams-horizontal">
+                            <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                            <span className="vs-mini">x</span>
+                            <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
                         </div>
-                        <div className="match-time-live">{elapsed > 45 && elapsed < 60 ? 'Intervalo' : `${elapsed}'`}</div>
+                        <div className="match-time-badge">{elapsed > 45 && elapsed < 60 ? 'INT' : `${elapsed}'`}</div>
                     </div>
                 );
             })}
@@ -111,25 +99,18 @@ export default function SportsFixtures() {
       {upcomingMatches.length > 0 && (
         <div className="sports-row">
           <div className="sports-row-header">
-            <h3 className="sports-title"><Timer size={18} /> Próximos Jogos</h3>
-            <span className="sports-count">{upcomingMatches.length} hoje</span>
+            <h3 className="sports-title"><Timer size={16} /> Próximos</h3>
           </div>
           <div className="sports-grid-scroll">
             {upcomingMatches.map(m => (
-              <div key={m.fixture.id} className="match-card incoming">
-                <div className="match-league">{m.league.name}</div>
-                <div className="match-teams">
-                  <div className="team-mini">
-                    <img src={m.teams.home.logo} alt="" />
-                    <span>{m.teams.home.name}</span>
-                  </div>
-                  <div className="vs">vs</div>
-                  <div className="team-mini">
-                    <img src={m.teams.away.logo} alt="" />
-                    <span>{m.teams.away.name}</span>
-                  </div>
+              <div key={m.fixture.id} className="match-card upcoming">
+                <div className="match-league-mini">{m.league.name}</div>
+                <div className="match-teams-horizontal">
+                  <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                  <span className="vs-mini">vs</span>
+                  <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
                 </div>
-                <div className="match-start-time">
+                <div className="match-start-time-mini">
                   {new Date(m.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
