@@ -55,7 +55,11 @@ export default function SportsFixtures() {
                 return nameMatches && countryMatches;
             });
 
-            if (!isAllowed) return;
+            const isYouth = ['U20', 'U18', 'U23', 'Sub-', 'Youth', 'Sub20', 'Sub17'].some(y => 
+                leagueName.toUpperCase().includes(y.toUpperCase())
+            );
+
+            if (!isAllowed || isYouth) return;
 
             const matchTime = new Date(f.fixture.date).getTime();
             const diffMinutes = (now - matchTime) / (1000 * 60);
