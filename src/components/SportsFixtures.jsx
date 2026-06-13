@@ -27,7 +27,24 @@ export default function SportsFixtures() {
         const live = [];
         const upcoming = [];
 
+        const ALLOWED_LEAGUES = [
+            // Brasil
+            'Série A', 'Série B', 'Copa do Brasil', 'Paulista', 'Brasileirão',
+            // Europa
+            'Premier League', 'La Liga', 'Ligue 1', 'Serie A',
+            // Copas/Mundo
+            'Copa Libertadores', 'Copa Sudamericana', 'UEFA Champions League', 
+            'UEFA Europa League', 'Copa América', 'World Cup', 'Campeonato do Mundo'
+        ];
+
         allToday.forEach(f => {
+            const leagueName = f.league.name;
+            const isAllowed = ALLOWED_LEAGUES.some(allowed => 
+                leagueName.toLowerCase().includes(allowed.toLowerCase())
+            );
+
+            if (!isAllowed) return;
+
             const matchTime = new Date(f.fixture.date).getTime();
             const diffMinutes = (now - matchTime) / (1000 * 60);
 
@@ -40,8 +57,9 @@ export default function SportsFixtures() {
 
         upcoming.sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date));
 
-        setLiveMatches(live.slice(0, 15));
-        setUpcomingMatches(upcoming.slice(0, 20));
+        // Limitar para não ficar gigante
+        setLiveMatches(live.slice(0, 20));
+        setUpcomingMatches(upcoming.slice(0, 30));
 
       } catch (err) {
         console.error("Erro ao processar dados esportivos:", err);
