@@ -3141,8 +3141,8 @@ body::before {
 .sports-slider-wrapper { position: relative; width: 100%; display: flex; align-items: center; }
 .btn-scroll-sports { position: absolute; z-index: 5; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; transition: 0.3s; top: 50%; transform: translateY(-50%); }
 .btn-scroll-sports:hover { background: var(--primary); color: #000; box-shadow: var(--glow); }
-.btn-scroll-sports.left { left: -15px; }
-.btn-scroll-sports.right { right: -15px; }
+.btn-scroll-sports.left { left: 5px; }
+.btn-scroll-sports.right { right: 5px; }
 @media (max-width: 768px) { .btn-scroll-sports { display: none; } }
 .sports-grid-scroll { display: flex; gap: 0.8rem; overflow-x: auto; padding: 0.5rem; scrollbar-width: none; scroll-behavior: smooth; flex: 1; }
 .sports-grid-scroll::-webkit-scrollbar { display: none; }
