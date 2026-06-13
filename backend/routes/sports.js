@@ -12,7 +12,7 @@ let sportsCache = {
 const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 horas de cache para jogos do dia
 
 // USER: COLOQUE SUA CHAVE DA API-SPORTS AQUI
-const API_KEY = ""; 
+const API_KEY = "2b7ddfd9c2bfad3e6180307031e776e2"; 
 
 export default function sportsRoutes() {
 
