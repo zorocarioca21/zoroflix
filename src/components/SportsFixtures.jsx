@@ -59,7 +59,9 @@ export default function SportsFixtures() {
   const handleScroll = (ref, direction) => {
     if (ref.current) {
       const { scrollLeft, clientWidth } = ref.current;
-      const scrollTo = direction === 'left' ? scrollLeft - clientWidth + 100 : scrollLeft + clientWidth - 100;
+      // Scroll exactly 4 cards (approx 180px each including gap)
+      const scrollAmount = clientWidth * 0.8; 
+      const scrollTo = direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
       ref.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
     }
   };
@@ -82,7 +84,7 @@ export default function SportsFixtures() {
     const elapsed = Math.floor((new Date().getTime() - matchTime) / (1000 * 60));
 
     return (
-        <div key={m.fixture.id} className={`match-card ${isLive ? 'live' : 'upcoming'}`}>
+        <div key={m.fixture.id} className={`match-card-standard ${isLive ? 'live' : 'upcoming'}`}>
             <div className="match-league-mini">{m.league.name}</div>
             <div className="match-teams-horizontal">
                 <div className="team-col">
@@ -107,16 +109,14 @@ export default function SportsFixtures() {
   };
 
   return (
-    <div className="sports-section-container">
+    <div className="sports-section-standard">
       
       {liveMatches.length > 0 && (
-        <div className="sports-row-standard">
-          <div className="sports-row-header">
-            <h3 className="sports-title"><span className="live-dot"></span> Ao Vivo</h3>
-          </div>
-          <div className="sports-row-wrapper-standard">
+        <div className="content-row-container">
+          <h3 className="row-title" style={{fontSize: '1.2rem'}}><span className="live-dot"></span> Ao Vivo</h3>
+          <div className="row-wrapper">
             <button className="row-nav-btn left" onClick={() => handleScroll(liveRowRef, 'left')}>&#10094;</button>
-            <div className="sports-grid-scroll-standard" ref={liveRowRef}>
+            <div className="row-posters" ref={liveRowRef} style={{padding: '1rem 0'}}>
               {liveMatches.map(m => renderMatch(m, true))}
             </div>
             <button className="row-nav-btn right" onClick={() => handleScroll(liveRowRef, 'right')}>&#10095;</button>
@@ -125,13 +125,11 @@ export default function SportsFixtures() {
       )}
 
       {upcomingMatches.length > 0 && (
-        <div className="sports-row-standard">
-          <div className="sports-row-header">
-            <h3 className="sports-title"><Timer size={16} /> Próximos Jogos</h3>
-          </div>
-          <div className="sports-row-wrapper-standard">
+        <div className="content-row-container">
+          <h3 className="row-title" style={{fontSize: '1.2rem'}}><Timer size={16} /> Próximos Jogos</h3>
+          <div className="row-wrapper">
             <button className="row-nav-btn left" onClick={() => handleScroll(upcomingRowRef, 'left')}>&#10094;</button>
-            <div className="sports-grid-scroll-standard" ref={upcomingRowRef}>
+            <div className="row-posters" ref={upcomingRowRef} style={{padding: '1rem 0'}}>
               {upcomingMatches.map(m => renderMatch(m, false))}
             </div>
             <button className="row-nav-btn right" onClick={() => handleScroll(upcomingRowRef, 'right')}>&#10095;</button>
