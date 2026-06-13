@@ -96,9 +96,15 @@ export default function SportsFixtures() {
                       <div key={m.fixture.id} className="match-card live">
                           <div className="match-league-mini">{m.league.name}</div>
                           <div className="match-teams-horizontal">
-                              <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                              <div className="team-col">
+                                  <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                                  <span className="team-name-tiny">{m.teams.home.name}</span>
+                              </div>
                               <span className="vs-mini">x</span>
-                              <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
+                              <div className="team-col">
+                                  <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
+                                  <span className="team-name-tiny">{m.teams.away.name}</span>
+                              </div>
                           </div>
                           <div className="match-time-badge">{elapsed > 45 && elapsed < 60 ? 'INT' : `${elapsed}'`}</div>
                       </div>
@@ -122,9 +128,15 @@ export default function SportsFixtures() {
                 <div key={m.fixture.id} className="match-card upcoming">
                   <div className="match-league-mini">{m.league.name}</div>
                   <div className="match-teams-horizontal">
-                    <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                    <div className="team-col">
+                        <img src={m.teams.home.logo} alt="" className="team-logo-small" title={m.teams.home.name} />
+                        <span className="team-name-tiny">{m.teams.home.name}</span>
+                    </div>
                     <span className="vs-mini">vs</span>
-                    <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
+                    <div className="team-col">
+                        <img src={m.teams.away.logo} alt="" className="team-logo-small" title={m.teams.away.name} />
+                        <span className="team-name-tiny">{m.teams.away.name}</span>
+                    </div>
                   </div>
                   <div className="match-start-time-mini">
                     {new Date(m.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
