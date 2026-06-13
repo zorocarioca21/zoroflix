@@ -1,63 +1,40 @@
 import { useState, useEffect } from 'react';
-import { fetchWithProxy } from '../utils/api';
-import { Timer, Trophy, Radio, ArrowRight } from 'lucide-react';
-
-/* 
-  FOOTBALL API NOTE:
-  I'm using API-Sports (api-football.com). 
-  User needs to get a free API Key at https://dashboard.api-sports.io/
-*/
-
-const API_KEY = ""; // USER: COLOQUE SUA CHAVE AQUI
+import { Timer, Radio } from 'lucide-react';
 
 export default function SportsFixtures() {
-  const [liveMatches, setLiveMatches] = useState([]);
   const [todayMatches, setTodayMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!API_KEY) {
-        setLoading(false);
-        return;
-    }
-
     const fetchSportsData = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const resp = await fetch('/api/sports/fixtures');
+        const data = await resp.json();
         
-        // 1. Jogos Ao Vivo
-        const liveUrl = `https://v3.football.api-sports.io/fixtures?live=all`;
-        // 2. Jogos do Dia
-        const todayUrl = `https://v3.football.api-sports.io/fixtures?date=${today}`;
+        if (data.error && !data.daily) {
+            setError(data.error);
+            setLoading(false);
+            return;
+        }
 
-        const headers = {
-          'x-rapidapi-key': API_KEY,
-          'x-rapidapi-host': 'v3.football.api-sports.io'
-        };
+        const now = new Date();
 
-        // Note: fetchWithProxy doesn't support custom headers easily in its current form for external APIs that need Auth
-        // I might need to adjust it or call fetch directly if proxying headers is tricky.
-        // But let's try direct fetch first, and if CORS hits, I'll use the proxy or recommend a backend route.
-        
-        const fetchFixture = async (url) => {
-            const res = await fetch(url, { headers });
-            const data = await res.json();
-            return data.response || [];
-        };
+        // Filtrar apenas jogos que ainda NÃO começaram (Status NS = Not Started)
+        // E que o horário de início seja maior que o atual
+        const incoming = (data.daily || [])
+          .filter(f => {
+            const matchDate = new Date(f.fixture.date);
+            return f.fixture.status.short === 'NS' && matchDate > now;
+          })
+          .sort((a, b) => new Date(a.fixture.date) - new Date(b.fixture.date))
+          .slice(0, 15);
 
-        const [live, daily] = await Promise.all([
-          fetchFixture(liveUrl),
-          fetchFixture(todayUrl)
-        ]);
-
-        setLiveMatches(live.slice(0, 8)); // Limitar 8 jogos
-        
-        // Filtrar daily para não incluir os que já estão live
-        const incoming = daily.filter(f => f.fixture.status.short === 'NS').slice(0, 10);
         setTodayMatches(incoming);
 
       } catch (err) {
-        console.error("Erro ao buscar dados esportivos:", err);
+        console.error("Erro ao buscar dados esportivos do backend:", err);
+        setError("Não foi possível carregar os jogos agora.");
       } finally {
         setLoading(false);
       }
@@ -66,79 +43,51 @@ export default function SportsFixtures() {
     fetchSportsData();
   }, []);
 
-  if (!API_KEY) {
+  if (error) {
     return (
         <div className="sports-no-key">
             <Radio size={40} />
             <h3>Jogos do Dia</h3>
-            <p>Para exibir o placar ao vivo e os jogos do dia, você precisa de uma chave da <b>API-Sports</b>.</p>
-            <a href="https://dashboard.api-sports.io/register" target="_blank" className="btn-get-key">Obter Chave Grátis</a>
+            <p>{error.includes("Key não configurada") ? 
+               "O campo API_KEY no servidor está vazio. Configure sua chave para ver os jogos." : 
+               "Erro ao conectar com o serviço de esportes."}
+            </p>
         </div>
     );
   }
 
-  if (loading) return null;
+  if (loading) return <div className="match-card-loading">Buscando programação de jogos...</div>;
+  if (todayMatches.length === 0) return null;
 
   return (
     <div className="sports-section-container">
-      
-      {liveMatches.length > 0 && (
-        <div className="sports-row">
-          <div className="sports-row-header">
-            <h3 className="sports-title"><span className="live-dot"></span> Ao Vivo Agora</h3>
-            <span className="sports-count">{liveMatches.length} jogos</span>
-          </div>
-          <div className="sports-grid-scroll">
-            {liveMatches.map(m => (
-              <div key={m.fixture.id} className="match-card live">
-                <div className="match-league">{m.league.name}</div>
-                <div className="match-teams">
-                  <div className="team">
-                    <img src={m.teams.home.logo} alt="" />
-                    <span>{m.teams.home.name}</span>
-                    <span className="score">{m.goals.home}</span>
-                  </div>
-                  <div className="team">
-                    <img src={m.teams.away.logo} alt="" />
-                    <span>{m.teams.away.name}</span>
-                    <span className="score">{m.goals.away}</span>
-                  </div>
-                </div>
-                <div className="match-time-live">{m.fixture.status.elapsed}'</div>
-              </div>
-            ))}
-          </div>
+      <div className="sports-row">
+        <div className="sports-row-header">
+          <h3 className="sports-title"><Timer size={18} /> Jogos de Hoje</h3>
+          <span className="sports-count">{todayMatches.length} jogos programados</span>
         </div>
-      )}
-
-      {todayMatches.length > 0 && (
-        <div className="sports-row">
-          <div className="sports-row-header">
-            <h3 className="sports-title"><Timer size={18} /> Jogos de Hoje</h3>
-          </div>
-          <div className="sports-grid-scroll">
-            {todayMatches.map(m => (
-              <div key={m.fixture.id} className="match-card incoming">
-                <div className="match-league">{m.league.name}</div>
-                <div className="match-teams">
-                  <div className="team-mini">
-                    <img src={m.teams.home.logo} alt="" />
-                    <span>{m.teams.home.name}</span>
-                  </div>
-                  <div className="vs">vs</div>
-                  <div className="team-mini">
-                    <img src={m.teams.away.logo} alt="" />
-                    <span>{m.teams.away.name}</span>
-                  </div>
+        <div className="sports-grid-scroll">
+          {todayMatches.map(m => (
+            <div key={m.fixture.id} className="match-card incoming">
+              <div className="match-league">{m.league.name}</div>
+              <div className="match-teams">
+                <div className="team-mini">
+                  <img src={m.teams.home.logo} alt="" />
+                  <span>{m.teams.home.name}</span>
                 </div>
-                <div className="match-start-time">
-                  {new Date(m.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div className="vs">vs</div>
+                <div className="team-mini">
+                  <img src={m.teams.away.logo} alt="" />
+                  <span>{m.teams.away.name}</span>
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="match-start-time">
+                {new Date(m.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
