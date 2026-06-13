@@ -4,63 +4,88 @@ import axios from 'axios';
 const router = express.Router();
 
 let sportsCache = {
-    live: null,
     daily: null,
     lastUpdate: 0
 };
 
-const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 horas de cache para jogos do dia
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache (agora temos chaves suficientes)
 
-// USER: COLOQUE SUA CHAVE DA API-SPORTS AQUI
-const API_KEY = "2b7ddfd9c2bfad3e6180307031e776e2"; 
+const API_KEYS = [
+    "2b7ddfd9c2bfad3e6180307031e776e2", // Original
+    "d02d4e9f9d9045b5d5966c344e95ab36",
+    "e14b3475f1f1802cec16cd5f031e430f",
+    "35a70205debff8f2599b322fab4cca78",
+    "23e37f4db3d7e6a94a8bf1a67a48d744"
+];
+
+let currentKeyIndex = 0;
 
 export default function sportsRoutes() {
 
     router.get('/fixtures', async (req, res) => {
-        if (!API_KEY) {
-            return res.status(401).json({ error: "API Key não configurada no servidor." });
-        }
-
         const now = Date.now();
 
         // Se o cache for válido, retorna ele
         if (sportsCache.daily && (now - sportsCache.lastUpdate < CACHE_DURATION)) {
-            console.log("Servindo jogos do dia via cache local.");
             return res.json({
                 daily: sportsCache.daily,
                 fromCache: true
             });
         }
 
-        try {
-            console.log("Buscando jogos do dia na API-Sports...");
-            const today = new Date().toISOString().split('T')[0];
-            
-            const headers = {
-                'x-rapidapi-key': API_KEY,
-                'x-rapidapi-host': 'v3.football.api-sports.io'
-            };
+        let success = false;
+        let attempts = 0;
+        let response = null;
 
-            const response = await axios.get(`https://v3.football.api-sports.io/fixtures?date=${today}`, { headers });
+        while (!success && attempts < API_KEYS.length) {
+            try {
+                const activeKey = API_KEYS[currentKeyIndex];
+                console.log(`Buscando jogos do dia na API-Sports... (Tentativa ${attempts + 1}, Chave index: ${currentKeyIndex})`);
+                const today = new Date().toISOString().split('T')[0];
+                
+                const headers = {
+                    'x-rapidapi-key': activeKey,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                };
 
-            sportsCache.daily = response.data.response || [];
-            sportsCache.lastUpdate = now;
+                const apiResponse = await axios.get(`https://v3.football.api-sports.io/fixtures?date=${today}`, { headers });
+                
+                // Checa se a API retornou erro de limite na Key
+                if (apiResponse.data.errors && apiResponse.data.errors.requests) {
+                    console.log(`Chave atual esgotou o limite. Trocando de chave...`);
+                    currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
+                    attempts++;
+                    continue; // Tenta com a próxima chave
+                }
 
+                sportsCache.daily = apiResponse.data.response || [];
+                sportsCache.lastUpdate = now;
+                success = true;
+                response = sportsCache.daily;
+
+            } catch (err) {
+                console.error("Erro ao buscar API-Sports com a chave atual:", err.message);
+                // Pode ser falha de rede da API ou limite. Vamos rodar a chave por segurança.
+                currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
+                attempts++;
+            }
+        }
+
+        if (success) {
             res.json({
-                daily: sportsCache.daily,
+                daily: response,
                 fromCache: false
             });
-
-        } catch (err) {
-            console.error("Erro ao buscar API-Sports:", err.message);
+        } else {
+            // Se todas as chaves falharem, tentar usar o cache expirado como salva-vidas
             if (sportsCache.daily) {
                 return res.json({
                     daily: sportsCache.daily,
                     fromCache: true,
-                    error: "Falha na atualização, usando cache expirado."
+                    error: "Falha geral nas chaves, usando cache expirado."
                 });
             }
-            res.status(500).json({ error: "Erro ao buscar dados esportivos." });
+            res.status(500).json({ error: "Erro ao buscar dados esportivos e todas as chaves falharam." });
         }
     });
 
