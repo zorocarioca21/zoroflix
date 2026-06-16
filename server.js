@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import axios from 'axios';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import trackView from './middleware/trackView.js';
+import trackView from './backend/middleware/trackView.js';
 import { initDB, UPLOADS_PATH } from './backend/db.js';
 import authRoutes from './backend/routes/auth.js';
 import commentRoutes from './backend/routes/comments.js';
