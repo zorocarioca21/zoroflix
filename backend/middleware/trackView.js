@@ -35,15 +35,13 @@ export default function trackView(db) {
         );
       }
 
-      // Upsert live session if contentId is present (user is watching something)
-      if (contentId) {
-        await db.run(
-          `INSERT INTO live_sessions (session_id, uuid, user_id, content_id, last_heartbeat)
-           VALUES (?, ?, ?, ?, datetime('now'))
-           ON CONFLICT(session_id) DO UPDATE SET last_heartbeat = datetime('now')`,
-          [sessionId, visitorUuid, userId, contentId]
-        );
-      }
+      // Upsert live session on every request (identifica usuário único)
+      await db.run(
+        `INSERT INTO live_sessions (session_id, uuid, user_id, last_heartbeat)
+         VALUES (?, ?, ?, datetime('now'))
+         ON CONFLICT(session_id) DO UPDATE SET last_heartbeat = datetime('now')`,
+        [sessionId, visitorUuid, userId]
+      );
     } catch (err) {
       console.error('trackView middleware error:', err);
     }

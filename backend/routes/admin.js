@@ -215,7 +215,7 @@ export default function adminRoutes(db) {
     router.get('/online', async (req, res) => {
         try {
             const result = await db.get(`
-                SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions WHERE last_heartbeat >= datetime('now', '-5 minutes')
+                SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions WHERE last_heartbeat >= datetime('now', '-5 seconds')
             `);
             res.json({ online: result.cnt });
         } catch (err) {
