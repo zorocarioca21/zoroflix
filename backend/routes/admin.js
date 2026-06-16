@@ -158,7 +158,18 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Nova rota: estatísticas de acessos
+    // Nova rota: limpar estatísticas de visualizações
+    router.delete('/stats/clear', async (req, res) => {
+        try {
+            await db.run('DELETE FROM page_views');
+            res.json({ success: true });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao limpar estatísticas.' });
+        }
+    });
+
+    // Nova rota: estatísticas de acessos (mantida)
     router.get('/stats', async (req, res) => {
         try {
             const now = new Date();
@@ -166,9 +177,10 @@ export default function adminRoutes(db) {
             const weekStart = new Date(now - 6 * 24 * 60 * 60 * 1000);
             const dayStart = new Date(now.setHours(0,0,0,0));
 
-            const monthly = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', monthStart.toISOString());
-            const weekly = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', weekStart.toISOString());
-            const daily = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', dayStart.toISOString());
+            // Count distinct visitors (uuid) for each period
+            const monthly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', monthStart.toISOString());
+            const weekly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', weekStart.toISOString());
+            const daily = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', dayStart.toISOString());
 
             res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
         } catch (err) {
@@ -203,7 +215,7 @@ export default function adminRoutes(db) {
     router.get('/online', async (req, res) => {
         try {
             const result = await db.get(`
-                SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= datetime('now', '-5 minutes')
+                SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions WHERE last_heartbeat >= datetime('now', '-5 minutes')
             `);
             res.json({ online: result.cnt });
         } catch (err) {

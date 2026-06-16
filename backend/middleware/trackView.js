@@ -27,11 +27,13 @@ export default function trackView(db) {
       const contentId = req.params?.contentId || null; // May be set by route handlers
       const page = req.path; // Simple identifier of the page
 
-      // Record page view
-      await db.run(
-        `INSERT INTO page_views (uuid, user_id, content_id, page) VALUES (?, ?, ?, ?)`,
-        [visitorUuid, userId, contentId, page]
-      );
+      // Record page view only for content pages
+      if (contentId || page.startsWith('/filme') || page.startsWith('/serie')) {
+        await db.run(
+          `INSERT INTO page_views (uuid, user_id, content_id, page) VALUES (?, ?, ?, ?)`,
+          [visitorUuid, userId, contentId, page]
+        );
+      }
 
       // Upsert live session if contentId is present (user is watching something)
       if (contentId) {

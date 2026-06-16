@@ -249,8 +249,19 @@ export default function AdminPanel() {
                             <h3>Usuários Online (últ. 5 min)</h3>
                             <p>{onlineCount}</p>
                         </div>
-                    </div>
-                    <h3>Visualizações ao Vivo</h3>
+                     </div>
+                     <button className="clear-stats-btn" onClick={async () => {
+                         if (window.confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
+                             const resp = await fetch('/api/admin/stats/clear', { method: 'DELETE' });
+                             if (resp.ok) {
+                                 fetchStats();
+                                 alert('Estatísticas limpas com sucesso.');
+                             } else {
+                                 alert('Falha ao limpar as estatísticas.');
+                             }
+                         }
+                     }}>Limpar Estatísticas</button>
+                     <h3>Visualizações ao Vivo</h3>
                     <table className="admin-table">
                         <thead>
                             <tr>
