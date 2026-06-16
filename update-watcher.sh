@@ -16,6 +16,7 @@ log() {
 
 while true; do
   # Busca alterações remotas sem mesclar
+  log "Verificando atualizações..."
   git fetch origin "$BRANCH" > /dev/null 2>&1
 
   LOCAL=$(git rev-parse HEAD)
