@@ -214,6 +214,8 @@ export default function adminRoutes(db) {
     // Nova rota: usuários online (últimos 5 minutos)
     router.get('/online', async (req, res) => {
         try {
+            // Remove sessões inativas (mais de 30 segundos sem heartbeat)
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-30 seconds')`);
             const result = await db.get(`
                 SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions WHERE last_heartbeat >= datetime('now', '-5 seconds')
             `);
