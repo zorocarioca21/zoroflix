@@ -130,6 +130,32 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de visualizações de página (page_views)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS page_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            user_id INTEGER,
+            content_id TEXT,
+            page TEXT,
+            viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
+    // Tabela de sessões ao vivo (live_sessions)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS live_sessions (
+            session_id TEXT PRIMARY KEY,
+            uuid TEXT,
+            user_id INTEGER,
+            content_id TEXT,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

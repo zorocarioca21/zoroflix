@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import trackView from './middleware/trackView.js';
 import { initDB, UPLOADS_PATH } from './backend/db.js';
 import authRoutes from './backend/routes/auth.js';
 import commentRoutes from './backend/routes/comments.js';
@@ -22,7 +24,9 @@ app.use(express.json()); // Necessário para ler o corpo das requisições JSON
 
 // Inicializa o Banco e monta as rotas
 initDB().then((db) => {
-    
+    // Apply tracking middleware for page views and live sessions
+    app.use(trackView(db));
+
     // Rotas da API
     app.use('/api/auth', authRoutes(db));
     app.use('/api/comments', commentRoutes(db));

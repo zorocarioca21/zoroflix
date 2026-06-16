@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -10,6 +10,9 @@ export default function AdminPanel() {
     const [activeTab, setActiveTab] = useState('reports');
     const [loading, setLoading] = useState(false);
     const [configs, setConfigs] = useState({});
+    const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0 });
+    const [liveSessions, setLiveSessions] = useState([]);
+    const [onlineCount, setOnlineCount] = useState(0);
 
     // Estados de Listagem
     const [reports, setReports] = useState([]);
@@ -42,6 +45,11 @@ export default function AdminPanel() {
         if (activeTab === 'hidden') fetchHidden(true);
         if (activeTab === 'users') fetchUsersList(true);
         if (activeTab === 'settings') fetchConfigs();
+        if (activeTab === 'analytics') {
+            fetchStats();
+            fetchLive();
+            fetchOnline();
+        }
     }, [activeTab, isAuthorized]);
 
     const fetchReports = async (reset = false) => {
@@ -103,6 +111,29 @@ export default function AdminPanel() {
         const resp = await fetch('/api/admin/config/all');
         const data = await resp.json();
         setConfigs(data);
+    };
+
+    // Fetch analytics data
+    const fetchStats = async () => {
+        const resp = await fetch('/api/admin/stats');
+        if (resp.ok) {
+            const data = await resp.json();
+            setStats(data);
+        }
+    };
+    const fetchLive = async () => {
+        const resp = await fetch('/api/admin/live');
+        if (resp.ok) {
+            const data = await resp.json();
+            setLiveSessions(data);
+        }
+    };
+    const fetchOnline = async () => {
+        const resp = await fetch('/api/admin/online');
+        if (resp.ok) {
+            const data = await resp.json();
+            setOnlineCount(data.online);
+        }
     };
 
     const updateConfig = async (key) => {
@@ -192,8 +223,52 @@ export default function AdminPanel() {
                     <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
                         <Shield size={18} /> Configurações
                     </button>
+                    <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>
+                        <ChartBar size={18} /> Analytics
+                    </button>
                 </div>
             </div>
+
+            {/* Fetch analytics data when tab is active */}
+            {activeTab === 'analytics' && (
+                <div className="admin-analytics">
+                    <div className="stats-cards">
+                        <div className="card">
+                            <h3>Visitas Mensais</h3>
+                            <p>{stats.monthly}</p>
+                        </div>
+                        <div className="card">
+                            <h3>Visitas Semanais</h3>
+                            <p>{stats.weekly}</p>
+                        </div>
+                        <div className="card">
+                            <h3>Visitas Diárias</h3>
+                            <p>{stats.daily}</p>
+                        </div>
+                        <div className="card">
+                            <h3>Usuários Online (últ. 5 min)</h3>
+                            <p>{onlineCount}</p>
+                        </div>
+                    </div>
+                    <h3>Visualizações ao Vivo</h3>
+                    <table className="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Conteúdo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {liveSessions.map(s => (
+                                <tr key={s.sessionId}>
+                                    <td>{s.name}</td>
+                                    <td>{s.content}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             <div className="admin-content-area">
                 {/* ABA DENÚNCIAS */}

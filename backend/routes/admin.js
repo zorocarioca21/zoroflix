@@ -158,5 +158,59 @@ export default function adminRoutes(db) {
         }
     });
 
+    // Nova rota: estatísticas de acessos
+    router.get('/stats', async (req, res) => {
+        try {
+            const now = new Date();
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const weekStart = new Date(now - 6 * 24 * 60 * 60 * 1000);
+            const dayStart = new Date(now.setHours(0,0,0,0));
+
+            const monthly = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', monthStart.toISOString());
+            const weekly = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', weekStart.toISOString());
+            const daily = await db.get('SELECT COUNT(*) as cnt FROM page_views WHERE viewed_at >= ?', dayStart.toISOString());
+
+            res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao obter estatísticas.' });
+        }
+    });
+
+    // Nova rota: visualizações ao vivo
+    router.get('/live', async (req, res) => {
+        try {
+            const active = await db.all(`
+                SELECT ls.session_id, u.nick, ls.uuid, f.title as content_title
+                FROM live_sessions ls
+                LEFT JOIN users u ON ls.user_id = u.id
+                LEFT JOIN favorites f ON f.content_id = ls.content_id
+                WHERE datetime(ls.last_heartbeat) >= datetime('now', '-10 seconds')
+            `);
+            const formatted = active.map(s => ({
+                sessionId: s.session_id,
+                name: s.nick || s.uuid,
+                content: s.content_title || 'Desconhecido'
+            }));
+            res.json(formatted);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao obter sessões ao vivo.' });
+        }
+    });
+
+    // Nova rota: usuários online (últimos 5 minutos)
+    router.get('/online', async (req, res) => {
+        try {
+            const result = await db.get(`
+                SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= datetime('now', '-5 minutes')
+            `);
+            res.json({ online: result.cnt });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao obter usuários online.' });
+        }
+    });
+
     return router;
 }
