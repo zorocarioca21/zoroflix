@@ -218,17 +218,34 @@ export default function SportsFixtures() {
                                   )}
                                   
                                   <div className="modal-channel-group">
-                                      <h4>Players Secundários (Externo)</h4>
+                                      <h4>Players Secundários (Externo no App)</h4>
                                       <div className="modal-channel-list">
                                           {external.map((ch, idx) => (
-                                              <button key={idx} className="btn-modal-channel external" onClick={() => window.open(ch.embed_url, '_blank')}>
+                                              <button 
+                                                key={idx} 
+                                                className="btn-modal-channel external" 
+                                                onClick={() => navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
+                                                    state: { 
+                                                        embed_url: ch.embed_url, 
+                                                        title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (${ch.provider})` 
+                                                    } 
+                                                })}
+                                              >
                                                   <img src={ch.logo} alt={ch.provider} />
                                                   <span>{ch.provider}</span>
                                               </button>
                                           ))}
                                           {/* Fallback Rei dos Embeds Principal */}
                                           {selectedMatchForModal.rde_custom.play_url && (
-                                              <button className="btn-modal-channel external" onClick={() => window.open(selectedMatchForModal.rde_custom.play_url, '_blank')}>
+                                              <button 
+                                                className="btn-modal-channel external" 
+                                                onClick={() => navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
+                                                    state: { 
+                                                        embed_url: selectedMatchForModal.rde_custom.play_url, 
+                                                        title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (RDE Main)` 
+                                                    } 
+                                                })}
+                                              >
                                                   <Radio size={14} />
                                                   <span>Player Original (RDE)</span>
                                               </button>
