@@ -65,7 +65,7 @@ function AppContent() {
   // Active Heartbeat System - Notifica o backend sobre a página atual a cada 15 segundos
   useEffect(() => {
     const sendHeartbeat = () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('cinegeek_token');
       fetch('/api/admin/heartbeat', {
         method: 'POST',
         headers: { 
