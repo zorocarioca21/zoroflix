@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'ZORO_SUPER_SECRET_KEY';
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
 export default function adminRoutes(db) {
     // Ver denúncias com suporte a paginação e busca
@@ -224,6 +224,7 @@ export default function adminRoutes(db) {
                 INSERT INTO live_sessions (session_id, uuid, user_id, page, title, last_heartbeat)
                 VALUES (?, ?, ?, ?, ?, datetime('now'))
                 ON CONFLICT(session_id) DO UPDATE SET 
+                    user_id = excluded.user_id,
                     page = excluded.page,
                     title = excluded.title,
                     last_heartbeat = datetime('now')
