@@ -12,6 +12,7 @@ import profileRoutes from './backend/routes/profile.js';
 import adminRoutes from './backend/routes/admin.js';
 import favoritesRoutes from './backend/routes/favorites.js';
 import sportsRoutes from './backend/routes/sports.js';
+import mobileRoutes from './backend/routes/mobile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,7 @@ initDB().then((db) => {
     app.use('/api/admin', adminRoutes(db));
     app.use('/api/favorites', favoritesRoutes(db));
     app.use('/api/sports', sportsRoutes());
+    app.use('/api/mobile', mobileRoutes(db));
 
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));

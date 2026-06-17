@@ -12,6 +12,7 @@ import ChannelsPage from './components/ChannelsPage'
 import CalendarPage from './components/CalendarPage'
 import AntiAdBlock from './components/AntiAdBlock'
 import CatalogPage from './components/CatalogPage'
+import ApiDocsPage from './components/ApiDocsPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -184,6 +185,7 @@ function AppContent() {
         <Route path="/canal/:canalId" element={<PlayerPage />} />
         <Route path="/perfil" element={<UserProfile />} />
         <Route path="/paineladm" element={<AdminPanel />} />
+        <Route path="/api-docs" element={<ApiDocsPage />} />
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       <WhatsappPopup />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -13,6 +13,9 @@ export default function AdminPanel() {
     const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0 });
     const [liveSessions, setLiveSessions] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
+    const [apiKeys, setApiKeys] = useState([]);
+    const [newKeyName, setNewKeyName] = useState('');
+    const [newKeyResult, setNewKeyResult] = useState(null);
 
     // Estados de Listagem
     const [reports, setReports] = useState([]);
@@ -50,6 +53,7 @@ export default function AdminPanel() {
             fetchLive();
             fetchOnline();
         }
+        if (activeTab === 'apikeys') fetchApiKeys();
     }, [activeTab, isAuthorized]);
 
     const fetchReports = async (reset = false) => {
@@ -146,6 +150,52 @@ export default function AdminPanel() {
         if (resp.ok) setConfigs(prev => ({ ...prev, [key]: newValue }));
     };
 
+    // API Keys
+    const fetchApiKeys = async () => {
+        try {
+            const resp = await fetch('/api/admin/api-keys');
+            const data = await resp.json();
+            setApiKeys(data);
+        } catch (err) { console.error(err); }
+    };
+
+    const createApiKey = async () => {
+        if (!newKeyName.trim()) return alert('Digite um nome para a chave.');
+        try {
+            const resp = await fetch('/api/admin/api-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newKeyName })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                setNewKeyResult(data.key);
+                setNewKeyName('');
+                fetchApiKeys();
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const toggleApiKey = async (id) => {
+        try {
+            await fetch(`/api/admin/api-keys/${id}/toggle`, { method: 'PATCH' });
+            fetchApiKeys();
+        } catch (err) { console.error(err); }
+    };
+
+    const deleteApiKey = async (id) => {
+        if (!window.confirm('Tem certeza que deseja deletar esta API Key?')) return;
+        try {
+            await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' });
+            fetchApiKeys();
+        } catch (err) { console.error(err); }
+    };
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        alert('Copiado!');
+    };
+
     const handleModeration = async (commentId, mode) => {
         const confirmMsg = mode === 'moderated' ? "Marcar como 'Apagado por Admin'?" : mode === 'hidden' ? "Esconder comentário completamente do site?" : "Restaurar comentário?";
         if (!window.confirm(confirmMsg)) return;
@@ -222,6 +272,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
                         <Shield size={18} /> Configurações
+                    </button>
+                    <button className={activeTab === 'apikeys' ? 'active' : ''} onClick={() => setActiveTab('apikeys')}>
+                        <Key size={18} /> API Keys
                     </button>
                     <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>
                         <ChartBar size={18} /> Analytics
@@ -480,6 +533,89 @@ export default function AdminPanel() {
                                 <div className="setting-info"><h3>Anti-Adblock</h3><p>Aviso para bloqueadores.</p></div>
                                 <button className={`btn-toggle-ads ${configs.anti_adblock ? 'active' : ''}`} onClick={() => updateConfig('anti_adblock')}>{configs.anti_adblock ? 'ON' : 'OFF'}</button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ABA API KEYS */}
+                {activeTab === 'apikeys' && (
+                    <div className="admin-settings-section">
+                        <h2>Gerenciar API Keys</h2>
+                        <p style={{color: '#888', marginBottom: '1.5rem'}}>Crie e gerencie chaves de acesso para a API Mobile. <a href="/api-docs" target="_blank" style={{color: 'var(--primary)'}}>Ver Documentação →</a></p>
+
+                        {/* Criar nova key */}
+                        <div className="apikey-create-row">
+                            <input
+                                type="text"
+                                className="apikey-input"
+                                placeholder="Nome da chave (ex: App Android, Bot Discord...)"
+                                value={newKeyName}
+                                onChange={e => setNewKeyName(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && createApiKey()}
+                            />
+                            <button className="apikey-create-btn" onClick={createApiKey}>
+                                <Plus size={16} /> Criar Key
+                            </button>
+                        </div>
+
+                        {/* Key recém-criada */}
+                        {newKeyResult && (
+                            <div className="apikey-new-result">
+                                <p>🔑 Chave criada! Copie agora, ela não será mostrada novamente completa:</p>
+                                <div className="apikey-display">
+                                    <code>{newKeyResult}</code>
+                                    <button onClick={() => copyToClipboard(newKeyResult)}><Copy size={14} /></button>
+                                </div>
+                                <button className="apikey-dismiss" onClick={() => setNewKeyResult(null)}>Entendido</button>
+                            </div>
+                        )}
+
+                        {/* Lista de keys */}
+                        <div className="admin-table-wrap" style={{marginTop: '1.5rem'}}>
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Key</th>
+                                        <th>Status</th>
+                                        <th>Último Uso</th>
+                                        <th>Criada Em</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {apiKeys.length === 0 ? (
+                                        <tr><td colSpan="6" style={{textAlign: 'center', color: '#666', padding: '2rem'}}>Nenhuma API Key criada ainda.</td></tr>
+                                    ) : apiKeys.map(k => (
+                                        <tr key={k.id} style={{opacity: k.active ? 1 : 0.5}}>
+                                            <td><strong>{k.name}</strong></td>
+                                            <td>
+                                                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                                    <code className="apikey-masked">{k.key.substring(0, 8)}...{k.key.substring(k.key.length - 4)}</code>
+                                                    <button className="btn-copy-mini" onClick={() => copyToClipboard(k.key)} title="Copiar"><Copy size={12} /></button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`apikey-status ${k.active ? 'active' : 'inactive'}`}>
+                                                    {k.active ? 'Ativa' : 'Inativa'}
+                                                </span>
+                                            </td>
+                                            <td style={{fontSize:'0.8rem', color:'#888'}}>{k.last_used ? new Date(k.last_used).toLocaleString() : 'Nunca'}</td>
+                                            <td style={{fontSize:'0.8rem', color:'#888'}}>{new Date(k.created_at).toLocaleDateString()}</td>
+                                            <td>
+                                                <div className="action-row-mini">
+                                                    <button onClick={() => toggleApiKey(k.id)} title={k.active ? 'Desativar' : 'Ativar'}>
+                                                        <Power size={16} color={k.active ? '#4caf50' : '#ff4444'} />
+                                                    </button>
+                                                    <button onClick={() => deleteApiKey(k.id)} title="Deletar">
+                                                        <Trash2 size={16} color="#ff4444" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

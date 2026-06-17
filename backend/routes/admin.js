@@ -226,5 +226,65 @@ export default function adminRoutes(db) {
         }
     });
 
+    // ============================================================
+    //  🔑 API KEYS — Gerenciamento de chaves para acesso mobile
+    // ============================================================
+    
+    // Listar todas as API Keys
+    router.get('/api-keys', async (req, res) => {
+        try {
+            const keys = await db.all("SELECT * FROM api_keys ORDER BY created_at DESC");
+            res.json(keys);
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar API Keys.' });
+        }
+    });
+
+    // Criar nova API Key
+    router.post('/api-keys', async (req, res) => {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Campo "name" é obrigatório.' });
+
+        // Gera uma key aleatória segura
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let key = 'zfx_';
+        for (let i = 0; i < 32; i++) {
+            key += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        try {
+            const result = await db.run(
+                "INSERT INTO api_keys (name, key) VALUES (?, ?)", [name, key]
+            );
+            res.json({ success: true, id: result.lastID, name, key });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao criar API Key.' });
+        }
+    });
+
+    // Ativar/Desativar API Key
+    router.patch('/api-keys/:id/toggle', async (req, res) => {
+        try {
+            const apiKey = await db.get("SELECT * FROM api_keys WHERE id = ?", [req.params.id]);
+            if (!apiKey) return res.status(404).json({ error: 'API Key não encontrada.' });
+
+            const newStatus = apiKey.active ? 0 : 1;
+            await db.run("UPDATE api_keys SET active = ? WHERE id = ?", [newStatus, req.params.id]);
+            res.json({ success: true, active: newStatus === 1 });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao alterar API Key.' });
+        }
+    });
+
+    // Deletar API Key
+    router.delete('/api-keys/:id', async (req, res) => {
+        try {
+            await db.run("DELETE FROM api_keys WHERE id = ?", [req.params.id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao deletar API Key.' });
+        }
+    });
+
     return router;
 }

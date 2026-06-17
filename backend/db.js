@@ -156,6 +156,19 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de API Keys para acesso mobile
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            key TEXT UNIQUE NOT NULL,
+            permissions TEXT DEFAULT 'full',
+            active INTEGER DEFAULT 1,
+            last_used DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");
