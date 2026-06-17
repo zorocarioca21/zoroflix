@@ -93,6 +93,7 @@ export default function ChannelsPage() {
                 className="search-card-img"
                 style={{objectFit: 'contain', padding: '1rem'}}
                 loading="lazy"
+                onError={(e) => { e.target.src = '/cinegeek-icon.png'; e.target.style.opacity = 0.5; }}
               />
               <div className="search-card-overlay">
                 <span className="row-play-icon">▶</span>
