@@ -4,6 +4,7 @@ import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart } f
 import AdBanner from './AdBanner';
 import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
+import TrailerModal from './TrailerModal';
 import { useAuth } from '../context/AuthContext';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -21,6 +22,8 @@ export default function DetailsPage() {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [certification, setCertification] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [trailerKey, setTrailerKey] = useState(null);
+  const [showTrailer, setShowTrailer] = useState(false);
   const { user, uuid, loading: authLoading } = useAuth();
 
   const isMovie = location.pathname.includes('/filme/');
@@ -79,13 +82,18 @@ export default function DetailsPage() {
     setLoading(true);
     try {
       const type = isMovie ? 'movie' : 'tv';
-      const [detailsResp, creditsResp] = await Promise.all([
+      const [detailsResp, creditsResp, videosResp] = await Promise.all([
         fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
-        fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`)
+        fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`),
+        fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`) // Puxando videos tbm em inglês para garantir
       ]);
 
       const detailsData = await detailsResp.json();
       const creditsData = await creditsResp.json();
+      const videosData = await videosResp.json();
+
+      const vid = videosData.results?.find(v => v.type === 'Trailer' || v.type === 'Teaser');
+      if (vid) setTrailerKey(vid.key);
 
       const title = detailsData.title || detailsData.name;
       
@@ -175,7 +183,9 @@ export default function DetailsPage() {
                 <button className="btn-main-play" onClick={() => navigate(`${location.pathname}/player`, { state: { title: data.title || data.name } })}>
                     <Play fill="currentColor" /> ASSISTIR AGORA
                 </button>
-                <button className="btn-trailer-popup">VER TRAILER</button>
+                {trailerKey && (
+                    <button className="btn-trailer-popup" onClick={() => setShowTrailer(true)}>VER TRAILER</button>
+                )}
             </div>
 
             <div className="details-info-area">
@@ -267,6 +277,10 @@ export default function DetailsPage() {
             contentId={id} 
             mediaType={isMovie ? 'movie' : 'tv'} 
           />
+
+          {showTrailer && trailerKey && (
+              <TrailerModal videoKey={trailerKey} onClose={() => setShowTrailer(false)} />
+          )}
         </>
       )}
     </div>

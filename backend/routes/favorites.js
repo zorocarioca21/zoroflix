@@ -114,5 +114,31 @@ export default function favoritesRoutes(db) {
         }
     });
 
+    // Sincronizar favoritos do UUID para a Conta Logada
+    router.post('/sync', authOrUuid, async (req, res) => {
+        // Precisa estar logado E ter o UUID
+        if (!req.user_id || !req.uuid) {
+            return res.status(400).json({ error: 'Usuário não autenticado ou UUID ausente.' });
+        }
+
+        try {
+            // Conta quantos do UUID anônimo estão lá
+            const countRow = await db.get('SELECT COUNT(*) as cnt FROM favorites WHERE uuid = ? AND user_id IS NULL', [req.uuid]);
+            
+            if (countRow.cnt > 0) {
+                // Sincroniza, ignorando duplicatas (on conflict abort)
+                await db.run('UPDATE OR IGNORE favorites SET user_id = ? WHERE uuid = ? AND user_id IS NULL', [req.user_id, req.uuid]);
+                
+                // Se sobrou algum que não foi atualizado porque o user_id já tinha aquele filme, deletamos o "fantasma" do uuid
+                await db.run('DELETE FROM favorites WHERE uuid = ? AND user_id IS NULL', [req.uuid]);
+            }
+
+            res.json({ success: true, count: countRow.cnt, message: 'Favoritos sincronizados!' });
+        } catch(e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao sincronizar favoritos.' });
+        }
+    });
+
     return router;
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Camera, Edit2, Calendar, ShieldCheck, Clock } from 'lucide-react';
+import { Camera, Edit2, Calendar, ShieldCheck, Clock, Heart } from 'lucide-react';
 
 export default function UserProfile() {
     const { user, login } = useAuth();
@@ -110,6 +110,45 @@ export default function UserProfile() {
                             <ShieldCheck size={18} />
                             <span>Tipo de Conta: <strong>{user.role === 'free' ? 'Gratuita' : 'Premium'}</strong></span>
                         </div>
+                    </div>
+
+                    <div className="profile-section">
+                        <h3><Heart size={18} /> Sincronizar Favoritos</h3>
+                        <p className="field-hint" style={{marginBottom: '1rem'}}>
+                            Se você salvou filmes como visitante antes de fazer login neste navegador, clique abaixo para importá--los para a sua conta.
+                        </p>
+                        <button 
+                            className="btn-main-play" 
+                            style={{width: '100%', padding: '0.8rem'}}
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    const token = localStorage.getItem('cinegeek_token');
+                                    const uuidLocal = localStorage.getItem('cinegeek_uuid');
+                                    const res = await fetch('/api/favorites/sync', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`,
+                                            'x-device-uuid': uuidLocal
+                                        }
+                                    });
+                                    const data = await res.json();
+                                    if (res.ok) {
+                                        setMsg({ type: 'success', text: `Sucesso! ${data.count} favoritos importados.` });
+                                    } else {
+                                        setMsg({ type: 'error', text: data.error || 'Erro na sincronização' });
+                                    }
+                                } catch (e) {
+                                    setMsg({ type: 'error', text: 'Erro ao comunicar com servidor.' });
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            disabled={loading}
+                        >
+                            Importar Favoritos do Dispositivo
+                        </button>
                     </div>
                 </div>
             </div>
