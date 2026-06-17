@@ -40,19 +40,49 @@ initDB().then((db) => {
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
 
-    // Rota de Proxy (Mantida)
+    // Sistema global de cache na memória para a API Proxy
+    const proxyCache = new Map();
+    const PROXY_CACHE_DURATION = 30 * 60 * 1000; // 30 minutos de cachê
+
+    // Rota de Proxy (Com Proteção de Rate Limit)
     app.get('/api-proxy', async (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('URL não fornecida.');
 
+        const now = Date.now();
+        
+        // 1. Tenta pegar do Cache primeiro
+        if (proxyCache.has(targetUrl)) {
+            const cached = proxyCache.get(targetUrl);
+            if (now - cached.timestamp < PROXY_CACHE_DURATION) {
+                return res.json(cached.data);
+            }
+        }
+
+        // 2. Se não tem cache ou expirou, busca na fonte original
         try {
             const response = await axios.get(targetUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
             });
+
+            // Salva na memória
+            proxyCache.set(targetUrl, {
+                data: response.data,
+                timestamp: now
+            });
+
             res.json(response.data);
         } catch (error) {
+            console.error(`Erro na proxy interna [${targetUrl}]:`, error.message);
+            
+            // Failsafe Supremo: Deu ruim na API (429/500)? Se a gente tem um cache antigo, exibe de volta ele.
+            if (proxyCache.has(targetUrl)) {
+                console.log(`Usando cache expirado de forma emergencial para: ${targetUrl}`);
+                return res.json(proxyCache.get(targetUrl).data);
+            }
+
             res.status(500).json({ error: 'Erro ao buscar dados na proxy interna.' });
         }
     });
