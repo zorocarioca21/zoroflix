@@ -249,6 +249,33 @@ console.log(data);`}</code></pre>
                     </div>
                 </div>
 
+                {/* Hybrid Endpoints */}
+                <div className="api-docs-section">
+                    <h2><Terminal size={22} /> Integração Híbrida (Upload de Imagens)</h2>
+                    <p style={{color: '#aaa', marginBottom: '1rem'}}>
+                        Para envio de arquivos (como fotos de perfil), <strong>não use</strong> o endpoint <code>/execute</code>. Em vez disso, faça uma requisição <strong>multipart/form-data</strong> diretamente para a mesma rota pública usada pelo site.
+                    </p>
+                    <div className="api-endpoint-card">
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/profile/upload-avatar</code>
+                        </div>
+                        <h3>Upload de Foto de Perfil</h3>
+                        <p>Recebe o arquivo de imagem binário (via FormData), salva na pasta do servidor e atualiza o banco de dados automaticamente.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo FormData (JavaScript)</div>
+                            <pre><code>{`const form = new FormData();
+form.append('avatar', imageFile);
+form.append('userId', 1);
+
+const resp = await fetch('${baseUrl}/api/profile/upload-avatar', {
+  method: 'POST',
+  body: form
+});`}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="api-docs-footer">
                     <p>As API Keys são gerenciadas pelo administrador no <strong>Painel Administrativo</strong>.</p>
                 </div>
