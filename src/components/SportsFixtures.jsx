@@ -109,15 +109,7 @@ export default function SportsFixtures() {
                 </div>
 
                 <div className="score-container">
-                    {isLive ? (
-                        <div className="live-score">
-                            <span>{m.goals?.home || 0}</span>
-                            <span className="score-divider">-</span>
-                            <span>{m.goals?.away || 0}</span>
-                        </div>
-                    ) : (
-                        <span className="vs-text">VS</span>
-                    )}
+                    <span className="vs-text">VS</span>
                 </div>
 
                 <div className="team-info">

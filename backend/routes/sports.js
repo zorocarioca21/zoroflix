@@ -101,10 +101,7 @@ export default function sportsRoutes() {
                         home: { name: event.time1_name, logo: event.time1 },
                         away: { name: event.time2_name, logo: event.time2 }
                     },
-                    goals: event.score ? {
-                        home: event.score.split('-')[0]?.trim(),
-                        away: event.score.split('-')[1]?.trim()
-                    } : null,
+                    goals: null,
                     // Dados Extras do Rei Dos Embeds
                     rde_custom: {
                         title: event.title,
