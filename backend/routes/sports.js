@@ -60,14 +60,31 @@ export default function sportsRoutes() {
                 sportsCache.channels = internalChannels;
             }
 
-            // 2. Busca Eventos do Rei Dos Embeds
-            // Buscamos apenas Futebol por padrão, mas a API suporta mais
-            const rdeUrl = 'https://reidosembeds.com/api/eventos?category=Futebol';
-            const rdeResponse = await axios.get(rdeUrl);
-            const rdeEvents = rdeResponse.data?.data || [];
+            // 2. Busca Eventos (Primary: Superflix / Secondary: RDE)
+            let rawEvents = [];
+            try {
+                // Tenta buscar da API Mestre da Superflix primeiro (só Futebol por requisição do admin)
+                const sfUrl = 'https://superflixapi.fit/lista?category=eventos&sport=futebol&format=json';
+                const sfResponse = await axios.get(sfUrl, { timeout: 8000 });
+                rawEvents = sfResponse.data?.data || sfResponse.data || [];
+                if (!Array.isArray(rawEvents) || rawEvents.length === 0) {
+                    throw new Error("Superflix API retornou vazio ou mal formatado.");
+                }
+            } catch (sfErr) {
+                console.warn("Aviso: Superflix API falhou para Eventos. Recorrendo ao ReiDosEmbeds (Fallback)...", sfErr.message);
+                
+                // Fallback: Se a Superflix falhar ou der Timeout (8s), chama o Rei dos Embeds
+                try {
+                    const rdeUrl = 'https://reidosembeds.com/api/eventos?category=Futebol';
+                    const rdeResponse = await axios.get(rdeUrl, { timeout: 8000 });
+                    rawEvents = rdeResponse.data?.data || [];
+                } catch (rdeErr) {
+                    throw new Error("Ambas as APIs (Superflix e ReiDosEmbeds) estão inoperantes no momento.");
+                }
+            }
 
             // 3. Processamento e Smart Linking
-            const processedEvents = rdeEvents.map(event => {
+            const processedEvents = rawEvents.map(event => {
                 const updatedEmbeds = (event.embeds || []).map(embed => {
                     const normProvider = normalizeName(embed.provider);
                     
