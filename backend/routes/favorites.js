@@ -11,11 +11,13 @@ const authOrUuid = (req, res, next) => {
 
     if (authHeader) {
         const token = authHeader.split(' ')[1];
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            req.user_id = decoded.id; // Logged in user
-        } catch (e) {
-            console.log('Invalid token provided to favorites, fallback to UUID if any');
+        if (token && token !== 'null') {
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                req.user_id = decoded.id; // Logged in user
+            } catch (e) {
+                // Token expirado ou inválido. Cai silenciosamente para usar o UUID anônimo
+            }
         }
     }
     
