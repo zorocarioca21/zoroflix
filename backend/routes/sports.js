@@ -13,7 +13,17 @@ let sportsCache = {
 };
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos de cache (proteção contra Rate Limit / 429)
-const CACHE_FILE = path.join(process.cwd(), 'data', 'sports_cache.json');
+const CACHE_DIR = path.join(process.cwd(), 'data');
+const CACHE_FILE = path.join(CACHE_DIR, 'sports_cache.json');
+
+// Garante que a pasta "data" exista no Linux/Produção
+if (!fs.existsSync(CACHE_DIR)) {
+    try {
+        fs.mkdirSync(CACHE_DIR, { recursive: true });
+    } catch (e) {
+        console.error("Não foi possível criar a pasta data para o cache.");
+    }
+}
 
 // Tenta restaurar do arquivo se o servidor acabou de ligar
 try {
