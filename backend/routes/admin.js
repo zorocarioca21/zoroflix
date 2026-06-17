@@ -1,5 +1,8 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
+
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'ZORO_SUPER_SECRET_KEY';
 
 export default function adminRoutes(db) {
     // Ver denúncias com suporte a paginação e busca
@@ -193,7 +196,21 @@ export default function adminRoutes(db) {
             if (!uuid) return res.json({ online: 0 });
 
             const { page, title } = req.body;
-            const userId = req.user?.id || null;
+            let userId = null;
+
+            // Extrai a ID do usuário se houver token válido de login
+            const authHeader = req.headers.authorization;
+            if (authHeader) {
+                const token = authHeader.split(' ')[1];
+                if (token && token !== 'null') {
+                    try {
+                        const decoded = jwt.verify(token, JWT_SECRET);
+                        userId = decoded.id;
+                    } catch (e) {
+                         // Ignora silenciosamente tokens vencidos
+                    }
+                }
+            }
 
             // Busca nick do usuário se estiver logado (via cookie/header)
             let nick = null;
