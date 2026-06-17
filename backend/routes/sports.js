@@ -1,5 +1,7 @@
 import express from 'express';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -11,6 +13,21 @@ let sportsCache = {
 };
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos de cache (proteção contra Rate Limit / 429)
+const CACHE_FILE = path.join(process.cwd(), 'data', 'sports_cache.json');
+
+// Tenta restaurar do arquivo se o servidor acabou de ligar
+try {
+    if (fs.existsSync(CACHE_FILE)) {
+        const raw = fs.readFileSync(CACHE_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.lastUpdate === 'number') {
+            sportsCache = parsed;
+            console.log("Memória Restaurada: Cache de esportes carregado do disco.");
+        }
+    }
+} catch (e) {
+    console.error("Aviso: Falha ao carregar cache de esportes do disco no boot.", e.message);
+}
 
 // Função para normalizar nomes e facilitar o matching (ex: "SporTV 1 HD" -> "sportv1")
 const normalizeName = (name) => {
@@ -87,8 +104,10 @@ export default function sportsRoutes() {
             const processedEvents = rawEvents
                 .filter(event => {
                     const comp = (event.competition || '').toLowerCase();
-                    // Bloqueia USL Championship e categorias de base (Sub-X, U19, Feminino caso indesejado, etc)
-                    if (comp.includes('usl') && comp.includes('championship')) return false;
+                    // Bloqueia toda a família USL (Championship, League One, e similares)
+                    if (comp.includes('usl')) return false;
+                    
+                    // Bloqueia categorias de base (Sub-X, U19, Feminino caso indesejado, etc)
                     if (comp.includes('sub-') || comp.match(/\bu[1-2][0-9]\b/)) return false; 
                     return true;
                 })
@@ -140,6 +159,11 @@ export default function sportsRoutes() {
 
             sportsCache.events = processedEvents;
             sportsCache.lastUpdate = now;
+            
+            // Backup silencioso no HD para resistir a reiniciar o bot/servidor
+            fs.writeFile(CACHE_FILE, JSON.stringify(sportsCache), (err) => {
+                if (err) console.error("Falha ao escrever cache de esportes no disco:", err);
+            });
 
             res.json({
                 daily: processedEvents,
