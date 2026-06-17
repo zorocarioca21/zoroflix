@@ -7,6 +7,7 @@ export default function SportsFixtures() {
   const [upcomingMatches, setUpcomingMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedMatchForModal, setSelectedMatchForModal] = useState(null);
   const navigate = useNavigate();
 
   const liveRowRef = useRef(null);
@@ -68,6 +69,9 @@ export default function SportsFixtures() {
         window.open(ch.embed_url, '_blank');
     }
   };
+
+  const openModal = (m) => setSelectedMatchForModal(m);
+  const closeModal = () => setSelectedMatchForModal(null);
 
   if (loading) return <div className="match-card-loading">Buscando programação premium...</div>;
   if (liveMatches.length === 0 && upcomingMatches.length === 0) return null;
@@ -141,7 +145,7 @@ export default function SportsFixtures() {
                     )}
                 </div>
                 
-                <button className="watch-btn-main" onClick={() => window.open(rde.play_url, '_blank')}>
+                <button className="watch-btn-main" onClick={() => openModal(m)}>
                     <Tv size={14} /> Assistir
                 </button>
             </div>
@@ -181,6 +185,66 @@ export default function SportsFixtures() {
           </div>
         </div>
       )}
+
+      {/* Modal de Transmissões */}
+      {selectedMatchForModal && (
+          <div className="sports-modal-overlay" onClick={closeModal}>
+              <div className="sports-modal-content" onClick={e => e.stopPropagation()}>
+                  <div className="sports-modal-header">
+                      <h3>Onde Assistir</h3>
+                      <button className="close-modal-btn" onClick={closeModal}>&times;</button>
+                  </div>
+                  <div className="sports-modal-body">
+                      {selectedMatchForModal.rde_custom?.embeds ? (() => {
+                          const embeds = selectedMatchForModal.rde_custom.embeds;
+                          const internal = embeds.filter(ch => ch.zoroflix_id);
+                          const external = embeds.filter(ch => !ch.zoroflix_id);
+
+                          return (
+                              <>
+                                  {internal.length > 0 && (
+                                      <div className="modal-channel-group">
+                                          <h4>Players Principais (No Site)</h4>
+                                          <div className="modal-channel-list">
+                                              {internal.map((ch, idx) => (
+                                                  <button key={idx} className="btn-modal-channel internal" onClick={() => navigate(`/canal/${ch.zoroflix_id}`)}>
+                                                      <img src={ch.zoroflix_logo || ch.logo} alt={ch.provider} />
+                                                      <span>{ch.provider}</span>
+                                                      <PlayCircle size={14} style={{marginLeft: 'auto'}} />
+                                                  </button>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
+                                  
+                                  <div className="modal-channel-group">
+                                      <h4>Players Secundários (Externo)</h4>
+                                      <div className="modal-channel-list">
+                                          {external.map((ch, idx) => (
+                                              <button key={idx} className="btn-modal-channel external" onClick={() => window.open(ch.embed_url, '_blank')}>
+                                                  <img src={ch.logo} alt={ch.provider} />
+                                                  <span>{ch.provider}</span>
+                                              </button>
+                                          ))}
+                                          {/* Fallback Rei dos Embeds Principal */}
+                                          {selectedMatchForModal.rde_custom.play_url && (
+                                              <button className="btn-modal-channel external" onClick={() => window.open(selectedMatchForModal.rde_custom.play_url, '_blank')}>
+                                                  <Radio size={14} />
+                                                  <span>Player Original (RDE)</span>
+                                              </button>
+                                          )}
+                                      </div>
+                                  </div>
+                              </>
+                          );
+                      })() : (
+                          <div style={{padding: '2rem', textAlign:'center', color: '#888'}}>Nenhuma transmissão encontrada.</div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
+

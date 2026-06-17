@@ -3193,11 +3193,12 @@ body::before {
   100% { transform: scale(0.9); opacity: 0.7; }
 }
 
-.premium-match-card { position: relative; min-width: 320px; height: 180px; background: var(--bg-card); border-radius: 1.2rem; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; padding: 1.2rem; cursor: default; margin-right: 1.2rem; flex-shrink: 0;}
+.premium-match-card { position: relative; min-width: 330px; min-height: 195px; height: auto; background: var(--bg-card); border-radius: 1.2rem; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; padding: 1.2rem; cursor: default; margin-right: 1.5rem; flex-shrink: 0;}
 .premium-match-card:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 30px rgba(0, 230, 118, 0.2); z-index: 10; }
 .premium-match-card.is-live { border-bottom: 3px solid #ff4444; }
 
-.match-card-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.15; z-index: 0; filter: blur(2px); }
+.match-card-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-size: cover; background-position: center; opacity: 0.15; z-index: 0; filter: blur(2px); pointer-events: none;}
+
 .match-card-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(9, 42, 28, 0.95) 0%, rgba(5, 25, 18, 0.8) 100%); z-index: 1; }
 
 .match-card-header, .match-card-body, .match-card-footer { position: relative; z-index: 2; }
@@ -3237,3 +3238,21 @@ body::before {
   .team-logo-premium { width: 35px; height: 35px; }
   .live-score { font-size: 1.2rem; }
 }
+
+/* --- Modal Sports --- */
+.sports-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.sports-modal-content { background: var(--bg-card); width: 90%; max-width: 400px; border-radius: 1.2rem; border: 1px solid var(--primary); overflow: hidden; animation: slideUp 0.3s ease; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.sports-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0, 230, 118, 0.05); }
+.sports-modal-header h3 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+.close-modal-btn { background: transparent; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; transition: 0.2s; line-height: 1; }
+.close-modal-btn:hover { color: #ff4444; }
+.sports-modal-body { padding: 1.2rem; max-height: 60vh; overflow-y: auto; }
+.modal-channel-group { margin-bottom: 1.5rem; }
+.modal-channel-group h4 { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.8rem; }
+.modal-channel-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.btn-modal-channel { display: flex; align-items: center; gap: 10px; width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: #fff; font-weight: 700; cursor: pointer; transition: 0.3s; text-transform: capitalize; }
+.btn-modal-channel img { width: 24px; height: 24px; object-fit: contain; }
+.btn-modal-channel.internal { background: rgba(0, 230, 118, 0.1); border-color: rgba(0, 230, 118, 0.3); }
+.btn-modal-channel.internal:hover { background: var(--primary); color: #000; box-shadow: var(--glow); }
+.btn-modal-channel.external:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
