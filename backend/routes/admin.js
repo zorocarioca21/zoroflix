@@ -216,8 +216,8 @@ export default function adminRoutes(db) {
                     last_heartbeat = datetime('now')
             `, [uuid, uuid, userId, page || '/', title || 'Navegando']);
 
-            // Limpa sessões mortas (sem heartbeat há mais de 20 segundos)
-            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+            // Limpa sessões mortas (sem heartbeat há mais de 10 segundos)
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-10 seconds')`);
 
             // Retorna contagem de online
             const result = await db.get(`SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions`);
@@ -232,7 +232,7 @@ export default function adminRoutes(db) {
     router.get('/live', async (req, res) => {
         try {
             // Limpa sessões expiradas
-            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-10 seconds')`);
 
             const active = await db.all(`
                 SELECT ls.uuid, u.nick, ls.page, ls.title, ls.last_heartbeat
@@ -258,7 +258,7 @@ export default function adminRoutes(db) {
     // Contagem de online
     router.get('/online', async (req, res) => {
         try {
-            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-10 seconds')`);
             const result = await db.get(`SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions`);
             res.json({ online: result.cnt });
         } catch (err) {

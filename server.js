@@ -21,6 +21,7 @@ const app = express();
 const PORT = 4000;
 
 app.use(cors());
+app.use(cookieParser()); // Faltava essa ativação para podermos ler o Cookie de rastreio!
 app.use(express.json()); // Necessário para ler o corpo das requisições JSON
 
 // Inicializa o Banco e monta as rotas

@@ -56,14 +56,14 @@ export default function AdminPanel() {
         if (activeTab === 'apikeys') fetchApiKeys();
     }, [activeTab, isAuthorized]);
 
-    // Auto-refresh para Analytics a cada 10 segundos
+    // Auto-refresh para Analytics a cada 5 segundos
     useEffect(() => {
         if (activeTab === 'analytics' && isAuthorized) {
             const interval = setInterval(() => {
                 fetchStats();
                 fetchLive();
                 fetchOnline();
-            }, 10000);
+            }, 5000);
             return () => clearInterval(interval);
         }
     }, [activeTab, isAuthorized]);
@@ -630,7 +630,7 @@ export default function AdminPanel() {
 
                         <div className="admin-tab-header" style={{ marginTop: '3rem' }}>
                             <h2><Shield size={20} /> O que estão assistindo agora?</h2>
-                            <span style={{ fontSize: '0.8rem', color: '#888' }}>Auto-refresh a cada 10s</span>
+                            <span style={{ fontSize: '0.8rem', color: '#888' }}>Auto-refresh a cada 5s</span>
                         </div>
 
                         <div className="admin-table-wrap">

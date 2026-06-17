@@ -68,6 +68,7 @@ function AppContent() {
       fetch('/api/admin/heartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin', // ESSENCIAL: Garante que os cookies sejam enviados!
         body: JSON.stringify({
           page: location.pathname,
           title: document.title
@@ -78,8 +79,8 @@ function AppContent() {
     // Envia o primeiro logo que entra na rota
     sendHeartbeat();
 
-    // Mantém o envio a cada 15s
-    const interval = setInterval(sendHeartbeat, 15000);
+    // Mantém o envio a cada 5s
+    const interval = setInterval(sendHeartbeat, 5000);
     return () => clearInterval(interval);
   }, [location.pathname]);
 

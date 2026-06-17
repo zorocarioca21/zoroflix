@@ -23,8 +23,8 @@ export default function trackView(db) {
       const contentId = req.params?.contentId || null;
       const page = req.path;
 
-      // Record page view only for content pages
-      if (contentId || page.startsWith('/filme') || page.startsWith('/serie')) {
+      // Apenas registrar visualizações de páginas válidas do front-end (Ignora API e Arquivos)
+      if (!page.startsWith('/api') && !page.startsWith('/uploads') && !page.includes('.')) {
         await db.run(
           `INSERT INTO page_views (uuid, user_id, content_id, page) VALUES (?, ?, ?, ?)`,
           [visitorUuid, userId, contentId, page]
