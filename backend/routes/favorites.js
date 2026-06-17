@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'ZORO_SUPER_SECRET_KEY';
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
 // Middleware to conditionally parse token or UUID
 const authOrUuid = (req, res, next) => {
