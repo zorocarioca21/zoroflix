@@ -274,6 +274,22 @@ const resp = await fetch('${baseUrl}/api/profile/upload-avatar', {
 });`}</code></pre>
                         </div>
                     </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#ff9800' }}>PUT</span>
+                            <code className="api-path">/api/profile/update-nick</code>
+                        </div>
+                        <h3>Mudar Nome de Usuário (Nick)</h3>
+                        <p>Atualiza o nick do usuário de forma segura. <strong>Atenção:</strong> Há uma trava de segurança no backend que permite mudanças apenas 1x a cada 30 dias por usuário. Em caso de bloqueio, retorna código 400.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON)</div>
+                            <pre><code>{`{
+  "userId": 1,
+  "newNick": "CariocaBolado"
+}`}</code></pre>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="api-docs-footer">
