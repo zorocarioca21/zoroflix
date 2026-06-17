@@ -154,10 +154,10 @@ export default function SportsFixtures() {
   };
 
   return (
-    <div className="sports-section-premium">
+    <div className="sports-section-premium" style={{ width: '100%', minWidth: 0 }}>
       
       {liveMatches.length > 0 && (
-        <div className="content-row-container sports-custom-limit">
+        <div className="content-row-container">
           <h3 className="row-title section-title-premium">
             <span className="live-dot-pulse"></span> Jogos Ao Vivo
           </h3>
@@ -172,7 +172,7 @@ export default function SportsFixtures() {
       )}
 
       {upcomingMatches.length > 0 && (
-        <div className="content-row-container sports-custom-limit" style={{marginTop: '1rem'}}>
+        <div className="content-row-container" style={{marginTop: '1rem'}}>
           <h3 className="row-title section-title-premium">
             <Timer size={18} /> Próximos Jogos do Dia
           </h3>
