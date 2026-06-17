@@ -129,7 +129,7 @@ export default function PlayerPage() {
 
         <div className="player-back-row">
             <button className="btn-back-to-info" onClick={handleGoBack}>
-                <ArrowLeft size={18} /> VOLTAR PARA DETALHES
+                <ArrowLeft size={18} /> {canalId ? 'VOLTAR PARA CANAIS' : 'VOLTAR PARA DETALHES'}
             </button>
         </div>
       </div>
