@@ -169,15 +169,14 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Nova rota: estatísticas de acessos (mantida)
+    // Estatísticas de acessos
     router.get('/stats', async (req, res) => {
         try {
             const now = new Date();
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
             const weekStart = new Date(now - 6 * 24 * 60 * 60 * 1000);
-            const dayStart = new Date(now.setHours(0,0,0,0));
+            const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-            // Count distinct visitors (uuid) for each period
             const monthly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', monthStart.toISOString());
             const weekly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', weekStart.toISOString());
             const daily = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', dayStart.toISOString());
@@ -189,20 +188,65 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Nova rota: visualizações ao vivo
+    // ============================================================
+    //  💓 HEARTBEAT — o frontend envia pings a cada 15 segundos
+    // ============================================================
+    router.post('/heartbeat', async (req, res) => {
+        try {
+            const uuid = req.cookies?.zoroflix_uuid;
+            if (!uuid) return res.json({ online: 0 });
+
+            const { page, title } = req.body;
+            const userId = req.user?.id || null;
+
+            // Busca nick do usuário se estiver logado (via cookie/header)
+            let nick = null;
+            if (userId) {
+                const u = await db.get("SELECT nick FROM users WHERE id = ?", [userId]);
+                nick = u?.nick;
+            }
+
+            // Upsert: cria ou atualiza a sessão
+            await db.run(`
+                INSERT INTO live_sessions (session_id, uuid, user_id, page, title, last_heartbeat)
+                VALUES (?, ?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(session_id) DO UPDATE SET 
+                    page = excluded.page,
+                    title = excluded.title,
+                    last_heartbeat = datetime('now')
+            `, [uuid, uuid, userId, page || '/', title || 'Navegando']);
+
+            // Limpa sessões mortas (sem heartbeat há mais de 20 segundos)
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+
+            // Retorna contagem de online
+            const result = await db.get(`SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions`);
+            res.json({ online: result.cnt });
+        } catch (err) {
+            console.error('Heartbeat error:', err);
+            res.json({ online: 0 });
+        }
+    });
+
+    // Sessões ao vivo (para a tabela do admin)
     router.get('/live', async (req, res) => {
         try {
+            // Limpa sessões expiradas
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+
             const active = await db.all(`
-                SELECT ls.session_id, u.nick, ls.uuid, f.title as content_title
+                SELECT ls.uuid, u.nick, ls.page, ls.title, ls.last_heartbeat
                 FROM live_sessions ls
                 LEFT JOIN users u ON ls.user_id = u.id
-                LEFT JOIN favorites f ON f.content_id = ls.content_id
-                WHERE datetime(ls.last_heartbeat) >= datetime('now', '-10 seconds')
+                ORDER BY ls.last_heartbeat DESC
             `);
+
             const formatted = active.map(s => ({
-                sessionId: s.session_id,
-                name: s.nick || s.uuid,
-                content: s.content_title || 'Desconhecido'
+                uuid: s.uuid,
+                name: s.nick || 'Visitante',
+                page: s.page || '/',
+                title: s.title || 'Navegando',
+                lastSeen: s.last_heartbeat
             }));
             res.json(formatted);
         } catch (err) {
@@ -211,14 +255,11 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Nova rota: usuários online (últimos 5 minutos)
+    // Contagem de online
     router.get('/online', async (req, res) => {
         try {
-            // Remove sessões inativas (mais de 30 segundos sem heartbeat)
-            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-30 seconds')`);
-            const result = await db.get(`
-                SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions WHERE last_heartbeat >= datetime('now', '-5 seconds')
-            `);
+            await db.run(`DELETE FROM live_sessions WHERE last_heartbeat < datetime('now', '-20 seconds')`);
+            const result = await db.get(`SELECT COUNT(DISTINCT uuid) as cnt FROM live_sessions`);
             res.json({ online: result.cnt });
         } catch (err) {
             console.error(err);

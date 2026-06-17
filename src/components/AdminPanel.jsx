@@ -56,6 +56,18 @@ export default function AdminPanel() {
         if (activeTab === 'apikeys') fetchApiKeys();
     }, [activeTab, isAuthorized]);
 
+    // Auto-refresh para Analytics a cada 10 segundos
+    useEffect(() => {
+        if (activeTab === 'analytics' && isAuthorized) {
+            const interval = setInterval(() => {
+                fetchStats();
+                fetchLive();
+                fetchOnline();
+            }, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, isAuthorized]);
+
     const fetchReports = async (reset = false) => {
         setLoading(true);
         const currentOffset = reset ? 0 : offsetReports;
@@ -282,57 +294,7 @@ export default function AdminPanel() {
                 </div>
             </div>
 
-            {/* Fetch analytics data when tab is active */}
-            {activeTab === 'analytics' && (
-                <div className="admin-analytics">
-                    <div className="stats-cards">
-                        <div className="card">
-                            <h3>Visitas Mensais</h3>
-                            <p>{stats.monthly}</p>
-                        </div>
-                        <div className="card">
-                            <h3>Visitas Semanais</h3>
-                            <p>{stats.weekly}</p>
-                        </div>
-                        <div className="card">
-                            <h3>Visitas Diárias</h3>
-                            <p>{stats.daily}</p>
-                        </div>
-                        <div className="card">
-                            <h3>Usuários Online (últ. 5 min)</h3>
-                            <p>{onlineCount}</p>
-                        </div>
-                     </div>
-                     <button className="clear-stats-btn" onClick={async () => {
-                         if (window.confirm('Tem certeza que deseja limpar todas as estatísticas?')) {
-                             const resp = await fetch('/api/admin/stats/clear', { method: 'DELETE' });
-                             if (resp.ok) {
-                                 fetchStats();
-                                 alert('Estatísticas limpas com sucesso.');
-                             } else {
-                                 alert('Falha ao limpar as estatísticas.');
-                             }
-                         }
-                     }}>Limpar Estatísticas</button>
-                     <h3>Visualizações ao Vivo</h3>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Conteúdo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {liveSessions.map(s => (
-                                <tr key={s.sessionId}>
-                                    <td>{s.name}</td>
-                                    <td>{s.content}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {/* Old analytics block removed */}
 
             <div className="admin-content-area">
                 {/* ABA DENÚNCIAS */}
@@ -611,6 +573,96 @@ export default function AdminPanel() {
                                                         <Trash2 size={16} color="#ff4444" />
                                                     </button>
                                                 </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* ABA ANALYTICS */}
+                {activeTab === 'analytics' && (
+                    <div className="admin-analytics-section">
+                        <div className="admin-tab-header">
+                            <h2>Visão Geral</h2>
+                            <button className="btn-adm-delete btn-moderation-warn" onClick={async () => {
+                                if (window.confirm('Tem certeza que deseja zerar TODAS as estatísticas históricas?')) {
+                                    const resp = await fetch('/api/admin/stats/clear', { method: 'DELETE' });
+                                    if (resp.ok) { fetchStats(); alert('Estatísticas zeradas.'); }
+                                }
+                            }}>
+                                <Trash2 size={16} /> Zerar Histórico
+                            </button>
+                        </div>
+                        
+                        <div className="stats-cards-grid">
+                            <div className="stat-card">
+                                <Users className="stat-icon pulse" color="#ff4444" />
+                                <div className="stat-info">
+                                    <h3>Online Agora</h3>
+                                    <p className="stat-value highlight">{onlineCount}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <ChartBar className="stat-icon" color="#2196f3" />
+                                <div className="stat-info">
+                                    <h3>Acessos Hoje</h3>
+                                    <p className="stat-value">{stats.daily}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <ChartBar className="stat-icon" color="#4caf50" />
+                                <div className="stat-info">
+                                    <h3>Esta Semana</h3>
+                                    <p className="stat-value">{stats.weekly}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <ChartBar className="stat-icon" color="#ff9800" />
+                                <div className="stat-info">
+                                    <h3>Este Mês</h3>
+                                    <p className="stat-value">{stats.monthly}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="admin-tab-header" style={{ marginTop: '3rem' }}>
+                            <h2><Shield size={20} /> O que estão assistindo agora?</h2>
+                            <span style={{ fontSize: '0.8rem', color: '#888' }}>Auto-refresh a cada 10s</span>
+                        </div>
+
+                        <div className="admin-table-wrap">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Visualizando / Página</th>
+                                        <th>Última Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {liveSessions.length === 0 ? (
+                                        <tr><td colSpan="3" style={{textAlign: 'center', color: '#666', padding: '2rem'}}>Nenhum usuário ativo no momento.</td></tr>
+                                    ) : liveSessions.map(s => (
+                                        <tr key={s.uuid}>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div className={`live-dot-mini ${s.name !== 'Visitante' ? 'logged' : ''}`}></div>
+                                                    <strong>{s.name}</strong>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <Link to={s.page} className="live-page-link" target="_blank">
+                                                    {s.title}
+                                                    <ExternalLink size={12} style={{marginLeft: '6px', opacity: 0.5}} />
+                                                </Link>
+                                                <br/>
+                                                <span style={{fontSize: '0.7rem', color: '#666'}}>{s.page}</span>
+                                            </td>
+                                            <td style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                                                {new Date(s.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                             </td>
                                         </tr>
                                     ))}

@@ -183,6 +183,14 @@ export async function initDB() {
         // Já existe
     }
 
+    // Adicionar colunas page e title na tabela live_sessions (para heartbeat ativo)
+    try {
+        await db.exec("ALTER TABLE live_sessions ADD COLUMN page TEXT");
+    } catch (err) { /* Já existe */ }
+    try {
+        await db.exec("ALTER TABLE live_sessions ADD COLUMN title TEXT");
+    } catch (err) { /* Já existe */ }
+
     return db;
 }
 

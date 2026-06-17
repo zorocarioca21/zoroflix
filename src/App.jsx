@@ -62,6 +62,27 @@ function AppContent() {
     }
   }, [user, loading, globalConfigs, configsReady]);
 
+  // Active Heartbeat System - Notifica o backend sobre a página atual a cada 15 segundos
+  useEffect(() => {
+    const sendHeartbeat = () => {
+      fetch('/api/admin/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: location.pathname,
+          title: document.title
+        })
+      }).catch(err => console.log('Heartbeat failed:', err));
+    };
+
+    // Envia o primeiro logo que entra na rota
+    sendHeartbeat();
+
+    // Mantém o envio a cada 15s
+    const interval = setInterval(sendHeartbeat, 15000);
+    return () => clearInterval(interval);
+  }, [location.pathname]);
+
   const handleTyping = async (query) => {
     setSearchQuery(query);
     if (!query) {
