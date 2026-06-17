@@ -662,7 +662,7 @@ export default function AdminPanel() {
                                                 <span style={{fontSize: '0.7rem', color: '#666'}}>{s.page}</span>
                                             </td>
                                             <td style={{ fontSize: '0.8rem', color: '#aaa' }}>
-                                                {new Date(s.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                {new Date(s.lastSeen + 'Z').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' })}
                                             </td>
                                         </tr>
                                     ))}
