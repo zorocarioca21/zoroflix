@@ -83,8 +83,16 @@ export default function sportsRoutes() {
                 }
             }
 
-            // 3. Processamento e Smart Linking
-            const processedEvents = rawEvents.map(event => {
+            // 3. Filtragem de ligas indesejadas e Processamento
+            const processedEvents = rawEvents
+                .filter(event => {
+                    const comp = (event.competition || '').toLowerCase();
+                    // Bloqueia USL Championship e categorias de base (Sub-X, U19, Feminino caso indesejado, etc)
+                    if (comp.includes('usl') && comp.includes('championship')) return false;
+                    if (comp.includes('sub-') || comp.match(/\bu[1-2][0-9]\b/)) return false; 
+                    return true;
+                })
+                .map(event => {
                 const updatedEmbeds = (event.embeds || []).map(embed => {
                     const normProvider = normalizeName(embed.provider);
                     
