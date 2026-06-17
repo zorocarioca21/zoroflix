@@ -172,14 +172,10 @@ export default function adminRoutes(db) {
     // Estatísticas de acessos
     router.get('/stats', async (req, res) => {
         try {
-            const now = new Date();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            const weekStart = new Date(now - 6 * 24 * 60 * 60 * 1000);
-            const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            const monthly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', monthStart.toISOString());
-            const weekly = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', weekStart.toISOString());
-            const daily = await db.get('SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= ?', dayStart.toISOString());
+            // Count distinct visitors (uuid) for each period using SQLite's native date functions to avoid ISOString conversion bugs
+            const monthly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now', 'start of month')");
+            const weekly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now', '-7 days')");
+            const daily = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now')");
 
             res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
         } catch (err) {

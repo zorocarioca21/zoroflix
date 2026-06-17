@@ -14,6 +14,10 @@ export default function ChannelsPage() {
   const categories = ['Todos', 'Canais Abertos', 'Esportes', 'Filmes e Séries', 'Documentários', 'Infantil', '24 horas', 'Adulto'];
 
   useEffect(() => {
+    document.title = "TV Ao Vivo - CineGeek";
+  }, []);
+
+  useEffect(() => {
     const url = 'https://superflixapi.fit/lista?category=canais&format=json';
     
     fetchWithProxy(url)

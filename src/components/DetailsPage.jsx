@@ -10,7 +10,8 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function DetailsPage() {
-  const { id } = useParams();
+  const { id: rawId } = useParams();
+  const id = rawId.split('-')[0]; // Ignora o texto do slug, se houver, e pega só os números
   const navigate = useNavigate();
   const location = useLocation();
   const [data, setData] = useState(null);
@@ -85,6 +86,14 @@ export default function DetailsPage() {
 
       const detailsData = await detailsResp.json();
       const creditsData = await creditsResp.json();
+
+      const title = detailsData.title || detailsData.name;
+      
+      // Atualiza aba do navegador e URL com slug pra ficar profissional
+      document.title = `${title} - CineGeek`;
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      const newUrl = `/${isMovie ? 'filme' : 'serie'}/${id}-${slug}`;
+      window.history.replaceState(null, '', newUrl);
 
       setData(detailsData);
       setCast(creditsData.cast?.slice(0, 15) || []);
@@ -224,8 +233,10 @@ export default function DetailsPage() {
               </div>
 
               <div className="episodes-grid-modern">
-                {episodes.map(ep => (
-                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}` } })}>
+                {episodes.map(ep => {
+                  const showSlug = data?.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : '';
+                  return (
+                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}-${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}` } })}>
                     <div className="ep-image-wrap">
                       <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
                       <div className="ep-badges-overlay">
@@ -242,7 +253,8 @@ export default function DetailsPage() {
                         <p className="ep-overview-modern">{ep.overview || "Sinopse indisponível."}</p>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

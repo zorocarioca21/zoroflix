@@ -65,9 +65,13 @@ function AppContent() {
   // Active Heartbeat System - Notifica o backend sobre a página atual a cada 15 segundos
   useEffect(() => {
     const sendHeartbeat = () => {
+      const token = localStorage.getItem('token');
       fetch('/api/admin/heartbeat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'same-origin', // ESSENCIAL: Garante que os cookies sejam enviados!
         body: JSON.stringify({
           page: location.pathname,

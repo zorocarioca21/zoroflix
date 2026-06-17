@@ -8,7 +8,8 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function PlayerPage() {
-  const { id, season, episode, canalId } = useParams();
+  const { id: rawId, season, episode, canalId } = useParams();
+  const id = rawId ? rawId.split('-')[0] : null;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
@@ -18,6 +19,12 @@ export default function PlayerPage() {
   const [showList, setShowList] = useState(false);
   const [configs, setConfigs] = useState({});
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (state.title) {
+        document.title = `${state.title} - CineGeek`;
+    }
+  }, [state.title]);
 
   useEffect(() => {
     fetch('/api/admin/config/all')
