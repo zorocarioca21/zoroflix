@@ -26,9 +26,24 @@ export default function SportsFixtures() {
 
         const live = [];
         const upcoming = [];
+        const nowMs = Date.now();
 
         data.daily.forEach(f => {
-            if (f.fixture.status.short === 'LIVE') {
+            const matchStartMs = new Date(f.fixture.date).getTime();
+            const elapsedMinutes = (nowMs - matchStartMs) / 60000;
+
+            // Failsafe: Remove o jogo (não exibe no card de Ao Vivo) se já passou mais de 115 minutos 
+            // do início (90 min de jogo + 15m intervalo + 10m acréscimos), mesmo que a API diga que está LIVE.
+            if (elapsedMinutes > 115) {
+                return; // Ignora o jogo completamente para ele sumir
+            }
+
+            // Exibe como LIVE se a API diz que é LIVE, OU se o horário já passou (elapsedMinutes > 0)
+            const isMatchLive = f.fixture.status.short === 'LIVE' || (elapsedMinutes > 0 && elapsedMinutes <= 115);
+
+            if (isMatchLive) {
+                // Força o status pra LIVE no objeto pro card renderizar com o badge vermelho
+                f.fixture.status.short = 'LIVE';
                 live.push(f);
             } else {
                 upcoming.push(f);
@@ -49,7 +64,8 @@ export default function SportsFixtures() {
     };
 
     fetchSportsData();
-    const interval = setInterval(fetchSportsData, 60000 * 2); // Atualiza a cada 2 minutos
+    // Atualização menos agressiva agora que temos muito cache (a cada 5min pro frontend se recompor)
+    const interval = setInterval(fetchSportsData, 300000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -73,7 +89,8 @@ export default function SportsFixtures() {
   const openModal = (m) => setSelectedMatchForModal(m);
   const closeModal = () => setSelectedMatchForModal(null);
 
-  if (loading) return <div className="match-card-loading">Buscando programação premium...</div>;
+  if (error) return null; // Se der 429 ou erro da API, o componente não renderiza NADA silenciosamente
+  if (loading) return null; // Não mostra "Buscando programação...", apenas fica quieto até aparecer as opções reais
   if (liveMatches.length === 0 && upcomingMatches.length === 0) return null;
 
   const renderMatch = (m) => {

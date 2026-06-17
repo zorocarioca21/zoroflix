@@ -10,7 +10,7 @@ let sportsCache = {
     lastUpdate: 0
 };
 
-const CACHE_DURATION = 1 * 60 * 1000; // 1 minuto de cache (placar em tempo real)
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos de cache (proteção contra Rate Limit / 429)
 
 // Função para normalizar nomes e facilitar o matching (ex: "SporTV 1 HD" -> "sportv1")
 const normalizeName = (name) => {
