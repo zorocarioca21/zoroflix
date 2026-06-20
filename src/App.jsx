@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -20,6 +20,7 @@ import AuthModal from './components/AuthModal';
 import UserProfile from './components/UserProfile';
 import AdminPanel from './components/AdminPanel';
 import WhatsappPopup from './components/WhatsappPopup';
+import TvGuideModal from './components/TvGuideModal';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -35,6 +36,7 @@ function AppContent() {
   const [isSearching, setIsSearching] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isTvGuideOpen, setIsTvGuideOpen] = useState(false);
   const [globalConfigs, setGlobalConfigs] = useState({});
   const [configsReady, setConfigsReady] = useState(false);
 
@@ -138,6 +140,7 @@ function AppContent() {
             <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
             <Link to="/doramas" className="nav-item"><span className="nav-icon"><Heart size={20} /></span><span className="nav-label">Doramas</span></Link>
             <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
+            <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
           </nav>
 
           <div className="header-right">
@@ -216,6 +219,7 @@ function AppContent() {
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       <WhatsappPopup />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <TvGuideModal isOpen={isTvGuideOpen} onClose={() => setIsTvGuideOpen(false)} />
     </div>
   )
 }

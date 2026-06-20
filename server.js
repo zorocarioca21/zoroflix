@@ -56,7 +56,10 @@ initDB().then((db) => {
         if (proxyCache.has(targetUrl)) {
             const cached = proxyCache.get(targetUrl);
             if (now - cached.timestamp < PROXY_CACHE_DURATION) {
-                return res.json(cached.data);
+                const d = cached.data;
+                const isXmlStr = typeof d === 'string' && (d.trimStart().startsWith('<?xml') || d.trimStart().startsWith('<tv'));
+                if (isXmlStr) { res.setHeader('Content-Type', 'text/xml; charset=utf-8'); return res.send(d); }
+                return res.json(d);
             }
         }
 
@@ -68,20 +71,29 @@ initDB().then((db) => {
                 }
             });
 
-            // Salva na memória
-            proxyCache.set(targetUrl, {
-                data: response.data,
-                timestamp: now
-            });
+            // Detecta se é XML
+            const ct = response.headers['content-type'] || '';
+            const rd = response.data;
+            const looksLikeXml = typeof rd === 'string' && (rd.trimStart().startsWith('<?xml') || rd.trimStart().startsWith('<tv'));
 
-            res.json(response.data);
+            // Salva na memória
+            proxyCache.set(targetUrl, { data: rd, timestamp: now });
+
+            if (ct.includes('xml') || looksLikeXml) {
+                res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+                return res.send(rd);
+            }
+            res.json(rd);
         } catch (error) {
             console.error(`Erro na proxy interna [${targetUrl}]:`, error.message);
             
             // Failsafe Supremo: Deu ruim na API (429/500)? Se a gente tem um cache antigo, exibe de volta ele.
             if (proxyCache.has(targetUrl)) {
                 console.log(`Usando cache expirado de forma emergencial para: ${targetUrl}`);
-                return res.json(proxyCache.get(targetUrl).data);
+                const d = proxyCache.get(targetUrl).data;
+                const isXmlStr = typeof d === 'string' && (d.trimStart().startsWith('<?xml') || d.trimStart().startsWith('<tv'));
+                if (isXmlStr) { res.setHeader('Content-Type', 'text/xml; charset=utf-8'); return res.send(d); }
+                return res.json(d);
             }
 
             res.status(500).json({ error: 'Erro ao buscar dados na proxy interna.' });

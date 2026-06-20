@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CineGeek - Filmes, Séries e Animes</title>
+    <meta name="description" content="CineGeek - Assista Filmes, Séries, Animes, Doramas e TV ao vivo." />
+    <script>
+      (function() {
+        const _open = window.open;
+        // Lista negra de domínios conhecidos por pop-unders chatos
+        const blacklist = ['aboveboardcomplicate.com', 'profitablegatecpm.com', 'effectivecpmnetwork.com', 'fortnightlyrejection.com'];
+        
+        window.open = function() {
+          const url = arguments[0];
+          
+          // Se o link já for conhecido, mata na hora
+          if (url && typeof url === 'string') {
+            if (blacklist.some(domain => url.indexOf(domain) !== -1)) {
+              console.log("Anti-Ad: Bloqueio de URL conhecida.");
+              return { closed: true, close: function(){}, focus: function(){} };
+            }
+          }
+
+          // Abre a janela (pode ser uma aba em branco)
+          const win = _open.apply(this, arguments);
+
+          // Se a janela abriu, vamos vigiar para onde ela tenta ir
+          if (win) {
+            try {
+              let checkCount = 0;
+              const timer = setInterval(() => {
+                checkCount++;
+                try {
+                  // Tenta ler a URL da aba aberta (se for mesma origem ou em branco)
+                  const currentUrl = win.location.href;
+                  if (blacklist.some(domain => currentUrl.indexOf(domain) !== -1)) {
+                    win.close();
+                    clearInterval(timer);
+                    console.log("Anti-Ad: Aba capturada e fechada.");
+                  }
+                } catch(e) {
+                  // Se der erro de Cross-Origin, significa que ela já navegou para fora
+                  // Nesses casos, se não for um link que a gente conhece, é difícil fechar aqui
+                }
+                if (checkCount > 20) clearInterval(timer); // Monitora por ~2 segundos
+              }, 100);
+            } catch(err) {}
+          }
+          return win;
+        };
+
+        // Bloqueia cliques e envios de formulários para os domínios da lista negra
+        document.addEventListener('click', function(e) {
+          let t = e.target;
+          while (t && t.tagName !== 'A') t = t.parentNode;
+          if (t && t.href && blacklist.some(domain => t.href.indexOf(domain) !== -1)) {
+            e.preventDefault();
+            console.log("Anti-Ad: Clique bloqueado.");
+          }
+        }, true);
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-DfyrHjYA.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BTUp4IgD.css">
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!--
+    ============================================================
+    ADSTERRA - POP-UNDER (clicou, abriu)
+    ============================================================
+    Instruções:
+    1. No painel da Adsterra, crie um anúncio do tipo "Popunder"
+    2. Copie o script que eles vão te dar
+    3. Cole AQUI no lugar do comentário abaixo
+    4. Exemplo do formato que eles entregam:
+       <script type='text/javascript' src='//pl12345678.profitablegatecpm.com/ab/cd/ef.js'></script>
+    -->
+    <!-- COSMO ADSTERRA POP-UNDER - REMOVIDO DAQUI E MOVIDO PARA O PLAYER -->
+
+
+    <!--
+    ============================================================
+    ADSTERRA - SOCIAL BAR (notificação no canto da tela)
+    ============================================================
+    Instruções:
+    1. No painel da Adsterra, crie um anúncio do tipo "Social Bar"
+    2. Copie o script que eles vão te dar
+    3. Cole AQUI no lugar do comentário abaixo
+    4. Exemplo do formato que eles entregam:
+       <script type='text/javascript' src='//pl12345678.profitablegatecpm.com/ab/cd/ef.js'></script>
+    -->
+    <!-- COSMO ADSTERRA SOCIAL BAR -->
+    <!-- Script flutuante movido para o React (App.jsx) para respeitar contas VIP -->
+  </body>
+</html>
