@@ -11,22 +11,9 @@ const __dirname = path.dirname(__filename);
 let DB_PATH;
 let UPLOADS_PATH;
 
-if (process.platform === 'linux') {
-    // Tenta usar o HD montado no Linux
-    const linuxHD = '/mnt/hd/zoroflix';
-    if (fs.existsSync('/mnt/hd')) {
-        DB_PATH = path.join(linuxHD, 'db');
-        UPLOADS_PATH = path.join(linuxHD, 'uploads');
-    } else {
-        // Fallback local se o /mnt/hd não existir no Linux
-        DB_PATH = path.join(__dirname, '..', 'data', 'db');
-        UPLOADS_PATH = path.join(__dirname, '..', 'data', 'uploads');
-    }
-} else {
-    // Windows ou outros (Desenvolvimento local)
-    DB_PATH = path.join(__dirname, '..', 'data', 'db');
-    UPLOADS_PATH = path.join(__dirname, '..', 'data', 'uploads');
-}
+// Define os caminhos oficiais (Agora na raiz do projeto dentro da pasta 'database')
+DB_PATH = path.join(__dirname, '..', 'database', 'db');
+UPLOADS_PATH = path.join(__dirname, '..', 'database', 'uploads');
 
 // Cria as pastas se não existirem
 [DB_PATH, UPLOADS_PATH].forEach(dir => {
