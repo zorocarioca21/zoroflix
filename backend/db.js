@@ -156,6 +156,23 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Histórico de Assistidos (Recentes)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS watch_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            user_id INTEGER,
+            content_id TEXT NOT NULL,
+            media_type TEXT NOT NULL,
+            title TEXT,
+            poster_path TEXT,
+            season INTEGER,
+            episode INTEGER,
+            watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

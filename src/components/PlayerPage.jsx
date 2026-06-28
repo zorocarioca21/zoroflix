@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ChevronRight, List, ArrowLeft } from 'lucide-react';
@@ -19,6 +19,7 @@ export default function PlayerPage() {
   const [showList, setShowList] = useState(false);
   const [configs, setConfigs] = useState({});
   const [ready, setReady] = useState(false);
+  const hasTracked = useRef(false);
 
   useEffect(() => {
     if (state.title) {
@@ -53,6 +54,43 @@ export default function PlayerPage() {
             .then(data => setEpisodes(data.episodes || []));
     }
   }, [id, season]);
+
+  // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
+  useEffect(() => {
+    hasTracked.current = false; // Reseta ao mudar de episódio/conteúdo
+    const timer = setTimeout(async () => {
+      if (hasTracked.current) return;
+      hasTracked.current = true;
+
+      const token = localStorage.getItem('cinegeek_token');
+      const uuid = localStorage.getItem('cinegeek_uuid');
+      const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuid || '' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const isMovie = location.pathname.includes('/filme/');
+      const mediaType = canalId ? 'canal' : (season ? 'tv' : 'movie');
+
+      // Para séries: content_id = ID da série (não do ep) para sobrescrever no histórico
+      const trackId = canalId ? canalId : id;
+
+      try {
+        await fetch('/api/recents', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            content_id: trackId,
+            media_type: mediaType,
+            title: state.title || title,
+            poster_path: state.poster_path || null,
+            season: season ? parseInt(season) : null,
+            episode: episode ? parseInt(episode) : null,
+          })
+        });
+      } catch (e) { /* silencioso */ }
+    }, 30000); // 30 segundos
+
+    return () => clearTimeout(timer);
+  }, [id, season, episode, canalId]);
 
   let playerUrl = '';
   let title = state.title || 'Carregando...';

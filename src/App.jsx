@@ -226,28 +226,64 @@ function AppContent() {
 
 function Home({ onOpenDetails }) {
     const { uuid } = useAuth();
+    const navigate = useNavigate();
     const [favorites, setFavorites] = useState([]);
+    const [recents, setRecents] = useState([]);
+
+    const fetchWithAuth = async (url) => {
+        const token = localStorage.getItem('cinegeek_token');
+        const headers = { 'x-device-uuid': uuid || localStorage.getItem('cinegeek_uuid') };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(url, { headers });
+        if (res.ok) return res.json();
+        return [];
+    };
 
     useEffect(() => {
-        const fetchFavs = async () => {
-            const token = localStorage.getItem('cinegeek_token');
-            const headers = { 'x-device-uuid': uuid || localStorage.getItem('cinegeek_uuid') };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            try {
-                const res = await fetch('/api/favorites', { headers });
-                if (res.ok) {
-                    const data = await res.json();
-                    setFavorites(data);
-                }
-            } catch (err) {}
-        };
-        fetchFavs();
+        if (!uuid) return;
+        fetchWithAuth('/api/favorites').then(data => setFavorites(data)).catch(() => {});
+        fetchWithAuth('/api/recents').then(data => setRecents(data)).catch(() => {});
     }, [uuid]);
+
+    const handleRecentClick = (item) => {
+        if (item.media_type === 'canal') {
+            navigate('/canais');
+        } else {
+            onOpenDetails({ id: item.content_id, media_type: item.media_type });
+        }
+    };
 
     return (
         <>
           <HeroSlider onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
           <div className="rows-section" style={{ marginTop: '3rem' }}>
+            {recents.length > 0 && (
+                <div className="content-row-container">
+                    <h2 className="row-title">Assistidos Recentemente</h2>
+                    <div className="row-wrapper">
+                        <div className="row-posters">
+                            {recents.map(item => (
+                                <div key={item.content_id} className="row-poster-card" onClick={() => handleRecentClick(item)} style={{ position: 'relative' }}>
+                                    {item.poster_path
+                                        ? <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                                        : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
+                                    }
+                                    {item.season && item.episode && (
+                                        <span style={{
+                                            position: 'absolute', bottom: '6px', left: '6px',
+                                            background: 'rgba(0,0,0,0.8)', color: '#00e676',
+                                            fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px',
+                                            padding: '2px 5px', letterSpacing: '0.05em'
+                                        }}>
+                                            S{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
             {favorites.length > 0 && (
                 <div className="content-row-container">
                     <h2 className="row-title">Meus Favoritos</h2>
