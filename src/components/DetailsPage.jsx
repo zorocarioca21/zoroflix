@@ -180,7 +180,14 @@ export default function DetailsPage() {
                     </div>
                 </div>
                 
-                <button className="btn-main-play" onClick={() => navigate(`${location.pathname}/player`, { state: { title: data.title || data.name, poster_path: data.poster_path } })}>
+                <button className="btn-main-play" onClick={() => {
+                    if (isMovie) {
+                        navigate(`${location.pathname}/player`, { state: { title: data.title, poster_path: data.poster_path } });
+                    } else {
+                        // Série/Anime/Dorama: sempre começa na T1E1
+                        navigate(`/serie/${id}/1/1/player`, { state: { title: `${data.name} - Episódio 1`, poster_path: data.poster_path } });
+                    }
+                }}>
                     <Play fill="currentColor" /> ASSISTIR AGORA
                 </button>
                 {trailerKey && (
