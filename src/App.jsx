@@ -248,7 +248,18 @@ function Home({ onOpenDetails }) {
     const handleRecentClick = (item) => {
         if (item.media_type === 'canal') {
             navigate('/canais');
+        } else if (item.media_type === 'tv' && item.season && item.episode) {
+            // Série com episódio: vai direto pro episódio específico
+            navigate(`/serie/${item.content_id}/${item.season}/${item.episode}/player`, {
+                state: { title: item.title, poster_path: item.poster_path }
+            });
+        } else if (item.media_type === 'movie') {
+            // Filme: vai direto pro player
+            navigate(`/filme/${item.content_id}/player`, {
+                state: { title: item.title, poster_path: item.poster_path }
+            });
         } else {
+            // Fallback: abre detalhes
             onOpenDetails({ id: item.content_id, media_type: item.media_type });
         }
     };

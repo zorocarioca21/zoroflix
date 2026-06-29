@@ -180,7 +180,7 @@ export default function DetailsPage() {
                     </div>
                 </div>
                 
-                <button className="btn-main-play" onClick={() => navigate(`${location.pathname}/player`, { state: { title: data.title || data.name } })}>
+                <button className="btn-main-play" onClick={() => navigate(`${location.pathname}/player`, { state: { title: data.title || data.name, poster_path: data.poster_path } })}>
                     <Play fill="currentColor" /> ASSISTIR AGORA
                 </button>
                 {trailerKey && (
@@ -246,7 +246,7 @@ export default function DetailsPage() {
                 {episodes.map(ep => {
                   const showSlug = data?.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : '';
                   return (
-                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}-${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}` } })}>
+                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}-${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
                       <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
                       <div className="ep-badges-overlay">
