@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getSlug } from '../utils/slug';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -146,7 +147,7 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
             type={type}
             title={item.title || item.name}
             poster={`${IMAGE_BASE_URL}${item.poster_path}`}
-            onClick={() => navigate(`/${type === 'movie' ? 'filme' : 'serie'}/${item.id}`)}
+            onClick={() => navigate(`/${type === 'movie' ? 'filme' : 'serie'}/${getSlug(item.title || item.name)}`, { state: { id: item.id } })}
             badges={<RatingCircle rating={item.vote_average} />}
           />
         ))}

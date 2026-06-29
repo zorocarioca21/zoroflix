@@ -3,6 +3,8 @@ import AdBanner from './AdBanner';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w300';
 
+import { getSlug } from '../utils/slug';
+
 export default function SearchPage({ results }) {
   const navigate = useNavigate();
 
@@ -17,10 +19,12 @@ export default function SearchPage({ results }) {
 
   const handleSelectItem = (item) => {
     const type = item.media_type || 'movie';
+    const title = item.title || item.name;
+    const slug = getSlug(title);
     if (type === 'movie') {
-        navigate(`/filme/${item.id}`);
+        navigate(`/filme/${slug}`, { state: { id: item.id } });
     } else {
-        navigate(`/serie/${item.id}`);
+        navigate(`/serie/${slug}`, { state: { id: item.id } });
     }
   };
 

@@ -48,7 +48,7 @@ export default function ContentRow({ title, endpoint, type, onPlay }) {
               type={type}
               title={item.title || item.name}
               poster={`${IMAGE_BASE_URL}${item.poster_path}`}
-              onClick={() => onPlay(item.id, type)}
+              onClick={() => onPlay(item.id, type, item.title || item.name)}
               badges={<RatingCircle rating={item.vote_average} />}
             />
           ))}

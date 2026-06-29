@@ -21,6 +21,7 @@ import UserProfile from './components/UserProfile';
 import AdminPanel from './components/AdminPanel';
 import WhatsappPopup from './components/WhatsappPopup';
 import TvGuideModal from './components/TvGuideModal';
+import { getSlug } from './utils/slug';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -119,8 +120,13 @@ function AppContent() {
   const handleSelectItem = (item) => {
     setSearchResults([]);
     setSearchQuery('');
-    if (item.media_type === 'movie') navigate(`/filme/${item.id}`);
-    else navigate(`/serie/${item.id}`);
+    const title = item.title || item.name;
+    const slug = getSlug(title);
+    if (item.media_type === 'movie') {
+        navigate(`/filme/${slug}`, { state: { id: item.id } });
+    } else {
+        navigate(`/serie/${slug}`, { state: { id: item.id } });
+    }
   }
 
   return (
@@ -249,24 +255,25 @@ function Home({ onOpenDetails }) {
         if (item.media_type === 'canal') {
             navigate('/canais');
         } else if (item.media_type === 'tv' && item.season && item.episode) {
-            // Série com episódio: vai direto pro episódio específico
-            navigate(`/serie/${item.content_id}/${item.season}/${item.episode}/player`, {
-                state: { title: item.title, poster_path: item.poster_path }
+            const cleanTitle = item.title.split(' - ')[0];
+            const slug = getSlug(cleanTitle);
+            navigate(`/serie/${slug}/${item.season}/${item.episode}/player`, {
+                state: { id: item.content_id, title: item.title, poster_path: item.poster_path }
             });
         } else if (item.media_type === 'movie') {
-            // Filme: vai direto pro player
-            navigate(`/filme/${item.content_id}/player`, {
-                state: { title: item.title, poster_path: item.poster_path }
+            const slug = getSlug(item.title);
+            navigate(`/filme/${slug}/player`, {
+                state: { id: item.content_id, title: item.title, poster_path: item.poster_path }
             });
         } else {
             // Fallback: abre detalhes
-            onOpenDetails({ id: item.content_id, media_type: item.media_type });
+            onOpenDetails({ id: item.content_id, title: item.title, media_type: item.media_type });
         }
     };
 
     return (
         <>
-          <HeroSlider onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
+          <HeroSlider onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
           <div className="rows-section" style={{ marginTop: '3rem' }}>
             {recents.length > 0 && (
                 <div className="content-row-container">
@@ -301,7 +308,7 @@ function Home({ onOpenDetails }) {
                     <div className="row-wrapper">
                         <div className="row-posters">
                             {favorites.map(item => (
-                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, media_type: item.media_type})}>
+                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})}>
                                     <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
                                 </div>
                             ))}
@@ -309,10 +316,10 @@ function Home({ onOpenDetails }) {
                     </div>
                 </div>
             )}
-            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
-            <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
-            <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
-            <ContentRow title="Grandes Sucessos (Filmes)" endpoint="/movie/top_rated?page=1" type="movie" onPlay={(id, type) => onOpenDetails({id, media_type: type})} />
+            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
+            <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
+            <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
+            <ContentRow title="Grandes Sucessos (Filmes)" endpoint="/movie/top_rated?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
           </div>
         </>
     );

@@ -6,13 +6,14 @@ import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
 import TrailerModal from './TrailerModal';
 import { useAuth } from '../context/AuthContext';
+import { getSlug } from '../utils/slug';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function DetailsPage() {
   const { id: rawId } = useParams();
-  const id = rawId.split('-')[0]; // Ignora o texto do slug, se houver, e pega só os números
+  const [id, setId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [data, setData] = useState(null);
@@ -27,6 +28,40 @@ export default function DetailsPage() {
   const { user, uuid, loading: authLoading } = useAuth();
 
   const isMovie = location.pathname.includes('/filme/');
+
+  // Resolvendo o ID do TMDB a partir do slug
+  useEffect(() => {
+    if (!rawId || authLoading) return;
+    
+    // Se for apenas ID numérico puro (compatibilidade)
+    if (/^\d+$/.test(rawId)) {
+        setId(rawId);
+        return;
+    }
+    
+    // Se o ID foi passado no stage
+    if (location.state?.id) {
+        setId(location.state.id);
+        return;
+    }
+
+    // Busca o ID no TMDB pelo título no slug
+    const type = isMovie ? 'movie' : 'tv';
+    const query = rawId.replace(/-/g, ' ');
+    const searchUrl = `${BASE_URL}/search/${type}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`;
+    
+    fetch(searchUrl)
+        .then(r => r.json())
+        .then(data => {
+            const bestMatch = data.results?.[0];
+            if (bestMatch) {
+                setId(bestMatch.id);
+            } else {
+                setLoading(false);
+            }
+        })
+        .catch(() => setLoading(false));
+  }, [rawId, isMovie, authLoading, location.state]);
 
   useEffect(() => {
     if (!id || authLoading) return;
@@ -74,6 +109,7 @@ export default function DetailsPage() {
   };
 
   useEffect(() => {
+    if (!id) return;
     window.scrollTo(0, 0);
     fetchDetails();
   }, [id, location.pathname]);
@@ -97,11 +133,11 @@ export default function DetailsPage() {
 
       const title = detailsData.title || detailsData.name;
       
-      // Atualiza aba do navegador e URL com slug pra ficar profissional
+      // Atualiza aba do navegador e URL com slug pra ficar profissional (sem ID)
       document.title = `${title} - CineGeek`;
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-      const newUrl = `/${isMovie ? 'filme' : 'serie'}/${id}-${slug}`;
-      window.history.replaceState(null, '', newUrl);
+      const slug = getSlug(title);
+      const newUrl = `/${isMovie ? 'filme' : 'serie'}/${slug}`;
+      window.history.replaceState({ id }, '', newUrl);
 
       setData(detailsData);
       setCast(creditsData.cast?.slice(0, 15) || []);
@@ -182,10 +218,10 @@ export default function DetailsPage() {
                 
                 <button className="btn-main-play" onClick={() => {
                     if (isMovie) {
-                        navigate(`${location.pathname}/player`, { state: { title: data.title, poster_path: data.poster_path } });
+                        navigate(`/filme/${getSlug(data.title)}/player`, { state: { id, title: data.title, poster_path: data.poster_path } });
                     } else {
                         // Série/Anime/Dorama: sempre começa na T1E1
-                        navigate(`/serie/${id}/1/1/player`, { state: { title: `${data.name} - Episódio 1`, poster_path: data.poster_path } });
+                        navigate(`/serie/${getSlug(data.name)}/1/1/player`, { state: { id, title: `${data.name} - Episódio 1`, poster_path: data.poster_path } });
                     }
                 }}>
                     <Play fill="currentColor" /> ASSISTIR AGORA
@@ -251,9 +287,9 @@ export default function DetailsPage() {
 
               <div className="episodes-grid-modern">
                 {episodes.map(ep => {
-                  const showSlug = data?.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : '';
+                  const showSlug = getSlug(data.name);
                   return (
-                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${id}-${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
+                  <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
                       <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
                       <div className="ep-badges-overlay">

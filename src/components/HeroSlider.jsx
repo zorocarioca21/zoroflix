@@ -59,7 +59,7 @@ export default function HeroSlider({ onPlay }) {
         <div className="hero-actions">
           <button 
             className="btn btn-primary" 
-            onClick={() => onPlay(currentMovie.id, 'movie')}
+            onClick={() => onPlay(currentMovie.id, 'movie', currentMovie.title)}
           >
             ▶ Assistir
           </button>

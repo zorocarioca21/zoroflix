@@ -9,7 +9,7 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function PlayerPage() {
   const { id: rawId, season, episode, canalId } = useParams();
-  const id = rawId ? rawId.split('-')[0] : null;
+  const [id, setId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
@@ -20,6 +20,40 @@ export default function PlayerPage() {
   const [configs, setConfigs] = useState({});
   const [ready, setReady] = useState(false);
   const hasTracked = useRef(false);
+
+  // Resolvendo o ID do TMDB a partir do slug
+  useEffect(() => {
+    if (canalId) return;
+    if (!rawId || loading) return;
+    
+    // Se for apenas ID numérico puro (compatibilidade)
+    if (/^\d+$/.test(rawId)) {
+        setId(rawId);
+        return;
+    }
+    
+    // Se o ID foi passado no state
+    if (location.state?.id) {
+        setId(location.state.id);
+        return;
+    }
+
+    // Busca o ID no TMDB pelo título no slug
+    const isMovie = location.pathname.includes('/filme/');
+    const type = isMovie ? 'movie' : 'tv';
+    const query = rawId.replace(/-/g, ' ');
+    const searchUrl = `${BASE_URL}/search/${type}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`;
+    
+    fetch(searchUrl)
+        .then(r => r.json())
+        .then(data => {
+            const bestMatch = data.results?.[0];
+            if (bestMatch) {
+                setId(bestMatch.id);
+            }
+        })
+        .catch(() => {});
+  }, [rawId, canalId, loading, location.state]);
 
   useEffect(() => {
     if (state.title) {
@@ -111,7 +145,7 @@ export default function PlayerPage() {
     const nextEp = parseInt(episode) + 1;
     const exists = episodes.find(e => e.episode_number === nextEp);
     if (exists) {
-        navigate(`/serie/${id}/${season}/${nextEp}/player`, { state: { title: `${state.title?.split(' - ')[0]} - ${exists.name}` } });
+        navigate(`/serie/${rawId}/${season}/${nextEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists.name}`, poster_path: state.poster_path } });
     }
   };
 
@@ -119,14 +153,18 @@ export default function PlayerPage() {
     const prevEp = parseInt(episode) - 1;
     if (prevEp >= 1) {
         const exists = episodes.find(e => e.episode_number === prevEp);
-        navigate(`/serie/${id}/${season}/${prevEp}/player`, { state: { title: `${state.title?.split(' - ')[0]} - ${exists?.name || `Episódio ${prevEp}`}` } });
+        navigate(`/serie/${rawId}/${season}/${prevEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists?.name || `Episódio ${prevEp}`}`, poster_path: state.poster_path } });
     }
   };
 
   const handleGoBack = () => {
     if (canalId) navigate('/canais');
-    else if (season) navigate(`/serie/${id}`);
-    else navigate(`/filme/${id}`);
+    else if (season) navigate(`/serie/${rawId}`, { state: { id } });
+    else navigate(`/filme/${rawId}`, { state: { id } });
+  }
+
+  if (!canalId && !id) {
+    return <div className="details-loading">Carregando Player...</div>;
   }
 
   return (
@@ -146,7 +184,7 @@ export default function PlayerPage() {
                             key={ep.id} 
                             className={`sidebar-ep-item ${parseInt(episode) === ep.episode_number ? 'active' : ''}`}
                             onClick={() => {
-                                navigate(`/serie/${id}/${season}/${ep.episode_number}/player`, { state: { title: `${state.title?.split(' - ')[0]} - ${ep.name}` } });
+                                navigate(`/serie/${rawId}/${season}/${ep.episode_number}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${ep.name}`, poster_path: state.poster_path } });
                                 setShowList(false);
                             }}
                           >
