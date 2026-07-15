@@ -331,7 +331,7 @@ function Home({ onOpenDetails }) {
                                     </button>
 
                                     {item.poster_path
-                                        ? (item.poster_path.startsWith('http') || item.poster_path.startsWith('/')
+                                        ? (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'
                                             ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
                                             : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
                                           )
