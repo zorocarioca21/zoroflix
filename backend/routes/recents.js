@@ -113,5 +113,30 @@ export default function recentsRoutes(db) {
         }
     });
 
+    // DELETE /api/recents/:content_id — Remove um item do histórico
+    router.delete('/:content_id', authOrUuid, async (req, res) => {
+        const { content_id } = req.params;
+
+        try {
+            if (req.user_id) {
+                await db.run(
+                    'DELETE FROM watch_history WHERE user_id = ? AND content_id = ?',
+                    [req.user_id, content_id]
+                );
+            } else if (req.uuid) {
+                await db.run(
+                    'DELETE FROM watch_history WHERE uuid = ? AND content_id = ? AND user_id IS NULL',
+                    [req.uuid, content_id]
+                );
+            } else {
+                return res.status(400).json({ error: 'UUID ou Token requerido.' });
+            }
+            res.json({ success: true, message: 'Item removido do histórico.' });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao remover item do histórico.' });
+        }
+    });
+
     return router;
 }

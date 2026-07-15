@@ -4262,3 +4262,10 @@ body::before {
   background: var(--bg-card, #333);
   border-color: rgba(255,255,255,0.3);
 }
+
+.delete-recent-btn:hover {
+  transform: scale(1.18);
+  background: rgba(0,0,0,0.85) !important;
+  color: #ff1744 !important;
+}
+

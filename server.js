@@ -53,7 +53,7 @@ initDB().then((db) => {
         if (!targetUrl) return res.status(400).send('URL não fornecida.');
 
         const now = Date.now();
-        
+
         // 1. Tenta pegar do Cache primeiro
         if (proxyCache.has(targetUrl)) {
             const cached = proxyCache.get(targetUrl);
@@ -88,7 +88,7 @@ initDB().then((db) => {
             res.json(rd);
         } catch (error) {
             console.error(`Erro na proxy interna [${targetUrl}]:`, error.message);
-            
+
             // Failsafe Supremo: Deu ruim na API (429/500)? Se a gente tem um cache antigo, exibe de volta ele.
             if (proxyCache.has(targetUrl)) {
                 console.log(`Usando cache expirado de forma emergencial para: ${targetUrl}`);

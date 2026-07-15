@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -251,9 +251,30 @@ function Home({ onOpenDetails }) {
         fetchWithAuth('/api/recents').then(data => setRecents(data)).catch(() => {});
     }, [uuid]);
 
+    const handleDeleteRecent = async (e, contentId) => {
+        e.stopPropagation(); // Evita navegar ao clicar no botão
+        const token = localStorage.getItem('cinegeek_token');
+        const headers = { 'x-device-uuid': uuid || localStorage.getItem('cinegeek_uuid') };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch(`/api/recents/${contentId}`, {
+                method: 'DELETE',
+                headers
+            });
+            if (res.ok) {
+                setRecents(prev => prev.filter(item => item.content_id !== contentId));
+            }
+        } catch (err) {
+            console.error('Erro ao deletar item do histórico:', err);
+        }
+    };
+
     const handleRecentClick = (item) => {
         if (item.media_type === 'canal') {
-            navigate('/canais');
+            navigate(`/canal/${item.content_id}`, {
+                state: { title: item.title, poster_path: item.poster_path }
+            });
         } else if (item.media_type === 'tv' && item.season && item.episode) {
             const cleanTitle = item.title.split(' - ')[0];
             const slug = getSlug(cleanTitle);
@@ -282,8 +303,38 @@ function Home({ onOpenDetails }) {
                         <div className="row-posters">
                             {recents.map(item => (
                                 <div key={item.content_id} className="row-poster-card" onClick={() => handleRecentClick(item)} style={{ position: 'relative' }}>
+                                    {/* Botão de Excluir */}
+                                    <button 
+                                        onClick={(e) => handleDeleteRecent(e, item.content_id)}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '6px',
+                                            right: '6px',
+                                            background: 'rgba(0,0,0,0.6)',
+                                            border: 'none',
+                                            color: '#ff3d00',
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            zIndex: 10,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        className="delete-recent-btn"
+                                        title="Remover do Histórico"
+                                    >
+                                        <X size={14} strokeWidth={2.5} />
+                                    </button>
+
                                     {item.poster_path
-                                        ? <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                                        ? (item.poster_path.startsWith('http') || item.poster_path.startsWith('/')
+                                            ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
+                                            : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                                          )
                                         : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
                                     }
                                     {item.season && item.episode && (

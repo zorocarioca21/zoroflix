@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ChevronRight, List, ArrowLeft } from 'lucide-react';
 import CommentSection from './CommentSection';
+import { fetchWithProxy } from '../utils/api';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -20,6 +21,47 @@ export default function PlayerPage() {
   const [configs, setConfigs] = useState({});
   const [ready, setReady] = useState(false);
   const hasTracked = useRef(false);
+  const [resolvedChannel, setResolvedChannel] = useState(null);
+
+  // Resolvendo as informações do Canal (Nome e Logo_url)
+  useEffect(() => {
+    if (!canalId) return;
+
+    // Se for canal customizado (Esportes rde-...)
+    if (String(canalId).startsWith('rde-')) {
+        setResolvedChannel({
+            name: state.title || 'Evento Esportivo Ao Vivo',
+            logo_url: '/cinegeek-icon.png'
+        });
+        return;
+    }
+
+    // Busca na lista oficial de canais do SuperFlix
+    const url = 'https://superflixapi.fit/lista?category=canais&format=json';
+    fetchWithProxy(url)
+        .then(res => {
+            if (res && res.data) {
+                const found = res.data.find(ch => String(ch.id) === String(canalId));
+                if (found) {
+                    setResolvedChannel({
+                        name: found.name,
+                        logo_url: found.placeholder_url || found.logo_url || '/cinegeek-icon.png'
+                    });
+                } else {
+                    setResolvedChannel({
+                        name: state.title || `Canal ${canalId}`,
+                        logo_url: '/cinegeek-icon.png'
+                    });
+                }
+            }
+        })
+        .catch(() => {
+            setResolvedChannel({
+                name: state.title || `Canal ${canalId}`,
+                logo_url: '/cinegeek-icon.png'
+            });
+        });
+  }, [canalId, state]);
 
   // Resolvendo o ID do TMDB a partir do slug
   useEffect(() => {
@@ -56,10 +98,16 @@ export default function PlayerPage() {
   }, [rawId, canalId, loading, location.state]);
 
   useEffect(() => {
-    if (state.title) {
+    if (canalId) {
+        if (resolvedChannel) {
+            document.title = `${resolvedChannel.name} - CineGeek`;
+        } else if (state.title) {
+            document.title = `${state.title} - CineGeek`;
+        }
+    } else if (state.title) {
         document.title = `${state.title} - CineGeek`;
     }
-  }, [state.title]);
+  }, [state.title, canalId, resolvedChannel]);
 
   useEffect(() => {
     fetch('/api/admin/config/all')
@@ -92,6 +140,10 @@ export default function PlayerPage() {
   // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
   useEffect(() => {
     hasTracked.current = false; // Reseta ao mudar de episódio/conteúdo
+    
+    // Se for canal, espera carregar o resolvedChannel para registrar corretamente
+    if (canalId && !resolvedChannel) return;
+
     const timer = setTimeout(async () => {
       if (hasTracked.current) return;
       hasTracked.current = true;
@@ -101,11 +153,12 @@ export default function PlayerPage() {
       const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuid || '' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const isMovie = location.pathname.includes('/filme/');
       const mediaType = canalId ? 'canal' : (season ? 'tv' : 'movie');
 
-      // Para séries: content_id = ID da série (não do ep) para sobrescrever no histórico
+      // Para séries/canais: content_id = ID único do conteúdo para sobrescrever histórico
       const trackId = canalId ? canalId : id;
+      const targetTitle = canalId ? resolvedChannel.name : (state.title || title);
+      const targetPoster = canalId ? resolvedChannel.logo_url : (state.poster_path || null);
 
       try {
         await fetch('/api/recents', {
@@ -114,8 +167,8 @@ export default function PlayerPage() {
           body: JSON.stringify({
             content_id: trackId,
             media_type: mediaType,
-            title: state.title || title,
-            poster_path: state.poster_path || null,
+            title: targetTitle,
+            poster_path: targetPoster,
             season: season ? parseInt(season) : null,
             episode: episode ? parseInt(episode) : null,
           })
@@ -124,10 +177,12 @@ export default function PlayerPage() {
     }, 30000); // 30 segundos
 
     return () => clearTimeout(timer);
-  }, [id, season, episode, canalId]);
+  }, [id, season, episode, canalId, resolvedChannel]);
 
   let playerUrl = '';
-  let title = state.title || 'Carregando...';
+  let title = canalId 
+    ? (resolvedChannel?.name || state.title || 'Carregando Canal...') 
+    : (state.title || 'Carregando...');
 
   if (canalId) {
     playerUrl = (state.embed_url || `https://superflixapi.fit/canal/${canalId}`) + '#noEpList';
