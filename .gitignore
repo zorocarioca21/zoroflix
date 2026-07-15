@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Env
+.env
+.env.local
+.env.*
+
+# Database & Local Uploads
+database/db/database.sqlite
+database/uploads/
+database/uploads/*
+
+# Sports Cache
+data/sports_cache.json
+data/
+
