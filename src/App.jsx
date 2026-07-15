@@ -270,6 +270,25 @@ function Home({ onOpenDetails }) {
         }
     };
 
+    const handleDeleteFavorite = async (e, contentId) => {
+        e.stopPropagation(); // Evita navegar ao clicar no botão
+        const token = localStorage.getItem('cinegeek_token');
+        const headers = { 'x-device-uuid': uuid || localStorage.getItem('cinegeek_uuid') };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch(`/api/favorites/${contentId}`, {
+                method: 'DELETE',
+                headers
+            });
+            if (res.ok) {
+                setFavorites(prev => prev.filter(item => item.content_id !== contentId));
+            }
+        } catch (err) {
+            console.error('Erro ao deletar item dos favoritos:', err);
+        }
+    };
+
     const handleRecentClick = (item) => {
         if (item.media_type === 'canal') {
             navigate(`/canal/${item.content_id}`, {
@@ -359,7 +378,34 @@ function Home({ onOpenDetails }) {
                     <div className="row-wrapper">
                         <div className="row-posters">
                             {favorites.map(item => (
-                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})}>
+                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})} style={{ position: 'relative' }}>
+                                    {/* Botão de Excluir Favorito */}
+                                    <button 
+                                        onClick={(e) => handleDeleteFavorite(e, item.content_id)}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '6px',
+                                            right: '6px',
+                                            background: 'rgba(0,0,0,0.6)',
+                                            border: 'none',
+                                            color: '#ff3d00',
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            zIndex: 10,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        className="delete-recent-btn"
+                                        title="Remover dos Favoritos"
+                                    >
+                                        <X size={14} strokeWidth={2.5} />
+                                    </button>
+
                                     <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
                                 </div>
                             ))}
