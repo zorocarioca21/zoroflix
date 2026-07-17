@@ -10,7 +10,7 @@ export default function AdminPanel() {
     const [activeTab, setActiveTab] = useState('reports');
     const [loading, setLoading] = useState(false);
     const [configs, setConfigs] = useState({});
-    const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0 });
+    const [stats, setStats] = useState({ monthlyTotal: 0, monthlyUnique: 0, weeklyTotal: 0, weeklyUnique: 0, dailyTotal: 0, dailyUnique: 0 });
     const [liveSessions, setLiveSessions] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
@@ -608,22 +608,43 @@ export default function AdminPanel() {
                             <div className="stat-card">
                                 <ChartBar className="stat-icon" color="#2196f3" />
                                 <div className="stat-info">
-                                    <h3>Acessos Hoje</h3>
-                                    <p className="stat-value">{stats.daily}</p>
+                                    <h3>Visitas Hoje</h3>
+                                    <p className="stat-value">{stats.dailyTotal || 0}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <UserCheck className="stat-icon" color="#2196f3" />
+                                <div className="stat-info">
+                                    <h3>Pessoas Hoje</h3>
+                                    <p className="stat-value">{stats.dailyUnique || 0}</p>
                                 </div>
                             </div>
                             <div className="stat-card">
                                 <ChartBar className="stat-icon" color="#4caf50" />
                                 <div className="stat-info">
-                                    <h3>Esta Semana</h3>
-                                    <p className="stat-value">{stats.weekly}</p>
+                                    <h3>Visitas Semana</h3>
+                                    <p className="stat-value">{stats.weeklyTotal || 0}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <UserCheck className="stat-icon" color="#4caf50" />
+                                <div className="stat-info">
+                                    <h3>Pessoas Semana</h3>
+                                    <p className="stat-value">{stats.weeklyUnique || 0}</p>
                                 </div>
                             </div>
                             <div className="stat-card">
                                 <ChartBar className="stat-icon" color="#ff9800" />
                                 <div className="stat-info">
-                                    <h3>Este Mês</h3>
-                                    <p className="stat-value">{stats.monthly}</p>
+                                    <h3>Visitas Mês</h3>
+                                    <p className="stat-value">{stats.monthlyTotal || 0}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <UserCheck className="stat-icon" color="#ff9800" />
+                                <div className="stat-info">
+                                    <h3>Pessoas Mês</h3>
+                                    <p className="stat-value">{stats.monthlyUnique || 0}</p>
                                 </div>
                             </div>
                         </div>

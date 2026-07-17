@@ -175,12 +175,16 @@ export default function adminRoutes(db) {
     // Estatísticas de acessos
     router.get('/stats', async (req, res) => {
         try {
-            // Count distinct visitors (uuid) for each period using SQLite's native date functions to avoid ISOString conversion bugs
-            const monthly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now', 'start of month')");
-            const weekly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now', '-7 days')");
-            const daily = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE viewed_at >= date('now')");
+            // Ajustado para converter a data do banco (UTC) para o fuso horário local e basear os cálculos
+            const monthly = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', 'start of month')");
+            const weekly = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', '-7 days')");
+            const daily = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime')");
 
-            res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
+            res.json({ 
+                monthlyTotal: monthly.total, monthlyUnique: monthly.unique_cnt, 
+                weeklyTotal: weekly.total, weeklyUnique: weekly.unique_cnt, 
+                dailyTotal: daily.total, dailyUnique: daily.unique_cnt 
+            });
         } catch (err) {
             console.error(err);
             res.status(500).json({ error: 'Erro ao obter estatísticas.' });

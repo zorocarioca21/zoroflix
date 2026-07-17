@@ -23,8 +23,11 @@ export default function trackView(db) {
       const contentId = req.params?.contentId || null;
       const page = req.path;
 
-      // Apenas registrar visualizações de páginas válidas do front-end (Ignora API e Arquivos)
-      if (!page.startsWith('/api') && !page.startsWith('/uploads') && !page.includes('.')) {
+      const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+      const isBot = /bot|crawler|spider|discord|whatsapp|telegram|facebookexternalhit|crawling/i.test(userAgent);
+
+      // Apenas registrar visualizações de páginas válidas do front-end (Ignora API e Arquivos) e ignora bots
+      if (!page.startsWith('/api') && !page.startsWith('/uploads') && !page.includes('.') && !isBot) {
         await db.run(
           `INSERT INTO page_views (uuid, user_id, content_id, page) VALUES (?, ?, ?, ?)`,
           [visitorUuid, userId, contentId, page]
