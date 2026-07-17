@@ -176,15 +176,12 @@ export default function adminRoutes(db) {
     router.get('/stats', async (req, res) => {
         try {
             // Ajustado para converter a data do banco (UTC) para o fuso horário local e basear os cálculos
-            const monthly = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', 'start of month')");
-            const weekly = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', '-7 days')");
-            const daily = await db.get("SELECT COUNT(*) as total, COUNT(DISTINCT uuid) as unique_cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime')");
+            // Conta agrupado por uuid e dia (1 visita por dia por pessoa)
+            const monthly = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', 'start of month') GROUP BY uuid, date(viewed_at, 'localtime'))");
+            const weekly = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', '-7 days') GROUP BY uuid, date(viewed_at, 'localtime'))");
+            const daily = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime') GROUP BY uuid, date(viewed_at, 'localtime'))");
 
-            res.json({ 
-                monthlyTotal: monthly.total, monthlyUnique: monthly.unique_cnt, 
-                weeklyTotal: weekly.total, weeklyUnique: weekly.unique_cnt, 
-                dailyTotal: daily.total, dailyUnique: daily.unique_cnt 
-            });
+            res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
         } catch (err) {
             console.error(err);
             res.status(500).json({ error: 'Erro ao obter estatísticas.' });
