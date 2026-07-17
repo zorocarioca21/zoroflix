@@ -10,7 +10,7 @@ export default function AdminPanel() {
     const [activeTab, setActiveTab] = useState('reports');
     const [loading, setLoading] = useState(false);
     const [configs, setConfigs] = useState({});
-    const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0 });
+    const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0, monthlyUnique: 0, weeklyUnique: 0 });
     const [liveSessions, setLiveSessions] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
@@ -615,15 +615,29 @@ export default function AdminPanel() {
                             <div className="stat-card">
                                 <ChartBar className="stat-icon" color="#4caf50" />
                                 <div className="stat-info">
-                                    <h3>Esta Semana</h3>
+                                    <h3>Acessos Semana</h3>
                                     <p className="stat-value">{stats.weekly}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <UserCheck className="stat-icon" color="#4caf50" />
+                                <div className="stat-info">
+                                    <h3>Pessoas Semana</h3>
+                                    <p className="stat-value">{stats.weeklyUnique}</p>
                                 </div>
                             </div>
                             <div className="stat-card">
                                 <ChartBar className="stat-icon" color="#ff9800" />
                                 <div className="stat-info">
-                                    <h3>Este Mês</h3>
+                                    <h3>Acessos Mês</h3>
                                     <p className="stat-value">{stats.monthly}</p>
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <UserCheck className="stat-icon" color="#ff9800" />
+                                <div className="stat-info">
+                                    <h3>Pessoas Mês</h3>
+                                    <p className="stat-value">{stats.monthlyUnique}</p>
                                 </div>
                             </div>
                         </div>

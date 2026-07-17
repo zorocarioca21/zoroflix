@@ -176,12 +176,22 @@ export default function adminRoutes(db) {
     router.get('/stats', async (req, res) => {
         try {
             // Ajustado para converter a data do banco (UTC) para o fuso horário local e basear os cálculos
-            // Conta agrupado por uuid e dia (1 visita por dia por pessoa)
+            // Visitas (contabiliza 1 por dia por usuário usando subquery)
             const monthly = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', 'start of month') GROUP BY uuid, date(viewed_at, 'localtime'))");
             const weekly = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', '-7 days') GROUP BY uuid, date(viewed_at, 'localtime'))");
-            const daily = await db.get("SELECT COUNT(*) as cnt FROM (SELECT uuid FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime') GROUP BY uuid, date(viewed_at, 'localtime'))");
+            const daily = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime')");
 
-            res.json({ monthly: monthly.cnt, weekly: weekly.cnt, daily: daily.cnt });
+            // Pessoas Únicas (Totalmente distintas no período integral)
+            const uniqueMonthly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', 'start of month')");
+            const uniqueWeekly = await db.get("SELECT COUNT(DISTINCT uuid) as cnt FROM page_views WHERE datetime(viewed_at, 'localtime') >= date('now', 'localtime', '-7 days')");
+
+            res.json({ 
+                monthly: monthly.cnt, 
+                weekly: weekly.cnt, 
+                daily: daily.cnt,
+                monthlyUnique: uniqueMonthly.cnt,
+                weeklyUnique: uniqueWeekly.cnt
+            });
         } catch (err) {
             console.error(err);
             res.status(500).json({ error: 'Erro ao obter estatísticas.' });
