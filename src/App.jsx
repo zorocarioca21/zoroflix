@@ -180,11 +180,16 @@ function AppContent() {
       )}
       {!location.pathname.includes('/player') && (
         <header className="main-header">
-          <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
-            <span className="logo-text-cine">CINE</span>
-            <img src="/cinegeek-icon.png" alt="CineGeek Icon" className="logo-icon-img" />
-            <span className="logo-text-geek">GEEK</span>
-          </Link>
+          <div className="logo-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+            <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
+              <span className="logo-text-cine">CINE</span>
+              <img src="/cinegeek-icon.png" alt="CineGeek Icon" className="logo-icon-img" />
+              <span className="logo-text-geek">GEEK</span>
+            </Link>
+            <button className="install-app-btn-header" onClick={handleInstallClick} style={{ padding: '0.3rem 0.8rem', fontSize: '0.75rem', gap: '0.3rem' }}>
+              <Download size={14} /> Baixar App
+            </button>
+          </div>
           
           <nav className="nav-pill">
             <Link to="/" className="nav-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
@@ -197,9 +202,6 @@ function AppContent() {
           </nav>
 
           <div className="header-right">
-            <button className="install-app-btn-header" onClick={handleInstallClick}>
-              <Download size={16} /> Baixar App
-            </button>
             <div className="header-search">
               <input type="text" className="navbar-search-input" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => handleTyping(e.target.value)} onKeyDown={handleKeyPress}/>
               <button className="navbar-search-btn" onClick={handleFullSearch}>{isSearching ? '...' : <Search size={18} />}</button>
