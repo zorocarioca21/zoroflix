@@ -6,6 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CineGeek - Filmes, Séries e Animes</title>
     <meta name="description" content="CineGeek - Assista Filmes, Séries, Animes, Doramas e TV ao vivo." />
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#051912" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CineGeek" />
+    <link rel="apple-touch-icon" href="/cinegeek-icon.png" />
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('SW Registration failed: ', err);
+          });
+        });
+      }
+    </script>
     <script>
       (function() {
         const _open = window.open;

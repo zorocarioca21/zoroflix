@@ -1,0 +1,25 @@
+{
+  "name": "CineGeek - Filmes, Séries e Animes",
+  "short_name": "CineGeek",
+  "description": "CineGeek - Assista Filmes, Séries, Animes, Doramas e TV ao vivo.",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "background_color": "#051912",
+  "theme_color": "#051912",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/cinegeek-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/cinegeek-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

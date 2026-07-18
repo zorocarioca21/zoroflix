@@ -41,6 +41,41 @@ function AppContent() {
   const [isTvGuideOpen, setIsTvGuideOpen] = useState(false);
   const [globalConfigs, setGlobalConfigs] = useState({});
   const [configsReady, setConfigsReady] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = () => {
+    const isIos = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      return /iphone|ipad|ipod/.test(userAgent);
+    };
+
+    if (isIos()) {
+      setShowIOSPrompt(true);
+      return;
+    }
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      });
+    } else {
+        // Fallback for Android if prompt isn't ready or it's a normal PC browser
+        alert("Para instalar, procure a opção 'Instalar Aplicativo' no menu do seu navegador.");
+    }
+  };
 
   useEffect(() => {
     fetch('/api/admin/config/all')
@@ -132,6 +167,17 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      {showIOSPrompt && (
+        <div className="ios-prompt-overlay" onClick={() => setShowIOSPrompt(false)}>
+          <div className="ios-prompt-modal" onClick={e => e.stopPropagation()}>
+            <button className="ios-prompt-close" onClick={() => setShowIOSPrompt(false)}><X size={20} /></button>
+            <h3>Instalar no iPhone</h3>
+            <p>1. Toque no ícone de <strong>Compartilhar</strong> (o quadrado com uma seta para cima) na barra inferior do Safari.</p>
+            <p>2. Role a lista de ações e selecione <strong>Adicionar à Tela de Início ➕</strong>.</p>
+            <p>3. Pronto! O CineGeek será instalado como um aplicativo.</p>
+          </div>
+        </div>
+      )}
       {!location.pathname.includes('/player') && (
         <header className="main-header">
           <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
@@ -148,6 +194,7 @@ function AppContent() {
             <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
             <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
             <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
+            <button className="nav-item nav-item-btn install-app-btn" onClick={handleInstallClick}><span className="nav-icon">📱</span><span className="nav-label">Baixar</span></button>
           </nav>
 
           <div className="header-right">
