@@ -322,7 +322,7 @@ function Home({ onOpenDetails }) {
                 <div className="content-row-container">
                     <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <h2 className="row-title" style={{ margin: 0 }}>Assistidos Recentemente</h2>
-                        <Link to="/historico" className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+                        <Link to="/historico" className="see-more-btn">
                             Ver mais &rarr;
                         </Link>
                     </div>
@@ -384,7 +384,7 @@ function Home({ onOpenDetails }) {
                 <div className="content-row-container">
                     <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <h2 className="row-title" style={{ margin: 0 }}>Meus Favoritos</h2>
-                        <Link to="/favoritos" className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+                        <Link to="/favoritos" className="see-more-btn">
                             Ver mais &rarr;
                         </Link>
                     </div>

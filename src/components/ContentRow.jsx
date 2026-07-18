@@ -42,7 +42,7 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h2 className="row-title" style={{ margin: 0 }}>{title}</h2>
         {seeMoreLink && (
-          <Link to={seeMoreLink} className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+          <Link to={seeMoreLink} className="see-more-btn">
             Ver mais &rarr;
           </Link>
         )}
