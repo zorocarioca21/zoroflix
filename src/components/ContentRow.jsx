@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { RatingCircle } from './Badges';
 import HoverVideoCard from './HoverVideoCard';
 
@@ -6,7 +7,7 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
-export default function ContentRow({ title, endpoint, type, onPlay }) {
+export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, seeMoreLink }) {
   const [items, setItems] = useState([]);
   const rowRef = useRef(null);
 
@@ -16,11 +17,15 @@ export default function ContentRow({ title, endpoint, type, onPlay }) {
       .then((data) => {
         if (data.results) {
           // Filtrar os que não tem imagem
-          setItems(data.results.filter(item => item.poster_path));
+          let validItems = data.results.filter(item => item.poster_path);
+          if (limit) {
+            validItems = validItems.slice(0, limit);
+          }
+          setItems(validItems);
         }
       })
       .catch((err) => console.error("Erro na busca da ROW", err));
-  }, [endpoint]);
+  }, [endpoint, limit]);
 
   const handleScroll = (direction) => {
     if (rowRef.current) {
@@ -34,7 +39,14 @@ export default function ContentRow({ title, endpoint, type, onPlay }) {
 
   return (
     <div className="content-row-container">
-      <h2 className="row-title">{title}</h2>
+      <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <h2 className="row-title" style={{ margin: 0 }}>{title}</h2>
+        {seeMoreLink && (
+          <Link to={seeMoreLink} className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+            Ver mais &rarr;
+          </Link>
+        )}
+      </div>
       
       <div className="row-wrapper">
         <button className="row-nav-btn left" onClick={() => handleScroll('left')}>

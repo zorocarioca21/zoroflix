@@ -13,6 +13,7 @@ import CalendarPage from './components/CalendarPage'
 import AntiAdBlock from './components/AntiAdBlock'
 import CatalogPage from './components/CatalogPage'
 import ApiDocsPage from './components/ApiDocsPage'
+import UserListPage from './components/UserListPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -212,6 +213,8 @@ function AppContent() {
         <Route path="/series" element={<CatalogPage type="tv" title="Séries" />} />
         <Route path="/animes" element={<CatalogPage type="tv" title="Animes" initialGenreId="16" />} />
         <Route path="/doramas" element={<CatalogPage type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
+        <Route path="/historico" element={<UserListPage type="history" />} />
+        <Route path="/favoritos" element={<UserListPage type="favorites" />} />
         <Route path="/filme/:id" element={<DetailsPage />} />
         <Route path="/serie/:id" element={<DetailsPage />} />
         <Route path="/filme/:id/player" element={<PlayerPage />} />
@@ -317,10 +320,15 @@ function Home({ onOpenDetails }) {
           <div className="rows-section" style={{ marginTop: '3rem' }}>
             {recents.length > 0 && (
                 <div className="content-row-container">
-                    <h2 className="row-title">Assistidos Recentemente</h2>
+                    <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h2 className="row-title" style={{ margin: 0 }}>Assistidos Recentemente</h2>
+                        <Link to="/historico" className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+                            Ver mais &rarr;
+                        </Link>
+                    </div>
                     <div className="row-wrapper">
                         <div className="row-posters">
-                            {recents.map(item => (
+                            {recents.slice(0, 10).map(item => (
                                 <div key={item.content_id} className="row-poster-card" onClick={() => handleRecentClick(item)} style={{ position: 'relative' }}>
                                     {/* Botão de Excluir */}
                                     <button 
@@ -374,10 +382,15 @@ function Home({ onOpenDetails }) {
             )}
             {favorites.length > 0 && (
                 <div className="content-row-container">
-                    <h2 className="row-title">Meus Favoritos</h2>
+                    <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h2 className="row-title" style={{ margin: 0 }}>Meus Favoritos</h2>
+                        <Link to="/favoritos" className="see-more-btn" style={{ fontSize: '0.9rem', color: '#00e676', textDecoration: 'none', fontWeight: '600' }}>
+                            Ver mais &rarr;
+                        </Link>
+                    </div>
                     <div className="row-wrapper">
                         <div className="row-posters">
-                            {favorites.map(item => (
+                            {favorites.slice(0, 10).map(item => (
                                 <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})} style={{ position: 'relative' }}>
                                     {/* Botão de Excluir Favorito */}
                                     <button 
@@ -413,10 +426,10 @@ function Home({ onOpenDetails }) {
                     </div>
                 </div>
             )}
-            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
-            <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
-            <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
-            <ContentRow title="Grandes Sucessos (Filmes)" endpoint="/movie/top_rated?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
+            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/lancamentos" />
+            <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/series" />
+            <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/animes" />
+            <ContentRow title="Grandes Sucessos (Filmes)" endpoint="/movie/top_rated?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/filmes" />
           </div>
         </>
     );
