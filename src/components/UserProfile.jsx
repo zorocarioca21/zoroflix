@@ -8,6 +8,12 @@ export default function UserProfile() {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState({ type: '', text: '' });
 
+    React.useEffect(() => {
+        if (user?.nick) {
+            setNewNick(user.nick);
+        }
+    }, [user]);
+
     if (!user) return <div className="profile-error">Faça login para ver seu perfil.</div>;
 
     const handleAvatarChange = async (e) => {
@@ -64,7 +70,12 @@ export default function UserProfile() {
             <div className="profile-card">
                 <div className="profile-header-meta">
                     <div className="avatar-edit-wrap">
-                        <img src={user.avatar} alt="Avatar" className="profile-avatar-big" />
+                        <img 
+                            src={user.avatar} 
+                            alt="Avatar" 
+                            className="profile-avatar-big" 
+                            onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }}
+                        />
                         <label className="avatar-upload-btn">
                             <Camera size={20} />
                             <input type="file" hidden accept="image/*" onChange={handleAvatarChange} />
