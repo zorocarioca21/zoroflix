@@ -4348,7 +4348,7 @@ body::before {
   text-align: left;
 }
 
-.install-app-btn {
+.install-app-btn-header {
   border: 1px solid rgba(0, 230, 118, 0.4);
   animation: pulse-neon 2s infinite;
 }
@@ -4360,4 +4360,28 @@ body::before {
   0% { box-shadow: 0 0 5px rgba(0, 230, 118, 0.2); }
   50% { box-shadow: 0 0 15px rgba(0, 230, 118, 0.6); }
   100% { box-shadow: 0 0 5px rgba(0, 230, 118, 0.2); }
+}
+
+.install-app-btn-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 230, 118, 0.1);
+  color: var(--primary) !important;
+  border: 1px solid rgba(0, 230, 118, 0.4);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.install-app-btn-header:hover {
+  background: var(--primary) !important;
+  color: #03170e !important;
+  transform: translateY(-2px);
+  animation: none;
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.6);
 }

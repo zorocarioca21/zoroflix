@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -194,10 +194,12 @@ function AppContent() {
             <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
             <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
             <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
-            <button className="nav-item nav-item-btn install-app-btn" onClick={handleInstallClick}><span className="nav-icon">📱</span><span className="nav-label">Baixar</span></button>
           </nav>
 
           <div className="header-right">
+            <button className="install-app-btn-header" onClick={handleInstallClick}>
+              <Download size={16} /> Baixar App
+            </button>
             <div className="header-search">
               <input type="text" className="navbar-search-input" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => handleTyping(e.target.value)} onKeyDown={handleKeyPress}/>
               <button className="navbar-search-btn" onClick={handleFullSearch}>{isSearching ? '...' : <Search size={18} />}</button>
