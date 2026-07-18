@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -239,6 +239,11 @@ function AppContent() {
                       <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                         <UserIcon size={16} /> Meu Perfil
                       </Link>
+                      {user.role === 'admin' && (
+                          <Link to="/paineladm" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: 'var(--primary)' }}>
+                            <ShieldCheck size={16} /> Painel ADM
+                          </Link>
+                      )}
                       <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}>
                         <LogOut size={16} /> Sair
                       </button>
