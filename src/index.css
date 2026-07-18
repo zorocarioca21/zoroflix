@@ -2701,6 +2701,7 @@ body::before {
   border-radius: 50%;
   border: 4px solid var(--primary);
   object-fit: cover;
+  flex-shrink: 0;
 }
 
 .avatar-upload-btn {

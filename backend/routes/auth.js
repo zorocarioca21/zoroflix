@@ -24,7 +24,7 @@ export default function authRoutes(db) {
             
             const defaultAvatar = 'https://api.zorobot.shop/avatars/default.png?v=1';
             const token = jwt.sign({ id: result.lastID, role: 'free' }, JWT_SECRET, { expiresIn: '30d' });
-            res.json({ token, user: { id: result.lastID, nick, email, role: 'free', avatar: defaultAvatar } });
+            res.json({ token, user: { id: result.lastID, nick, email, role: 'free', avatar: defaultAvatar, created_at: new Date().toISOString() } });
         } catch (err) {
             if (err.message.includes('unique')) {
                 return res.status(400).json({ error: 'Email já cadastrado.' });
@@ -57,7 +57,8 @@ export default function authRoutes(db) {
                     nick: user.nick, 
                     email: user.email, 
                     role: user.role,
-                    avatar: user.avatar
+                    avatar: user.avatar,
+                    created_at: user.created_at
                 } 
             });
         } catch (err) {
@@ -72,7 +73,7 @@ export default function authRoutes(db) {
 
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
-            const user = await db.get('SELECT id, nick, email, role, avatar FROM users WHERE id = ?', [decoded.id]);
+            const user = await db.get('SELECT id, nick, email, role, avatar, created_at FROM users WHERE id = ?', [decoded.id]);
             res.json(user);
         } catch (err) {
             res.status(401).json({ error: 'Token inválido.' });
