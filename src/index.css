@@ -72,7 +72,8 @@ body::before {
   align-items: center;
   justify-content: flex-end;
   gap: 1.2rem;
-  flex-wrap: nowrap; /* Garante que ícone de login e busca fiquem juntos */
+  flex-wrap: nowrap;
+  padding-right: 0.5rem;
 }
 
 @media (max-width: 900px) {
@@ -187,12 +188,11 @@ body::before {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
 }
 
 .navbar-search-input {
   width: 200px;
-  padding: 0.7rem 1.1rem;
+  padding: 0.7rem 2.8rem 0.7rem 1.1rem;
   font-size: 0.9rem;
   border-radius: 2rem;
   border: 1px solid rgba(0, 230, 118, 0.4);
@@ -211,24 +211,23 @@ body::before {
 }
 
 .navbar-search-btn {
-  background: var(--primary);
-  color: #03170e;
+  position: absolute;
+  right: 5px;
+  background: transparent;
+  color: var(--text-muted);
   border: none;
-  padding: 0.7rem 1.2rem;
-  border-radius: 2rem;
-  font-weight: 800;
-  font-size: 0.85rem;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: var(--glow);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .navbar-search-btn:hover {
-  background: var(--primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 230, 118, 0.6);
+  color: var(--primary);
+  transform: scale(1.1);
 }
 
 /* --- Hero Slider Styles --- */

@@ -19,12 +19,12 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
         let cert = '';
         if (type === 'movie') {
           const br = data.release_dates?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.release_dates?.[0]?.certification;
+          cert = br?.release_dates?.find(d => d.certification)?.certification || 'L';
         } else {
           const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.rating;
+          cert = br?.rating || 'L';
         }
-        setCertification(cert || '');
+        setCertification(cert);
       })
       .catch(() => {});
   }, [id, type]);
