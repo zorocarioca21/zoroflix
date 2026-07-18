@@ -80,6 +80,33 @@
         }, true);
       })();
     </script>
+
+    <!-- Escudo Anti-DevTools -->
+    <script>
+      (function() {
+        document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+        document.addEventListener('keydown', function(e) {
+          if (
+            e.keyCode === 123 || 
+            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
+            (e.ctrlKey && e.keyCode === 85)
+          ) {
+            e.preventDefault();
+            window.location.reload();
+            return false;
+          }
+        });
+        // Congelamento de debugger contínuo
+        setInterval(function() {
+          const before = new Date().getTime();
+          debugger;
+          const after = new Date().getTime();
+          if (after - before > 100) {
+            window.location.reload();
+          }
+        }, 1000);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
