@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft, Check } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
 
@@ -25,6 +25,7 @@ export default function PlayerPage() {
   const [seriesDetail, setSeriesDetail] = useState(null);
   const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
   const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
+  const [isWatched, setIsWatched] = useState(false);
 
   // Resolvendo as informações do Canal (Nome e Logo_url)
   useEffect(() => {
@@ -234,6 +235,58 @@ export default function PlayerPage() {
     return () => clearTimeout(checkTimer);
   }, [id, season, episode, canalId, episodes, seriesDetail]);
 
+  // Buscar se o episódio já está marcado como assistido
+  useEffect(() => {
+    if (!id || !season || !episode || canalId) {
+        setIsWatched(false);
+        return;
+    }
+
+    const token = localStorage.getItem('cinegeek_token');
+    const uuidVal = localStorage.getItem('cinegeek_uuid');
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (uuidVal) headers['x-device-uuid'] = uuidVal;
+
+    fetch(`/api/recents/watched-episodes/${id}`, { headers })
+        .then(r => r.json())
+        .then(data => {
+            const found = data.some(we => we.season === parseInt(season) && we.episode === parseInt(episode));
+            setIsWatched(found);
+        })
+        .catch(() => {});
+  }, [id, season, episode, canalId]);
+
+  const handleToggleWatched = async () => {
+      const token = localStorage.getItem('cinegeek_token');
+      const uuidVal = localStorage.getItem('cinegeek_uuid');
+      const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      try {
+          if (isWatched) {
+              const resp = await fetch(`/api/recents/watched-episodes/${id}/${season}/${episode}`, {
+                  method: 'DELETE',
+                  headers
+              });
+              if (resp.ok) setIsWatched(false);
+          } else {
+              const resp = await fetch('/api/recents/watched-episodes', {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({
+                      content_id: String(id),
+                      season: parseInt(season),
+                      episode: parseInt(episode)
+                  })
+              });
+              if (resp.ok) setIsWatched(true);
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
+
   let playerUrl = '';
   let title = canalId 
     ? (resolvedChannel?.name || state.title || 'Carregando Canal...') 
@@ -367,6 +420,17 @@ export default function PlayerPage() {
                     <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
                     <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20}/> Episódios</button>
                     <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20}/></button>
+                    <button 
+                      className={`nav-btn-modern toggle-watched-status-btn ${isWatched ? 'watched-active' : ''}`} 
+                      onClick={handleToggleWatched}
+                      style={{
+                         borderColor: isWatched ? '#00ff88' : 'rgba(255, 255, 255, 0.1)',
+                         color: isWatched ? '#00ff88' : '#fff'
+                      }}
+                    >
+                      <Check size={20} style={{ color: isWatched ? '#00ff88' : '#fff' }} />
+                      {isWatched ? 'Desmarcar como Assistido' : 'Marcar como Assistido'}
+                    </button>
                 </div>
             )}
         </div>

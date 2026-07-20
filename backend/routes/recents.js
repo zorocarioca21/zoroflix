@@ -182,5 +182,30 @@ export default function recentsRoutes(db) {
         }
     });
 
+    // DELETE /api/recents/watched-episodes/:content_id/:season/:episode - Desmarca um episódio como assistido
+    router.delete('/watched-episodes/:content_id/:season/:episode', authOrUuid, async (req, res) => {
+        const { content_id, season, episode } = req.params;
+
+        try {
+            if (req.user_id) {
+                await db.run(
+                    'DELETE FROM watched_episodes WHERE user_id = ? AND content_id = ? AND season = ? AND episode = ?',
+                    [req.user_id, content_id, parseInt(season), parseInt(episode)]
+                );
+            } else if (req.uuid) {
+                await db.run(
+                    'DELETE FROM watched_episodes WHERE uuid = ? AND user_id IS NULL AND content_id = ? AND season = ? AND episode = ?',
+                    [req.uuid, content_id, parseInt(season), parseInt(episode)]
+                );
+            } else {
+                return res.status(400).json({ error: 'UUID ou Token requerido.' });
+            }
+            res.json({ success: true, message: 'Episódio desmarcado como assistido.' });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao desmarcar episódio.' });
+        }
+    });
+
     return router;
 }
