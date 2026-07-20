@@ -262,7 +262,46 @@ export default function PlayerPage() {
 
           {showList && (
               <div className="player-ep-sidebar">
-                  <h4>Temporada {season}</h4>
+                  {seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
+                      <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
+                          <select 
+                            value={season} 
+                            onChange={(e) => {
+                                const newSeasonNum = e.target.value;
+                                navigate(`/serie/${rawId}/${newSeasonNum}/1/player`, { 
+                                    state: { 
+                                        id, 
+                                        title: `${state.title?.split(' - ')[0]} - Temporada ${newSeasonNum}, Episódio 1`, 
+                                        poster_path: state.poster_path 
+                                    } 
+                                });
+                            }}
+                            style={{
+                                width: '100%',
+                                background: '#1c1c24',
+                                color: '#00ff88',
+                                border: '1px solid #333',
+                                borderRadius: '8px',
+                                padding: '0.6rem',
+                                fontSize: '0.95rem',
+                                fontWeight: '700',
+                                outline: 'none',
+                                cursor: 'pointer'
+                            }}
+                          >
+                              {seriesDetail.seasons
+                                  .filter(s => s.episode_count > 0)
+                                  .map(s => (
+                                      <option key={s.id} value={s.season_number} style={{ background: '#13131a', color: '#fff' }}>
+                                          {s.name || `Temporada ${s.season_number}`} ({s.episode_count} eps)
+                                      </option>
+                                  ))
+                              }
+                          </select>
+                      </div>
+                  ) : (
+                      <h4>Temporada {season}</h4>
+                  )}
                   <div className="player-sidebar-list">
                       {episodes.map(ep => (
                           <div 
