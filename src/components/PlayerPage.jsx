@@ -22,6 +22,8 @@ export default function PlayerPage() {
   const [ready, setReady] = useState(false);
   const hasTracked = useRef(false);
   const [resolvedChannel, setResolvedChannel] = useState(null);
+  const [seriesDetail, setSeriesDetail] = useState(null);
+  const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
 
   // Resolvendo as informações do Canal (Nome e Logo_url)
   useEffect(() => {
@@ -137,6 +139,15 @@ export default function PlayerPage() {
     }
   }, [id, season]);
 
+  useEffect(() => {
+    if (id && !canalId) {
+        fetch(`${BASE_URL}/tv/${id}?api_key=${API_KEY}&language=pt-BR`)
+            .then(r => r.json())
+            .then(data => setSeriesDetail(data))
+            .catch(() => {});
+    }
+  }, [id, canalId]);
+
   // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
   useEffect(() => {
     hasTracked.current = false; // Reseta ao mudar de episódio/conteúdo
@@ -201,7 +212,26 @@ export default function PlayerPage() {
     const exists = episodes.find(e => e.episode_number === nextEp);
     if (exists) {
         navigate(`/serie/${rawId}/${season}/${nextEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists.name}`, poster_path: state.poster_path } });
+    } else {
+        // É o último episódio da temporada atual
+        const nextSeasonNum = parseInt(season) + 1;
+        const nextSeasonExists = seriesDetail?.seasons?.find(s => s.season_number === nextSeasonNum && s.episode_count > 0);
+        if (nextSeasonExists) {
+            setShowNextSeasonModal(true);
+        }
     }
+  };
+
+  const handleConfirmNextSeason = () => {
+      const nextSeasonNum = parseInt(season) + 1;
+      setShowNextSeasonModal(false);
+      navigate(`/serie/${rawId}/${nextSeasonNum}/1/player`, { 
+          state: { 
+              id, 
+              title: `${state.title?.split(' - ')[0]} - Temporada ${nextSeasonNum}, Episódio 1`, 
+              poster_path: state.poster_path 
+          } 
+      });
   };
 
   const handlePrev = () => {
@@ -279,6 +309,103 @@ export default function PlayerPage() {
             episodeId={episode} 
           />
       </div>
+
+      {showNextSeasonModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(5px)'
+        }}>
+          <div style={{
+            background: '#13131a',
+            border: '2px solid var(--primary, #00ff88)',
+            boxShadow: '0 0 25px rgba(0, 255, 136, 0.25)',
+            borderRadius: '16px',
+            width: '90%',
+            maxWidth: '450px',
+            padding: '2rem',
+            textAlign: 'center',
+            color: '#fff',
+            fontFamily: 'inherit'
+          }}>
+            <h3 style={{
+              fontSize: '1.4rem',
+              color: 'var(--primary, #00ff88)',
+              marginBottom: '1rem',
+              fontWeight: '700'
+            }}>Fim da Temporada!</h3>
+            
+            <p style={{
+              fontSize: '0.95rem',
+              color: '#d1d1d6',
+              lineHeight: '1.6',
+              marginBottom: '2rem'
+            }}>
+              Você assistiu ao último episódio da **Temporada {season}**. <br />
+              Deseja começar a assistir ao **Episódio 1 da Temporada {parseInt(season) + 1}**?
+            </p>
+
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              justifyContent: 'center'
+            }}>
+              <button 
+                onClick={handleConfirmNextSeason}
+                style={{
+                  background: 'var(--primary, #00ff88)',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '30px',
+                  padding: '0.8rem 2rem',
+                  fontSize: '0.9rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 10px rgba(0, 255, 136, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'scale(1.05)';
+                  e.target.style.boxShadow = '0 6px 15px rgba(0, 255, 136, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'scale(1)';
+                  e.target.style.boxShadow = '0 4px 10px rgba(0, 255, 136, 0.3)';
+                }}
+              >
+                Sim, assistir
+              </button>
+              
+              <button 
+                onClick={() => setShowNextSeasonModal(false)}
+                style={{
+                  background: '#2c2c35',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '30px',
+                  padding: '0.8rem 2.2rem',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+              >
+                Não
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
