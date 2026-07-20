@@ -122,7 +122,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
 
             {user ? (
                 <div className="comment-input-box">
-                    <img src={user.avatar} alt="" className="comment-avatar-small" />
+                    <img src={user.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar-small" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
                     <textarea 
                         placeholder="O que achou deste conteúdo?"
                         value={newComment}
@@ -143,7 +143,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                         <div key={c.id} className={`comment-item ${isDeleted ? 'deleted-by-adm' : ''}`}>
                             <div className="comment-main">
                             <div className={`avatar-wrapper-role role-${c.role}`}>
-                                <img src={c.avatar} alt="" className="comment-avatar" />
+                                <img src={c.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
                             </div>
                             <div className="comment-content">
                                 <div className="comment-meta">
@@ -188,7 +188,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                 {c.replies.map(r => (
                                     <div key={r.id} className="comment-item reply">
                                         <div className={`avatar-wrapper-role role-${r.role} mini`}>
-                                            <img src={r.avatar} alt="" className="comment-avatar-mini" />
+                                            <img src={r.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar-mini" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
                                         </div>
                                         <div className="comment-content">
                                             <div className="comment-meta">
