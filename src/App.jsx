@@ -178,87 +178,87 @@ function AppContent() {
           </div>
         </div>
       )}
-      {!location.pathname.includes('/player') && (
-        <header className="main-header">
-          <div className="logo-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
-            <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
-              <span className="logo-text-cine">CINE</span>
-              <img src="/cinegeek-icon.png" alt="CineGeek Icon" className="logo-icon-img" />
-              <span className="logo-text-geek">GEEK</span>
-            </Link>
+      <header className="main-header">
+        <div className="logo-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+          <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
+            <span className="logo-text-cine">CINE</span>
+            <img src="/cinegeek-icon.png" alt="CineGeek Icon" className="logo-icon-img" />
+            <span className="logo-text-geek">GEEK</span>
+          </Link>
+          {location.pathname === '/' && (
             <button className="install-app-btn-header" onClick={handleInstallClick} style={{ padding: '0.3rem 0.8rem', fontSize: '0.75rem', gap: '0.3rem' }}>
               <Download size={14} /> Baixar App
             </button>
-          </div>
-          
-          <nav className="nav-pill">
-            <Link to="/" className="nav-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
-            <Link to="/filmes" className="nav-item"><span className="nav-icon"><Film size={20} /></span><span className="nav-label">Filmes</span></Link>
-            <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
-            <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
-            <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
-            <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
-            <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
-          </nav>
+          )}
+        </div>
+        
+        <nav className="nav-pill">
+          <Link to="/" className="nav-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
+          <Link to="/filmes" className="nav-item"><span className="nav-icon"><Film size={20} /></span><span className="nav-label">Filmes</span></Link>
+          <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
+          <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
+          <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
+          <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
+          <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
+        </nav>
 
-          <div className="header-right">
-            <div className="header-search">
-              <input type="text" className="navbar-search-input" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => handleTyping(e.target.value)} onKeyDown={handleKeyPress}/>
-              <button className="navbar-search-btn" onClick={handleFullSearch}>{isSearching ? '...' : <Search size={18} />}</button>
-              {searchResults.length > 0 && searchQuery && (
-                <div className="search-dropdown">
-                  {searchResults.map((item) => (
-                    <div className="dropdown-item" key={item.id} onClick={() => handleSelectItem(item)}>
-                      <img src={`${IMAGE_BASE_URL}${item.poster_path}`} alt="" className="dropdown-poster" />
-                      <div className="dropdown-info">
-                        <div className="dropdown-title">{item.title || item.name}</div>
-                        <div className="dropdown-type">{item.media_type === 'movie' ? '🎬 Filme' : '📺 Série'}</div>
-                      </div>
+        <div className="header-right">
+          <div className="header-search">
+            <input type="text" className="navbar-search-input" placeholder="Pesquisar..." value={searchQuery} onChange={(e) => handleTyping(e.target.value)} onKeyDown={handleKeyPress}/>
+            <button className="navbar-search-btn" onClick={handleFullSearch}>{isSearching ? '...' : <Search size={18} />}</button>
+            {searchResults.length > 0 && searchQuery && (
+              <div className="search-dropdown">
+                {searchResults.map((item) => (
+                  <div className="dropdown-item" key={item.id} onClick={() => handleSelectItem(item)}>
+                    <img src={`${IMAGE_BASE_URL}${item.poster_path}`} alt="" className="dropdown-poster" />
+                    <div className="dropdown-info">
+                      <div className="dropdown-title">{item.title || item.name}</div>
+                      <div className="dropdown-type">{item.media_type === 'movie' ? '🎬 Filme' : '📺 Série'}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="user-nav">
-              {user ? (
-                <div className="user-profile-wrap">
-                  <img 
-                    src={user.avatar} 
-                    alt="Perfil" 
-                    className="user-avatar" 
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }}
-                  />
-                  {isUserMenuOpen && (
-                    <div className="user-dropdown">
-                      <div className="user-info-head">
-                        <p className="user-nick">{user.nick}</p>
-                        <p className="user-tag">{user.role?.toUpperCase() || 'FREE'}</p>
-                      </div>
-                      <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
-                        <UserIcon size={16} /> Meu Perfil
-                      </Link>
-                      {user.role === 'admin' && (
-                          <Link to="/paineladm" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: 'var(--primary)' }}>
-                            <ShieldCheck size={16} /> Painel ADM
-                          </Link>
-                      )}
-                      <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}>
-                        <LogOut size={16} /> Sair
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button className="login-btn-header-circle" onClick={() => setIsAuthOpen(true)}>
-                  <UserIcon size={24} />
-                </button>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </header>
-      )}
+
+          <div className="user-nav">
+            {user ? (
+              <div className="user-profile-wrap">
+                <img 
+                  src={user.avatar} 
+                  alt="Perfil" 
+                  className="user-avatar" 
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }}
+                />
+                {isUserMenuOpen && (
+                  <div className="user-dropdown">
+                    <div className="user-info-head">
+                      <p className="user-nick">{user.nick}</p>
+                      <p className="user-tag">{user.role?.toUpperCase() || 'FREE'}</p>
+                    </div>
+                    <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
+                      <UserIcon size={16} /> Meu Perfil
+                    </Link>
+                    {user.role === 'admin' && (
+                        <Link to="/paineladm" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: 'var(--primary)' }}>
+                          <ShieldCheck size={16} /> Painel ADM
+                        </Link>
+                    )}
+                    <button className="user-drop-item logout" onClick={() => { logout(); setIsUserMenuOpen(false); }}>
+                      <LogOut size={16} /> Sair
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button className="login-btn-header-circle" onClick={() => setIsAuthOpen(true)}>
+                <UserIcon size={24} />
+              </button>
+            )}
+          </div>
+        </div>
+      </header>
 
       <Routes>
         <Route path="/" element={<Home onOpenDetails={handleSelectItem} />} />
