@@ -4385,3 +4385,83 @@ body::before {
   animation: none;
   box-shadow: 0 0 20px rgba(0, 230, 118, 0.6);
 }
+
+/* --- Custom Mobile Adjustments for Player, Comments, Poster, and Buttons --- */
+@media (max-width: 768px) {
+  /* 1. Details Page Poster Size Fix */
+  .details-content-main {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 1rem;
+  }
+
+  .details-poster-area {
+    width: 170px !important;
+    max-width: 170px !important;
+    margin: 0 auto;
+  }
+
+  .details-poster-wrap {
+    width: 170px !important;
+    max-width: 170px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  }
+
+  /* 2. Comments Box Fit inside Viewport */
+  .comments-section-wrap {
+    padding: 1rem !important;
+    margin-top: 1.5rem !important;
+    border-radius: 12px !important;
+  }
+
+  .comment-input-box {
+    padding: 1.2rem 1rem !important;
+    gap: 0.8rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .comment-input-box textarea {
+    font-size: 0.9rem !important;
+  }
+
+  .comment-main {
+    gap: 0.8rem !important;
+  }
+
+  .comment-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* 3. Player Navigation Buttons Size Match */
+  .player-nav-group {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .player-nav-group .nav-btn-modern {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.5rem 0.3rem !important;  
+    font-size: 0.78rem !important;
+    justify-content: center !important;
+    text-align: center !important;
+    align-items: center !important;
+    height: 62px !important;            
+    min-height: 62px !important;
+    max-height: 62px !important;
+    display: flex !important;
+    flex-direction: column !important;  
+    gap: 2px !important;
+    line-height: 1.2 !important;
+  }
+
+  .player-nav-group .nav-btn-modern svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
