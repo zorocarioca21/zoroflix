@@ -25,6 +25,7 @@ export default function DetailsPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [trailerKey, setTrailerKey] = useState(null);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [watchedEpisodes, setWatchedEpisodes] = useState([]);
   const { user, uuid, loading: authLoading } = useAuth();
 
   const isMovie = location.pathname.includes('/filme/');
@@ -148,6 +149,19 @@ export default function DetailsPage() {
         const certData = await certResp.json();
         const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
         setCertification(br?.rating || 'L');
+
+        // Buscar episódios concluídos
+        try {
+            const token = localStorage.getItem('cinegeek_token');
+            const uuidVal = localStorage.getItem('cinegeek_uuid') || uuid;
+            const headers = { 'x-device-uuid': uuidVal || '' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const watchedResp = await fetch(`/api/recents/watched-episodes/${id}`, { headers });
+            if (watchedResp.ok) {
+                const watchedData = await watchedResp.json();
+                setWatchedEpisodes(watchedData);
+            }
+        } catch (err) {}
       } else {
         const certResp = await fetch(`${BASE_URL}/movie/${id}/release_dates?api_key=${API_KEY}`);
         const certData = await certResp.json();
@@ -288,6 +302,7 @@ export default function DetailsPage() {
               <div className="episodes-grid-modern">
                 {episodes.map(ep => {
                   const showSlug = getSlug(data.name);
+                  const isWatched = watchedEpisodes.some(we => we.season === parseInt(selectedSeason) && we.episode === parseInt(ep.episode_number));
                   return (
                   <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
@@ -300,6 +315,29 @@ export default function DetailsPage() {
                       </div>
                       <span className="ep-runtime-badge">{ep.runtime || '??'} min</span>
                       <div className="ep-play-overlay"><Play fill="currentColor" /></div>
+                      {isWatched && (
+                        <div className="ep-watched-overlay" style={{
+                           position: 'absolute',
+                           top: 0,
+                           left: 0,
+                           right: 0,
+                           bottom: 0,
+                           background: 'rgba(0, 0, 0, 0.60)',
+                           display: 'flex',
+                           alignItems: 'center',
+                           justifyContent: 'center',
+                           color: 'var(--primary, #00ff88)',
+                           fontWeight: '700',
+                           fontSize: '1rem',
+                           letterSpacing: '1px',
+                           zIndex: 3,
+                           pointerEvents: 'none',
+                           textShadow: '0 0 10px rgba(0, 0, 0, 0.8)',
+                           textTransform: 'uppercase'
+                        }}>
+                           Assistido
+                        </div>
+                      )}
                     </div>
                     <div className="ep-info-modern">
                         <p className="ep-title-meta">EP {ep.episode_number} <span className="ep-real-title">{ep.name}</span></p>

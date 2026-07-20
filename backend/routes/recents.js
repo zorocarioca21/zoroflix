@@ -138,5 +138,49 @@ export default function recentsRoutes(db) {
         }
     });
 
+    // POST /api/recents/watched-episodes - Marca um episódio como assistido (80% concluído)
+    router.post('/watched-episodes', authOrUuid, async (req, res) => {
+        const { content_id, season, episode } = req.body;
+
+        if (!content_id || season === undefined || episode === undefined || (!req.user_id && !req.uuid)) {
+            return res.status(400).json({ error: 'Dados incompletos.' });
+        }
+
+        try {
+            await db.run(
+                'INSERT OR IGNORE INTO watched_episodes (uuid, user_id, content_id, season, episode) VALUES (?, ?, ?, ?, ?)',
+                [req.uuid || null, req.user_id || null, content_id, parseInt(season), parseInt(episode)]
+            );
+            res.json({ success: true, message: 'Episódio marcado como concluído.' });
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao marcar episódio como concluído.' });
+        }
+    });
+
+    // GET /api/recents/watched-episodes/:content_id - Retorna a lista de episódios concluídos (temporada e ep)
+    router.get('/watched-episodes/:content_id', authOrUuid, async (req, res) => {
+        const { content_id } = req.params;
+
+        try {
+            let watched = [];
+            if (req.user_id) {
+                watched = await db.all(
+                    'SELECT season, episode FROM watched_episodes WHERE user_id = ? AND content_id = ?',
+                    [req.user_id, content_id]
+                );
+            } else if (req.uuid) {
+                watched = await db.all(
+                    'SELECT season, episode FROM watched_episodes WHERE uuid = ? AND user_id IS NULL AND content_id = ?',
+                    [req.uuid, content_id]
+                );
+            }
+            res.json(watched);
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao buscar episódios concluídos.' });
+        }
+    });
+
     return router;
 }

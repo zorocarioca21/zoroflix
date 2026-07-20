@@ -24,6 +24,7 @@ export default function PlayerPage() {
   const [resolvedChannel, setResolvedChannel] = useState(null);
   const [seriesDetail, setSeriesDetail] = useState(null);
   const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
+  const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
 
   // Resolvendo as informações do Canal (Nome e Logo_url)
   useEffect(() => {
@@ -132,12 +133,19 @@ export default function PlayerPage() {
   }, [user, loading, configs, ready]);
 
   useEffect(() => {
-    if (season && id) {
-        fetch(`${BASE_URL}/tv/${id}/season/${season}?api_key=${API_KEY}&language=pt-BR`)
-            .then(r => r.json())
-            .then(data => setEpisodes(data.episodes || []));
+    if (season) {
+      setActiveSidebarSeason(parseInt(season));
     }
-  }, [id, season]);
+  }, [season]);
+
+  useEffect(() => {
+    if (activeSidebarSeason && id) {
+        fetch(`${BASE_URL}/tv/${id}/season/${activeSidebarSeason}?api_key=${API_KEY}&language=pt-BR`)
+            .then(r => r.json())
+            .then(data => setEpisodes(data.episodes || []))
+            .catch(() => {});
+    }
+  }, [id, activeSidebarSeason]);
 
   useEffect(() => {
     if (id && !canalId) {
@@ -189,6 +197,42 @@ export default function PlayerPage() {
 
     return () => clearTimeout(timer);
   }, [id, season, episode, canalId, resolvedChannel]);
+
+  // Timer de 80%: registra o episódio como concluído (assistido)
+  useEffect(() => {
+    if (!id || !season || !episode || canalId) return;
+
+    let durationMin = 40; // Fallback padrão
+    const currentEpObj = episodes.find(e => e.episode_number === parseInt(episode));
+    if (currentEpObj && currentEpObj.runtime) {
+        durationMin = currentEpObj.runtime;
+    } else if (seriesDetail && seriesDetail.episode_run_time && seriesDetail.episode_run_time.length > 0) {
+        durationMin = seriesDetail.episode_run_time[0];
+    }
+
+    const eightyPercentMs = Math.round(durationMin * 60 * 1000 * 0.8);
+
+    const checkTimer = setTimeout(async () => {
+        const token = localStorage.getItem('cinegeek_token');
+        const uuidVal = localStorage.getItem('cinegeek_uuid');
+        const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            await fetch('/api/recents/watched-episodes', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    content_id: String(id),
+                    season: parseInt(season),
+                    episode: parseInt(episode)
+                })
+            });
+        } catch (e) { /* silencioso */ }
+    }, eightyPercentMs);
+
+    return () => clearTimeout(checkTimer);
+  }, [id, season, episode, canalId, episodes, seriesDetail]);
 
   let playerUrl = '';
   let title = canalId 
@@ -265,16 +309,9 @@ export default function PlayerPage() {
                   {seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
                       <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
                           <select 
-                            value={season} 
+                            value={activeSidebarSeason || season} 
                             onChange={(e) => {
-                                const newSeasonNum = e.target.value;
-                                navigate(`/serie/${rawId}/${newSeasonNum}/1/player`, { 
-                                    state: { 
-                                        id, 
-                                        title: `${state.title?.split(' - ')[0]} - Temporada ${newSeasonNum}, Episódio 1`, 
-                                        poster_path: state.poster_path 
-                                    } 
-                                });
+                                setActiveSidebarSeason(parseInt(e.target.value));
                             }}
                             style={{
                                 width: '100%',
@@ -300,15 +337,15 @@ export default function PlayerPage() {
                           </select>
                       </div>
                   ) : (
-                      <h4>Temporada {season}</h4>
+                      <h4>Temporada {activeSidebarSeason || season}</h4>
                   )}
                   <div className="player-sidebar-list">
                       {episodes.map(ep => (
                           <div 
                             key={ep.id} 
-                            className={`sidebar-ep-item ${parseInt(episode) === ep.episode_number ? 'active' : ''}`}
+                            className={`sidebar-ep-item ${parseInt(season) === parseInt(activeSidebarSeason || season) && parseInt(episode) === ep.episode_number ? 'active' : ''}`}
                             onClick={() => {
-                                navigate(`/serie/${rawId}/${season}/${ep.episode_number}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${ep.name}`, poster_path: state.poster_path } });
+                                navigate(`/serie/${rawId}/${activeSidebarSeason || season}/${ep.episode_number}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${ep.name}`, poster_path: state.poster_path } });
                                 setShowList(false);
                             }}
                           >

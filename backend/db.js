@@ -173,6 +173,26 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Episódios Concluídos (Marcados por assistir 80% do tempo)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS watched_episodes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            user_id INTEGER,
+            content_id TEXT NOT NULL,
+            season INTEGER NOT NULL,
+            episode INTEGER NOT NULL,
+            watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
+    // Índices únicos para evitar duplicados
+    await db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_user ON watched_episodes (user_id, content_id, season, episode) WHERE user_id IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_uuid ON watched_episodes (uuid, content_id, season, episode) WHERE user_id IS NULL AND uuid IS NOT NULL;
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");
