@@ -349,8 +349,8 @@ export default function PlayerPage() {
               lineHeight: '1.6',
               marginBottom: '2rem'
             }}>
-              Você assistiu ao último episódio da **Temporada {season}**. <br />
-              Deseja começar a assistir ao **Episódio 1 da Temporada {parseInt(season) + 1}**?
+              Você assistiu ao último episódio da <strong style={{ color: '#fff' }}>Temporada {season}</strong>. <br />
+              Deseja começar a assistir ao <strong style={{ color: '#fff' }}>Episódio 1 da Temporada {parseInt(season) + 1}</strong>?
             </p>
 
             <div style={{
