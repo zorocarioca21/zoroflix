@@ -4388,7 +4388,7 @@ body::before {
 
 /* --- Custom Mobile Adjustments for Player, Comments, Poster, and Buttons --- */
 @media (max-width: 768px) {
-  /* 1. Details Page Poster Size Fix */
+  /* 1. Details Page Poster Size Fix (shorter height, original-like width, no stretching) */
   .details-content-main {
     flex-direction: column;
     align-items: center;
@@ -4397,15 +4397,43 @@ body::before {
   }
 
   .details-poster-area {
-    width: 170px !important;
-    max-width: 170px !important;
+    width: 260px !important;
+    max-width: 260px !important;
     margin: 0 auto;
   }
 
   .details-poster-wrap {
-    width: 170px !important;
-    max-width: 170px !important;
+    width: 260px !important;
+    max-width: 260px !important;
+    height: 350px !important; /* Menor para cima e para baixo */
+    max-height: 350px !important;
     box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  }
+
+  .details-main-poster {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  /* Restaurar comportamento e largura do Elenco (cast) */
+  .details-info-area {
+    width: 100% !important;
+  }
+
+  .cast-grid-scroll {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+    padding: 1rem 0 !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cast-card {
+    flex: 0 0 150px !important;
+    width: 150px !important;
   }
 
   /* 2. Comments Box Fit inside Viewport */
