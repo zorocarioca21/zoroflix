@@ -262,6 +262,17 @@ export default function adminRoutes(db) {
         }
     });
 
+    // Rota para zerar o histórico de estatísticas de visualização
+    router.delete('/stats/clear', async (req, res) => {
+        try {
+            await db.run('DELETE FROM page_views');
+            res.json({ success: true });
+        } catch (err) {
+            console.error('Clear stats error:', err);
+            res.status(500).json({ error: 'Erro ao zerar estatísticas.' });
+        }
+    });
+
     // ============================================================
     //  💓 HEARTBEAT — o frontend envia pings a cada 15 segundos
     // ============================================================
