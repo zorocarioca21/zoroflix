@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -27,6 +27,100 @@ import { getSlug } from './utils/slug';
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 export const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w200';
+
+function RowWithControls({ title, seeMoreLink, children }) {
+  const rowRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = () => {
+    if (rowRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const rowEl = rowRef.current;
+    if (rowEl) {
+      rowEl.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+    }
+    return () => {
+      if (rowEl) rowEl.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [children]);
+
+  const handleScroll = (direction) => {
+    if (rowRef.current) {
+      const { scrollLeft, clientWidth } = rowRef.current;
+      const scrollTo = direction === 'left' ? scrollLeft - clientWidth + 100 : scrollLeft + clientWidth - 100;
+      rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className="content-row-container">
+      <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <h2 className="row-title" style={{ margin: 0 }}>{title}</h2>
+        {seeMoreLink && (
+          <Link to={seeMoreLink} className="see-more-btn">
+            Ver mais &rarr;
+          </Link>
+        )}
+      </div>
+      <div className="row-wrapper">
+        {canScrollLeft && (
+          <button className="row-nav-btn left" onClick={() => handleScroll('left')} aria-label="Anterior">
+            <ChevronLeft size={32} />
+          </button>
+        )}
+        <div className="row-posters" ref={rowRef}>
+          {children}
+        </div>
+        {canScrollRight && (
+          <button className="row-nav-btn right" onClick={() => handleScroll('right')} aria-label="Próximo">
+            <ChevronRight size={32} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CustomPosterCard({ children, onClick }) {
+  const cardRef = useRef(null);
+  const [transformOrigin, setTransformOrigin] = useState('center center');
+
+  const handleMouseEnter = () => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      if (rect.left < 70) {
+        setTransformOrigin('left center');
+      } else if (rect.right > windowWidth - 70) {
+        setTransformOrigin('right center');
+      } else {
+        setTransformOrigin('center center');
+      }
+    }
+  };
+
+  return (
+    <div 
+      ref={cardRef}
+      className="row-poster-card"
+      style={{ transformOrigin, position: 'relative' }}
+      onMouseEnter={handleMouseEnter}
+      onClick={onClick}
+    >
+      {children}
+    </div>
+  );
+}
 
 function AppContent() {
   const navigate = useNavigate();
@@ -375,112 +469,91 @@ function Home({ onOpenDetails }) {
           <HeroSlider onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} />
           <div className="rows-section" style={{ marginTop: '3rem' }}>
             {recents.length > 0 && (
-                <div className="content-row-container">
-                    <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <h2 className="row-title" style={{ margin: 0 }}>Assistidos Recentemente</h2>
-                        <Link to="/historico" className="see-more-btn">
-                            Ver mais &rarr;
-                        </Link>
-                    </div>
-                    <div className="row-wrapper">
-                        <div className="row-posters">
-                            {recents.slice(0, 10).map(item => (
-                                <div key={item.content_id} className="row-poster-card" onClick={() => handleRecentClick(item)} style={{ position: 'relative' }}>
-                                    {/* Botão de Excluir */}
-                                    <button 
-                                        onClick={(e) => handleDeleteRecent(e, item.content_id)}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '6px',
-                                            right: '6px',
-                                            background: 'rgba(0,0,0,0.6)',
-                                            border: 'none',
-                                            color: '#ff3d00',
-                                            width: '24px',
-                                            height: '24px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            zIndex: 10,
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        className="delete-recent-btn"
-                                        title="Remover do Histórico"
-                                    >
-                                        <X size={14} strokeWidth={2.5} />
-                                    </button>
+              <RowWithControls title="Assistidos Recentemente" seeMoreLink="/historico">
+                {recents.slice(0, 10).map(item => (
+                  <CustomPosterCard key={item.content_id} onClick={() => handleRecentClick(item)}>
+                    <button 
+                      onClick={(e) => handleDeleteRecent(e, item.content_id)}
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '6px',
+                        background: 'rgba(0,0,0,0.6)',
+                        border: 'none',
+                        color: '#ff3d00',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      className="delete-recent-btn"
+                      title="Remover do Histórico"
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                    </button>
 
-                                    {item.poster_path
-                                        ? (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'
-                                            ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
-                                            : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
-                                          )
-                                        : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
-                                    }
-                                    {item.season && item.episode && (
-                                        <span style={{
-                                            position: 'absolute', bottom: '6px', left: '6px',
-                                            background: 'rgba(0,0,0,0.8)', color: '#00e676',
-                                            fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px',
-                                            padding: '2px 5px', letterSpacing: '0.05em'
-                                        }}>
-                                            S{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                    {item.poster_path
+                      ? (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'
+                          ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
+                          : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                        )
+                      : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
+                    }
+                    {item.season && item.episode && (
+                      <span style={{
+                        position: 'absolute', bottom: '6px', left: '6px',
+                        background: 'rgba(0,0,0,0.8)', color: '#00e676',
+                        fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px',
+                        padding: '2px 5px', letterSpacing: '0.05em'
+                      }}>
+                        S{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
+                      </span>
+                    )}
+                  </CustomPosterCard>
+                ))}
+              </RowWithControls>
             )}
-            {favorites.length > 0 && (
-                <div className="content-row-container">
-                    <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <h2 className="row-title" style={{ margin: 0 }}>Meus Favoritos</h2>
-                        <Link to="/favoritos" className="see-more-btn">
-                            Ver mais &rarr;
-                        </Link>
-                    </div>
-                    <div className="row-wrapper">
-                        <div className="row-posters">
-                            {favorites.slice(0, 10).map(item => (
-                                <div key={item.content_id} className="row-poster-card" onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})} style={{ position: 'relative' }}>
-                                    {/* Botão de Excluir Favorito */}
-                                    <button 
-                                        onClick={(e) => handleDeleteFavorite(e, item.content_id)}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '6px',
-                                            right: '6px',
-                                            background: 'rgba(0,0,0,0.6)',
-                                            border: 'none',
-                                            color: '#ff3d00',
-                                            width: '24px',
-                                            height: '24px',
-                                            borderRadius: '50%',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer',
-                                            zIndex: 10,
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                        className="delete-recent-btn"
-                                        title="Remover dos Favoritos"
-                                    >
-                                        <X size={14} strokeWidth={2.5} />
-                                    </button>
 
-                                    <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+            {favorites.length > 0 && (
+              <RowWithControls title="Meus Favoritos" seeMoreLink="/favoritos">
+                {favorites.slice(0, 10).map(item => (
+                  <CustomPosterCard key={item.content_id} onClick={() => onOpenDetails({id: item.content_id, title: item.title, media_type: item.media_type})}>
+                    <button 
+                      onClick={(e) => handleDeleteFavorite(e, item.content_id)}
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        right: '6px',
+                        background: 'rgba(0,0,0,0.6)',
+                        border: 'none',
+                        color: '#ff3d00',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      className="delete-recent-btn"
+                      title="Remover dos Favoritos"
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                    </button>
+
+                    <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                  </CustomPosterCard>
+                ))}
+              </RowWithControls>
             )}
             <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/lancamentos" />
             <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/series" />
