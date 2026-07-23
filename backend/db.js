@@ -42,13 +42,16 @@ export async function initDB() {
             nick TEXT,
             email TEXT UNIQUE,
             password TEXT,
-            avatar TEXT DEFAULT 'https://api.zorobot.shop/avatars/default.png?v=1',
+            avatar TEXT DEFAULT '/default-avatar.svg',
             role TEXT DEFAULT 'free',
             banned_until DATETIME DEFAULT NULL,
             last_nick_change DATETIME DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // Atualiza avatares antigos quebrados da zorobot.shop para a imagem padrão local
+    await db.run("UPDATE users SET avatar = '/default-avatar.svg' WHERE avatar LIKE '%zorobot.shop%' OR avatar IS NULL OR avatar = ''");
 
     // Tabela de Comentários
     await db.exec(`

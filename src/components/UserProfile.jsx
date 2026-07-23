@@ -71,10 +71,10 @@ export default function UserProfile() {
                 <div className="profile-header-meta">
                     <div className="avatar-edit-wrap">
                         <img 
-                            src={user.avatar} 
+                            src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
                             alt="Avatar" 
                             className="profile-avatar-big" 
-                            onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                         />
                         <label className="avatar-upload-btn">
                             <Camera size={20} />

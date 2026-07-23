@@ -143,7 +143,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                         <div key={c.id} className={`comment-item ${isDeleted ? 'deleted-by-adm' : ''}`}>
                             <div className="comment-main">
                             <div className={`avatar-wrapper-role role-${c.role}`}>
-                                <img src={c.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
+                                <img src={c.avatar && !c.avatar.includes('zorobot.shop') ? c.avatar : '/default-avatar.svg'} alt="" className="comment-avatar" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
                             </div>
                             <div className="comment-content">
                                 <div className="comment-meta">
@@ -188,7 +188,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                 {c.replies.map(r => (
                                     <div key={r.id} className="comment-item reply">
                                         <div className={`avatar-wrapper-role role-${r.role} mini`}>
-                                            <img src={r.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar-mini" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
+                                            <img src={r.avatar && !r.avatar.includes('zorobot.shop') ? r.avatar : '/default-avatar.svg'} alt="" className="comment-avatar-mini" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
                                         </div>
                                         <div className="comment-content">
                                             <div className="comment-meta">
