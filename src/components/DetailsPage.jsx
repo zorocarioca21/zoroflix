@@ -262,10 +262,6 @@ export default function DetailsPage() {
               <div className="details-cast-section">
                 <div className="section-header">
                     <h3>Elenco Principal</h3>
-                    <div className="scroll-controls">
-                        <button className="scroll-btn"><ChevronLeft size={20} /></button>
-                        <button className="scroll-btn"><ChevronRight size={20} /></button>
-                    </div>
                 </div>
                 <div className="cast-grid-scroll">
                   {cast.map(person => (
