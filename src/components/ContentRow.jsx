@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { RatingCircle } from './Badges';
 import HoverVideoCard from './HoverVideoCard';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -49,8 +50,8 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       </div>
       
       <div className="row-wrapper">
-        <button className="row-nav-btn left" onClick={() => handleScroll('left')}>
-          &#10094;
+        <button className="row-nav-btn left" onClick={() => handleScroll('left')} aria-label="Anterior">
+          <ChevronLeft size={22} />
         </button>
         <div className="row-posters" ref={rowRef}>
           {items.map((item) => (
@@ -66,8 +67,8 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
           ))}
         </div>
 
-        <button className="row-nav-btn right" onClick={() => handleScroll('right')}>
-          &#10095;
+        <button className="row-nav-btn right" onClick={() => handleScroll('right')} aria-label="Próximo">
+          <ChevronRight size={22} />
         </button>
       </div>
     </div>

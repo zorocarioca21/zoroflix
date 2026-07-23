@@ -470,56 +470,60 @@ body::before {
   position: relative;
   display: flex;
   align-items: center;
-  margin: 0 -1rem;
 }
 
 .row-nav-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(10, 20, 14, 0.88);
-  backdrop-filter: blur(6px);
+  background: rgba(10, 22, 16, 0.88);
+  backdrop-filter: blur(8px);
   color: var(--primary);
-  border: 1px solid rgba(0, 230, 118, 0.4);
+  border: 1px solid rgba(0, 230, 118, 0.35);
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
-  font-weight: bold;
   cursor: pointer;
   z-index: 60;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 230, 118, 0.2);
-  transition: all 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 230, 118, 0.25);
+  opacity: 0.85;
+  transition: all 0.25s ease;
+}
+
+.row-wrapper:hover .row-nav-btn {
+  opacity: 1;
 }
 
 .row-nav-btn.left {
-  left: 6px;
+  left: -14px;
 }
 
 .row-nav-btn.right {
-  right: 6px;
+  right: -14px;
 }
 
 .row-nav-btn:hover {
   background: var(--primary);
   color: #000;
+  border-color: var(--primary);
   box-shadow: 0 0 20px rgba(0, 230, 118, 0.7);
-  transform: translateY(-50%) scale(1.12);
+  transform: translateY(-50%) scale(1.15);
 }
 
 .row-posters {
   display: flex;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 1.4rem 2rem;
+  padding: 1.2rem 2rem 1.2rem 0px;
   gap: 1.25rem;
   scroll-behavior: smooth;
   white-space: nowrap;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  width: 100%;
 }
 
 .row-posters::-webkit-scrollbar {
