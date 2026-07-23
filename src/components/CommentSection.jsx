@@ -122,7 +122,12 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
 
             {user ? (
                 <div className="comment-input-box">
-                    <img src={user.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} alt="" className="comment-avatar-small" onError={(e) => { e.target.src = 'https://api.zorobot.shop/avatars/default.png?v=1' }} />
+                    <img 
+                        src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
+                        alt="" 
+                        className="comment-avatar-small" 
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} 
+                    />
                     <textarea 
                         placeholder="O que achou deste conteúdo?"
                         value={newComment}
