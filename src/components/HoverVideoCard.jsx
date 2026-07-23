@@ -8,6 +8,8 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
   const [videoKey, setVideoKey] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [certification, setCertification] = useState('');
+  const [transformOrigin, setTransformOrigin] = useState('center center');
+  const cardRef = useRef(null);
   const timeoutRef = useRef(null);
 
   // Busca classificação etária no carregamento inicial
@@ -30,6 +32,17 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
   }, [id, type]);
 
   const handleMouseEnter = () => {
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      if (rect.left < 70) {
+        setTransformOrigin('left center');
+      } else if (rect.right > windowWidth - 70) {
+        setTransformOrigin('right center');
+      } else {
+        setTransformOrigin('center center');
+      }
+    }
     setIsHovered(true);
     timeoutRef.current = setTimeout(() => {
       fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=pt-BR`)
@@ -50,7 +63,9 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
 
   return (
     <div 
+      ref={cardRef}
       className="hover-video-card" 
+      style={{ transformOrigin }}
       onMouseEnter={handleMouseEnter} 
       onMouseLeave={handleMouseLeave}
       onClick={onClick}

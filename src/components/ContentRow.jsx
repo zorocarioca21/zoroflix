@@ -10,6 +10,8 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
 export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, seeMoreLink }) {
   const [items, setItems] = useState([]);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
   const rowRef = useRef(null);
 
   useEffect(() => {
@@ -17,7 +19,6 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       .then((res) => res.json())
       .then((data) => {
         if (data.results) {
-          // Filtrar os que não tem imagem
           let validItems = data.results.filter(item => item.poster_path);
           if (limit) {
             validItems = validItems.slice(0, limit);
@@ -27,6 +28,27 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       })
       .catch((err) => console.error("Erro na busca da ROW", err));
   }, [endpoint, limit]);
+
+  const checkScroll = () => {
+    if (rowRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const rowEl = rowRef.current;
+    if (rowEl) {
+      rowEl.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+    }
+    return () => {
+      if (rowEl) rowEl.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [items]);
 
   const handleScroll = (direction) => {
     if (rowRef.current) {
@@ -50,9 +72,12 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       </div>
       
       <div className="row-wrapper">
-        <button className="row-nav-btn left" onClick={() => handleScroll('left')} aria-label="Anterior">
-          <ChevronLeft size={22} />
-        </button>
+        {canScrollLeft && (
+          <button className="row-nav-btn left" onClick={() => handleScroll('left')} aria-label="Anterior">
+            <ChevronLeft size={32} />
+          </button>
+        )}
+        
         <div className="row-posters" ref={rowRef}>
           {items.map((item) => (
             <HoverVideoCard 
@@ -67,9 +92,11 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
           ))}
         </div>
 
-        <button className="row-nav-btn right" onClick={() => handleScroll('right')} aria-label="Próximo">
-          <ChevronRight size={22} />
-        </button>
+        {canScrollRight && (
+          <button className="row-nav-btn right" onClick={() => handleScroll('right')} aria-label="Próximo">
+            <ChevronRight size={32} />
+          </button>
+        )}
       </div>
     </div>
   );
