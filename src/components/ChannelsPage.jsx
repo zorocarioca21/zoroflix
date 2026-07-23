@@ -2,6 +2,39 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithProxy } from '../utils/api';
 import SportsFixtures from './SportsFixtures';
+import { Tv } from 'lucide-react';
+
+function ChannelCard({ ch, onClick }) {
+  const [imgError, setImgError] = useState(!ch.logo_url);
+
+  return (
+    <div className="search-card channel-card-item" onClick={onClick}>
+      <div className="search-card-img-wrapper channel-img-box">
+        {!imgError ? (
+          <img 
+            src={ch.logo_url} 
+            alt={ch.name} 
+            className="search-card-img channel-logo-img"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="channel-placeholder-box">
+            <Tv size={36} className="channel-tv-icon" />
+            <span className="channel-placeholder-name">{ch.name}</span>
+          </div>
+        )}
+        <div className="search-card-overlay">
+          <span className="row-play-icon">▶</span>
+        </div>
+      </div>
+      <div className="search-card-info">
+        <div className="search-card-title">{ch.name}</div>
+        <div className="search-card-type">{ch.category || 'TV'}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function ChannelsPage() {
   const [channels, setChannels] = useState([]);
@@ -84,30 +117,11 @@ export default function ChannelsPage() {
 
       <div className="search-grid">
         {filteredChannels.map((ch) => (
-          <div 
-            className="search-card" 
+          <ChannelCard 
             key={ch.id} 
-            onClick={() => navigate(`/canal/${ch.id}`, { state: { embed_url: ch.embed_url, title: ch.name } })}
-            style={{background: '#fff'}}
-          >
-            <div className="search-card-img-wrapper" style={{aspectRatio: '16/9'}}>
-              <img 
-                src={ch.logo_url} 
-                alt={ch.name} 
-                className="search-card-img"
-                style={{objectFit: 'contain', padding: '1rem'}}
-                loading="lazy"
-                onError={(e) => { e.target.src = '/cinegeek-icon.png'; e.target.style.opacity = 0.5; }}
-              />
-              <div className="search-card-overlay">
-                <span className="row-play-icon">▶</span>
-              </div>
-            </div>
-            <div className="search-card-info" style={{background: 'var(--bg-card)'}}>
-              <div className="search-card-title">{ch.name}</div>
-              <div className="search-card-type">{ch.category || 'TV'}</div>
-            </div>
-          </div>
+            ch={ch} 
+            onClick={() => navigate(`/canal/${ch.id}`, { state: { embed_url: ch.embed_url, title: ch.name } })} 
+          />
         ))}
       </div>
     </div>
