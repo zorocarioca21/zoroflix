@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -23,6 +23,34 @@ export default function AdminPanel() {
     const [moderatedList, setModeratedList] = useState([]);
     const [hiddenList, setHiddenList] = useState([]);
     const [usersList, setUsersList] = useState([]);
+
+    // Estados de Detalhes do Usuário (Modal ADM)
+    const [selectedUserDetail, setSelectedUserDetail] = useState(null);
+    const [userModalOpen, setUserModalOpen] = useState(false);
+    const [loadingUserDetail, setLoadingUserDetail] = useState(false);
+    const [userDetailTab, setUserDetailTab] = useState('overview');
+
+    const openUserDetails = async (userId) => {
+        setLoadingUserDetail(true);
+        setUserModalOpen(true);
+        setUserDetailTab('overview');
+        try {
+            const resp = await fetch(`/api/admin/users/${userId}/details`);
+            if (resp.ok) {
+                const data = await resp.json();
+                setSelectedUserDetail(data);
+            } else {
+                alert('Erro ao carregar detalhes do usuário.');
+                setUserModalOpen(false);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Falha de rede ao carregar detalhes.');
+            setUserModalOpen(false);
+        } finally {
+            setLoadingUserDetail(false);
+        }
+    };
 
     // Estados de Busca e Paginação
     const [searchReports, setSearchReports] = useState('');
@@ -237,7 +265,15 @@ export default function AdminPanel() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: newRole })
         });
-        if (resp.ok) fetchUsersList(true);
+        if (resp.ok) {
+            fetchUsersList(true);
+            if (selectedUserDetail && selectedUserDetail.user && selectedUserDetail.user.id === userId) {
+                setSelectedUserDetail(prev => ({
+                    ...prev,
+                    user: { ...prev.user, role: newRole }
+                }));
+            }
+        }
     };
 
     const getLocalLink = (item) => {
@@ -451,11 +487,23 @@ export default function AdminPanel() {
                                 <tbody>
                                     {usersList.map(u => (
                                         <tr key={u.id}>
-                                            <td>{u.nick}</td>
+                                            <td>
+                                                <button 
+                                                    className="btn-user-click" 
+                                                    onClick={() => openUserDetails(u.id)}
+                                                    title="Clique para ver o perfil completo e histórico"
+                                                >
+                                                    <User size={14} style={{marginRight: '6px', color: 'var(--primary)'}} />
+                                                    <strong>{u.nick}</strong>
+                                                </button>
+                                            </td>
                                             <td>{u.email}</td>
                                             <td><span className={`role-tag ${u.role}`}>{u.role}</span></td>
                                             <td>
                                                 <div className="action-row-mini">
+                                                    <button onClick={() => openUserDetails(u.id)} className="btn-adm-safe mini-rest" title="Ver Histórico, Favoritos e Perfil">
+                                                        <Eye size={14} /> Detalhes
+                                                    </button>
                                                     <button onClick={() => handleChangeRole(u.id, 'free')}>Free</button>
                                                     <button onClick={() => handleChangeRole(u.id, 'vip')} className="btn-vip">VIP</button>
                                                     <button onClick={() => handleChangeRole(u.id, 'admin')} className="btn-admin">ADM</button>
@@ -686,6 +734,262 @@ export default function AdminPanel() {
                     </div>
                 )}
             </div>
+
+            {/* MODAL DE DETALHES DO USUÁRIO */}
+            {userModalOpen && (
+                <div className="admin-modal-overlay" onClick={() => setUserModalOpen(false)}>
+                    <div className="admin-modal-container" onClick={e => e.stopPropagation()}>
+                        <div className="admin-modal-header">
+                            <div className="admin-modal-user-info">
+                                <img 
+                                    src={selectedUserDetail?.user?.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} 
+                                    alt="Avatar" 
+                                    className="admin-modal-avatar" 
+                                />
+                                <div>
+                                    <h3>{selectedUserDetail?.user?.nick || 'Carregando...'}</h3>
+                                    <p className="admin-modal-email"><Mail size={13} style={{verticalAlign:'middle', marginRight:'4px'}} />{selectedUserDetail?.user?.email}</p>
+                                </div>
+                            </div>
+                            <button className="admin-modal-close" onClick={() => setUserModalOpen(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {loadingUserDetail ? (
+                            <div className="admin-modal-loading">
+                                <p>Carregando perfil e histórico do usuário...</p>
+                            </div>
+                        ) : selectedUserDetail ? (
+                            <>
+                                {/* BARRA DE CARGO & INFOS RÁPIDAS */}
+                                <div className="admin-modal-top-bar">
+                                    <div className="admin-modal-role-box">
+                                        <span>Cargo atual: <strong className={`role-tag ${selectedUserDetail.user.role}`}>{selectedUserDetail.user.role.toUpperCase()}</strong></span>
+                                        <div className="action-row-mini" style={{marginLeft: '10px'}}>
+                                            <button onClick={() => handleChangeRole(selectedUserDetail.user.id, 'free')} className={selectedUserDetail.user.role === 'free' ? 'active-role' : ''}>Free</button>
+                                            <button onClick={() => handleChangeRole(selectedUserDetail.user.id, 'vip')} className={`btn-vip ${selectedUserDetail.user.role === 'vip' ? 'active-role' : ''}`}>VIP</button>
+                                            <button onClick={() => handleChangeRole(selectedUserDetail.user.id, 'admin')} className={`btn-admin ${selectedUserDetail.user.role === 'admin' ? 'active-role' : ''}`}>ADM</button>
+                                        </div>
+                                    </div>
+                                    <div className="admin-modal-meta-item">
+                                        <Calendar size={14} style={{verticalAlign:'middle', marginRight:'4px'}} /> Cadastrado em: {new Date(selectedUserDetail.user.created_at).toLocaleDateString('pt-BR')}
+                                    </div>
+                                </div>
+
+                                {/* NAVEGAÇÃO DE ABAS DO MODAL */}
+                                <div className="admin-modal-tabs">
+                                    <button 
+                                        className={`admin-modal-tab-btn ${userDetailTab === 'overview' ? 'active' : ''}`}
+                                        onClick={() => setUserDetailTab('overview')}
+                                    >
+                                        <User size={15} /> Visão Geral
+                                    </button>
+                                    <button 
+                                        className={`admin-modal-tab-btn ${userDetailTab === 'history' ? 'active' : ''}`}
+                                        onClick={() => setUserDetailTab('history')}
+                                    >
+                                        <Clock size={15} /> Histórico ({selectedUserDetail.stats.totalWatched})
+                                    </button>
+                                    <button 
+                                        className={`admin-modal-tab-btn ${userDetailTab === 'favorites' ? 'active' : ''}`}
+                                        onClick={() => setUserDetailTab('favorites')}
+                                    >
+                                        <Heart size={15} /> Favoritos ({selectedUserDetail.stats.totalFavorites})
+                                    </button>
+                                    <button 
+                                        className={`admin-modal-tab-btn ${userDetailTab === 'comments' ? 'active' : ''}`}
+                                        onClick={() => setUserDetailTab('comments')}
+                                    >
+                                        <MessageSquare size={15} /> Comentários ({selectedUserDetail.stats.totalComments})
+                                    </button>
+                                </div>
+
+                                {/* CONTEÚDO DAS ABAS */}
+                                <div className="admin-modal-body">
+                                    {/* ABA VISÃO GERAL */}
+                                    {userDetailTab === 'overview' && (
+                                        <div className="admin-user-overview">
+                                            <div className="stats-cards-grid" style={{marginBottom: '1.5rem'}}>
+                                                <div className="stat-card">
+                                                    <Clock className="stat-icon" color="#2196f3" />
+                                                    <div className="stat-info">
+                                                        <h3>Total Assistidos</h3>
+                                                        <p className="stat-value">{selectedUserDetail.stats.totalWatched}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="stat-card">
+                                                    <Heart className="stat-icon" color="#ff4444" />
+                                                    <div className="stat-info">
+                                                        <h3>Favoritos</h3>
+                                                        <p className="stat-value">{selectedUserDetail.stats.totalFavorites}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="stat-card">
+                                                    <MessageSquare className="stat-icon" color="#4caf50" />
+                                                    <div className="stat-info">
+                                                        <h3>Comentários</h3>
+                                                        <p className="stat-value">{selectedUserDetail.stats.totalComments}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <h4 style={{marginBottom: '0.8rem', color: 'var(--primary)'}}>Última Atividade no Histórico</h4>
+                                            {selectedUserDetail.watchHistory.length === 0 ? (
+                                                <p className="admin-empty-text">Nenhum conteúdo assistido recentemente.</p>
+                                            ) : (
+                                                <div className="admin-recent-mini-list">
+                                                    {selectedUserDetail.watchHistory.slice(0, 3).map(item => (
+                                                        <div key={item.id} className="admin-recent-mini-item">
+                                                            {item.poster_path ? (
+                                                                <img src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt={item.title} className="admin-mini-poster" />
+                                                            ) : (
+                                                                <div className="admin-mini-poster-placeholder">{item.media_type === 'movie' ? <Film size={18}/> : <Tv size={18}/>}</div>
+                                                            )}
+                                                            <div style={{flex: 1}}>
+                                                                <strong>{item.title}</strong>
+                                                                {item.media_type === 'tv' && item.season !== undefined && item.season !== null && (
+                                                                    <span className="ep-badge" style={{marginLeft: '6px'}}> T{item.season} E{item.episode}</span>
+                                                                )}
+                                                                <p style={{fontSize: '0.75rem', color: '#888', marginTop: '4px'}}>
+                                                                    <Clock size={11} style={{verticalAlign: 'middle', marginRight: '4px'}}/> {new Date(item.watched_at).toLocaleString('pt-BR')}
+                                                                </p>
+                                                            </div>
+                                                            <div>
+                                                                {getLocalLink(item)}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ABA HISTÓRICO DE ASSISTIDOS */}
+                                    {userDetailTab === 'history' && (
+                                        <div className="admin-modal-history-list">
+                                            {selectedUserDetail.watchHistory.length === 0 ? (
+                                                <p className="admin-empty-text">Este usuário ainda não assistiu nenhum vídeo.</p>
+                                            ) : (
+                                                <div className="admin-table-wrap">
+                                                    <table className="admin-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Capa</th>
+                                                                <th>Título / Conteúdo</th>
+                                                                <th>Tipo</th>
+                                                                <th>Data / Hora</th>
+                                                                <th>Ação</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {selectedUserDetail.watchHistory.map(item => (
+                                                                <tr key={item.id}>
+                                                                    <td>
+                                                                        {item.poster_path ? (
+                                                                            <img src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt={item.title} style={{width: '36px', height: '54px', borderRadius: '4px', objectFit: 'cover'}} />
+                                                                        ) : (
+                                                                            <div style={{width: '36px', height: '54px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                                                {item.media_type === 'movie' ? <Film size={16}/> : <Tv size={16}/>}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
+                                                                        <strong>{item.title || 'Título Desconhecido'}</strong>
+                                                                        {item.season !== undefined && item.season !== null && (
+                                                                            <span className="ep-badge" style={{marginLeft: '6px'}}>T{item.season} E{item.episode}</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td><span style={{fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px'}}>{item.media_type === 'movie' ? 'Filme' : 'Série'}</span></td>
+                                                                    <td style={{fontSize: '0.8rem', color: '#aaa'}}>{new Date(item.watched_at).toLocaleString('pt-BR')}</td>
+                                                                    <td>{getLocalLink(item)}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ABA FAVORITOS */}
+                                    {userDetailTab === 'favorites' && (
+                                        <div className="admin-modal-fav-grid">
+                                            {selectedUserDetail.favorites.length === 0 ? (
+                                                <p className="admin-empty-text">Nenhum item salvo nos favoritos por este usuário.</p>
+                                            ) : (
+                                                <div className="admin-fav-grid">
+                                                    {selectedUserDetail.favorites.map(fav => (
+                                                        <div key={fav.id} className="admin-fav-card">
+                                                            {fav.poster_path ? (
+                                                                <img src={`https://image.tmdb.org/t/p/w185${fav.poster_path}`} alt={fav.title} className="admin-fav-poster" />
+                                                            ) : (
+                                                                <div className="admin-fav-placeholder">{fav.media_type === 'movie' ? <Film size={24}/> : <Tv size={24}/>}</div>
+                                                            )}
+                                                            <div className="admin-fav-info">
+                                                                <h4>{fav.title || 'Sem título'}</h4>
+                                                                <span className="admin-fav-type">{fav.media_type === 'movie' ? 'Filme' : 'Série'}</span>
+                                                                <div style={{marginTop: '8px'}}>
+                                                                    {getLocalLink(fav)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ABA COMENTÁRIOS */}
+                                    {userDetailTab === 'comments' && (
+                                        <div className="admin-modal-comments-list">
+                                            {selectedUserDetail.comments.length === 0 ? (
+                                                <p className="admin-empty-text">Nenhum comentário postado por este usuário.</p>
+                                            ) : (
+                                                <div className="admin-table-wrap">
+                                                    <table className="admin-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Data</th>
+                                                                <th>Comentário</th>
+                                                                <th>Status</th>
+                                                                <th>Ações</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {selectedUserDetail.comments.map(c => (
+                                                                <tr key={c.id}>
+                                                                    <td style={{fontSize: '0.75rem', color: '#888', width: '110px'}}>{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+                                                                    <td className="comment-txt-cell">{c.text}</td>
+                                                                    <td>
+                                                                        <span className={`status-badge ${c.status || 'active'}`}>
+                                                                            {c.status === 'moderated' ? 'Moderado' : c.status === 'hidden' ? 'Oculto' : 'Ativo'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div className="action-row-mini">
+                                                                            {getLocalLink(c)}
+                                                                            {c.status !== 'active' ? (
+                                                                                <button onClick={() => handleModeration(c.id, 'active')} title="Restaurar" className="btn-adm-safe mini-rest"><CheckCircle size={15}/></button>
+                                                                            ) : (
+                                                                                <button onClick={() => handleModeration(c.id, 'moderated')} title="Ocultar/Moderar"><Trash2 size={15} color="#ffab00"/></button>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : null}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

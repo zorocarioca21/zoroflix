@@ -91,6 +91,60 @@ export default function adminRoutes(db) {
         }
     });
 
+    // Detalhes completos do usuário (Histórico, Favoritos, Comentários e Perfil)
+    router.get('/users/:id/details', async (req, res) => {
+        const { id } = req.params;
+        try {
+            const user = await db.get(`
+                SELECT id, uuid, nick, email, role, avatar, banned_until, created_at 
+                FROM users 
+                WHERE id = ?
+            `, [id]);
+
+            if (!user) {
+                return res.status(404).json({ error: 'Usuário não encontrado.' });
+            }
+
+            const watchHistory = await db.all(`
+                SELECT * FROM watch_history 
+                WHERE user_id = ? 
+                ORDER BY watched_at DESC 
+                LIMIT 50
+            `, [id]);
+
+            const favorites = await db.all(`
+                SELECT * FROM favorites 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC
+            `, [id]);
+
+            const comments = await db.all(`
+                SELECT * FROM comments 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 50
+            `, [id]);
+
+            const stats = {
+                totalWatched: watchHistory.length,
+                totalFavorites: favorites.length,
+                totalComments: comments.length
+            };
+
+            res.json({
+                user,
+                watchHistory,
+                favorites,
+                comments,
+                stats
+            });
+        } catch (err) {
+            console.error('Erro ao buscar detalhes do usuário:', err);
+            res.status(500).json({ error: 'Erro ao carregar detalhes do usuário.' });
+        }
+    });
+
+
     // Moderação de Comentário (Granular: moderated ou hidden)
     router.patch('/comments/:id/moderation', async (req, res) => {
         const { id } = req.params;
