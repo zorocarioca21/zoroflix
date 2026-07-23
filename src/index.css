@@ -845,12 +845,13 @@ body::before {
 .details-poster-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 250px;
+  width: 330px;
+  max-width: 100%;
   aspect-ratio: 2/3;
-  border-radius: 1rem;
+  border-radius: 1.2rem;
   overflow: hidden;
   border: var(--border-neon);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.95);
   background: #0e1711;
   display: flex;
 }
