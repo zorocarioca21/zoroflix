@@ -105,12 +105,22 @@ export default function adminRoutes(db) {
                 return res.status(404).json({ error: 'Usuário não encontrado.' });
             }
 
-            const watchHistory = await db.all(`
+            const rawWatchHistory = await db.all(`
                 SELECT * FROM watch_history 
                 WHERE user_id = ? 
                 ORDER BY watched_at DESC 
                 LIMIT 50
             `, [id]);
+
+            const watchHistory = rawWatchHistory.map(item => {
+                let cleanTitle = item.title;
+                if (!cleanTitle || cleanTitle === 'Carregando...' || cleanTitle.trim() === '') {
+                    cleanTitle = item.media_type === 'canal' 
+                        ? `Canal (${item.content_id})` 
+                        : (item.media_type === 'movie' ? `Filme (${item.content_id})` : `Série (${item.content_id})`);
+                }
+                return { ...item, title: cleanTitle };
+            });
 
             const favorites = await db.all(`
                 SELECT * FROM favorites 

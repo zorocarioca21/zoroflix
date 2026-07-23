@@ -174,11 +174,26 @@ export default function PlayerPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const mediaType = canalId ? 'canal' : (season ? 'tv' : 'movie');
-
-      // Para séries/canais: content_id = ID único do conteúdo para sobrescrever histórico
       const trackId = canalId ? canalId : id;
-      const targetTitle = canalId ? resolvedChannel.name : (state.title || title);
-      const targetPoster = canalId ? resolvedChannel.logo_url : (state.poster_path || null);
+
+      let targetTitle = canalId ? resolvedChannel?.name : (seriesDetail?.name || state?.title || (title !== 'Carregando...' ? title : null));
+      let targetPoster = canalId ? resolvedChannel?.logo_url : (seriesDetail?.poster_path || state?.poster_path || null);
+
+      if ((!targetTitle || targetTitle === 'Carregando...') && id && !canalId) {
+          try {
+              const tmdbType = season ? 'tv' : 'movie';
+              const tmdbRes = await fetch(`${BASE_URL}/${tmdbType}/${id}?api_key=${API_KEY}&language=pt-BR`);
+              if (tmdbRes.ok) {
+                  const tmdbData = await tmdbRes.json();
+                  targetTitle = tmdbData.name || tmdbData.title || targetTitle;
+                  if (!targetPoster) targetPoster = tmdbData.poster_path;
+              }
+          } catch(e) {}
+      }
+
+      if (!targetTitle || targetTitle === 'Carregando...') {
+          targetTitle = canalId ? `Canal ${canalId}` : (season ? `Série #${id}` : `Filme #${id}`);
+      }
 
       try {
         await fetch('/api/recents', {

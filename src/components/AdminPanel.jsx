@@ -276,10 +276,26 @@ export default function AdminPanel() {
         }
     };
 
+    const formatItemTitle = (item) => {
+        if (!item) return 'Conteúdo Sem Título';
+        if (item.title && item.title !== 'Carregando...' && item.title.trim() !== '') return item.title;
+        if (item.media_type === 'canal') return `Canal Ao Vivo (#${item.content_id})`;
+        if (item.media_type === 'movie') return `Filme #${item.content_id}`;
+        if (item.media_type === 'tv') return `Série #${item.content_id}`;
+        return `Conteúdo #${item.content_id}`;
+    };
+
     const getLocalLink = (item) => {
+        if (item.media_type === 'canal') {
+            return (
+                <Link to={`/canal/${item.content_id}`} className="local-link-adm" target="_blank">
+                    Canal <ExternalLink size={12} />
+                </Link>
+            );
+        }
         const path = item.media_type === 'movie' ? `/filme/${item.content_id}` : `/serie/${item.content_id}`;
         return (
-            <Link to={path} className="local-link-adm">
+            <Link to={path} className="local-link-adm" target="_blank">
                 {item.media_type === 'movie' ? 'Filme' : 'Série'} <ExternalLink size={12} />
             </Link>
         );
@@ -742,9 +758,10 @@ export default function AdminPanel() {
                         <div className="admin-modal-header">
                             <div className="admin-modal-user-info">
                                 <img 
-                                    src={selectedUserDetail?.user?.avatar || 'https://api.zorobot.shop/avatars/default.png?v=1'} 
-                                    alt="Avatar" 
+                                    src={selectedUserDetail?.user?.avatar || '/cinegeek-icon.png'} 
+                                    alt="" 
                                     className="admin-modal-avatar" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = '/cinegeek-icon.png'; }}
                                 />
                                 <div>
                                     <h3>{selectedUserDetail?.user?.nick || 'Carregando...'}</h3>
@@ -842,12 +859,12 @@ export default function AdminPanel() {
                                                     {selectedUserDetail.watchHistory.slice(0, 3).map(item => (
                                                         <div key={item.id} className="admin-recent-mini-item">
                                                             {item.poster_path ? (
-                                                                <img src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt={item.title} className="admin-mini-poster" />
+                                                                <img src={item.poster_path.startsWith('http') ? item.poster_path : `https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" className="admin-mini-poster" onError={(e) => { e.target.style.display = 'none'; }} />
                                                             ) : (
                                                                 <div className="admin-mini-poster-placeholder">{item.media_type === 'movie' ? <Film size={18}/> : <Tv size={18}/>}</div>
                                                             )}
                                                             <div style={{flex: 1}}>
-                                                                <strong>{item.title}</strong>
+                                                                <strong>{formatItemTitle(item)}</strong>
                                                                 {item.media_type === 'tv' && item.season !== undefined && item.season !== null && (
                                                                     <span className="ep-badge" style={{marginLeft: '6px'}}> T{item.season} E{item.episode}</span>
                                                                 )}
@@ -887,7 +904,7 @@ export default function AdminPanel() {
                                                                 <tr key={item.id}>
                                                                     <td>
                                                                         {item.poster_path ? (
-                                                                            <img src={`https://image.tmdb.org/t/p/w92${item.poster_path}`} alt={item.title} style={{width: '36px', height: '54px', borderRadius: '4px', objectFit: 'cover'}} />
+                                                                            <img src={item.poster_path.startsWith('http') ? item.poster_path : `https://image.tmdb.org/t/p/w92${item.poster_path}`} alt="" style={{width: '36px', height: '54px', borderRadius: '4px', objectFit: 'cover'}} onError={(e) => { e.target.style.display = 'none'; }} />
                                                                         ) : (
                                                                             <div style={{width: '36px', height: '54px', background: '#222', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                                                                                 {item.media_type === 'movie' ? <Film size={16}/> : <Tv size={16}/>}
@@ -895,12 +912,12 @@ export default function AdminPanel() {
                                                                         )}
                                                                     </td>
                                                                     <td>
-                                                                        <strong>{item.title || 'Título Desconhecido'}</strong>
+                                                                        <strong>{formatItemTitle(item)}</strong>
                                                                         {item.season !== undefined && item.season !== null && (
                                                                             <span className="ep-badge" style={{marginLeft: '6px'}}>T{item.season} E{item.episode}</span>
                                                                         )}
                                                                     </td>
-                                                                    <td><span style={{fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px'}}>{item.media_type === 'movie' ? 'Filme' : 'Série'}</span></td>
+                                                                    <td><span style={{fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px'}}>{item.media_type === 'movie' ? 'Filme' : (item.media_type === 'canal' ? 'Canal' : 'Série')}</span></td>
                                                                     <td style={{fontSize: '0.8rem', color: '#aaa'}}>{new Date(item.watched_at).toLocaleString('pt-BR')}</td>
                                                                     <td>{getLocalLink(item)}</td>
                                                                 </tr>
@@ -922,13 +939,13 @@ export default function AdminPanel() {
                                                     {selectedUserDetail.favorites.map(fav => (
                                                         <div key={fav.id} className="admin-fav-card">
                                                             {fav.poster_path ? (
-                                                                <img src={`https://image.tmdb.org/t/p/w185${fav.poster_path}`} alt={fav.title} className="admin-fav-poster" />
+                                                                <img src={fav.poster_path.startsWith('http') ? fav.poster_path : `https://image.tmdb.org/t/p/w185${fav.poster_path}`} alt="" className="admin-fav-poster" onError={(e) => { e.target.style.display = 'none'; }} />
                                                             ) : (
                                                                 <div className="admin-fav-placeholder">{fav.media_type === 'movie' ? <Film size={24}/> : <Tv size={24}/>}</div>
                                                             )}
                                                             <div className="admin-fav-info">
-                                                                <h4>{fav.title || 'Sem título'}</h4>
-                                                                <span className="admin-fav-type">{fav.media_type === 'movie' ? 'Filme' : 'Série'}</span>
+                                                                <h4>{formatItemTitle(fav)}</h4>
+                                                                <span className="admin-fav-type">{fav.media_type === 'movie' ? 'Filme' : (fav.media_type === 'canal' ? 'Canal' : 'Série')}</span>
                                                                 <div style={{marginTop: '8px'}}>
                                                                     {getLocalLink(fav)}
                                                                 </div>
