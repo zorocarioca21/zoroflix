@@ -15,7 +15,7 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [genres, setGenres] = useState([]);
-  const [selectedGenre, setSelectedGenre] = useState(initialGenreId);
+  const [selectedGenre, setSelectedGenre] = useState('');
   const [sortBy, setSortBy] = useState('popularity.desc');
   const [query, setQuery] = useState('');
 
@@ -25,10 +25,6 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     fetch(`${BASE_URL}/genre/${genreType}/list?api_key=${API_KEY}&language=pt-BR`)
       .then(r => r.json())
       .then(data => {
-        // Filtra gêneros populares/relevantes para os pills
-        const relevantGenres = data.genres?.filter(g => 
-          ['Ação', 'Comédia', 'Terror', 'Drama', 'Animação', 'Aventura', 'Documentário', 'Ficção científica'].includes(g.name)
-        ) || [];
         setGenres(data.genres || []);
       });
   }, [type]);
@@ -44,9 +40,9 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     } else {
       url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
       
-      // LÓGICA ESTRITA: Combina o gênero inicial (ex: Animação) com o selecionado (ex: Ação)
+      // Combina o gênero inicial fixo da página (ex: 16 de Animação debaixo dos panos) com o sub-gênero selecionado
       let combinedGenres = initialGenreId;
-      if (selectedGenre && selectedGenre !== initialGenreId) {
+      if (selectedGenre) {
         combinedGenres = combinedGenres ? `${combinedGenres},${selectedGenre}` : selectedGenre;
       }
       
@@ -67,8 +63,7 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
           if (initialLanguage) {
             results = results.filter(item => item.original_language === initialLanguage);
           }
-          // Filtro extra selecionado pelo usuário durante a busca
-          if (selectedGenre && selectedGenre !== initialGenreId) {
+          if (selectedGenre) {
             results = results.filter(item => item.genre_ids?.includes(parseInt(selectedGenre)));
           }
         }
@@ -92,6 +87,9 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
     setPage(1);
   };
 
+  // Oculta o gênero base (ex: Animação na página de animes) dos pills secundários
+  const displayGenres = genres.filter(g => !initialGenreId || g.id !== parseInt(initialGenreId));
+
   return (
     <div className="catalog-container">
       <header className="catalog-header">
@@ -111,8 +109,8 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
           <div className="filter-group">
             <label>Gênero:</label>
             <select value={selectedGenre} onChange={(e) => handleFilterChange(e.target.value)}>
-              <option value={initialGenreId}>Todos</option>
-              {genres.map(g => (
+              <option value="">Todos</option>
+              {displayGenres.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
@@ -123,12 +121,12 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
       {/* CATEGORY PILLS */}
       <div className="category-pills-container">
         <button 
-          className={`category-pill ${selectedGenre === initialGenreId ? 'active' : ''}`}
-          onClick={() => handleFilterChange(initialGenreId)}
+          className={`category-pill ${!selectedGenre ? 'active' : ''}`}
+          onClick={() => handleFilterChange('')}
         >
           Todos
         </button>
-        {genres.slice(0, 10).map(g => (
+        {displayGenres.slice(0, 10).map(g => (
           <button 
             key={g.id} 
             className={`category-pill ${selectedGenre == g.id ? 'active' : ''}`}
