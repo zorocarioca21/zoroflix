@@ -44,6 +44,17 @@ function getProgress(start, stop) {
   return Math.round(((now - s) / (e - s)) * 100);
 }
 
+function cleanChannelName(rawName) {
+  if (!rawName) return '';
+  return rawName
+    .replace(/^(São Paulo|Belo Horizonte|Rio de Janeiro|Brasília)\/[A-Z]{2}\s+/i, '')
+    .replace(/^([A-Za-zÀ-ÿ\s]+\/[A-Za-zÀ-ÿ\s]+\s{2,})/g, '')
+    .replace(/\s+HD.*$/i, '')
+    .replace(/\s+³.*$/, '')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
 /** Parse XML string into channels + programmes */
 function parseXmlTv(xmlText) {
   const parser = new DOMParser();
@@ -52,8 +63,9 @@ function parseXmlTv(xmlText) {
   const channels = {};
   doc.querySelectorAll('channel').forEach((ch) => {
     const id = ch.getAttribute('id');
-    const name = ch.querySelector('display-name')?.textContent || id;
-    channels[id] = { id, name };
+    const rawName = ch.querySelector('display-name')?.textContent || id;
+    const name = cleanChannelName(rawName);
+    channels[id] = { id, name, rawName };
   });
 
   const programmes = [];
@@ -135,7 +147,7 @@ function ProgramCard({ prog, now, onClick }) {
 }
 
 function ChannelRow({ channel, programmes, now, logoMap, onWatch }) {
-  const logoUrl = logoMap?.[channel.id] || logoMap?.[channel.name] || null;
+  const logoUrl = logoMap?.[channel.id] || logoMap?.[channel.name?.toLowerCase()] || logoMap?.[channel.rawName?.toLowerCase()] || logoMap?.[channel.name] || null;
   const [expanded, setExpanded] = useState(null);
 
   // Find current + upcoming programmes (filter out past programs)
