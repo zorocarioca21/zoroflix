@@ -270,21 +270,17 @@ export default function TvGuideModal({ isOpen, onClose }) {
     setError(null);
     const url = 'https://reidosembeds.com/api/guia';
 
-    // Helper: extrai XML de qualquer formato de resposta (raw text, JSON string, JSON object com .contents)
     const extractXml = (raw) => {
       if (!raw) return null;
-      // Já é XML puro
-      if (typeof raw === 'string' && (raw.trimStart().startsWith('<?xml') || raw.trimStart().startsWith('<tv'))) {
+      if (typeof raw === 'string' && (raw.trimStart().startsWith('<?xml') || raw.includes('<tv'))) {
         return raw;
       }
-      // O proxy interno (res.json) pode fazer JSON.stringify na string XML → começa com '"'
       if (typeof raw === 'string' && raw.trimStart().startsWith('"')) {
         try {
           const parsed = JSON.parse(raw);
           if (typeof parsed === 'string' && (parsed.includes('<tv>') || parsed.includes('<?xml'))) return parsed;
         } catch (_) {}
       }
-      // allorigins /get retorna { contents: "..." }
       if (typeof raw === 'string') {
         try {
           const j = JSON.parse(raw);
@@ -295,34 +291,33 @@ export default function TvGuideModal({ isOpen, onClose }) {
     };
 
     const proxies = [
-      // Proxy interno — retorna res.json(response.data), então o XML vira JSON string
+      // 1. Rota dedicada de EPG no backend (rápida, com cache e sem problemas de CORS)
+      async () => {
+        const res = await fetch('/api/epg');
+        if (!res.ok) throw new Error('EPG route fail');
+        const raw = await res.text();
+        return extractXml(raw);
+      },
+      // 2. Proxy interno genérico
       async (u) => {
         const res = await fetch(`/api-proxy?url=${encodeURIComponent(u)}`);
         if (!res.ok) throw new Error('proxy fail');
         const raw = await res.text();
         return extractXml(raw);
       },
-      // allorigins raw — retorna XML puro
+      // 3. Fallbacks externos
       async (u) => {
         const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`);
         if (!res.ok) throw new Error('proxy fail');
         const raw = await res.text();
         return extractXml(raw);
       },
-      // corsproxy.io — retorna XML puro
       async (u) => {
         const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(u)}`);
         if (!res.ok) throw new Error('proxy fail');
         const raw = await res.text();
         return extractXml(raw);
-      },
-      // codetabs
-      async (u) => {
-        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`);
-        if (!res.ok) throw new Error('proxy fail');
-        const raw = await res.text();
-        return extractXml(raw);
-      },
+      }
     ];
 
     for (const tryProxy of proxies) {
@@ -330,7 +325,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
         const xml = await tryProxy(url);
         if (!xml || (!xml.includes('<tv>') && !xml.includes('<?xml'))) continue;
         const parsed = parseXmlTv(xml);
-        if (Object.keys(parsed.channels).length === 0) continue; // parsing falhou
+        if (Object.keys(parsed.channels).length === 0) continue;
         setData(parsed);
         setLoading(false);
         return;
