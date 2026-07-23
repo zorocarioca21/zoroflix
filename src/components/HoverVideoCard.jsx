@@ -74,9 +74,11 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
           </div>
         )}
         
-        <div className="card-overlay">
-          <span className="play-icon">▶</span>
-        </div>
+        {!videoKey && (
+          <div className="card-overlay">
+            <span className="play-icon">▶</span>
+          </div>
+        )}
       </div>
       <div className="card-title">{title}</div>
     </div>
