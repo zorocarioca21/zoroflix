@@ -461,112 +461,204 @@ body::before {
   transform: translateY(-2px);
 }
 
+.content-row-container {
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
 .row-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  margin: 0 -1rem;
 }
 
 .row-nav-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(10, 20, 14, 0.88);
+  backdrop-filter: blur(6px);
   color: var(--primary);
-  border: var(--border-neon);
+  border: 1px solid rgba(0, 230, 118, 0.4);
   border-radius: 50%;
-  width: 45px;
-  height: 45px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: bold;
   cursor: pointer;
-  z-index: 10;
-  box-shadow: var(--glow);
-  transition: all 0.3s ease;
+  z-index: 60;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 10px rgba(0, 230, 118, 0.2);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 .row-nav-btn.left {
-  left: -20px;
+  left: 6px;
 }
 
 .row-nav-btn.right {
-  right: -20px;
+  right: 6px;
 }
 
 .row-nav-btn:hover {
   background: var(--primary);
   color: #000;
-  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.7);
+  transform: translateY(-50%) scale(1.12);
 }
 
 .row-posters {
   display: flex;
   overflow-x: auto;
-  overflow-y: hidden;
-  padding: 1rem 0;
-  gap: 1.2rem;
+  overflow-y: visible;
+  padding: 1.4rem 2rem;
+  gap: 1.25rem;
   scroll-behavior: smooth;
   white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .row-posters::-webkit-scrollbar {
   display: none;
 }
-.row-posters {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
 
-.row-poster-card {
+/* ==========================================================================
+   HOVER VIDEO CARD & EDGE CLIPPING PREVENTION
+   ========================================================================== */
+
+.hover-video-card, .row-poster-card {
   position: relative;
-  min-width: 160px;
-  max-width: 160px;
-  border-radius: 0.8rem;
-  overflow: hidden;
+  min-width: 175px;
+  max-width: 175px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.3s ease, border-color 0.3s ease;
-  border: 1px solid transparent;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  transform-origin: center center;
+  flex-shrink: 0;
+  user-select: none;
 }
 
-.row-poster-card:hover {
-  transform: scale(1.08);
-  border-color: var(--primary);
-  box-shadow: var(--glow);
-  z-index: 5;
+/* Evita corte nos cards da ponta (esquerda e direita) */
+.row-posters > .hover-video-card:first-child,
+.row-posters > .row-poster-card:first-child,
+.row-posters > div:first-child .hover-video-card {
+  transform-origin: left center;
 }
 
-.row-poster-img {
+.row-posters > .hover-video-card:last-child,
+.row-posters > .row-poster-card:last-child,
+.row-posters > div:last-child .hover-video-card {
+  transform-origin: right center;
+}
+
+.hover-video-card:hover, .row-poster-card:hover {
+  transform: scale(1.08) translateY(-6px);
+  z-index: 50 !important;
+}
+
+.card-media-wrapper {
+  position: relative;
   width: 100%;
-  height: 240px;
+  aspect-ratio: 2/3;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #101a14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-video-card:hover .card-media-wrapper,
+.row-poster-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 230, 118, 0.35);
+}
+
+.card-poster-img, .row-poster-img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.row-poster-overlay {
+.teaser-iframe-wrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.teaser-iframe-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.4);
+}
+
+.card-badges-top {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.card-overlay, .row-poster-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
+.hover-video-card:hover .card-overlay,
 .row-poster-card:hover .row-poster-overlay {
   opacity: 1;
 }
 
-.row-play-icon {
-  font-size: 3rem;
+.play-icon, .row-play-icon {
+  font-size: 2.2rem;
   color: var(--primary);
   text-shadow: 0 0 15px rgba(0, 230, 118, 0.8);
+  transform: scale(0.9);
+  transition: transform 0.25s ease;
+}
+
+.hover-video-card:hover .play-icon,
+.row-poster-card:hover .row-play-icon {
+  transform: scale(1.1);
+}
+
+.card-title {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.25s ease;
+}
+
+.hover-video-card:hover .card-title {
+  color: var(--primary);
 }
 
 
