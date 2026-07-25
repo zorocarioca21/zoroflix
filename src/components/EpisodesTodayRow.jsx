@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { RatingCircle } from './Badges';
 import HoverVideoCard from './HoverVideoCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
-export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay, limit = 15 }) {
+export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay, limit = 15, seeMoreLink }) {
   const [items, setItems] = useState([]);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -80,6 +81,11 @@ export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay,
     <div className="content-row-container">
       <div className="row-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h2 className="row-title" style={{ margin: 0 }}>{title}</h2>
+        {seeMoreLink && (
+          <Link to={seeMoreLink} className="see-more-btn">
+            Ver mais &rarr;
+          </Link>
+        )}
       </div>
       
       <div className="row-wrapper">
