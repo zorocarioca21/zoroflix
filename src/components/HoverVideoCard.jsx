@@ -48,7 +48,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=pt-BR`)
         .then(res => res.json())
         .then(data => {
-          const video = data.results?.find(v => v.type === 'Teaser' || v.type === 'Trailer');
+          const video = data.results?.find(v => v.type === 'Trailer') || data.results?.find(v => v.type === 'Teaser');
           if (video) setVideoKey(video.key);
         })
         .catch(err => console.error("Erro ao buscar teaser:", err));

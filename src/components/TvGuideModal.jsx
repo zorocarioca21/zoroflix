@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Tv, RefreshCw, Search, Clock, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Virtuoso } from 'react-virtuoso';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -233,7 +234,6 @@ export default function TvGuideModal({ isOpen, onClose }) {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => nowSP());
   const [search, setSearch] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
   const timerRef = useRef(null);
   const fetchedRef = useRef(false);
 
@@ -398,7 +398,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
         {/* Header */}
         <div className="tvg-header">
           <div className="tvg-header-left">
-            <div className="tvg-header-icon">📺</div>
+            <div className="tvg-header-icon"><Tv size={28} color="#00e676" /></div>
             <div>
               <h2 className="tvg-header-title">Guia de Programação</h2>
               <p className="tvg-header-sub">
@@ -432,7 +432,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
               className="tvg-search-input"
               placeholder="Buscar canal ou programa..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setVisibleCount(10); }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -445,7 +445,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
         </div>
 
         {/* Content */}
-        <div className="tvg-body">
+        <div className="tvg-body" style={{ overflowY: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {loading && (
             <div className="tvg-loading">
               <div className="tvg-spinner" />
@@ -465,8 +465,11 @@ export default function TvGuideModal({ isOpen, onClose }) {
               {channelList.length === 0 ? (
                 <div className="tvg-empty">Nenhum canal encontrado para sua busca.</div>
               ) : (
-                <div className="tvg-grid">
-                  {channelList.slice(0, visibleCount).map((ch) => (
+                <Virtuoso
+                  className="tvg-grid"
+                  style={{ flex: 1, height: '100%' }}
+                  data={channelList}
+                  itemContent={(index, ch) => (
                     <ChannelRow
                       key={ch.id}
                       channel={ch}
@@ -475,16 +478,8 @@ export default function TvGuideModal({ isOpen, onClose }) {
                       logoMap={logoMap}
                       onWatch={(id) => { onClose(); navigate(`/canal/${id}`); }}
                     />
-                  ))}
-                  {visibleCount < channelList.length && (
-                    <button 
-                      className="tvg-load-more"
-                      onClick={() => setVisibleCount((v) => v + 10)}
-                    >
-                      Carregar mais canais ({channelList.length - visibleCount} restantes)
-                    </button>
                   )}
-                </div>
+                />
               )}
             </>
           )}
@@ -492,8 +487,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
 
         {/* Footer */}
         <div className="tvg-footer">
-          <span>Fonte: Rei dos Embeds</span>
-          {data && <span>Exibindo {Math.min(visibleCount, channelList.length)} de {channelList.length} canais no ar</span>}
+          {data && <span>Exibindo {channelList.length} canais no ar</span>}
         </div>
       </div>
     </div>

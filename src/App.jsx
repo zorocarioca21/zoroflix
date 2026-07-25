@@ -5,6 +5,7 @@ import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 // Layout/Page Components
 import HeroSlider from './components/HeroSlider'
 import ContentRow from './components/ContentRow'
+import EpisodesTodayRow from './components/EpisodesTodayRow'
 import SearchPage from './components/SearchPage'
 import DetailsPage from './components/DetailsPage'
 import PlayerPage from './components/PlayerPage'
@@ -555,6 +556,7 @@ function Home({ onOpenDetails }) {
                 ))}
               </RowWithControls>
             )}
+            <EpisodesTodayRow title="Lançamentos de Hoje (Episódios)" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={15} />
             <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/lancamentos" />
             <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/series" />
             <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/animes" />

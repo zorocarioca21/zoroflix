@@ -129,7 +129,7 @@ export default function DetailsPage() {
       const creditsData = await creditsResp.json();
       const videosData = await videosResp.json();
 
-      const vid = videosData.results?.find(v => v.type === 'Trailer' || v.type === 'Teaser');
+      const vid = videosData.results?.find(v => v.type === 'Trailer') || videosData.results?.find(v => v.type === 'Teaser');
       if (vid) setTrailerKey(vid.key);
 
       const title = detailsData.title || detailsData.name;
