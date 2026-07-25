@@ -17,9 +17,8 @@ export default function RecentEpisodesPage() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          // Filtrar os que têm poster
-          let validEpisodes = data.filter(item => item.poster);
-          
+          const todayStr = new Date().toISOString().split('T')[0];
+          let validEpisodes = data.filter(item => item.poster && item.air_date <= todayStr);
           // Ordenar por data de lançamento (mais recentes primeiro)
           validEpisodes.sort((a, b) => new Date(b.air_date) - new Date(a.air_date));
           
