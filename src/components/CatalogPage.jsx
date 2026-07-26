@@ -9,7 +9,7 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 import { RatingCircle } from './Badges';
 import HoverVideoCard from './HoverVideoCard';
 
-export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '' }) {
+export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '', endpoint = '' }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +37,9 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
 
     if (query) {
       url = `${BASE_URL}/search/${mediaType}?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}&page=${page}`;
+    } else if (endpoint) {
+      const separator = endpoint.includes('?') ? '&' : '?';
+      url = `${BASE_URL}${endpoint}${separator}api_key=${API_KEY}&language=pt-BR&page=${page}`;
     } else {
       url = `${BASE_URL}/discover/${mediaType}?api_key=${API_KEY}&language=pt-BR&sort_by=${sortBy}&page=${page}`;
       
@@ -106,36 +109,40 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
             />
           </div>
 
-          <div className="filter-group">
-            <label>Gênero:</label>
-            <select value={selectedGenre} onChange={(e) => handleFilterChange(e.target.value)}>
-              <option value="">Todos</option>
-              {displayGenres.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
+          {!endpoint && (
+            <div className="filter-group">
+              <label>Gênero:</label>
+              <select value={selectedGenre} onChange={(e) => handleFilterChange(e.target.value)}>
+                <option value="">Todos</option>
+                {displayGenres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </header>
 
       {/* CATEGORY PILLS */}
-      <div className="category-pills-container">
-        <button 
-          className={`category-pill ${!selectedGenre ? 'active' : ''}`}
-          onClick={() => handleFilterChange('')}
-        >
-          Todos
-        </button>
-        {displayGenres.slice(0, 10).map(g => (
+      {!endpoint && (
+        <div className="category-pills-container">
           <button 
-            key={g.id} 
-            className={`category-pill ${selectedGenre == g.id ? 'active' : ''}`}
-            onClick={() => handleFilterChange(g.id)}
+            className={`category-pill ${!selectedGenre ? 'active' : ''}`}
+            onClick={() => handleFilterChange('')}
           >
-            {g.name}
+            Todos
           </button>
-        ))}
-      </div>
+          {displayGenres.slice(0, 10).map(g => (
+            <button 
+              key={g.id} 
+              className={`category-pill ${selectedGenre == g.id ? 'active' : ''}`}
+              onClick={() => handleFilterChange(g.id)}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="catalog-grid">
         {items.map(item => (

@@ -362,6 +362,7 @@ function AppContent() {
         <Route path="/canais" element={<ChannelsPage />} />
         <Route path="/lancamentos" element={<CalendarPage />} />
         <Route path="/episodios-recentes" element={<RecentEpisodesPage />} />
+        <Route path="/filmes-lancamentos" element={<CatalogPage type="movie" title="Filmes Lançamentos" endpoint="/movie/now_playing" />} />
         <Route path="/filmes" element={<CatalogPage type="movie" title="Filmes" />} />
         <Route path="/series" element={<CatalogPage type="tv" title="Séries" />} />
         <Route path="/animes" element={<CatalogPage type="tv" title="Animes" initialGenreId="16" />} />
@@ -559,7 +560,7 @@ function Home({ onOpenDetails }) {
               </RowWithControls>
             )}
             <EpisodesTodayRow title="Episódios Recentes" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={15} seeMoreLink="/episodios-recentes" />
-            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/lancamentos" />
+            <ContentRow title="Filmes Lançamentos" endpoint="/movie/now_playing?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/filmes-lancamentos" />
             <ContentRow title="Séries em Alta" endpoint="/tv/popular?page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/series" />
             <ContentRow title="Animes e Animações" endpoint="/discover/tv?with_genres=16&page=1" type="tv" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/animes" />
             <ContentRow title="Grandes Sucessos (Filmes)" endpoint="/movie/top_rated?page=1" type="movie" onPlay={(id, type, title) => onOpenDetails({id, media_type: type, title})} limit={10} seeMoreLink="/filmes" />
