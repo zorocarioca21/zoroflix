@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useNavigationType } from 'react-router-dom';
 import { fetchWithProxy } from '../utils/api';
 import SportsFixtures from './SportsFixtures';
 import { Tv } from 'lucide-react';
@@ -38,18 +38,23 @@ function ChannelCard({ ch, onClick }) {
 
 export default function ChannelsPage() {
   const storageKey = 'channels-page';
+  const navigate = useNavigate();
+  const navType = useNavigationType();
+  const isPop = navType === 'POP';
+
   const [channels, setChannels] = useState(() => {
+    if (!isPop) return [];
     const cached = sessionStorage.getItem(`${storageKey}-items`);
     return cached ? JSON.parse(cached) : [];
   });
   const [filteredChannels, setFilteredChannels] = useState(() => {
+    if (!isPop) return [];
     const cached = sessionStorage.getItem(`${storageKey}-items`);
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(!sessionStorage.getItem(`${storageKey}-items`));
-  const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem(`${storageKey}-search`) || '');
-  const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem(`${storageKey}-category`) || 'Todos');
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(isPop ? !sessionStorage.getItem(`${storageKey}-items`) : true);
+  const [searchTerm, setSearchTerm] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-search`) || '') : '');
+  const [selectedCategory, setSelectedCategory] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-category`) || 'Todos') : 'Todos');
   const isFirstMount = React.useRef(true);
 
   // Salva o estado dos filtros

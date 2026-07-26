@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useNavigationType } from 'react-router-dom';
 import { getSlug } from '../utils/slug';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -11,17 +11,21 @@ import HoverVideoCard from './HoverVideoCard';
 
 export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '', endpoint = '' }) {
   const navigate = useNavigate();
+  const navType = useNavigationType();
+  const isPop = navType === 'POP';
+  
   const storageKey = `catalog-${type}-${title}`;
   const [items, setItems] = useState(() => {
+    if (!isPop) return [];
     const cached = sessionStorage.getItem(`${storageKey}-items`);
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(!sessionStorage.getItem(`${storageKey}-items`));
-  const [page, setPage] = useState(() => parseInt(sessionStorage.getItem(`${storageKey}-page`)) || 1);
+  const [loading, setLoading] = useState(isPop ? !sessionStorage.getItem(`${storageKey}-items`) : true);
+  const [page, setPage] = useState(() => isPop ? (parseInt(sessionStorage.getItem(`${storageKey}-page`)) || 1) : 1);
   const [genres, setGenres] = useState([]);
-  const [selectedGenre, setSelectedGenre] = useState(() => sessionStorage.getItem(`${storageKey}-genre`) || '');
+  const [selectedGenre, setSelectedGenre] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-genre`) || '') : '');
   const [sortBy, setSortBy] = useState('popularity.desc');
-  const [query, setQuery] = useState(() => sessionStorage.getItem(`${storageKey}-query`) || '');
+  const [query, setQuery] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-query`) || '') : '');
   
   const isFirstMount = React.useRef(true);
 

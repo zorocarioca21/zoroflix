@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useNavigationType } from 'react-router-dom';
 import HoverVideoCard from './HoverVideoCard';
 import { getSlug } from '../utils/slug';
 
@@ -7,12 +7,17 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
 export default function RecentEpisodesPage() {
   const navigate = useNavigate();
+  const navType = useNavigationType();
+  const isPop = navType === 'POP';
+
   const [items, setItems] = useState(() => {
+    if (!isPop) return [];
     const cached = sessionStorage.getItem('recent-episodes-items');
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(!sessionStorage.getItem('recent-episodes-items'));
+  const [loading, setLoading] = useState(isPop ? !sessionStorage.getItem('recent-episodes-items') : true);
   const [visibleCount, setVisibleCount] = useState(() => {
+    if (!isPop) return 20;
     return parseInt(sessionStorage.getItem('recent-episodes-visible')) || 20;
   });
   
