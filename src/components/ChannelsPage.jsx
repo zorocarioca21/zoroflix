@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithProxy } from '../utils/api';
 import SportsFixtures from './SportsFixtures';
@@ -37,12 +37,34 @@ function ChannelCard({ ch, onClick }) {
 }
 
 export default function ChannelsPage() {
-  const [channels, setChannels] = useState([]);
-  const [filteredChannels, setFilteredChannels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
+  const storageKey = 'channels-page';
+  const [channels, setChannels] = useState(() => {
+    const cached = sessionStorage.getItem(`${storageKey}-items`);
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [filteredChannels, setFilteredChannels] = useState(() => {
+    const cached = sessionStorage.getItem(`${storageKey}-items`);
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(!sessionStorage.getItem(`${storageKey}-items`));
+  const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem(`${storageKey}-search`) || '');
+  const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem(`${storageKey}-category`) || 'Todos');
   const navigate = useNavigate();
+  const isFirstMount = React.useRef(true);
+
+  // Salva o estado dos filtros
+  useEffect(() => {
+    sessionStorage.setItem(`${storageKey}-search`, searchTerm);
+    sessionStorage.setItem(`${storageKey}-category`, selectedCategory);
+  }, [searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      sessionStorage.setItem(`${storageKey}-scroll`, window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const categories = ['Todos', 'Canais Abertos', 'Esportes', 'Filmes e Séries', 'Documentários', 'Infantil', '24 horas', 'Adulto'];
 
@@ -51,13 +73,24 @@ export default function ChannelsPage() {
   }, []);
 
   useEffect(() => {
+    if (isFirstMount.current && channels.length > 0) {
+      isFirstMount.current = false;
+      const savedScroll = sessionStorage.getItem(`${storageKey}-scroll`);
+      if (savedScroll) {
+        setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 100);
+      }
+      return;
+    }
+    isFirstMount.current = false;
+
+    setLoading(true);
     const url = 'https://superflixapi.fit/lista?category=canais&format=json';
     
     fetchWithProxy(url)
       .then(data => {
         if (data && data.data) {
           setChannels(data.data);
-          setFilteredChannels(data.data);
+          sessionStorage.setItem(`${storageKey}-items`, JSON.stringify(data.data));
         }
         setLoading(false);
       })
