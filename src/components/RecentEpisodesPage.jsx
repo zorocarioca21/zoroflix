@@ -21,7 +21,7 @@ export default function RecentEpisodesPage() {
           let validEpisodes = data.filter(item => item.poster && item.air_date <= todayStr);
           // Ordenar por data de lançamento (mais recentes primeiro)
           validEpisodes.sort((a, b) => new Date(b.air_date) - new Date(a.air_date));
-          
+
           // Remover duplicatas baseadas no id + temporada + episodio para garantir que cada lançamento seja único
           const uniqueItems = [];
           const seen = new Set();
@@ -32,7 +32,7 @@ export default function RecentEpisodesPage() {
               uniqueItems.push(item);
             }
           }
-          
+
           setItems(uniqueItems);
         }
         setLoading(false);
@@ -46,18 +46,18 @@ export default function RecentEpisodesPage() {
   return (
     <div className="catalog-container">
       <header className="catalog-header">
-        <h1 className="row-title">Episódios Recentes (Calendário)</h1>
+        <h1 className="row-title">Episódios Recentes</h1>
       </header>
 
       <div className="catalog-grid">
         {items.slice(0, visibleCount).map((item) => (
-          <HoverVideoCard 
+          <HoverVideoCard
             key={`${item.tmdb_id}-${item.season}-${item.number}`}
             id={item.tmdb_id}
             type="tv"
             title={item.title}
             poster={`${IMAGE_BASE_URL}${item.poster}`}
-            onClick={() => navigate(`/serie/${getSlug(item.title)}`, { state: { id: item.tmdb_id } })}
+            onClick={() => navigate(`/serie/${getSlug(item.title)}/${item.season}/${item.number}/player`, { state: { id: item.tmdb_id, title: item.title, poster_path: item.poster } })}
             badges={
               <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', gap: '4px', zIndex: 10 }}>
                 <span style={{ background: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
