@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HoverVideoCard from './HoverVideoCard';
 import { getSlug } from '../utils/slug';
@@ -7,11 +7,29 @@ const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
 
 export default function RecentEpisodesPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [items, setItems] = useState(() => {
+    const cached = sessionStorage.getItem('recent-episodes-items');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(!sessionStorage.getItem('recent-episodes-items'));
+  const [visibleCount, setVisibleCount] = useState(() => {
+    return parseInt(sessionStorage.getItem('recent-episodes-visible')) || 20;
+  });
+  
+  const isFirstMount = React.useRef(true);
 
   useEffect(() => {
+    if (isFirstMount.current && items.length > 0) {
+      isFirstMount.current = false;
+      // Recupera o scroll no mount
+      const savedScroll = sessionStorage.getItem('recent-episodes-scroll');
+      if (savedScroll) {
+        setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 100);
+      }
+      return;
+    }
+    isFirstMount.current = false;
+    
     setLoading(true);
     fetch('https://superflixapi.pro/calendario.php')
       .then((res) => res.json())
@@ -34,6 +52,7 @@ export default function RecentEpisodesPage() {
           }
 
           setItems(uniqueItems);
+          sessionStorage.setItem('recent-episodes-items', JSON.stringify(uniqueItems));
         }
         setLoading(false);
       })
@@ -41,6 +60,18 @@ export default function RecentEpisodesPage() {
         console.error("Erro na busca de Episódios Recentes", err);
         setLoading(false);
       });
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem('recent-episodes-visible', visibleCount);
+  }, [visibleCount]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      sessionStorage.setItem('recent-episodes-scroll', window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (

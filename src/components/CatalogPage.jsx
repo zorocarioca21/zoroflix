@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSlug } from '../utils/slug';
 
@@ -11,13 +11,35 @@ import HoverVideoCard from './HoverVideoCard';
 
 export default function CatalogPage({ type, title, initialGenreId = '', initialLanguage = '', endpoint = '' }) {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const storageKey = `catalog-${type}-${title}`;
+  const [items, setItems] = useState(() => {
+    const cached = sessionStorage.getItem(`${storageKey}-items`);
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(!sessionStorage.getItem(`${storageKey}-items`));
+  const [page, setPage] = useState(() => parseInt(sessionStorage.getItem(`${storageKey}-page`)) || 1);
   const [genres, setGenres] = useState([]);
-  const [selectedGenre, setSelectedGenre] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState(() => sessionStorage.getItem(`${storageKey}-genre`) || '');
   const [sortBy, setSortBy] = useState('popularity.desc');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => sessionStorage.getItem(`${storageKey}-query`) || '');
+  
+  const isFirstMount = React.useRef(true);
+
+  // Salva o estado ao alterar
+  useEffect(() => {
+    sessionStorage.setItem(`${storageKey}-items`, JSON.stringify(items));
+    sessionStorage.setItem(`${storageKey}-page`, page);
+    sessionStorage.setItem(`${storageKey}-genre`, selectedGenre);
+    sessionStorage.setItem(`${storageKey}-query`, query);
+  }, [items, page, selectedGenre, query, storageKey]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      sessionStorage.setItem(`${storageKey}-scroll`, window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [storageKey]);
 
   // Carrega gêneros ao iniciar
   useEffect(() => {
@@ -31,6 +53,16 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
 
   // Carrega itens quando filtros ou busca mudam
   useEffect(() => {
+    if (isFirstMount.current && items.length > 0) {
+      isFirstMount.current = false;
+      const savedScroll = sessionStorage.getItem(`${storageKey}-scroll`);
+      if (savedScroll) {
+        setTimeout(() => window.scrollTo(0, parseInt(savedScroll)), 100);
+      }
+      return;
+    }
+    isFirstMount.current = false;
+    
     setLoading(true);
     const mediaType = type === 'movie' ? 'movie' : 'tv';
     let url;

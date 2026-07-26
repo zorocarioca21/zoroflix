@@ -362,11 +362,11 @@ function AppContent() {
         <Route path="/canais" element={<ChannelsPage />} />
         <Route path="/lancamentos" element={<CalendarPage />} />
         <Route path="/episodios-recentes" element={<RecentEpisodesPage />} />
-        <Route path="/filmes-lancamentos" element={<CatalogPage type="movie" title="Filmes Lançamentos" endpoint="/movie/now_playing" />} />
-        <Route path="/filmes" element={<CatalogPage type="movie" title="Filmes" />} />
-        <Route path="/series" element={<CatalogPage type="tv" title="Séries" />} />
-        <Route path="/animes" element={<CatalogPage type="tv" title="Animes" initialGenreId="16" />} />
-        <Route path="/doramas" element={<CatalogPage type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
+        <Route path="/filmes-lancamentos" element={<CatalogPage key="lancamentos" type="movie" title="Filmes Lançamentos" endpoint="/movie/now_playing" />} />
+        <Route path="/filmes" element={<CatalogPage key="filmes" type="movie" title="Filmes" />} />
+        <Route path="/series" element={<CatalogPage key="series" type="tv" title="Séries" />} />
+        <Route path="/animes" element={<CatalogPage key="animes" type="tv" title="Animes" initialGenreId="16" />} />
+        <Route path="/doramas" element={<CatalogPage key="doramas" type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
         <Route path="/historico" element={<UserListPage type="history" />} />
         <Route path="/favoritos" element={<UserListPage type="favorites" />} />
         <Route path="/filme/:id" element={<DetailsPage />} />
