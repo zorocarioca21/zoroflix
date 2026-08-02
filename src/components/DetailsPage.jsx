@@ -266,7 +266,7 @@ export default function DetailsPage() {
 
               <div className="details-cast-section">
                 <div className="section-header">
-                    <h3>Elenco Principal</h3>
+                    <h3>Elenco</h3>
                 </div>
                 <div className="cast-grid-scroll">
                   {cast.map(person => (

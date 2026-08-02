@@ -5174,28 +5174,48 @@ body.hide-body-texture::after {
 .cast-grid-scroll {
   display: flex;
   overflow-x: auto;
-  gap: 1.5rem;
-  padding-bottom: 0.5rem;
-  scrollbar-width: none; /* Hide scrollbar for cleaner look like photo */
+  gap: 1rem;
+  padding-bottom: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: #00e676 transparent;
 }
 
 .cast-grid-scroll::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.cast-grid-scroll::-webkit-scrollbar-thumb {
+  background: #00e676;
+  border-radius: 10px;
+}
+
+.cast-grid-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .cast-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 90px;
-  max-width: 90px;
+  min-width: 105px;
+  max-width: 105px;
   text-align: center;
   cursor: pointer;
+  background: #042113;
+  border: 1px solid rgba(0, 230, 118, 0.15);
+  border-radius: 12px;
+  padding: 1rem 0.5rem;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.cast-card:hover {
+  border-color: #00e676;
+  transform: translateY(-4px);
 }
 
 .cast-img-wrap {
-  width: 80px;
-  height: 80px;
+  width: 75px;
+  height: 75px;
   border-radius: 50%;
   overflow: hidden;
   margin-bottom: 0.8rem;
@@ -5215,7 +5235,7 @@ body.hide-body-texture::after {
 }
 
 .cast-real-name {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #ffffff;
   margin-bottom: 0.2rem;
@@ -5223,7 +5243,7 @@ body.hide-body-texture::after {
 }
 
 .cast-character {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #888888;
   line-height: 1.2;
 }
