@@ -11,6 +11,7 @@ export default function UserListPage({ type = 'favorites' }) {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [visibleCount, setVisibleCount] = useState(10);
 
     const title = type === 'favorites' ? 'Meus Favoritos' : 'Assistidos Recentemente';
     const endpoint = type === 'favorites' ? '/api/favorites' : '/api/recents';
@@ -88,14 +89,15 @@ export default function UserListPage({ type = 'favorites' }) {
             ) : items.length === 0 ? (
                 <div style={{ textAlign: 'center', color: '#ccc', marginTop: '2rem' }}>Nenhum item encontrado.</div>
             ) : (
-                <div className="catalog-grid" style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                    gap: '1rem',
-                    padding: '0 1rem'
-                }}>
-                    {items.map(item => (
-                        <div key={item.content_id} className="row-poster-card" onClick={() => handleItemClick(item)} style={{ position: 'relative', cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a1a2e', aspectRatio: '2/3', display: 'flex', flexDirection: 'column' }}>
+                <>
+                    <div className="catalog-grid" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gap: '1rem',
+                        padding: '0 1rem'
+                    }}>
+                        {items.slice(0, visibleCount).map(item => (
+                            <div key={item.content_id} className="row-poster-card" onClick={() => handleItemClick(item)} style={{ position: 'relative', cursor: 'pointer', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a1a2e', aspectRatio: '2/3', display: 'flex', flexDirection: 'column' }}>
                             <button 
                                 onClick={(e) => handleDelete(e, item.content_id)}
                                 style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#ff3d00', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10, boxShadow: '0 2px 4px rgba(0,0,0,0.4)', transition: 'all 0.2s ease' }}
@@ -117,7 +119,30 @@ export default function UserListPage({ type = 'favorites' }) {
                             )}
                         </div>
                     ))}
-                </div>
+                    </div>
+                    {visibleCount < items.length && (
+                        <div style={{ textAlign: 'center', margin: '2rem 0' }}>
+                            <button 
+                                onClick={() => setVisibleCount(prev => prev + 10)}
+                                style={{
+                                    background: 'var(--primary, #00ff88)',
+                                    color: '#000',
+                                    border: 'none',
+                                    padding: '0.8rem 2rem',
+                                    borderRadius: '30px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 4px 10px rgba(0, 255, 136, 0.3)'
+                                }}
+                                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                            >
+                                Ver mais
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
