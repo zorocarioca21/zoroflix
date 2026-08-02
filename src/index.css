@@ -5191,6 +5191,8 @@ body.hide-body-texture::after {
   max-width: 90px;
   text-align: center;
   cursor: pointer;
+  background: transparent;
+  border: none;
 }
 
 .cast-img-wrap {
