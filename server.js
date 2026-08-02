@@ -15,6 +15,7 @@ import sportsRoutes from './backend/routes/sports.js';
 import mobileRoutes from './backend/routes/mobile.js';
 import recentsRoutes from './backend/routes/recents.js';
 import epgRoutes from './backend/routes/epg.js';
+import downloadsRoutes from './backend/routes/downloads.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +42,7 @@ initDB().then((db) => {
     app.use('/api/mobile', mobileRoutes(db));
     app.use('/api/recents', recentsRoutes(db));
     app.use('/api/epg', epgRoutes());
+    app.use('/api/downloads', downloadsRoutes(db));
 
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));

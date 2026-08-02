@@ -196,6 +196,22 @@ export async function initDB() {
         CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_uuid ON watched_episodes (uuid, content_id, season, episode) WHERE user_id IS NULL AND uuid IS NOT NULL;
     `);
 
+    // Tabela de Downloads de Usuários
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS user_downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uuid TEXT,
+            user_id INTEGER,
+            transmission_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            poster_path TEXT,
+            media_type TEXT,
+            status TEXT DEFAULT 'downloading',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

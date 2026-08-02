@@ -457,12 +457,39 @@ export default function PlayerPage() {
                             </button>
                         </>
                     )}
-                    <button className="nav-btn-modern" onClick={() => {
+                    <button className="nav-btn-modern" onClick={async () => {
                         if (!id) return;
-                        const dUrl = season && episode 
-                            ? `https://megaembedapi.site/download/series?tmdb=${id}&sea=${season}&epi=${episode}`
-                            : `https://megaembedapi.site/download/movie?tmdb=${id}`;
-                        window.open(dUrl, '_blank');
+                        const token = localStorage.getItem('cinegeek_token');
+                        const uuidVal = localStorage.getItem('cinegeek_uuid');
+                        const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
+                        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                        try {
+                            // Alerta visual de início
+                            alert("Iniciando busca do torrent. Isso pode levar alguns segundos...");
+                            const resp = await fetch('/api/downloads/request', {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify({
+                                    title: title.split(' - ')[0], // Pega o nome principal
+                                    type: location.pathname.includes('/filme/') ? 'movie' : 'tv',
+                                    year: seriesDetail?.first_air_date?.split('-')[0] || null,
+                                    season: season ? parseInt(season) : null,
+                                    episode: episode ? parseInt(episode) : null,
+                                    poster_path: state.poster_path
+                                })
+                            });
+
+                            if (resp.ok) {
+                                alert("Download iniciado no servidor! Você pode acompanhar na página 'Meus Downloads'.");
+                                navigate('/downloads');
+                            } else {
+                                const err = await resp.json();
+                                alert(`Erro: ${err.error}`);
+                            }
+                        } catch (e) {
+                            alert("Falha de rede ao tentar iniciar o download.");
+                        }
                     }} style={{ background: 'var(--primary, #00ff88)', color: '#000', borderColor: 'var(--primary, #00ff88)' }}>
                         <Download size={20} /> Baixar
                     </button>

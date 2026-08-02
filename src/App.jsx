@@ -15,6 +15,7 @@ import CalendarPage from './components/CalendarPage'
 import AntiAdBlock from './components/AntiAdBlock'
 import CatalogPage from './components/CatalogPage'
 import ApiDocsPage from './components/ApiDocsPage'
+import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
 
 // Auth & User Components
@@ -324,9 +325,9 @@ function AppContent() {
                   src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
                   alt="Perfil" 
                   className="user-avatar" 
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                 />
+              </div>
                 {isUserMenuOpen && (
                   <div className="user-dropdown">
                     <div className="user-info-head">
@@ -335,6 +336,9 @@ function AppContent() {
                     </div>
                     <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                       <UserIcon size={16} /> Meu Perfil
+                    </Link>
+                    <Link to="/downloads" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
+                      <Download size={16} /> Meus Downloads
                     </Link>
                     {user.role === 'admin' && (
                         <Link to="/paineladm" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: 'var(--primary)' }}>
@@ -376,6 +380,8 @@ function AppContent() {
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
         <Route path="/perfil" element={<UserProfile />} />
+        <Route path="/esportes/:id" element={<ChannelPlayerPage />} />
+        <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
       </Routes>
