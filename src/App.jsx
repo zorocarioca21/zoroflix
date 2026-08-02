@@ -337,9 +337,11 @@ function AppContent() {
                     <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                       <UserIcon size={16} /> Meu Perfil
                     </Link>
-                    <Link to="/downloads" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
-                      <Download size={16} /> Meus Downloads
-                    </Link>
+                    {user.role === 'admin' && (
+                        <Link to="/downloads" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
+                        <Download size={16} /> Meus Downloads
+                        </Link>
+                    )}
                     {user.role === 'admin' && (
                         <Link to="/paineladm" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: 'var(--primary)' }}>
                           <ShieldCheck size={16} /> Painel ADM

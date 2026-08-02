@@ -460,57 +460,59 @@ export default function PlayerPage() {
                             </button>
                         </>
                     )}
-                    <button className="nav-btn-modern" disabled={dlState.isVisible && !dlState.isError && !dlState.isSuccess} onClick={async () => {
-                        if (!id) return;
-                        const token = localStorage.getItem('cinegeek_token');
-                        const uuidVal = localStorage.getItem('cinegeek_uuid');
-                        const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
-                        if (token) headers['Authorization'] = `Bearer ${token}`;
+                    {user?.role === 'admin' && (
+                        <button className="nav-btn-modern" disabled={dlState.isVisible && !dlState.isError && !dlState.isSuccess} onClick={async () => {
+                            if (!id) return;
+                            const token = localStorage.getItem('cinegeek_token');
+                            const uuidVal = localStorage.getItem('cinegeek_uuid');
+                            const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
+                            if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                        setDlState({ isVisible: true, status: 'Conectando aos indexadores...', isError: false, isSuccess: false });
-                        
-                        try {
-                            const steps = [
-                                "Buscando melhor qualidade disponível...",
-                                "Validando magnet links...",
-                                "Preparando envio para o servidor..."
-                            ];
-                            let stepIdx = 0;
-                            const interval = setInterval(() => {
-                                if (stepIdx < steps.length) {
-                                    setDlState(prev => ({ ...prev, status: steps[stepIdx] }));
-                                    stepIdx++;
-                                }
-                            }, 3000);
-
-                            const resp = await fetch('/api/downloads/request', {
-                                method: 'POST',
-                                headers,
-                                body: JSON.stringify({
-                                    title: title.split(' - ')[0].split(':')[0].trim(),
-                                    type: location.pathname.includes('/filme/') ? 'movie' : 'tv',
-                                    year: seriesDetail?.first_air_date?.split('-')[0] || null,
-                                    season: season ? parseInt(season) : null,
-                                    episode: episode ? parseInt(episode) : null,
-                                    poster_path: state.poster_path
-                                })
-                            });
+                            setDlState({ isVisible: true, status: 'Conectando aos indexadores...', isError: false, isSuccess: false });
                             
-                            clearInterval(interval);
+                            try {
+                                const steps = [
+                                    "Buscando melhor qualidade disponível...",
+                                    "Validando magnet links...",
+                                    "Preparando envio para o servidor..."
+                                ];
+                                let stepIdx = 0;
+                                const interval = setInterval(() => {
+                                    if (stepIdx < steps.length) {
+                                        setDlState(prev => ({ ...prev, status: steps[stepIdx] }));
+                                        stepIdx++;
+                                    }
+                                }, 3000);
 
-                            if (resp.ok) {
-                                setDlState({ isVisible: true, status: 'Download iniciado no servidor com sucesso!', isError: false, isSuccess: true });
-                            } else {
-                                const err = await resp.json();
-                                setDlState({ isVisible: true, status: err.error || 'Erro ao buscar torrent.', isError: true, isSuccess: false });
+                                const resp = await fetch('/api/downloads/request', {
+                                    method: 'POST',
+                                    headers,
+                                    body: JSON.stringify({
+                                        title: title.split(' - ')[0].split(':')[0].trim(),
+                                        type: location.pathname.includes('/filme/') ? 'movie' : 'tv',
+                                        year: seriesDetail?.first_air_date?.split('-')[0] || null,
+                                        season: season ? parseInt(season) : null,
+                                        episode: episode ? parseInt(episode) : null,
+                                        poster_path: state.poster_path
+                                    })
+                                });
+                                
+                                clearInterval(interval);
+
+                                if (resp.ok) {
+                                    setDlState({ isVisible: true, status: 'Download iniciado no servidor com sucesso!', isError: false, isSuccess: true });
+                                } else {
+                                    const err = await resp.json();
+                                    setDlState({ isVisible: true, status: err.error || 'Erro ao buscar torrent.', isError: true, isSuccess: false });
+                                }
+                            } catch (e) {
+                                setDlState({ isVisible: true, status: 'Falha de rede ao tentar iniciar o download.', isError: true, isSuccess: false });
                             }
-                        } catch (e) {
-                            setDlState({ isVisible: true, status: 'Falha de rede ao tentar iniciar o download.', isError: true, isSuccess: false });
-                        }
-                    }} style={{ background: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)', color: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#888' : '#000', borderColor: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)' }}>
-                        {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? <Loader size={20} className="spin-anim" /> : <Download size={20} />} 
-                        {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? 'Buscando...' : 'Baixar'}
-                    </button>
+                        }} style={{ background: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)', color: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#888' : '#000', borderColor: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)' }}>
+                            {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? <Loader size={20} className="spin-anim" /> : <Download size={20} />} 
+                            {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? 'Buscando...' : 'Baixar'}
+                        </button>
+                    )}
                 </div>
             )}
         </div>
