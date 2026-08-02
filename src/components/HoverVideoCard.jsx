@@ -73,8 +73,8 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       <div className="card-media-wrapper">
         <div className="card-badges-top">
           <AgeBadge rating={certification} />
-          {badges}
         </div>
+        {badges}
         
         {!videoKey ? (
           <img src={poster} alt={title} className="card-poster-img" />
