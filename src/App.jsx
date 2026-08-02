@@ -17,7 +17,6 @@ import CatalogPage from './components/CatalogPage'
 import ApiDocsPage from './components/ApiDocsPage'
 import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
-import ChannelPlayerPage from './components/ChannelPlayerPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -381,7 +380,6 @@ function AppContent() {
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
         <Route path="/perfil" element={<UserProfile />} />
-        <Route path="/esportes/:id" element={<ChannelPlayerPage />} />
         <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
