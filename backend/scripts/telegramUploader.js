@@ -1,11 +1,9 @@
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { Api } from "telegram";
-import { CustomFile } from "telegram/client/uploads.js";
+import { pipeline } from "stream/promises";
 import fs from "fs";
 import path from "path";
-import http from "http";
-import https from "https";
 import 'dotenv/config';
 import os from "os";
 import readline from "readline";
@@ -23,41 +21,43 @@ if (!apiId || !apiHash || !sessionStr || !channelId) {
 const stringSession = new StringSession(sessionStr);
 
 async function downloadFile(url, destPath) {
-    return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(destPath);
-        console.log(`Baixando IPTV -> ${url} ...`);
-        
-        const client = url.startsWith('https:') ? https : http;
-        
-        client.get(url, (response) => {
-            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                 // handle redirect if needed (basic)
-                 return downloadFile(response.headers.location, destPath).then(resolve).catch(reject);
-            }
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Falha no download. Status: ${response.statusCode}`));
-            }
-            
-            const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
-            let downloadedBytes = 0;
-            
-            response.on('data', (chunk) => {
-                downloadedBytes += chunk.length;
-                const percent = totalBytes ? ((downloadedBytes / totalBytes) * 100).toFixed(2) : '?';
-                process.stdout.write(`\rDownload progresso: ${percent}% (${(downloadedBytes/1024/1024).toFixed(2)} MB)`);
-            });
-
-            response.pipe(file);
-            
-            file.on('finish', () => {
-                process.stdout.write('\n');
-                file.close(resolve);
-            });
-        }).on('error', (err) => {
-            fs.unlink(destPath, () => {}); // apaga o arquivo em caso de erro
-            reject(err);
-        });
+    console.log(`Baixando IPTV -> ${url} ...`);
+    
+    // Usa User-Agent falso pra evitar bloqueio (401/403) do painel IPTV
+    const res = await fetch(url, {
+        headers: {
+            "User-Agent": "VLC/3.0.18 LibVLC/3.0.18",
+            "Accept": "*/*"
+        },
+        redirect: 'follow'
     });
+
+    if (!res.ok) {
+        throw new Error(`Falha no download. Status: ${res.status} ${res.statusText}`);
+    }
+
+    const totalBytes = parseInt(res.headers.get('content-length') || '0', 10);
+    let downloadedBytes = 0;
+    const fileStream = fs.createWriteStream(destPath);
+    
+    // Como o response.body é um Web Stream, podemos ler os chunks para mostrar progresso
+    const reader = res.body.getReader();
+    
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        downloadedBytes += value.length;
+        const percent = totalBytes ? ((downloadedBytes / totalBytes) * 100).toFixed(2) : '?';
+        process.stdout.write(`\rDownload progresso: ${percent}% (${(downloadedBytes/1024/1024).toFixed(2)} MB)`);
+        
+        fileStream.write(value);
+    }
+    
+    process.stdout.write('\n');
+    fileStream.end();
+    
+    return new Promise((resolve) => fileStream.on('finish', resolve));
 }
 
 function parseM3uAndSearch(filePath, query) {
