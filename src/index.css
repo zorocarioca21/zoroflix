@@ -5176,11 +5176,21 @@ body.hide-body-texture::after {
   overflow-x: auto;
   gap: 1.5rem;
   padding-bottom: 0.5rem;
-  scrollbar-width: none; /* Hide scrollbar for cleaner look like photo */
+  scrollbar-width: thin;
+  scrollbar-color: #00e676 transparent;
 }
 
 .cast-grid-scroll::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.cast-grid-scroll::-webkit-scrollbar-thumb {
+  background: #00e676;
+  border-radius: 10px;
+}
+
+.cast-grid-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .cast-card {
