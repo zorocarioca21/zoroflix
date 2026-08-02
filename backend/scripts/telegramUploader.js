@@ -92,14 +92,23 @@ function parseM3uAndSearch(filePath, query) {
 
     console.log(`Buscando por "${searchTerm}" no iptv_list.m3u...`);
     
-    // Caminho da lista IPTV
-    const m3uPath = path.join(process.cwd(), '..', '..', 'iptv_list.m3u'); // volta 2 pastas (da pasta backend/scripts pra raiz)
-    const m3uPath2 = path.join(process.cwd(), 'iptv_list.m3u'); // ou raiz
+    // Caminho da lista IPTV resolvido via import.meta.url para evitar bugs do cwd
+    const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+    // No linux import.meta.url.pathname começa com /, no windows começa com /C:/
+    const m3uPath = path.join(scriptDir, '..', '..', 'iptv_list.m3u'); 
     
-    let filePathToUse = fs.existsSync(m3uPath2) ? m3uPath2 : (fs.existsSync(m3uPath) ? m3uPath : null);
+    // Fallback absoluto via cwd
+    const m3uPath2 = path.join(process.cwd(), 'iptv_list.m3u'); 
+    
+    let filePathToUse = null;
+    if (fs.existsSync(m3uPath)) filePathToUse = m3uPath;
+    else if (fs.existsSync(m3uPath2)) filePathToUse = m3uPath2;
     
     if (!filePathToUse) {
-         console.error("Arquivo iptv_list.m3u não encontrado na raiz!");
+         console.error("Arquivo iptv_list.m3u não encontrado! Verifique se ele está na pasta raiz do zoroflix e com esse nome exato.");
+         console.log("Caminhos procurados:");
+         console.log("1:", m3uPath);
+         console.log("2:", m3uPath2);
          process.exit(1);
     }
     
