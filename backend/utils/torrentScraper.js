@@ -41,6 +41,15 @@ function matchScore(title, query, opts) {
         } else if (titleLower.includes('temporada')) {
             score -= 100;
         }
+        
+        // Se houver episódio especificado, checar se é um torrent de episódio único
+        if (opts.episodio) {
+            const epStr1 = `e${opts.episodio.toString().padStart(2, '0')}`;
+            const epStr2 = `episódio ${opts.episodio}`;
+            if (titleLower.includes(epStr1) || titleLower.includes(epStr2)) {
+                score += 50;
+            }
+        }
     }
 
     return score;
