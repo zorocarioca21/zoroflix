@@ -176,14 +176,16 @@ export async function searchTorrents(query, opts) {
                             desc.includes(`e${epPad}`) ||
                             desc.includes(`ep${epPad}`);
 
-                        const isPack = desc.includes('ao') || desc.includes('completa') || desc.includes('temporada');
+                        const isPack = desc.includes('ao') || desc.includes('completa') || desc.includes('temporada') || item.title.toLowerCase().includes('temporada');
 
-                        if (isPack && !isEpisodeMatch) {
+                        if (isEpisodeMatch) {
+                            if (!localDubbed || qualityScore > localDubbed.quality) localDubbed = candidate;
+                            return;
+                        } else if (isPack) {
                             if (!fallbackDubbed || qualityScore > fallbackDubbed.quality) fallbackDubbed = candidate;
                             return;
                         }
-
-                        if (!isEpisodeMatch) return;
+                        return;
                     }
 
                     if (!localDubbed || qualityScore > localDubbed.quality) localDubbed = candidate;

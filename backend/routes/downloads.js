@@ -41,7 +41,16 @@ export default function(db) {
                 episodio: episode || null
             };
             
+            console.log(`[DOWNLOAD] Buscando torrent: "${title}" | Tipo: ${opts.tipo} | Temp: ${opts.temporada || '-'} | Ep: ${opts.episodio || '-'}`);
+
             const results = await searchTorrents(title, opts);
+            
+            if (results.dubbed) {
+                console.log(`[DOWNLOAD] Encontrado: ${results.dubbed.title} (Qualidade: ${results.dubbed.quality})`);
+            } else {
+                console.log(`[DOWNLOAD] Nenhum torrent encontrado para: "${title}"`);
+            }
+            
             if (!results.dubbed) {
                 return res.status(404).json({ error: 'Nenhum torrent dublado encontrado.' });
             }
