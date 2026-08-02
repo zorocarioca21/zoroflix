@@ -4,6 +4,7 @@ import { Api } from "telegram";
 import { CustomFile } from "telegram/client/uploads.js";
 import fs from "fs";
 import path from "path";
+import http from "http";
 import https from "https";
 import 'dotenv/config';
 import os from "os";
@@ -26,12 +27,18 @@ async function downloadFile(url, destPath) {
         const file = fs.createWriteStream(destPath);
         console.log(`Baixando IPTV -> ${url} ...`);
         
-        https.get(url, (response) => {
+        const client = url.startsWith('https:') ? https : http;
+        
+        client.get(url, (response) => {
+            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                 // handle redirect if needed (basic)
+                 return downloadFile(response.headers.location, destPath).then(resolve).catch(reject);
+            }
             if (response.statusCode !== 200) {
                 return reject(new Error(`Falha no download. Status: ${response.statusCode}`));
             }
             
-            const totalBytes = parseInt(response.headers['content-length'], 10);
+            const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
             let downloadedBytes = 0;
             
             response.on('data', (chunk) => {
