@@ -34,7 +34,6 @@ body {
   display: flex;
   flex-direction: column;
   background-color: var(--bg); /* Cor sólida como base */
-  position: relative;
 }
 
 /* Fundo Gradiente Global (Atrás de tudo) */
@@ -45,8 +44,9 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% -20%, rgba(0, 230, 118, 0.15) 0%, var(--bg) 80%);
-  z-index: -2; /* Fica atrás até da foto do filme */
+  background: radial-gradient(circle at 50% -20%, rgba(0, 230, 118, 0.15) 0%, transparent 80%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* Textura de Escamas de Dragão (Cinematic Theme) */
@@ -60,13 +60,15 @@ body::after {
   background-image: url("/dragon_scales_bg.png");
   background-repeat: repeat;
   background-size: 500px;
-  opacity: 0.25;
+  opacity: 0.35;
   mix-blend-mode: overlay;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
 }
 
 .app-container {
+  position: relative;
+  z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
