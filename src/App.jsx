@@ -325,9 +325,9 @@ function AppContent() {
                   src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
                   alt="Perfil" 
                   className="user-avatar" 
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                 />
-              </div>
                 {isUserMenuOpen && (
                   <div className="user-dropdown">
                     <div className="user-info-head">
