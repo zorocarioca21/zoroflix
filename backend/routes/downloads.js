@@ -15,6 +15,68 @@ try {
     console.warn("Aviso: Falha ao inicializar o Transmission. Certifique-se de que ele está rodando.");
 }
 
+async function filterEpisodeFiles(torrentId, episode, transmission) {
+    if (!episode) return;
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutos (60 * 2000ms)
+    
+    console.log(`[DOWNLOAD] Aguardando metadados do torrent ${torrentId} para filtrar o episódio ${episode}...`);
+
+    const interval = setInterval(async () => {
+        try {
+            attempts++;
+            const t_data = await transmission.get([torrentId], ['id', 'metadataPercentComplete', 'files']);
+            if (t_data && t_data.torrents && t_data.torrents.length > 0) {
+                const t = t_data.torrents[0];
+                if (t.metadataPercentComplete === 1 && t.files && t.files.length > 0) {
+                    clearInterval(interval);
+                    
+                    const epPad = episode.toString().padStart(2, '0');
+                    const fileIndicesToKeep = [];
+                    const fileIndicesToSkip = [];
+                    
+                    for (let i = 0; i < t.files.length; i++) {
+                        const file = t.files[i];
+                        const name = file.name.toLowerCase();
+                        
+                        const isEp = name.includes(`s01e${epPad}`) || 
+                                     name.includes(`s02e${epPad}`) || 
+                                     name.includes(`s03e${epPad}`) || 
+                                     name.includes(`e${epPad}`) || 
+                                     name.includes(`ep${epPad}`) || 
+                                     name.includes(`episodio ${episode}`) ||
+                                     name.includes(`episódio ${episode}`) ||
+                                     name.includes(`episodio ${epPad}`) ||
+                                     name.includes(`episódio ${epPad}`);
+                                     
+                        if (isEp && (name.endsWith('.mkv') || name.endsWith('.mp4') || name.endsWith('.avi'))) {
+                            fileIndicesToKeep.push(i);
+                        } else {
+                            fileIndicesToSkip.push(i);
+                        }
+                    }
+                    
+                    if (fileIndicesToKeep.length > 0) {
+                        console.log(`[DOWNLOAD] Metadados carregados! Filtrando episódio ${episode} (Mantendo ${fileIndicesToKeep.length} arquivo(s), Desmarcando ${fileIndicesToSkip.length} arquivo(s))`);
+                        await transmission.set(torrentId, {
+                            'files-wanted': fileIndicesToKeep,
+                            'files-unwanted': fileIndicesToSkip
+                        });
+                    } else {
+                        console.log(`[DOWNLOAD] Metadados carregados, mas não consegui identificar claramente o episódio ${episode} nos arquivos. Baixando tudo por segurança.`);
+                    }
+                }
+            }
+            if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                console.log(`[DOWNLOAD] Timeout ao aguardar metadados do torrent ${torrentId}. Vai baixar o pack inteiro.`);
+            }
+        } catch (e) {
+            console.error(`Erro ao monitorar metadados do torrent ${torrentId}:`, e.message);
+        }
+    }, 2000);
+}
+
 export default function(db) {
     const router = express.Router();
 
@@ -60,11 +122,17 @@ export default function(db) {
             // Adiciona ao transmission
             const torrent = await transmission.addUrl(results.dubbed.url, { paused: false });
             
+            // Inicia o processo assíncrono de filtragem do episódio no pack
+            if (opts.episodio) {
+                filterEpisodeFiles(torrent.id, opts.episodio, transmission);
+            }
+            
             // Salvar no BD
+            const savedTitle = opts.episodio ? `${results.dubbed.title} (Episódio ${opts.episodio})` : results.dubbed.title;
             await db.run(
                 `INSERT INTO user_downloads (uuid, user_id, transmission_id, title, poster_path, media_type)
                  VALUES (?, ?, ?, ?, ?, ?)`,
-                [uuid, user_id, torrent.id, results.dubbed.title, poster_path, type]
+                [uuid, user_id, torrent.id, savedTitle, poster_path, type]
             );
 
             res.json({ success: true, torrent, title: results.dubbed.title });
