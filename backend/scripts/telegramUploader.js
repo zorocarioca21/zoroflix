@@ -167,6 +167,7 @@ function parseM3uAndSearch(filePath, query) {
 
             await client.sendFile(entityId, {
                 file: destPath,
+                workers: 4, // 🚀 Acelera absurdamente o upload enviando vários pedaços ao mesmo tempo
                 caption: `**${selected.title}**\nUpload via Zoroflix Bot`,
                 parseMode: "markdown",
                 progressCallback: (progress) => {
