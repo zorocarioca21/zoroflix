@@ -309,10 +309,7 @@ export default function DetailsPage() {
                     <div className="ep-image-wrap">
                       <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
                       <div className="ep-badges-overlay">
-                        <div className="ep-lang-badges">
-                            <span className="badge-dub">DUB</span>
-                            <span className="badge-leg">LEG</span>
-                        </div>
+                        {/* Tags DUB e LEG foram removidas porque o TMDB não fornece essa informação, e verificar 20+ episódios na Superflix de uma vez deixaria o site muito lento. */}
                       </div>
                       <span className="ep-runtime-badge">{ep.runtime || '??'} min</span>
                       <div className="ep-play-overlay"><Play fill="currentColor" /></div>
