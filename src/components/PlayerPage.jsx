@@ -428,10 +428,17 @@ export default function PlayerPage() {
 
       {/* Info & Controls Area (Below Player) */}
       <div className="player-bottom-controls-area">
-        <div className="player-info-row">
-            <h1 className="player-title">{title}</h1>
+        <div className="player-info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+            <div className="player-title-container">
+                <h1 className="player-title">{title}</h1>
+                {!canalId && season && episode && (
+                    <h2 className="player-subtitle" style={{ color: '#d1d1d6', fontSize: '1.2rem', marginTop: '0.5rem', fontWeight: '500' }}>
+                        Temporada {season} • Episódio {episode}
+                    </h2>
+                )}
+            </div>
             {!canalId && season && (
-                <div className="player-nav-group">
+                <div className="player-nav-group" style={{ width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: '0.8rem', marginTop: '0.5rem' }}>
                     <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
                     <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20}/> Episódios</button>
                     <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20}/></button>
