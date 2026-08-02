@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List, ArrowLeft, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
 
@@ -437,21 +437,34 @@ export default function PlayerPage() {
                     </h2>
                 )}
             </div>
-            {!canalId && season && (
+            {!canalId && (
                 <div className="player-nav-group" style={{ width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: '0.8rem', marginTop: '0.5rem' }}>
-                    <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
-                    <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20}/> Episódios</button>
-                    <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20}/></button>
-                    <button 
-                      className={`nav-btn-modern toggle-watched-status-btn ${isWatched ? 'watched-active' : ''}`} 
-                      onClick={handleToggleWatched}
-                      style={{
-                         borderColor: isWatched ? '#00ff88' : 'rgba(255, 255, 255, 0.1)',
-                         color: isWatched ? '#00ff88' : '#fff'
-                      }}
-                    >
-                      <Check size={20} style={{ color: isWatched ? '#00ff88' : '#fff' }} />
-                      {isWatched ? 'Desmarcar como Assistido' : 'Marcar como Assistido'}
+                    {season && (
+                        <>
+                            <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
+                            <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20}/> Episódios</button>
+                            <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20}/></button>
+                            <button 
+                              className={`nav-btn-modern toggle-watched-status-btn ${isWatched ? 'watched-active' : ''}`} 
+                              onClick={handleToggleWatched}
+                              style={{
+                                 borderColor: isWatched ? '#00ff88' : 'rgba(255, 255, 255, 0.1)',
+                                 color: isWatched ? '#00ff88' : '#fff'
+                              }}
+                            >
+                              <Check size={20} style={{ color: isWatched ? '#00ff88' : '#fff' }} />
+                              {isWatched ? 'Desmarcar como Assistido' : 'Marcar como Assistido'}
+                            </button>
+                        </>
+                    )}
+                    <button className="nav-btn-modern" onClick={() => {
+                        if (!id) return;
+                        const dUrl = season && episode 
+                            ? `https://megaembedapi.site/download/series?tmdb=${id}&sea=${season}&epi=${episode}`
+                            : `https://megaembedapi.site/download/movie?tmdb=${id}`;
+                        window.open(dUrl, '_blank');
+                    }} style={{ background: 'var(--primary, #00ff88)', color: '#000', borderColor: 'var(--primary, #00ff88)' }}>
+                        <Download size={20} /> Baixar
                     </button>
                 </div>
             )}
