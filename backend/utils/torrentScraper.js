@@ -73,7 +73,7 @@ export async function searchTorrents(query, opts) {
         let bestMatches = [];
         let currentPageUrl = `https://bludvfilmes.xyz/?s=${encodeURIComponent(query)}`;
         let pageNum = 1;
-        while (bestMatches.length < 5 && currentPageUrl && pageNum <= 5) {
+        while (bestMatches.length < 5 && currentPageUrl && pageNum <= 15) {
             let page = null;
             try {
                 page = await browser.newPage();

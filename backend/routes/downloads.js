@@ -191,32 +191,62 @@ export default function(db) {
         }
     });
 
-    // Deletar um download
+    // Exclui um download
     router.delete('/:id', async (req, res) => {
         try {
             const { user_id, uuid } = getAuth(req);
-            const downloadId = parseInt(req.params.id);
+            let query = `SELECT * FROM user_downloads WHERE id = ? AND uuid = ?`;
+            let params = [req.params.id, uuid];
+            
+            if (user_id) {
+                query = `SELECT * FROM user_downloads WHERE id = ? AND (user_id = ? OR uuid = ?)`;
+                params = [req.params.id, user_id, uuid];
+            }
 
-            const download = await db.get(`SELECT * FROM user_downloads WHERE id = ?`, [downloadId]);
-            if (!download) return res.status(404).json({ error: 'Download não encontrado' });
-
-            if (download.user_id !== user_id && download.uuid !== uuid) {
-                return res.status(403).json({ error: 'Sem permissão' });
+            const download = await db.get(query, params);
+            
+            if (!download) {
+                return res.status(404).json({ error: 'Download não encontrado ou sem permissão' });
             }
 
             if (transmission) {
                 try {
-                    await transmission.remove(download.transmission_id, true); // true = trash local data
+                    await transmission.remove([download.transmission_id], true);
                 } catch(e) {
-                    console.log("Transmission failed to remove or already removed", e);
+                    console.log("Transmission error on remove:", e.message);
                 }
             }
 
-            await db.run(`DELETE FROM user_downloads WHERE id = ?`, [downloadId]);
+            await db.run(`DELETE FROM user_downloads WHERE id = ?`, [download.id]);
+
             res.json({ success: true });
         } catch (err) {
-            console.error(err);
+            console.error("Erro no delete de download:", err);
             res.status(500).json({ error: 'Erro ao remover download' });
+        }
+    });
+
+    // Pausar um torrent
+    router.post('/pause/:t_id', async (req, res) => {
+        try {
+            const { user_id, uuid } = getAuth(req);
+            if (!transmission) return res.status(503).json({ error: 'Transmission offline' });
+            await transmission.stop(parseInt(req.params.t_id));
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Continuar (Resume) um torrent
+    router.post('/resume/:t_id', async (req, res) => {
+        try {
+            const { user_id, uuid } = getAuth(req);
+            if (!transmission) return res.status(503).json({ error: 'Transmission offline' });
+            await transmission.start(parseInt(req.params.t_id));
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
         }
     });
 

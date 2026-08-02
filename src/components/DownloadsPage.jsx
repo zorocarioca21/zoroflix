@@ -62,6 +62,27 @@ export default function DownloadsPage() {
         window.open(dUrl, '_blank');
     };
 
+    const handleTogglePause = async (transmission_id, action) => {
+        const token = localStorage.getItem('cinegeek_token');
+        const uuidVal = localStorage.getItem('cinegeek_uuid');
+        const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        try {
+            const res = await fetch(`/api/downloads/${action}/${transmission_id}`, {
+                method: 'POST',
+                headers
+            });
+            if (res.ok) {
+                fetchDownloads();
+            } else {
+                alert(`Erro ao ${action === 'pause' ? 'pausar' : 'retomar'} download.`);
+            }
+        } catch(e) {
+            alert("Falha na rede.");
+        }
+    };
+
     if (loading) return <div className="details-loading">Carregando seus downloads...</div>;
 
     return (
@@ -109,20 +130,47 @@ export default function DownloadsPage() {
                                     <img src={d.poster_path ? `https://image.tmdb.org/t/p/w200${d.poster_path}` : '/cinegeek-icon.png'} alt={d.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
                                 
-                                <div style={{ flexGrow: 1, zIndex: 1 }}>
-                                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', color: '#fff' }}>{d.title}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#888' }}>
-                                        {isFinished ? (
-                                            <span style={{ color: '#00ff88' }}>Concluído! Pronto para baixar.</span>
-                                        ) : isFailed ? (
-                                            <span style={{ color: '#ff3b30' }}>Torrent indisponível ou removido.</span>
-                                        ) : (
-                                            <span style={{ color: '#00d4ff' }}>Baixando para o servidor: {progress}%</span>
-                                        )}
-                                    </p>
+                                <div style={{ flex: 1, zIndex: 1 }}>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{d.title}</h3>
+                                    
+                                    {isFailed ? (
+                                        <div style={{ color: '#ff4444', fontSize: '0.9rem' }}>Erro: Torrent removido ou não encontrado no servidor.</div>
+                                    ) : (
+                                        <div style={{ color: '#00ccff', fontSize: '0.9rem', marginTop: '0.5rem', display: 'flex', gap: '1rem' }}>
+                                            <span>
+                                                {d.percentDone === 1 ? 'Concluído' : d.t_status === 0 ? `Pausado: ${(d.percentDone * 100).toFixed(1)}%` : `Baixando para o servidor: ${(d.percentDone * 100).toFixed(1)}%`}
+                                            </span>
+                                            {d.percentDone < 1 && d.percentDone >= 0 && d.rateDownload > 0 && d.t_status !== 0 && (
+                                                <span>Velocidade: {(d.rateDownload / 1024 / 1024).toFixed(2)} MB/s</span>
+                                            )}
+                                            {d.percentDone < 1 && d.percentDone >= 0 && (!d.rateDownload || d.rateDownload === 0) && d.t_status !== 0 && (
+                                                <span style={{ color: '#888' }}>(Buscando peers...)</span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', zIndex: 1 }}>
+                                    {!isFinished && !isFailed && d.t_status !== 0 && (
+                                        <button 
+                                            onClick={() => handleTogglePause(d.transmission_id, 'pause')}
+                                            className="nav-btn" 
+                                            style={{ color: '#ffaa00', borderColor: 'rgba(255, 170, 0, 0.2)', padding: '0.5rem' }}
+                                            title="Pausar download"
+                                        >
+                                            Pausar
+                                        </button>
+                                    )}
+                                    {!isFinished && !isFailed && d.t_status === 0 && (
+                                        <button 
+                                            onClick={() => handleTogglePause(d.transmission_id, 'resume')}
+                                            className="nav-btn" 
+                                            style={{ color: '#00ff88', borderColor: 'rgba(0, 255, 136, 0.2)', padding: '0.5rem' }}
+                                            title="Retomar download"
+                                        >
+                                            Retomar
+                                        </button>
+                                    )}
                                     {isFinished && (
                                         <button 
                                             onClick={() => handleDownload(d.transmission_id)}
