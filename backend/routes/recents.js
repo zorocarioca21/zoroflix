@@ -25,7 +25,7 @@ const authOrUuid = (req, res, next) => {
     next();
 };
 
-const MAX_RECENTS = 10;
+const MAX_RECENTS = 100;
 
 export default function recentsRoutes(db) {
 

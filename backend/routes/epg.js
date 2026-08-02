@@ -16,8 +16,8 @@ export default function epgRoutes() {
     }
 
     const sources = [
-      'https://epg.pw/xmltv/epg_BR.xml',
-      'https://reidosembeds.com/api/guia'
+      'https://reidosembeds.com/api/guia',
+      'https://epg.pw/xmltv/epg_BR.xml'
     ];
 
     for (const url of sources) {
