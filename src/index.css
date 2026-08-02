@@ -66,6 +66,10 @@ body::after {
   pointer-events: none;
 }
 
+body.hide-body-texture::after {
+  display: none;
+}
+
 .app-container {
   position: relative;
   z-index: 1;

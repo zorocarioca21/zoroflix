@@ -28,6 +28,11 @@ export default function DetailsPage() {
   const [watchedEpisodes, setWatchedEpisodes] = useState([]);
   const { user, uuid, loading: authLoading } = useAuth();
 
+  useEffect(() => {
+    document.body.classList.add('hide-body-texture');
+    return () => document.body.classList.remove('hide-body-texture');
+  }, []);
+
   const isMovie = location.pathname.includes('/filme/');
 
   // Resolvendo o ID do TMDB a partir do slug
