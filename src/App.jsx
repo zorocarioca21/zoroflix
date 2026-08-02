@@ -17,6 +17,7 @@ import CatalogPage from './components/CatalogPage'
 import ApiDocsPage from './components/ApiDocsPage'
 import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
+import ChannelPlayerPage from './components/ChannelPlayerPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
