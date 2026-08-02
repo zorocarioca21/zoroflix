@@ -114,7 +114,7 @@ export default function UserListPage({ type = 'favorites' }) {
                             }
                             {item.season && item.episode && (
                                 <span style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.8)', color: '#00e676', fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px', padding: '2px 5px', letterSpacing: '0.05em' }}>
-                                    S{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
+                                    T{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
                                 </span>
                             )}
                         </div>

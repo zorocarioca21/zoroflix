@@ -107,7 +107,7 @@ export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay,
               badges={
                 <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '4px', zIndex: 10 }}>
                   <span style={{ background: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                    S{item.season}E{item.number}
+                    T{item.season}E{item.number}
                   </span>
                 </div>
               }
