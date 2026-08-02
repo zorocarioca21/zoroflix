@@ -5235,11 +5235,23 @@ body.hide-body-texture::after {
 }
 
 .cast-character {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #888888;
   line-height: 1.2;
 }
 
+/* Nav Item Canais Blinking Red */
+@keyframes pulse-red-live {
+  0%, 100% { 
+    color: #ff3b30; 
+    filter: drop-shadow(0 0 6px rgba(255, 59, 48, 0.8)); 
+  }
+  50% { 
+    color: rgba(255, 255, 255, 0.7); 
+    filter: drop-shadow(0 0 0px transparent); 
+  }
+}
 
-
-
+.nav-item-canais .nav-icon {
+  animation: pulse-red-live 1.5s infinite ease-in-out;
+}

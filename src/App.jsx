@@ -294,7 +294,7 @@ function AppContent() {
           <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
           <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
           <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
-          <Link to="/canais" className="nav-item"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
+          <Link to="/canais" className="nav-item nav-item-canais"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
           <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
         </nav>
 
