@@ -471,7 +471,7 @@ export default function PlayerPage() {
                                 method: 'POST',
                                 headers,
                                 body: JSON.stringify({
-                                    title: title.split(' - ')[0], // Pega o nome principal
+                                    title: title.split(' - ')[0].split(':')[0].trim(), // Pega o nome principal ignorando subtítulos
                                     type: location.pathname.includes('/filme/') ? 'movie' : 'tv',
                                     year: seriesDetail?.first_air_date?.split('-')[0] || null,
                                     season: season ? parseInt(season) : null,
