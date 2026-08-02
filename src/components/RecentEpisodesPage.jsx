@@ -98,7 +98,7 @@ export default function RecentEpisodesPage() {
               <>
                 <div style={{ position: 'absolute', top: '8px', right: '8px', display: 'flex', gap: '4px', zIndex: 10 }}>
                   <span style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
-                    {item.air_date}
+                    {item.air_date ? item.air_date.split('-').reverse().join('/') : ''}
                   </span>
                 </div>
                 <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '4px', zIndex: 10 }}>
