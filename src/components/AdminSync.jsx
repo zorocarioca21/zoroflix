@@ -126,7 +126,7 @@ export default function AdminSync() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <HardDriveDownload size={32} color="#00ff88" />
-                    Zoroflix Sync
+                    CineGeek Sync
                 </h1>
             </div>
 
