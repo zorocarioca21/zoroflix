@@ -131,7 +131,7 @@ export default function AdminSync() {
                     
                     <div style={{ width: '100%', background: '#333', height: '24px', borderRadius: '12px', overflow: 'hidden', marginTop: '1rem', position: 'relative' }}>
                         <div style={{ 
-                            width: \`\${state.currentTask.progress}%\`, 
+                            width: `${state.currentTask.progress}%`, 
                             background: state.currentTask.type === 'download' ? '#2196f3' : '#9c27b0', 
                             height: '100%',
                             transition: 'width 0.3s ease'
