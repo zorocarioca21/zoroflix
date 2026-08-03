@@ -164,10 +164,10 @@ export default function PlayerPage() {
     }
   }, [id, canalId, location.pathname]);
 
-  // Checa se existe no Telegram (Para testes do Player Nativo VIP)
+  // Checa se existe no Telegram (Para Player Nativo VIP/Admin)
   useEffect(() => {
       if (canalId) return;
-      if (!user || user.role !== 'admin') return; // POR ENQUANTO SÓ ADMIN TESTA
+      if (!user || (user.role !== 'admin' && user.role !== 'vip')) return;
       
       let searchStr = '';
       if (state.title) {
