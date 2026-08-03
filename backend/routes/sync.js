@@ -19,7 +19,7 @@ export default function syncRoutes(db, io) {
         try {
             const m3uPath = path.join(__dirname, '..', '..', 'iptv_list.m3u');
             if (!fs.existsSync(m3uPath)) {
-                return res.status(404).json({ error: 'Arquivo iptv_list.m3u não encontrado na raiz do projeto.' });
+                return res.status(404).json({ error: 'FALHA: Coloque o arquivo iptv_list.m3u na raiz do projeto (mesma pasta do package.json)' });
             }
 
             const movies = [];
@@ -42,11 +42,10 @@ export default function syncRoutes(db, io) {
                     movies.push({ title: currentTitle, url: trimmed });
                     currentTitle = null;
                 }
-            }
+            } // Fechar for await loop
 
-            const addedCount = await addMoviesToQueue(movies);
-            res.json({ message: 'Varredura concluída', totalFound: movies.length, newAdded: addedCount });
-
+            // Responde imediatamente
+            res.json({ message: 'Varredura concluída', totalFound: movies.length });
         } catch (err) {
             console.error("Erro no scan:", err);
             res.status(500).json({ error: 'Erro interno ao processar arquivo M3U.' });
@@ -87,6 +86,16 @@ export default function syncRoutes(db, io) {
             });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar fila' });
+        }
+    });
+
+    // Rota para deletar item do histórico (para forçar re-download)
+    router.delete('/queue/:id', async (req, res) => {
+        try {
+            await db.run("DELETE FROM sync_queue WHERE id = ?", [req.params.id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao deletar item' });
         }
     });
 
