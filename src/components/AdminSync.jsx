@@ -250,7 +250,7 @@ export default function AdminSync() {
                                 }} />
                             </div>
                             <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
-                                {String(state.uploadTask.progress || 0).startsWith('MODO') ? state.uploadTask.progress : (Number(state.uploadTask.progress) || 0).toFixed(2) + '%'}
+                                {String(state.uploadTask.progress || 0).includes('TURBO') ? state.uploadTask.progress : (Number(state.uploadTask.progress) || 0).toFixed(2) + '%'}
                             </div>
                         </div>
                     </div>
