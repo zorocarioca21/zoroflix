@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser } from 'lucide-react';
 
 export default function AdminSync() {
-    const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
+    const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, total_size_saved: 0, completed_today: 0 });
     const [filter, setFilter] = useState('all');
@@ -234,29 +234,57 @@ export default function AdminSync() {
                     </div>
                 )}
 
-                {state.uploadTask ? (
+                {/* Upload via Docker (Menores que 2GB) */}
+                {state.uploadTaskDocker ? (
                     <div style={{ backgroundColor: '#2e1a2e', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
                         <h3 style={{ color: '#ff00ff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Send size={20} /> Enviando pro Telegram
+                            <Send size={20} /> Enviando pro Telegram (Motor Turbo)
                         </h3>
                         <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTask.title || 'Desconhecido'}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTaskDocker.title || 'Desconhecido'}</div>
                             <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
                                 <div style={{ 
-                                    width: (typeof state.uploadTask.progress === 'number' && !isNaN(state.uploadTask.progress)) ? `${state.uploadTask.progress}%` : '100%', 
-                                    backgroundColor: (typeof state.uploadTask.progress === 'number' && !isNaN(state.uploadTask.progress)) ? '#ff00ff' : '#00ff88', 
+                                    width: (typeof state.uploadTaskDocker.progress === 'number' && !isNaN(state.uploadTaskDocker.progress)) ? `${state.uploadTaskDocker.progress}%` : '100%', 
+                                    backgroundColor: (typeof state.uploadTaskDocker.progress === 'number' && !isNaN(state.uploadTaskDocker.progress)) ? '#ff00ff' : '#00ff88', 
                                     height: '100%', 
                                     transition: 'width 0.3s' 
                                 }} />
                             </div>
                             <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
-                                {String(state.uploadTask.progress || 0).includes('TURBO') ? state.uploadTask.progress : (Number(state.uploadTask.progress) || 0).toFixed(2) + '%'}
+                                {String(state.uploadTaskDocker.progress || 0).includes('TURBO') ? state.uploadTaskDocker.progress : (Number(state.uploadTaskDocker.progress) || 0).toFixed(2) + '%'}
                             </div>
                         </div>
                     </div>
                 ) : (
                     <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666' }}>Aguardando fila de Upload...</span>
+                        <span style={{ color: '#666' }}>Aguardando fila de Upload (Pequenos)...</span>
+                    </div>
+                )}
+
+                {/* Upload via Python (Qualquer tamanho, geralmente os Gigantes) */}
+                {state.uploadTaskPython ? (
+                    <div style={{ backgroundColor: '#1e2030', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
+                        <h3 style={{ color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Send size={20} /> Enviando pro Telegram (Python)
+                        </h3>
+                        <div style={{ marginTop: '1rem' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTaskPython.title || 'Desconhecido'}</div>
+                            <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                                <div style={{ 
+                                    width: (typeof state.uploadTaskPython.progress === 'number' && !isNaN(state.uploadTaskPython.progress)) ? `${state.uploadTaskPython.progress}%` : '100%', 
+                                    backgroundColor: '#ffaa00', 
+                                    height: '100%', 
+                                    transition: 'width 0.3s' 
+                                }} />
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
+                                {(Number(state.uploadTaskPython.progress) || 0).toFixed(2) + '%'}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#666' }}>Aguardando fila de Upload (Grandes)...</span>
                     </div>
                 )}
             </div>

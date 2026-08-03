@@ -10,19 +10,21 @@ let isPaused = false;
 
 // Estado Separado para Download e Upload (Pipeline Produtor-Consumidor)
 let downloadTask = null; // { id, title, progress: 0 }
-let uploadTask = null; // { id, title, progress: 0 }
+let uploadTaskDocker = null; // { id, title, progress: 0 }
+let uploadTaskPython = null; // { id, title, progress: 0 }
 
 let ioInstance = null;
 let dbInstance = null;
 
 // Controladores para poder cancelar tarefas caso pause
 let activeDownloadController = null;
-let activeUploadController = null;
-let activeChildProcess = null;
+let activeUploadControllerDocker = null;
+let activeChildProcessPython = null;
 
 // Promessas ativas dos loops para sabermos quando parar
 let activeDownloadLoop = null;
-let activeUploadLoop = null;
+let activeUploadLoopDocker = null;
+let activeUploadLoopPython = null;
 
 export function initSyncWorker(db, io) {
     dbInstance = db;
@@ -38,25 +40,29 @@ export function setPauseState(paused) {
             activeDownloadController.abort();
             activeDownloadController = null;
         }
-        if (activeChildProcess) {
-            activeChildProcess.kill();
-            activeChildProcess = null;
+        if (activeChildProcessPython) {
+            activeChildProcessPython.kill();
+            activeChildProcessPython = null;
         }
-        if (activeUploadController) {
-            activeUploadController.abort();
-            activeUploadController = null;
+        if (activeUploadControllerDocker) {
+            activeUploadControllerDocker.abort();
+            activeUploadControllerDocker = null;
         }
         
         // Devolve tasks pro status adequado no BD para serem retomadas depois
         if (downloadTask && downloadTask.id) {
             dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [downloadTask.id]);
         }
-        if (uploadTask && uploadTask.id) {
-            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTask.id]);
+        if (uploadTaskDocker && uploadTaskDocker.id) {
+            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTaskDocker.id]);
+        }
+        if (uploadTaskPython && uploadTaskPython.id) {
+            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTaskPython.id]);
         }
         
         downloadTask = null;
-        uploadTask = null;
+        uploadTaskDocker = null;
+        uploadTaskPython = null;
         broadcastState();
     } else {
         // Retoma worker
@@ -72,7 +78,8 @@ export function broadcastStateTo(socket) {
         isRunning,
         isPaused,
         downloadTask,
-        uploadTask
+        uploadTaskDocker,
+        uploadTaskPython
     });
 }
 
@@ -82,7 +89,8 @@ function broadcastState() {
         isRunning,
         isPaused,
         downloadTask,
-        uploadTask
+        uploadTaskDocker,
+        uploadTaskPython
     });
 }
 
@@ -96,19 +104,21 @@ export async function startWorker() {
         await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE status = 'downloading'");
         await dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE status = 'uploading'");
 
-        // Inicia as duas rotinas (loops) paralelamente
+        // Inicia as três rotinas paralelamente
         activeDownloadLoop = downloadLoop();
-        activeUploadLoop = uploadLoop();
+        activeUploadLoopDocker = uploadLoopDocker();
+        activeUploadLoopPython = uploadLoopPython();
         
-        // Espera as duas finalizarem (se der pause, elas quebram o loop)
-        await Promise.all([activeDownloadLoop, activeUploadLoop]);
+        // Espera todas finalizarem
+        await Promise.all([activeDownloadLoop, activeUploadLoopDocker, activeUploadLoopPython]);
         
     } catch (err) {
         console.error("Erro fatal no worker:", err);
     } finally {
         isRunning = false;
         downloadTask = null;
-        uploadTask = null;
+        uploadTaskDocker = null;
+        uploadTaskPython = null;
         broadcastState();
     }
 }
@@ -197,28 +207,53 @@ async function downloadLoop() {
 }
 
 // ==========================================
-// LOOP 2: CONSUMIDOR (Envia arquivos para o Telegram)
+// LOOP 2 e 3: CONSUMIDORES (Envia arquivos para o Telegram)
 // ==========================================
-async function uploadLoop() {
+
+// Lock Atômico
+async function acquireTask(isDocker) {
+    // Docker só pega <= 2GB. Python pega qualquer um.
+    const sizeCondition = isDocker ? "AND file_size <= 2147483648" : "";
+    const item = await dbInstance.get(`SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ${sizeCondition} ORDER BY id ASC LIMIT 1`);
+    if (!item) return null;
+
+    // Tenta travar o item marcando como uploading
+    const result = await dbInstance.run("UPDATE sync_queue SET status = 'uploading', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending_upload'", [item.id]);
+    if (result.changes > 0) {
+        return item; // Conseguimos!
+    }
+    return null; // Alguém pegou antes
+}
+
+async function uploadLoopDocker() {
     while (!isPaused) {
         try {
-            // Busca o próximo item pronto para ser enviado (pending_upload)
-            const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY id ASC LIMIT 1");
-            
+            const item = await acquireTask(true); // Pega pequeno
             if (!item) {
-                // Se não tem nada para upar, dorme 5 segundos e tenta de novo
                 await new Promise(r => setTimeout(r, 5000));
                 continue;
             }
-
-            // Tem item! Processa o upload
-            const success = await processUpload(item);
-            
-            if (!success || isPaused) {
-                break; // Se deu erro fatal ou pausou, sai do loop
-            }
+            const success = await processUpload(item, 'docker');
+            if (!success || isPaused) break;
         } catch (err) {
-            console.error("Erro no loop de upload:", err);
+            console.error("Erro no loop docker:", err);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+}
+
+async function uploadLoopPython() {
+    while (!isPaused) {
+        try {
+            const item = await acquireTask(false); // Pega qualquer um
+            if (!item) {
+                await new Promise(r => setTimeout(r, 5000));
+                continue;
+            }
+            const success = await processUpload(item, 'python');
+            if (!success || isPaused) break;
+        } catch (err) {
+            console.error("Erro no loop python:", err);
             await new Promise(r => setTimeout(r, 5000));
         }
     }
@@ -263,35 +298,29 @@ async function processDownload(movie) {
     }
 }
 
-async function processUpload(movie) {
+async function processUpload(movie, workerType) {
     const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const ext = movie.url.split('?')[0].split('.').pop() || 'mp4';
     const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
 
     try {
         if (!fs.existsSync(tmpPath)) {
-            // Se o arquivo sumiu, joga de volta pra pending pra tentar baixar de novo
             await dbInstance.run("UPDATE sync_queue SET status = 'pending', error_message = 'Arquivo temp não encontrado. Rebaixando.', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
-            return true; // não é erro fatal, o loop 1 pode pegar ele depois
+            return true; 
         }
-
-        await dbInstance.run("UPDATE sync_queue SET status = 'uploading', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         
-        uploadTask = { id: movie.id, title: movie.title, progress: 0 };
+        if (workerType === 'docker') {
+            uploadTaskDocker = { id: movie.id, title: movie.title, progress: 0 };
+        } else {
+            uploadTaskPython = { id: movie.id, title: movie.title, progress: 0 };
+        }
         broadcastState();
 
-        // Verifica tamanho do arquivo para decidir a rota (Híbrido)
-        const stats = fs.statSync(tmpPath);
-        const fileSize = stats.size;
-        const TWO_GB = 2 * 1024 * 1024 * 1024;
-        
         let messageId = null;
 
-        if (fileSize <= TWO_GB) {
-            // Usa o Servidor Local via Docker (Rápido)
+        if (workerType === 'docker') {
             messageId = await uploadViaDocker(movie.title, tmpPath, movie.id);
         } else {
-            // Usa o Python/Pyrogram (Aguenta arquivos gigantes > 2GB)
             messageId = await uploadViaPython(movie.title, tmpPath, movie.id);
         }
 
@@ -305,14 +334,15 @@ async function processUpload(movie) {
         }
         
     } catch (err) {
-        console.error(`Erro no upload de ${movie.title}:`, err);
+        console.error(`Erro no upload de ${movie.title} via ${workerType}:`, err);
         if (!isPaused) {
             await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [err.message, movie.id]);
         }
     } finally {
-        uploadTask = null;
+        if (workerType === 'docker') uploadTaskDocker = null;
+        else uploadTaskPython = null;
         broadcastState();
-        // Limpeza do temp após o envio com sucesso ou falha fatal (exceto pause)
+        
         if (!isPaused && fs.existsSync(tmpPath)) {
             try { fs.unlinkSync(tmpPath); } catch (e) {}
         }
@@ -371,16 +401,16 @@ function uploadViaPython(title, filePath, dbId) {
     return new Promise((resolve, reject) => {
         const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramUploadOnly.py');
         
-        activeChildProcess = spawn('python3', [scriptPath, filePath, title]);
+        activeChildProcessPython = spawn('python3', [scriptPath, filePath, title]);
         
         let foundMessageId = null;
 
-        activeChildProcess.stdout.on('data', (data) => {
+        activeChildProcessPython.stdout.on('data', (data) => {
             const output = data.toString();
             // Pega o progresso: "Upload progresso: 45.20%"
             const match = output.match(/Upload progresso:\s*([\d.]+)%/);
-            if (match && match[1] && uploadTask) {
-                uploadTask.progress = parseFloat(match[1]);
+            if (match && match[1] && uploadTaskPython) {
+                uploadTaskPython.progress = parseFloat(match[1]);
                 broadcastState();
             }
             
@@ -391,12 +421,12 @@ function uploadViaPython(title, filePath, dbId) {
             }
         });
 
-        activeChildProcess.stderr.on('data', (data) => {
+        activeChildProcessPython.stderr.on('data', (data) => {
             console.error(`[Python Uploader Error]: ${data}`);
         });
 
-        activeChildProcess.on('close', (code) => {
-            activeChildProcess = null;
+        activeChildProcessPython.on('close', (code) => {
+            activeChildProcessPython = null;
             if (code === 0) resolve(foundMessageId);
             else reject(new Error(`Processo python falhou com código ${code}`));
         });
@@ -411,15 +441,14 @@ async function uploadViaDocker(title, filePath, dbId) {
         throw new Error("TELEGRAM_BOT_TOKEN ou TELEGRAM_CHANNEL_ID não configurados no .env");
     }
 
-    if (uploadTask) {
-        uploadTask.progress = 'MOTOR TURBO (Aguarde o envio...)';
+    if (uploadTaskDocker) {
+        uploadTaskDocker.progress = 'MOTOR TURBO (Aguarde o envio...)';
         broadcastState();
     }
 
-    activeUploadController = new AbortController();
+    activeUploadControllerDocker = new AbortController();
 
     try {
-        // Envia comando para a API local apontando para o arquivo no disco local
         const LOCAL_API_URL = `http://127.0.0.1:8081/bot${BOT_TOKEN}/sendVideo`;
         
         const payload = {
@@ -434,7 +463,7 @@ async function uploadViaDocker(title, filePath, dbId) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
-            signal: activeUploadController.signal
+            signal: activeUploadControllerDocker.signal
         });
 
         if (!response.ok) {
@@ -449,7 +478,7 @@ async function uploadViaDocker(title, filePath, dbId) {
         
         return null;
     } finally {
-        activeUploadController = null;
+        activeUploadControllerDocker = null;
     }
 }
 
