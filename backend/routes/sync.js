@@ -14,6 +14,9 @@ export default function syncRoutes(db, io) {
     
     // Inicializa o worker singleton
     initSyncWorker(db, io);
+    
+    // Inicia automaticamente o worker assim que o servidor ligar
+    startWorker();
 
     // Rota para exportar catálogo
     router.get('/export', async (req, res) => {
