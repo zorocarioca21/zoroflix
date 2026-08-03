@@ -114,23 +114,29 @@ router.get('/telegram/:message_id', async (req, res) => {
         }
 
         const limit = end - start + 1;
+        console.log(`[Stream] Iniciando download. Start: ${start}, End: ${end}, Limit: ${limit}`);
 
         // Faz o download da stream
         const iterator = tgClient.iterDownload({
             file: message.media,
-            offset: bigInt(start), // Pode precisar usar bigInt se for arquivo grande, o GramJS trata isso
-            requestSize: 512 * 1024, // chunks de 512kb padrão do Telegram
+            offset: bigInt(start), 
+            requestSize: 512 * 1024, 
             limit: limit
         });
 
-        // Evento se o cliente fechar a conexão (apertar pause, pular vídeo ou fechar janela)
+        // Evento se o cliente fechar a conexão
         let isCancelled = false;
         req.on('close', () => {
+            console.log(`[Stream] Conexão fechada pelo cliente (cancelado)`);
             isCancelled = true;
         });
 
+        let chunkCount = 0;
         for await (const chunk of iterator) {
             if (isCancelled) break;
+            
+            chunkCount++;
+            if (chunkCount === 1) console.log(`[Stream] Primeiro chunk recebido! Tamanho: ${chunk.length}`);
             
             // Grava o pedaço no buffer HTTP
             const canWrite = res.write(chunk);
@@ -139,6 +145,8 @@ router.get('/telegram/:message_id', async (req, res) => {
                 await new Promise(resolve => res.once('drain', resolve));
             }
         }
+        
+        console.log(`[Stream] Fim da stream. Chunks enviados: ${chunkCount}, isCancelled: ${isCancelled}`);
 
         if (!isCancelled) {
             res.end();
