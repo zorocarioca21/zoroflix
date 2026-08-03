@@ -160,63 +160,65 @@ export default function AdminSync() {
             </div>
 
             <h3 style={{ marginBottom: '1rem' }}>Últimos Filmes na Fila</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: '#1a1a1a', borderRadius: '8px', overflow: 'hidden' }}>
-                <thead>
-                    <tr style={{ backgroundColor: '#222' }}>
-                        <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
-                        <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
-                        <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
-                        <th style={{ padding: '1rem', textAlign: 'left' }}>Tamanho</th>
-                        <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {queue.error ? (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#ff4444' }}>{queue.error}</td></tr>
-                    ) : queue.items && queue.items.length > 0 ? (
-                        queue.items.map(item => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
-                                <td style={{ padding: '1rem' }}>{item.title}</td>
-                                <td style={{ padding: '1rem' }}>
-                                    <span style={{ 
-                                        padding: '0.2rem 0.5rem', 
-                                        borderRadius: '4px', 
-                                        fontSize: '0.8rem',
-                                        backgroundColor: item.status === 'completed' ? '#00ff8822' : 
-                                                        item.status === 'error' ? '#ff444422' : 
-                                                        item.status === 'downloading' ? '#00ccff22' :
-                                                        item.status === 'uploading' ? '#ff00ff22' :
-                                                        item.status === 'pending_upload' ? '#ffff0022' : '#ffffff22',
-                                        color: item.status === 'completed' ? '#00ff88' : 
-                                               item.status === 'error' ? '#ff4444' : 
-                                               item.status === 'downloading' ? '#00ccff' :
-                                               item.status === 'uploading' ? '#ff00ff' :
-                                               item.status === 'pending_upload' ? '#ffff00' : '#fff'
-                                    }}>
-                                        {item.status.toUpperCase()}
-                                    </span>
-                                    {item.error_message && <div style={{ fontSize: '0.8rem', color: '#ff4444', marginTop: '0.2rem' }}>{item.error_message}</div>}
-                                </td>
-                                <td style={{ padding: '1rem', color: '#888' }}>
-                                    {item.file_size ? (item.file_size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
-                                </td>
-                                <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                    <button 
-                                        onClick={() => deleteItem(item.id)}
-                                        title="Apagar e baixar novamente"
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff4444' }}
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>Nenhuma atividade recente na fila</td></tr>
-                    )}
-                </tbody>
-            </table>
+            <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
+                <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
+                    <thead>
+                        <tr style={{ backgroundColor: '#222' }}>
+                            <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
+                            <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
+                            <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                            <th style={{ padding: '1rem', textAlign: 'left' }}>Tamanho</th>
+                            <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {queue.error ? (
+                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#ff4444' }}>{queue.error}</td></tr>
+                        ) : queue.items && queue.items.length > 0 ? (
+                            queue.items.map(item => (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
+                                    <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
+                                    <td style={{ padding: '1rem' }}>{item.title}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <span style={{ 
+                                            padding: '0.2rem 0.5rem', 
+                                            borderRadius: '4px', 
+                                            fontSize: '0.8rem',
+                                            backgroundColor: item.status === 'completed' ? '#00ff8822' : 
+                                                            item.status === 'error' ? '#ff444422' : 
+                                                            item.status === 'downloading' ? '#00ccff22' :
+                                                            item.status === 'uploading' ? '#ff00ff22' :
+                                                            item.status === 'pending_upload' ? '#ffff0022' : '#ffffff22',
+                                            color: item.status === 'completed' ? '#00ff88' : 
+                                                   item.status === 'error' ? '#ff4444' : 
+                                                   item.status === 'downloading' ? '#00ccff' :
+                                                   item.status === 'uploading' ? '#ff00ff' :
+                                                   item.status === 'pending_upload' ? '#ffff00' : '#fff'
+                                        }}>
+                                            {item.status.toUpperCase()}
+                                        </span>
+                                        {item.error_message && <div style={{ fontSize: '0.8rem', color: '#ff4444', marginTop: '0.2rem' }}>{item.error_message}</div>}
+                                    </td>
+                                    <td style={{ padding: '1rem', color: '#888' }}>
+                                        {item.file_size ? (item.file_size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
+                                    </td>
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        <button 
+                                            onClick={() => deleteItem(item.id)}
+                                            title="Apagar e baixar novamente"
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff4444' }}
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>Nenhuma atividade recente na fila</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
