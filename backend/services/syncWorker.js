@@ -108,6 +108,11 @@ export async function startWorker() {
                 const url = trimmed;
                 currentTitle = null;
 
+                const ext = url.split('?')[0].split('.').pop().toLowerCase();
+                if (ext !== 'mp4' && ext !== 'mkv') {
+                    continue;
+                }
+
                 // Verifica se já foi baixado
                 const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
                 
