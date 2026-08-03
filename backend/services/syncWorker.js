@@ -23,8 +23,7 @@ let activeChildProcessPython = null;
 
 // Promessas ativas dos loops para sabermos quando parar
 let activeDownloadLoop = null;
-let activeUploadLoopDocker = null;
-let activeUploadLoopPython = null;
+let activeUploadLoop = null;
 
 export function initSyncWorker(db, io) {
     dbInstance = db;
@@ -104,13 +103,12 @@ export async function startWorker() {
         await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE status = 'downloading'");
         await dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE status = 'uploading'");
 
-        // Inicia as três rotinas paralelamente
+        // Inicia as duas rotinas paralelamente
         activeDownloadLoop = downloadLoop();
-        activeUploadLoopDocker = uploadLoopDocker();
-        activeUploadLoopPython = uploadLoopPython();
+        activeUploadLoop = uploadLoop();
         
         // Espera todas finalizarem
-        await Promise.all([activeDownloadLoop, activeUploadLoopDocker, activeUploadLoopPython]);
+        await Promise.all([activeDownloadLoop, activeUploadLoop]);
         
     } catch (err) {
         console.error("Erro fatal no worker:", err);
@@ -207,53 +205,45 @@ async function downloadLoop() {
 }
 
 // ==========================================
-// LOOP 2 e 3: CONSUMIDORES (Envia arquivos para o Telegram)
+// LOOP 2: CONSUMIDOR (Envia arquivos para o Telegram)
 // ==========================================
 
-// Lock Atômico
-async function acquireTask(isDocker) {
-    // Docker só pega <= 2GB. Python pega qualquer um.
-    const sizeCondition = isDocker ? "AND file_size <= 2147483648" : "";
-    const item = await dbInstance.get(`SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ${sizeCondition} ORDER BY id ASC LIMIT 1`);
-    if (!item) return null;
-
-    // Tenta travar o item marcando como uploading
-    const result = await dbInstance.run("UPDATE sync_queue SET status = 'uploading', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending_upload'", [item.id]);
-    if (result.changes > 0) {
-        return item; // Conseguimos!
-    }
-    return null; // Alguém pegou antes
-}
-
-async function uploadLoopDocker() {
+async function uploadLoop() {
     while (!isPaused) {
         try {
-            const item = await acquireTask(true); // Pega pequeno
+            // Busca o próximo item pronto para ser enviado (pending_upload)
+            const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY id ASC LIMIT 1");
+            
             if (!item) {
+                // Se não tem nada para upar, dorme 5 segundos e tenta de novo
                 await new Promise(r => setTimeout(r, 5000));
                 continue;
             }
-            const success = await processUpload(item, 'docker');
-            if (!success || isPaused) break;
-        } catch (err) {
-            console.error("Erro no loop docker:", err);
-            await new Promise(r => setTimeout(r, 5000));
-        }
-    }
-}
 
-async function uploadLoopPython() {
-    while (!isPaused) {
-        try {
-            const item = await acquireTask(false); // Pega qualquer um
-            if (!item) {
-                await new Promise(r => setTimeout(r, 5000));
-                continue;
+            // Tem item! Processa o upload.
+            // Para decidir se é docker ou python, olhamos o tamanho
+            const safeTitle = item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const ext = item.url.split('?')[0].split('.').pop() || 'mp4';
+            const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${item.id}.${ext}`);
+            
+            let workerType = 'python';
+            if (fs.existsSync(tmpPath)) {
+                const stats = fs.statSync(tmpPath);
+                if (stats.size <= 2147483648) {
+                    workerType = 'docker';
+                }
             }
-            const success = await processUpload(item, 'python');
-            if (!success || isPaused) break;
+
+            // Trava o item (opcional se houver 1 loop só, mas seguro)
+            await dbInstance.run("UPDATE sync_queue SET status = 'uploading', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+
+            const success = await processUpload(item, workerType);
+            
+            if (!success || isPaused) {
+                break; // Se deu erro fatal ou pausou, sai do loop
+            }
         } catch (err) {
-            console.error("Erro no loop python:", err);
+            console.error("Erro no loop de upload:", err);
             await new Promise(r => setTimeout(r, 5000));
         }
     }
