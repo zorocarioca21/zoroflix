@@ -15,6 +15,42 @@ export default function syncRoutes(db, io) {
     // Inicializa o worker singleton
     initSyncWorker(db, io);
 
+    // Rota para exportar catálogo
+    router.get('/export', async (req, res) => {
+        try {
+            const rows = await db.all(`SELECT id, title, status, url, file_size, telegram_message_id, created_at, updated_at FROM sync_queue ORDER BY id ASC`);
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Content-Disposition', 'attachment; filename="zoroflix_catalog.json"');
+            res.send(JSON.stringify(rows, null, 2));
+        } catch (err) {
+            console.error("Erro export:", err);
+            res.status(500).json({ error: 'Erro ao exportar banco' });
+        }
+    });
+
+    // Rota para tentar erros novamente em massa
+    router.post('/retry-errors', async (req, res) => {
+        try {
+            await db.run("UPDATE sync_queue SET status = 'pending', error_message = NULL WHERE status = 'error'");
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Erro retry:", err);
+            res.status(500).json({ error: 'Erro ao reprocessar' });
+        }
+    });
+
+    // Pular / Ignorar item com defeito
+    router.put('/queue/:id/skip', async (req, res) => {
+        try {
+            const { id } = req.params;
+            await db.run("UPDATE sync_queue SET status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Erro skip:", err);
+            res.status(500).json({ error: 'Erro ao pular item' });
+        }
+    });
+
     // Rota para iniciar varredura do M3U
     router.post('/scan', async (req, res) => {
         try {
@@ -102,13 +138,24 @@ export default function syncRoutes(db, io) {
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
+            const skipped = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'skipped'`);
+            const error = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'error'`);
+            
+            // Novos Dashboards
+            const totalSizeRow = await db.get(`SELECT SUM(file_size) as total_size FROM sync_queue WHERE status = 'completed'`);
+            const completedTodayRow = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed' AND DATE(updated_at) = DATE('now')`);
 
             res.json({
                 items: rows,
                 total: total.count,
                 pending: pending.count,
                 completed: completed.count,
+                skipped: skipped.count,
+                error: error.count,
+                total_size_saved: totalSizeRow.total_size || 0,
+                completed_today: completedTodayRow.count || 0,
                 page,
+                limit,
                 totalPages: Math.ceil(total.count / limit)
             });
         } catch (err) {

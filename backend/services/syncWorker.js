@@ -147,7 +147,7 @@ async function downloadLoop() {
             const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
             
             // Se já está completo ou aguardando upload, pulamos o download
-            if (existing && (existing.status === 'completed' || existing.status === 'pending_upload' || existing.status === 'uploading')) {
+            if (existing && (existing.status === 'completed' || existing.status === 'pending_upload' || existing.status === 'uploading' || existing.status === 'skipped')) {
                 continue;
             }
 

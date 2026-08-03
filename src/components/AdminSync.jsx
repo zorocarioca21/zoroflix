@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw } from 'lucide-react';
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
     const [socket, setSocket] = useState(null);
-    const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null });
+    const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, total_size_saved: 0, completed_today: 0 });
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
@@ -97,6 +97,30 @@ export default function AdminSync() {
         }
     };
 
+    const retryErrors = async () => {
+        if (!window.confirm("Deseja colocar todos os itens com 'Erro' de volta na fila pendente?")) return;
+        await fetch('/api/sync/retry-errors', { method: 'POST' });
+        fetchQueue();
+    };
+
+    const skipItem = async (item) => {
+        if (!window.confirm("Deseja ignorar este item? O worker não tentará baixá-lo novamente.")) return;
+        await fetch(`/api/sync/queue/${item.id}/skip`, { method: 'PUT' });
+        fetchQueue();
+    };
+
+    const handleExport = () => {
+        window.open('/api/sync/export', '_blank');
+    };
+
+    const formatBytes = (bytes) => {
+        if (!bytes || bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
     return (
         <div style={{ padding: '2rem', color: '#fff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -109,17 +133,34 @@ export default function AdminSync() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                 <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px' }}>
                     <h3>Estatísticas da Fila</h3>
-                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                         <div><span style={{ color: '#888' }}>⏱ Pendentes:</span> {queue.pending}</div>
                         <div><span style={{ color: '#00ff88' }}>✔ Concluídos:</span> {queue.completed}</div>
-                        <div><span style={{ color: '#888' }}>Total:</span> {queue.total}</div>
+                        <div><span style={{ color: '#ff4444' }}>❌ Erros:</span> {queue.error || 0}</div>
+                        <div><span style={{ color: '#ffaa00' }}>⏭ Ignorados:</span> {queue.skipped || 0}</div>
+                        <div><span style={{ color: '#00ccff' }}>💾 Economia DB:</span> {formatBytes(queue.total_size_saved)}</div>
+                        <div><span style={{ color: '#ff00ff' }}>🚀 Envios Hoje:</span> {queue.completed_today || 0}</div>
                     </div>
-                    <button 
-                        onClick={startScan}
-                        style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                        Re-escanear iptv_list.m3u
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                        <button 
+                            onClick={startScan}
+                            style={{ flex: 1, padding: '0.5rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            Re-escanear iptv_list.m3u
+                        </button>
+                        <button 
+                            onClick={retryErrors}
+                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <RefreshCcw size={16} /> Tentar Erros
+                        </button>
+                        <button 
+                            onClick={handleExport}
+                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00ccff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Download size={16} /> Exportar BD
+                        </button>
+                    </div>
                 </div>
 
                 <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px' }}>
@@ -215,6 +256,7 @@ export default function AdminSync() {
                     <button onClick={() => { setFilter('pending'); fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
                     <button onClick={() => { setFilter('completed'); fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
                     <button onClick={() => { setFilter('error'); fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
+                    <button onClick={() => { setFilter('skipped'); fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'skipped' ? '#ffaa00' : '#333', color: filter === 'skipped' ? '#000' : '#fff' }}>Ignorados</button>
                 </div>
             </div>
             <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
@@ -256,11 +298,13 @@ export default function AdminSync() {
                                             fontSize: '0.8rem',
                                             backgroundColor: item.status === 'completed' ? '#00ff8822' : 
                                                             item.status === 'error' ? '#ff444422' : 
+                                                            item.status === 'skipped' ? '#ffaa0022' :
                                                             item.status === 'downloading' ? '#00ccff22' :
                                                             item.status === 'uploading' ? '#ff00ff22' :
                                                             item.status === 'pending_upload' ? '#ffff0022' : '#ffffff22',
                                             color: item.status === 'completed' ? '#00ff88' : 
                                                    item.status === 'error' ? '#ff4444' : 
+                                                   item.status === 'skipped' ? '#ffaa00' : 
                                                    item.status === 'downloading' ? '#00ccff' :
                                                    item.status === 'uploading' ? '#ff00ff' :
                                                    item.status === 'pending_upload' ? '#ffff00' : '#fff'
@@ -270,7 +314,7 @@ export default function AdminSync() {
                                         {item.error_message && <div style={{ fontSize: '0.8rem', color: '#ff4444', marginTop: '0.2rem' }}>{item.error_message}</div>}
                                     </td>
                                     <td style={{ padding: '1rem', color: '#888' }}>
-                                        {item.file_size ? (item.file_size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
+                                        {formatBytes(item.file_size)}
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                                         <button 
@@ -280,6 +324,15 @@ export default function AdminSync() {
                                         >
                                             <Edit size={20} />
                                         </button>
+                                        {item.status !== 'completed' && item.status !== 'skipped' && (
+                                            <button 
+                                                onClick={() => skipItem(item)}
+                                                title="Ignorar/Pular"
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ffaa00', marginRight: '0.5rem' }}
+                                            >
+                                                <SkipForward size={20} />
+                                            </button>
+                                        )}
                                         <button 
                                             onClick={() => deleteItem(item)}
                                             title="Apagar e baixar novamente"
