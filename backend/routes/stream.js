@@ -53,45 +53,60 @@ async function getTelegramClient() {
     return client;
 }
 
-// GET /api/stream/telegram/:message_id
-router.get('/telegram/:message_id', async (req, res) => {
-    const messageId = parseInt(req.params.message_id);
-    if (!messageId) return res.status(400).send("Message ID inválido");
+export default function streamRoutes(db) {
+    const router = express.Router();
 
-    const tgClient = await getTelegramClient();
-    if (!tgClient) return res.status(500).send("Erro interno ao conectar ao Telegram");
+    // GET /api/stream/telegram/:message_id
+    router.get('/telegram/:message_id', async (req, res) => {
+        const messageId = parseInt(req.params.message_id);
+        if (!messageId) return res.status(400).send("Message ID inválido");
 
-    try {
-        let entityId = channelId;
-        if (!entityId.startsWith('-100')) {
-            entityId = '-100' + entityId.replace('-', '');
-        }
+        const tgClient = await getTelegramClient();
+        if (!tgClient) return res.status(500).send("Erro interno ao conectar ao Telegram");
 
-        console.log(`[Stream] Buscando mensagem ${messageId} na entidade ${entityId}...`);
-        
-        // Busca a mensagem (força BigInt para canais se possível)
-        let resolvedEntity;
         try {
-            resolvedEntity = await tgClient.getInputEntity(entityId);
-            console.log("[Stream] Entidade resolvida com sucesso!");
-        } catch (e) {
-            console.log("[Stream] Aviso: getInputEntity falhou (normal se for string direta). Tentando direto...");
-            resolvedEntity = entityId; // Fallback
-        }
+            let entityId = channelId;
+            if (!entityId.startsWith('-100')) {
+                entityId = '-100' + entityId.replace('-', '');
+            }
 
-        const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
-        console.log(`[Stream] Busca concluída. Resultado: ${result ? result.length : 'null'}`);
+            console.log(`[Stream] Buscando mensagem ${messageId} na entidade ${entityId}...`);
+            
+            // Busca a mensagem (força BigInt para canais se possível)
+            let resolvedEntity;
+            try {
+                resolvedEntity = await tgClient.getInputEntity(entityId);
+                console.log("[Stream] Entidade resolvida com sucesso!");
+            } catch (e) {
+                console.log("[Stream] Aviso: getInputEntity falhou (normal se for string direta). Tentando direto...");
+                resolvedEntity = entityId; // Fallback
+            }
 
-        if (!result || result.length === 0 || !result[0]) {
-            console.log("[Stream] ERRO: Mensagem não encontrada.");
-            return res.status(404).send("Mensagem não encontrada");
-        }
+            const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
+            console.log(`[Stream] Busca concluída. Resultado: ${result ? result.length : 'null'}`);
 
-        const message = result[0];
-        if (!message.media || !message.media.document) {
-            console.log("[Stream] ERRO: Mensagem não contém um documento de vídeo.");
-            return res.status(404).send("A mensagem não contém um documento de vídeo");
-        }
+            if (!result || result.length === 0 || !result[0] || result[0].className === "MessageEmpty") {
+                console.log("[Stream] ERRO: Mensagem não encontrada. AUTO-REPARO INICIADO!");
+                if (db) {
+                    await db.run(
+                        "UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, error_message = 'Faltando no Telegram (Auto-reparo)', updated_at = CURRENT_TIMESTAMP WHERE telegram_message_id = ?",
+                        [messageId]
+                    );
+                }
+                return res.status(404).send("Mensagem não encontrada");
+            }
+
+            const message = result[0];
+            if (!message.media || !message.media.document) {
+                console.log("[Stream] ERRO: Mensagem não contém um documento de vídeo. AUTO-REPARO INICIADO!");
+                if (db) {
+                    await db.run(
+                        "UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, error_message = 'Faltando Vídeo no Telegram (Auto-reparo)', updated_at = CURRENT_TIMESTAMP WHERE telegram_message_id = ?",
+                        [messageId]
+                    );
+                }
+                return res.status(404).send("A mensagem não contém um documento de vídeo");
+            }
 
         const document = message.media.document;
         console.log(`[Stream] Documento encontrado! Tamanho: ${document.size}`);
@@ -175,7 +190,7 @@ router.get('/telegram/:message_id', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).send("Erro interno ao transmitir");
         }
-    }
-});
+    });
 
-export default router;
+    return router;
+}

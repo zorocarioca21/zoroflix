@@ -16,7 +16,8 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
-    
+    const [videoError, setVideoError] = useState(false);
+
     // Buscar o progresso (se tem resume_time salvo)
     useEffect(() => {
         if (!contentId) return;
@@ -50,7 +51,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     // Timer para salvar o progresso a cada 10 segundos
     useEffect(() => {
         const interval = setInterval(() => {
-            if (videoRef.current && !videoRef.current.paused && videoRef.current.currentTime > 5) {
+            if (videoRef.current && !videoRef.current.paused && videoRef.current.currentTime > 5 && !videoError) {
                 const token = localStorage.getItem('cinegeek_token');
                 const uuidVal = localStorage.getItem('cinegeek_uuid');
                 const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
@@ -70,7 +71,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         }, 10000); // Salva a cada 10s
 
         return () => clearInterval(interval);
-    }, [contentId, season, episode]);
+    }, [contentId, season, episode, videoError]);
 
     // Auto-hide controls
     useEffect(() => {
@@ -96,6 +97,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     }, [isPlaying]);
 
     const togglePlay = () => {
+        if (videoError) return;
         if (videoRef.current.paused) {
             videoRef.current.play();
             setIsPlaying(true);
@@ -149,7 +151,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             <video
                 ref={videoRef}
                 src={`/api/stream/telegram/${messageId}`}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
                 onClick={togglePlay}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
@@ -157,10 +159,31 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
+                onError={(e) => {
+                    const err = e.target.error;
+                    if (err && err.code === 4) {
+                        setVideoError(true);
+                    }
+                }}
             />
 
+            {/* Error Message */}
+            {videoError && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#111', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
+                    <div style={{ background: 'rgba(255, 68, 68, 0.1)', padding: '2rem', borderRadius: '16px', border: '2px solid #ff4444', maxWidth: '500px' }}>
+                        <h3 style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '1.5rem' }}>Problema no Servidor de Vídeo</h3>
+                        <p style={{ color: '#ccc', lineHeight: '1.5', marginBottom: '1rem' }}>
+                            Oops! Parece que o arquivo deste vídeo foi corrompido ou apagado na nuvem.
+                        </p>
+                        <p style={{ color: '#00ff88', fontWeight: 'bold' }}>
+                            O nosso sistema inteligente já detectou o problema e mandou o robô baixar este filme de novo! Tente assistir novamente daqui a alguns minutos.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Giant Center Play Button */}
-            {!isPlaying && !isBuffering && !showResumePopup && (
+            {!isPlaying && !isBuffering && !showResumePopup && !videoError && (
                 <div onClick={togglePlay} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                     zIndex: 2, cursor: 'pointer', background: 'rgba(0, 255, 136, 0.2)',

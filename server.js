@@ -49,7 +49,7 @@ initDB().then((db) => {
     app.use('/api/recents', recentsRoutes(db));
     app.use('/api/epg', epgRoutes());
     app.use('/api/downloads', downloadsRoutes(db));
-    app.use('/api/stream', streamRoutes);
+    app.use('/api/stream', streamRoutes(db));
 
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
