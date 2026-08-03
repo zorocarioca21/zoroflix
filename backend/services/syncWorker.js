@@ -17,6 +17,7 @@ let dbInstance = null;
 
 // Controladores para poder cancelar tarefas caso pause
 let activeDownloadController = null;
+let activeUploadController = null;
 let activeChildProcess = null;
 
 // Promessas ativas dos loops para sabermos quando parar
@@ -40,6 +41,10 @@ export function setPauseState(paused) {
         if (activeChildProcess) {
             activeChildProcess.kill();
             activeChildProcess = null;
+        }
+        if (activeUploadController) {
+            activeUploadController.abort();
+            activeUploadController = null;
         }
         
         // Devolve tasks pro status adequado no BD para serem retomadas depois
@@ -275,8 +280,20 @@ async function processUpload(movie) {
         uploadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
 
-        // Envia pelo Python
-        const messageId = await uploadViaPython(movie.title, tmpPath, movie.id);
+        // Verifica tamanho do arquivo para decidir a rota (Híbrido)
+        const stats = fs.statSync(tmpPath);
+        const fileSize = stats.size;
+        const TWO_GB = 2 * 1024 * 1024 * 1024;
+        
+        let messageId = null;
+
+        if (fileSize <= TWO_GB) {
+            // Usa o Servidor Local via Docker (Rápido)
+            messageId = await uploadViaDocker(movie.title, tmpPath, movie.id);
+        } else {
+            // Usa o Python/Pyrogram (Aguenta arquivos gigantes > 2GB)
+            messageId = await uploadViaPython(movie.title, tmpPath, movie.id);
+        }
 
         if (isPaused) return false;
 
@@ -385,3 +402,54 @@ function uploadViaPython(title, filePath, dbId) {
         });
     });
 }
+
+async function uploadViaDocker(title, filePath, dbId) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = process.env.TELEGRAM_CHANNEL_ID;
+    
+    if (!BOT_TOKEN || !CHAT_ID) {
+        throw new Error("TELEGRAM_BOT_TOKEN ou TELEGRAM_CHANNEL_ID não configurados no .env");
+    }
+
+    if (uploadTask) {
+        uploadTask.progress = 'MODO TURBO';
+        broadcastState();
+    }
+
+    activeUploadController = new AbortController();
+
+    try {
+        // Envia comando para a API local apontando para o arquivo no disco local
+        const LOCAL_API_URL = `http://127.0.0.1:8081/bot${BOT_TOKEN}/sendVideo`;
+        
+        const payload = {
+            chat_id: CHAT_ID,
+            video: `file://${filePath}`,
+            caption: `<b>${title}</b>`,
+            parse_mode: 'HTML',
+            supports_streaming: true
+        };
+
+        const response = await fetch(LOCAL_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: activeUploadController.signal
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            throw new Error(`Erro na API Local: ${response.status} - ${errBody}`);
+        }
+
+        const data = await response.json();
+        if (data && data.result && data.result.message_id) {
+            return data.result.message_id;
+        }
+        
+        return null;
+    } finally {
+        activeUploadController = null;
+    }
+}
+
