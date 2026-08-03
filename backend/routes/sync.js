@@ -1,5 +1,5 @@
 import express from 'express';
-import { initSyncWorker, startWorker, setPauseState, addMoviesToQueue } from '../services/syncWorker.js';
+import { initSyncWorker, startWorker, setPauseState } from '../services/syncWorker.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
