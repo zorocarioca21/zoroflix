@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import AuthModal from './components/AuthModal';
 import UserProfile from './components/UserProfile';
 import AdminPanel from './components/AdminPanel';
+import AdminSync from './components/AdminSync';
 import WhatsappPopup from './components/WhatsappPopup';
 import TvGuideModal from './components/TvGuideModal';
 import { getSlug } from './utils/slug';
@@ -384,6 +385,7 @@ function AppContent() {
         <Route path="/perfil" element={<UserProfile />} />
         <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/paineladm" element={<AdminPanel />} />
+        <Route path="/admin/sync" element={<AdminSync />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}

@@ -212,6 +212,22 @@ export async function initDB() {
         )
     `);
 
+    // Tabela da Fila de Sincronização IPTV -> Telegram
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS sync_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            status TEXT DEFAULT 'pending', -- pending, downloading, uploading, completed, error
+            file_size INTEGER DEFAULT 0,
+            telegram_message_id INTEGER DEFAULT NULL,
+            error_message TEXT DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(url)
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

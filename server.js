@@ -106,6 +106,11 @@ initDB().then((db) => {
         }
     });
 
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import syncRoutes from './backend/routes/sync.js';
+
+// ... (imports remain at top but I am replacing the whole app.listen block)
     // Servir os arquivos estáticos do Vite (após o npm run build)
     app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -114,7 +119,25 @@ initDB().then((db) => {
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
 
-    app.listen(PORT, '0.0.0.0', () => {
+    const httpServer = createServer(app);
+    const io = new Server(httpServer, {
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        }
+    });
+    
+    // Rotas de Sync injetando o io e o db
+    app.use('/api/sync', syncRoutes(db, io));
+
+    io.on('connection', (socket) => {
+        console.log('Admin conectado via WebSocket', socket.id);
+        socket.on('disconnect', () => {
+            console.log('Admin desconectado', socket.id);
+        });
+    });
+
+    httpServer.listen(PORT, '0.0.0.0', () => {
         console.log(`Servidor Zoroflix FullStack rodando em http://localhost:${PORT}`);
     });
 });
