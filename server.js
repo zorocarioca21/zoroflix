@@ -16,7 +16,9 @@ import mobileRoutes from './backend/routes/mobile.js';
 import recentsRoutes from './backend/routes/recents.js';
 import epgRoutes from './backend/routes/epg.js';
 import downloadsRoutes from './backend/routes/downloads.js';
-
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import syncRoutes from './backend/routes/sync.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -105,10 +107,6 @@ initDB().then((db) => {
             res.status(500).json({ error: 'Erro ao buscar dados na proxy interna.' });
         }
     });
-
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import syncRoutes from './backend/routes/sync.js';
 
 // ... (imports remain at top but I am replacing the whole app.listen block)
     // Servir os arquivos estáticos do Vite (após o npm run build)
