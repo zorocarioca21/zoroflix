@@ -190,7 +190,8 @@ export default function streamRoutes(db) {
         if (!res.headersSent) {
             res.status(500).send("Erro interno ao transmitir");
         }
-    });
+    }
+});
 
-    return router;
+return router;
 }
