@@ -44,10 +44,14 @@ export default function AdminSync() {
         try {
             const res = await fetch('/api/sync/scan', { method: 'POST' });
             const data = await res.json();
-            setScanResult(data);
-            fetchQueue();
+            if (!res.ok) {
+                alert(data.error || 'Erro desconhecido');
+            } else {
+                setScanResult(data);
+                fetchQueue();
+            }
         } catch (e) {
-            alert('Erro ao escanear M3U');
+            alert('Erro de conexão ao escanear M3U');
         } finally {
             setIsScanning(false);
         }
