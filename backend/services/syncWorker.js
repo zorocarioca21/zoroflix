@@ -87,6 +87,10 @@ export async function startWorker() {
     broadcastState();
 
     try {
+        // Recuperação de estado em caso de reinício abrupto da VPS
+        await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE status = 'downloading'");
+        await dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE status = 'uploading'");
+
         // Inicia as duas rotinas (loops) paralelamente
         activeDownloadLoop = downloadLoop();
         activeUploadLoop = uploadLoop();
