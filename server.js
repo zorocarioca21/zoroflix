@@ -1,6 +1,9 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+dotenv.config();
+
 import axios from 'axios';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
