@@ -162,7 +162,7 @@ export default function syncRoutes(db, io) {
                 pending: pending.count,
                 completed: completed.count,
                 skipped: skipped.count,
-                error: error.count,
+                error_count: error.count,
                 total_size_saved: totalSizeRow.total_size || 0,
                 completed_today: completedTodayRow.count || 0,
                 page,

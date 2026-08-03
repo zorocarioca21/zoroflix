@@ -142,7 +142,7 @@ export default function AdminSync() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                         <div><span style={{ color: '#888' }}>⏱ Pendentes:</span> {queue.pending}</div>
                         <div><span style={{ color: '#00ff88' }}>✔ Concluídos:</span> {queue.completed}</div>
-                        <div><span style={{ color: '#ff4444' }}>❌ Erros:</span> {queue.error || 0}</div>
+                        <div><span style={{ color: '#ff4444' }}>❌ Erros:</span> {queue.error_count || 0}</div>
                         <div><span style={{ color: '#ffaa00' }}>⏭ Ignorados:</span> {queue.skipped || 0}</div>
                         <div><span style={{ color: '#00ccff' }}>💾 Economia DB:</span> {formatBytes(queue.total_size_saved)}</div>
                         <div><span style={{ color: '#ff00ff' }}>🚀 Envios Hoje:</span> {queue.completed_today || 0}</div>
