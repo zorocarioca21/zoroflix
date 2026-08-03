@@ -211,10 +211,10 @@ export default function AdminSync() {
                         <div style={{ marginTop: '1rem' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.downloadTask.title}</div>
                             <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
-                                <div style={{ width: `${state.downloadTask.progress}%`, backgroundColor: '#00ccff', height: '100%', transition: 'width 0.3s' }} />
+                                <div style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, backgroundColor: typeof state.downloadTask.progress === 'number' ? '#00ccff' : '#ffaa00', height: '100%', transition: 'width 0.3s' }} />
                             </div>
                             <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
-                                {state.downloadTask.progress.toFixed(2)}%
+                                {typeof state.downloadTask.progress === 'number' ? `${state.downloadTask.progress.toFixed(2)}%` : 'Aguardando Liberação de Espaço...'}
                             </div>
                         </div>
                     </div>

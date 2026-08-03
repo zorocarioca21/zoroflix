@@ -151,6 +151,23 @@ async function downloadLoop() {
                 continue;
             }
 
+            // Verifica o espaço atual ocupado antes de iniciar o download
+            while (!isPaused) {
+                const row = await dbInstance.get("SELECT SUM(file_size) as total FROM sync_queue WHERE status IN ('pending_upload', 'uploading')");
+                const totalUsed = row ? (row.total || 0) : 0;
+                const LIMIT = 50 * 1024 * 1024 * 1024; // 50 GB
+                
+                if (totalUsed < LIMIT) {
+                    break;
+                }
+                
+                downloadTask = { id: existing ? existing.id : 'N/A', title: 'PAUSADO: LIMITE 50GB ATINGIDO', progress: 'WAITING_SPACE' };
+                broadcastState();
+                
+                await new Promise(r => setTimeout(r, 15000)); // Checa a cada 15 segundos
+            }
+            if (isPaused) break;
+
             let dbId;
             if (existing) {
                 await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [existing.id]);
