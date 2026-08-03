@@ -91,8 +91,11 @@ function parseM3uAndSearch(filePath, query) {
 
     console.log("Conectando ao Telegram...");
     const client = new TelegramClient(stringSession, apiId, apiHash, {
-        connectionRetries: 5,
+        connectionRetries: 10,
     });
+    
+    // Silencia os logs chatos do gram.js (mostra só erros fatais)
+    client.setLogLevel("none");
     
     await client.connect();
     console.log("Conectado com sucesso ao Telegram!");
@@ -167,7 +170,7 @@ function parseM3uAndSearch(filePath, query) {
 
             await client.sendFile(entityId, {
                 file: destPath,
-                workers: 4, // 🚀 Acelera absurdamente o upload enviando vários pedaços ao mesmo tempo
+                workers: 2, // Reduzido de 4 para 2 para evitar block do Telegram (FloodWait)
                 caption: `**${selected.title}**\nUpload via Zoroflix Bot`,
                 parseMode: "markdown",
                 progressCallback: (progress) => {
