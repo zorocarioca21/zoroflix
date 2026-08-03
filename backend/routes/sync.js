@@ -71,7 +71,8 @@ export default function syncRoutes(db, io) {
             const limit = 50;
             const offset = (page - 1) * limit;
 
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, error_message FROM sync_queue ORDER BY id DESC LIMIT ? OFFSET ?`, [limit, offset]);
+            // Passamos os parâmetros separadamente em vez de array, por segurança em versões antigas
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, error_message FROM sync_queue ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
@@ -85,7 +86,8 @@ export default function syncRoutes(db, io) {
                 totalPages: Math.ceil(total.count / limit)
             });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao buscar fila' });
+            console.error("Erro interno no /queue:", err);
+            res.status(500).json({ error: 'Erro ao buscar fila: ' + err.message });
         }
     });
 

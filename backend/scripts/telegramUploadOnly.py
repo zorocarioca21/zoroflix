@@ -23,14 +23,17 @@ def progress(current, total):
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python3 telegramUploadOnly.py /caminho/do/arquivo.mp4")
+        print("Uso: python telegramUploadOnly.py <caminho_do_arquivo> [titulo_do_filme]")
         sys.exit(1)
         
     file_path = sys.argv[1]
-    
+    title = sys.argv[2] if len(sys.argv) > 2 else Path(file_path).stem
+
     if not os.path.exists(file_path):
         sys.exit(1)
-        
+
+    print(f"Iniciando upload de: {title} via Pyrogram...")
+    
     script_dir = Path(__file__).parent.resolve()
     session_name = str(script_dir / "my_account")
     
@@ -43,11 +46,10 @@ def main():
             for _ in app.get_dialogs():
                 pass
 
-        filename = os.path.basename(file_path)
         app.send_video(
             chat_id=CHANNEL_ID,
             video=file_path,
-            caption=f"**{filename}**\nUpload via Zoroflix Sync (Hybrid Worker)",
+            caption=f"**{title}**\nUpload via Zoroflix Sync (Hybrid Worker)",
             supports_streaming=True,
             progress=progress
         )

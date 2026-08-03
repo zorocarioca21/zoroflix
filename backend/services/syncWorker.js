@@ -66,6 +66,14 @@ export async function addMoviesToQueue(movies) {
     return added;
 }
 
+export function broadcastStateTo(socket) {
+    socket.emit('sync_state', {
+        isRunning,
+        isPaused,
+        currentTask
+    });
+}
+
 function broadcastState() {
     if (!ioInstance) return;
     ioInstance.emit('sync_state', {
@@ -247,7 +255,7 @@ function uploadViaPython(title, filePath, dbId) {
     return new Promise((resolve, reject) => {
         const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramUploadOnly.py');
         
-        activeChildProcess = spawn('python3', [scriptPath, filePath]);
+        activeChildProcess = spawn('python3', [scriptPath, filePath, title]);
         
         activeChildProcess.stdout.on('data', (data) => {
             const output = data.toString();

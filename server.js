@@ -133,6 +133,14 @@ initDB().then((db) => {
 
     io.on('connection', (socket) => {
         console.log('Admin conectado via WebSocket', socket.id);
+        
+        // Dispara o estado atual imediatamente para não parecer que parou ao dar F5
+        import('./backend/services/syncWorker.js').then(worker => {
+            if (worker.broadcastStateTo) {
+                worker.broadcastStateTo(socket);
+            }
+        });
+
         socket.on('disconnect', () => {
             console.log('Admin desconectado', socket.id);
         });

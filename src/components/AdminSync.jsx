@@ -28,12 +28,14 @@ export default function AdminSync() {
     const fetchQueue = async () => {
         try {
             const res = await fetch('/api/sync/queue');
+            const data = await res.json();
             if (res.ok) {
-                const data = await res.json();
                 setQueue(data);
+            } else {
+                setQueue({ items: [], error: data.error });
             }
         } catch (e) {
-            console.error(e);
+            setQueue({ items: [], error: 'Erro de conexão' });
         }
     };
 
@@ -137,8 +139,11 @@ export default function AdminSync() {
                     </tr>
                 </thead>
                 <tbody>
-                    {queue.items.map(item => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
+                    {queue.error ? (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#ff4444' }}>{queue.error}</td></tr>
+                    ) : queue.items && queue.items.length > 0 ? (
+                        queue.items.map(item => (
+                            <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
                             <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
                             <td style={{ padding: '1rem' }}>{item.title}</td>
                             <td style={{ padding: '1rem' }}>
@@ -163,7 +168,10 @@ export default function AdminSync() {
                                 </button>
                             </td>
                         </tr>
-                    ))}
+                    ))
+                ) : (
+                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>Nenhuma atividade recente na fila</td></tr>
+                )}
                 </tbody>
             </table>
         </div>
