@@ -120,7 +120,8 @@ def main():
         
         # Configurando max_concurrent_transmissions no Pyrogram não tem parametro direto na client call, 
         # a biblioteca já otimiza internamente se tgcrypto estiver instalado.
-        app = Client(session_name, api_id=int(API_ID), api_hash=API_HASH)
+        SESSION_STR = os.getenv("TELEGRAM_SESSION")
+        app = Client(session_name, session_string=SESSION_STR, api_id=int(API_ID), api_hash=API_HASH)
         
         with app:
             # Força o Pyrogram a reconhecer o canal carregando os chats recentes
