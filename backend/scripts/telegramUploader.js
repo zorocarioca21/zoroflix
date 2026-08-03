@@ -173,6 +173,12 @@ function parseM3uAndSearch(filePath, query) {
                 workers: 2, // Reduzido de 4 para 2 para evitar block do Telegram (FloodWait)
                 caption: `**${selected.title}**\nUpload via Zoroflix Bot`,
                 parseMode: "markdown",
+                forceDocument: false,
+                attributes: [
+                    new Api.DocumentAttributeVideo({
+                        supportsStreaming: true,
+                    })
+                ],
                 progressCallback: (progress) => {
                     process.stdout.write(`\rUpload progresso: ${(progress * 100).toFixed(2)}%`);
                 }

@@ -1,4 +1,4 @@
-import { TelegramClient } from "telegram";
+import { TelegramClient, Api } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import fs from "fs";
 import 'dotenv/config';
@@ -42,6 +42,13 @@ const stringSession = new StringSession(sessionStr);
             workers: 1, // Usando 1 worker para garantir 100% de estabilidade no teste
             caption: `**Upload Manual**\n${filePath}`,
             parseMode: "markdown",
+            forceDocument: false,
+            attributes: [
+                new Api.DocumentAttributeVideo({
+                    supportsStreaming: true,
+                    // duration: 0, w: 0, h: 0 (o Telegram vai tentar deduzir)
+                })
+            ],
             progressCallback: (progress) => {
                 process.stdout.write(`\rUpload progresso: ${(progress * 100).toFixed(2)}%`);
             }
