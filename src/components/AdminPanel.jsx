@@ -563,6 +563,10 @@ export default function AdminPanel() {
                                 <div className="setting-info"><h3>Anti-Adblock</h3><p>Aviso para bloqueadores.</p></div>
                                 <button className={`btn-toggle-ads ${configs.anti_adblock ? 'active' : ''}`} onClick={() => updateConfig('anti_adblock')}>{configs.anti_adblock ? 'ON' : 'OFF'}</button>
                             </div>
+                            <div className="settings-row-card warning">
+                                <div className="setting-info"><h3>Bloquear F12</h3><p>Impede que inspecionem a página.</p></div>
+                                <button className={`btn-toggle-ads ${configs.anti_devtools ? 'active' : ''}`} onClick={() => updateConfig('anti_devtools')}>{configs.anti_devtools ? 'ON' : 'OFF'}</button>
+                            </div>
                         </div>
                     </div>
                 )}

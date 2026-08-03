@@ -17,6 +17,7 @@ import CatalogPage from './components/CatalogPage'
 import ApiDocsPage from './components/ApiDocsPage'
 import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
+import AntiDevTools from './components/AntiDevTools'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -387,6 +388,7 @@ function AppContent() {
         <Route path="/api-docs" element={<ApiDocsPage />} />
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
+      {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}
       <WhatsappPopup />
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <TvGuideModal isOpen={isTvGuideOpen} onClose={() => setIsTvGuideOpen(false)} />
