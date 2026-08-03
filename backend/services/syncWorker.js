@@ -101,8 +101,15 @@ export async function startWorker() {
 
             const trimmed = line.trim();
             if (trimmed.startsWith('#EXTINF')) {
-                const match = trimmed.match(/,(.+)/);
-                if (match) currentTitle = match[1].trim();
+                const lastQuoteComma = trimmed.lastIndexOf('",');
+                if (lastQuoteComma !== -1) {
+                    currentTitle = trimmed.substring(lastQuoteComma + 2).trim();
+                } else {
+                    const firstComma = trimmed.indexOf(',');
+                    if (firstComma !== -1) {
+                        currentTitle = trimmed.substring(firstComma + 1).trim();
+                    }
+                }
             } else if (trimmed.startsWith('http') && currentTitle) {
                 const title = currentTitle;
                 const url = trimmed;
