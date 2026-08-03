@@ -34,6 +34,15 @@ async function getTelegramClient() {
         });
         client.setLogLevel("none");
         await client.connect();
+        
+        // Carrega os diálogos para popular o cache de entidades do GramJS
+        // Evita o erro: Could not find the input entity for {"channelId":"..."}
+        try {
+            await client.getDialogs({});
+        } catch (e) {
+            console.log("Aviso: Falha ao carregar dialogos", e);
+        }
+
         clientConnected = true;
         console.log("Cliente GramJS conectado para Streaming!");
     } catch (e) {
