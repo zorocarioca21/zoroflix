@@ -3,6 +3,8 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 import axios from 'axios';
+import FormData from 'form-data';
+import readline from 'readline';
 
 // Worker Global State
 let isRunning = false;
@@ -79,16 +81,51 @@ export async function startWorker() {
     broadcastState();
 
     try {
-        while (!isPaused) {
-            // Busca próximo pendente
-            const row = await dbInstance.get("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY id ASC LIMIT 1");
-            if (!row) {
-                // Fila vazia
+        const m3uPath = path.join(process.cwd(), 'iptv_list.m3u');
+        if (!fs.existsSync(m3uPath)) {
+            throw new Error("Arquivo iptv_list.m3u não encontrado na raiz");
+        }
+
+        const fileStream = fs.createReadStream(m3uPath, 'utf-8');
+        const rl = readline.createInterface({
+            input: fileStream,
+            crlfDelay: Infinity
+        });
+
+        let currentTitle = null;
+
+        for await (const line of rl) {
+            if (isPaused) {
                 break;
             }
 
-            // Inicia processamento
-            await processMovie(row);
+            const trimmed = line.trim();
+            if (trimmed.startsWith('#EXTINF')) {
+                const match = trimmed.match(/,(.+)/);
+                if (match) currentTitle = match[1].trim();
+            } else if (trimmed.startsWith('http') && currentTitle) {
+                const title = currentTitle;
+                const url = trimmed;
+                currentTitle = null;
+
+                // Verifica se já foi baixado
+                const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
+                
+                if (existing && existing.status === 'completed') {
+                    continue; // Pula se já baixou com sucesso
+                }
+
+                let dbId;
+                if (existing) {
+                    await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [existing.id]);
+                    dbId = existing.id;
+                } else {
+                    const res = await dbInstance.run("INSERT INTO sync_queue (title, url, status) VALUES (?, ?, 'pending')", [title, url]);
+                    dbId = res.lastID;
+                }
+
+                await processMovie({ id: dbId, title, url });
+            }
         }
     } catch (err) {
         console.error("Erro fatal no worker:", err);
@@ -127,10 +164,8 @@ async function processMovie(movie) {
         broadcastState();
 
         if (fileSize < MAX_BOT_API_SIZE) {
-            // Rota rápida C++ (Se implementada via Local Bot API no futuro)
-            // Como ainda não temos o servidor C++ rodando com certeza na VPS, vamos usar o Python por enquanto,
-            // mas preparar o if para a integração futura.
-            await uploadViaPython(movie.title, tmpPath, movie.id);
+            // Rota rápida C++ (Local Bot API)
+            await uploadViaLocalBotApi(movie.title, tmpPath, movie.id);
         } else {
             // Rota Premium Python
             await uploadViaPython(movie.title, tmpPath, movie.id);
@@ -226,5 +261,57 @@ function uploadViaPython(title, filePath, dbId) {
             if (code === 0) resolve();
             else reject(new Error(`Processo python falhou com código ${code}`));
         });
+    });
+}
+
+async function uploadViaLocalBotApi(title, filePath, dbId) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const token = process.env.TELEGRAM_BOT_TOKEN;
+            const channelId = process.env.TELEGRAM_CHANNEL_ID;
+            
+            if (!token) throw new Error("TELEGRAM_BOT_TOKEN não configurado no .env");
+
+            const filename = path.basename(filePath);
+            const form = new FormData();
+            form.append('chat_id', channelId);
+            form.append('video', fs.createReadStream(filePath));
+            form.append('caption', `**${title}**\nUpload via Zoroflix Sync (Bot C++ Turbo)`);
+            form.append('parse_mode', 'Markdown');
+            form.append('supports_streaming', 'true');
+
+            // A URL aponta para o servidor C++ Local (que estará rodando no Docker da VPS na porta 8081)
+            const apiUrl = `http://127.0.0.1:8081/bot${token}/sendVideo`;
+            
+            activeDownloadController = new AbortController(); // Reutilizamos a variável de abort pra cancelar se pausar
+
+            const response = await axios.post(apiUrl, form, {
+                headers: form.getHeaders(),
+                signal: activeDownloadController.signal,
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+                onUploadProgress: (progressEvent) => {
+                    if (progressEvent.total) {
+                        const percentCompleted = (progressEvent.loaded / progressEvent.total) * 100;
+                        currentTask.progress = percentCompleted;
+                        broadcastState();
+                    }
+                }
+            });
+
+            if (response.data && response.data.ok) {
+                resolve();
+            } else {
+                reject(new Error("Erro na resposta do Bot API"));
+            }
+        } catch (err) {
+            if (axios.isCancel(err)) {
+                reject(new Error("Upload cancelado pelo usuário (Pause)"));
+            } else {
+                reject(err);
+            }
+        } finally {
+            activeDownloadController = null;
+        }
     });
 }
