@@ -145,7 +145,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     };
 
     return (
-        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', minHeight: '600px' }}>
+        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <video
                 ref={videoRef}
                 src={`/api/stream/telegram/${messageId}`}
