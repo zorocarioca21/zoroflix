@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp } from 'lucide-react';
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null });
     const [filter, setFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
 
-    const fetchQueue = async (currentFilter = filter) => {
+    const fetchQueue = async (currentFilter = filter, currentSearch = searchQuery, currentSort = sortSize) => {
         try {
-            const res = await fetch(`/api/sync/queue?filter=${currentFilter}`);
+            const res = await fetch(`/api/sync/queue?filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}&sortSize=${currentSort}`);
             const data = await res.json();
             if (res.ok) {
                 setQueue(data);
@@ -191,13 +193,28 @@ export default function AdminSync() {
                 )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h3 style={{ margin: 0 }}>Últimos Filmes na Fila</h3>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', background: '#333', padding: '0.3rem', borderRadius: '8px', alignItems: 'center', flex: '1', maxWidth: '300px' }}>
+                    <Search size={18} color="#888" style={{ marginLeft: '0.5rem' }} />
+                    <input 
+                        type="text" 
+                        placeholder="Pesquisar por título ou ID..." 
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            fetchQueue(filter, e.target.value, sortSize);
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '0.3rem' }}
+                    />
+                </div>
+
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => { setFilter('all'); fetchQueue('all'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
-                    <button onClick={() => { setFilter('pending'); fetchQueue('pending'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
-                    <button onClick={() => { setFilter('completed'); fetchQueue('completed'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
-                    <button onClick={() => { setFilter('error'); fetchQueue('error'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
+                    <button onClick={() => { setFilter('all'); fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
+                    <button onClick={() => { setFilter('pending'); fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
+                    <button onClick={() => { setFilter('completed'); fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
+                    <button onClick={() => { setFilter('error'); fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
                 </div>
             </div>
             <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
@@ -207,7 +224,20 @@ export default function AdminSync() {
                             <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
                             <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
                             <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Tamanho</th>
+                            <th 
+                                style={{ padding: '1rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
+                                onClick={() => {
+                                    const nextSort = sortSize === '' ? 'desc' : (sortSize === 'desc' ? 'asc' : '');
+                                    setSortSize(nextSort);
+                                    fetchQueue(filter, searchQuery, nextSort);
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    Tamanho <ArrowDownUp size={14} color={sortSize !== '' ? '#00ff88' : '#888'} />
+                                    {sortSize === 'asc' && <span style={{ fontSize: '0.8rem', color: '#00ff88' }}>Maior-Menor</span>}
+                                    {sortSize === 'desc' && <span style={{ fontSize: '0.8rem', color: '#00ff88' }}>Menor-Maior</span>}
+                                </div>
+                            </th>
                             <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>

@@ -73,18 +73,32 @@ export default function syncRoutes(db, io) {
             const offset = (page - 1) * limit;
 
             const filter = req.query.filter || 'all';
+            const search = req.query.search || '';
+            const sortSize = req.query.sortSize || ''; // pode ser 'asc' ou 'desc'
 
-            let queryCondition = '';
+            let queryCondition = 'WHERE 1=1';
             let params = [];
 
             if (filter !== 'all') {
-                queryCondition = 'WHERE status = ?';
+                queryCondition += ' AND status = ?';
                 params.push(filter);
             }
 
-            params.push(limit, offset);
+            if (search) {
+                if (!isNaN(search)) {
+                    queryCondition += ' AND (id = ? OR title LIKE ?)';
+                    params.push(search, `%${search}%`);
+                } else {
+                    queryCondition += ' AND title LIKE ?';
+                    params.push(`%${search}%`);
+                }
+            }
 
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message FROM sync_queue ${queryCondition} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, ...params);
+            let orderBy = 'ORDER BY updated_at DESC';
+            if (sortSize === 'asc') orderBy = 'ORDER BY file_size ASC';
+            if (sortSize === 'desc') orderBy = 'ORDER BY file_size DESC';
+
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
