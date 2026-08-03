@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, RefreshCw, HardDriveUpload, CheckCircle, Clock } from 'lucide-react';
+import { Play, Pause, Trash2, HardDriveUpload } from 'lucide-react';
 
 export default function AdminSync() {
     const [socket, setSocket] = useState(null);
     const [state, setState] = useState({ isRunning: false, isPaused: false, currentTask: null });
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0 });
-    const [scanResult, setScanResult] = useState(null);
-    const [isScanning, setIsScanning] = useState(false);
 
     useEffect(() => {
         // Conecta ao WebSocket na mesma URL (o Vite faz o proxy na porta certa via env ou host)
@@ -39,21 +37,15 @@ export default function AdminSync() {
         }
     };
 
-    const handleScan = async () => {
-        setIsScanning(true);
+    const handleDelete = async (id) => {
+        if (!window.confirm("Tem certeza que deseja deletar este histórico? Se você der Play novamente, ele tentará baixar de novo.")) return;
         try {
-            const res = await fetch('/api/sync/scan', { method: 'POST' });
-            const data = await res.json();
-            if (!res.ok) {
-                alert(data.error || 'Erro desconhecido');
-            } else {
-                setScanResult(data);
+            const res = await fetch(`/api/sync/queue/${id}`, { method: 'DELETE' });
+            if (res.ok) {
                 fetchQueue();
             }
         } catch (e) {
-            alert('Erro de conexão ao escanear M3U');
-        } finally {
-            setIsScanning(false);
+            alert("Erro ao deletar");
         }
     };
 
@@ -73,26 +65,12 @@ export default function AdminSync() {
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 <div style={{ background: '#1a1a2e', padding: '1.5rem', borderRadius: '12px', flex: 1 }}>
-                    <h3 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Estatísticas da Fila</h3>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                        <div><Clock size={16} /> Pendentes: {queue.pending}</div>
-                        <div><CheckCircle size={16} color="#00e676" /> Concluídos: {queue.completed}</div>
-                        <div>Total: {queue.total}</div>
-                    </div>
-                    
-                    <button 
-                        onClick={handleScan} 
-                        disabled={isScanning}
-                        style={{ marginTop: '1.5rem', background: 'var(--primary)', color: '#fff', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    >
-                        <RefreshCw size={18} className={isScanning ? 'spin' : ''} />
-                        {isScanning ? 'Escaneando M3U...' : 'Atualizar Fila (Ler M3U)'}
-                    </button>
-                    {scanResult && (
-                        <p style={{ color: '#00e676', marginTop: '0.5rem' }}>
-                            {scanResult.newAdded} novos filmes adicionados à fila!
-                        </p>
-                    )}
+                    <h3 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Informações</h3>
+                    <p style={{ color: '#ccc', lineHeight: '1.5' }}>
+                        O sistema lê a lista <strong>iptv_list.m3u</strong> em tempo real linha por linha.<br/>
+                        Apenas filmes e séries (.mp4, .mkv) são processados.<br/>
+                        Se quiser forçar um arquivo a ser baixado de novo, apague ele do histórico abaixo.
+                    </p>
                 </div>
 
                 <div style={{ background: '#1a1a2e', padding: '1.5rem', borderRadius: '12px', flex: 1 }}>
@@ -155,6 +133,7 @@ export default function AdminSync() {
                         <th style={{ padding: '1rem' }}>Título</th>
                         <th style={{ padding: '1rem' }}>Status</th>
                         <th style={{ padding: '1rem' }}>Tamanho</th>
+                        <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,6 +156,11 @@ export default function AdminSync() {
                             </td>
                             <td style={{ padding: '1rem', color: '#888' }}>
                                 {item.file_size ? (item.file_size / (1024*1024)).toFixed(2) + ' MB' : '-'}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                <button onClick={() => handleDelete(item.id)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer' }} title="Deletar Histórico (força novo download)">
+                                    <Trash2 size={18} />
+                                </button>
                             </td>
                         </tr>
                     ))}
