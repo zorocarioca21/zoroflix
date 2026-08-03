@@ -3,6 +3,7 @@ import { initSyncWorker, startWorker, setPauseState, addMoviesToQueue } from '..
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import readline from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,23 +22,25 @@ export default function syncRoutes(db, io) {
                 return res.status(404).json({ error: 'Arquivo iptv_list.m3u não encontrado na raiz do projeto.' });
             }
 
-            const content = fs.readFileSync(m3uPath, 'utf-8');
-            const lines = content.split('\n');
             const movies = [];
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                if (line.startsWith('#EXTINF')) {
-                    const match = line.match(/,(.+)/);
+            const fileStream = fs.createReadStream(m3uPath, 'utf-8');
+            const rl = readline.createInterface({
+                input: fileStream,
+                crlfDelay: Infinity
+            });
+
+            let currentTitle = null;
+
+            for await (const line of rl) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('#EXTINF')) {
+                    const match = trimmed.match(/,(.+)/);
                     if (match) {
-                        const title = match[1].trim();
-                        if (i + 1 < lines.length) {
-                            const url = lines[i + 1].trim();
-                            if (url.startsWith('http')) {
-                                movies.push({ title, url });
-                            }
-                        }
+                        currentTitle = match[1].trim();
                     }
+                } else if (trimmed.startsWith('http') && currentTitle) {
+                    movies.push({ title: currentTitle, url: trimmed });
+                    currentTitle = null;
                 }
             }
 
