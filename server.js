@@ -112,14 +112,6 @@ initDB().then((db) => {
     });
 
 // ... (imports remain at top but I am replacing the whole app.listen block)
-    // Servir os arquivos estáticos do Vite (após o npm run build)
-    app.use(express.static(path.join(__dirname, 'dist')));
-
-    // Qualquer outra rota manda para o index.html (suporte a SPA/React Router)
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    });
-
     const httpServer = createServer(app);
     const io = new Server(httpServer, {
         cors: {
@@ -128,8 +120,16 @@ initDB().then((db) => {
         }
     });
     
-    // Rotas de Sync injetando o io e o db
+    // Rotas de Sync injetando o io e o db (DEVE FICAR ANTES DO SPA FALLBACK)
     app.use('/api/sync', syncRoutes(db, io));
+
+    // Servir os arquivos estáticos do Vite (após o npm run build)
+    app.use(express.static(path.join(__dirname, 'dist')));
+
+    // Qualquer outra rota manda para o index.html (suporte a SPA/React Router)
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
 
     io.on('connection', (socket) => {
         console.log('Admin conectado via WebSocket', socket.id);
