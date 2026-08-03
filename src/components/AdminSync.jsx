@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, HardDriveDownload, Send } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send } from 'lucide-react';
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
@@ -58,10 +58,41 @@ export default function AdminSync() {
         fetchQueue();
     };
 
-    const deleteItem = async (id) => {
-        if (!window.confirm("Deseja apagar este item do histórico? Isso fará o sistema baixá-lo novamente.")) return;
-        await fetch(`/api/sync/queue/${id}`, { method: 'DELETE' });
+    const deleteItem = async (item) => {
+        const warning = item.telegram_message_id 
+            ? "Deseja apagar este item? Como ele já foi enviado, ele TAMBÉM SERÁ APAGADO DO TELEGRAM." 
+            : "Deseja apagar este item do histórico? Isso fará o sistema baixá-lo novamente.";
+        
+        if (!window.confirm(warning)) return;
+        
+        await fetch(`/api/sync/queue/${item.id}`, { method: 'DELETE' });
         fetchQueue();
+    };
+
+    const editItem = async (item) => {
+        const newTitle = window.prompt("Digite o novo título para este filme:", item.title);
+        if (!newTitle || newTitle === item.title) return;
+
+        const warning = item.telegram_message_id 
+            ? "Este item já foi enviado. Ao editar o título aqui, a LEGENDA DO TELEGRAM também será alterada em tempo real. Continuar?" 
+            : "Deseja alterar o título na fila de sincronização?";
+        
+        if (!window.confirm(warning)) return;
+
+        try {
+            const res = await fetch(`/api/sync/queue/${item.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle })
+            });
+            if (res.ok) {
+                fetchQueue();
+            } else {
+                alert("Erro ao editar o título.");
+            }
+        } catch (e) {
+            alert("Erro de conexão ao editar.");
+        }
     };
 
     return (
@@ -213,7 +244,14 @@ export default function AdminSync() {
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                                         <button 
-                                            onClick={() => deleteItem(item.id)}
+                                            onClick={() => editItem(item)}
+                                            title="Editar Título"
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#00ccff', marginRight: '0.5rem' }}
+                                        >
+                                            <Edit size={20} />
+                                        </button>
+                                        <button 
+                                            onClick={() => deleteItem(item)}
                                             title="Apagar e baixar novamente"
                                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff4444' }}
                                         >

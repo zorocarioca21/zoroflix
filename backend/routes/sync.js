@@ -1,7 +1,8 @@
 import express from 'express';
 import { initSyncWorker, startWorker, setPauseState } from '../services/syncWorker.js';
-import fs from 'fs';
+import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import readline from 'readline';
 
@@ -83,7 +84,7 @@ export default function syncRoutes(db, io) {
 
             params.push(limit, offset);
 
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, error_message FROM sync_queue ${queryCondition} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, ...params);
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message FROM sync_queue ${queryCondition} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, ...params);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
@@ -102,13 +103,53 @@ export default function syncRoutes(db, io) {
         }
     });
 
-    // Rota para deletar item do histórico (para forçar re-download)
+    // Deleta da fila
     router.delete('/queue/:id', async (req, res) => {
         try {
-            await db.run("DELETE FROM sync_queue WHERE id = ?", [req.params.id]);
+            const { id } = req.params;
+            const item = await db.get("SELECT * FROM sync_queue WHERE id = ?", [id]);
+            if (!item) return res.status(404).json({ error: 'Não encontrado' });
+            
+            if (item.telegram_message_id) {
+                // Tenta apagar do telegram
+                const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramManage.py');
+                const py = spawn('python3', [scriptPath, 'delete', item.telegram_message_id.toString()]);
+                py.stdout.on('data', data => console.log(data.toString()));
+                py.stderr.on('data', data => console.error(data.toString()));
+            }
+
+            await db.run("DELETE FROM sync_queue WHERE id = ?", [id]);
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao deletar item' });
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao remover' });
+        }
+    });
+
+    // Edita o título do item
+    router.put('/queue/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { title } = req.body;
+            
+            if (!title) return res.status(400).json({ error: 'Título é obrigatório' });
+
+            const item = await db.get("SELECT * FROM sync_queue WHERE id = ?", [id]);
+            if (!item) return res.status(404).json({ error: 'Não encontrado' });
+            
+            if (item.telegram_message_id) {
+                // Tenta editar no telegram
+                const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramManage.py');
+                const py = spawn('python3', [scriptPath, 'edit', item.telegram_message_id.toString(), title]);
+                py.stdout.on('data', data => console.log(data.toString()));
+                py.stderr.on('data', data => console.error(data.toString()));
+            }
+
+            await db.run("UPDATE sync_queue SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [title, id]);
+            res.json({ success: true, title });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Erro ao editar' });
         }
     });
 

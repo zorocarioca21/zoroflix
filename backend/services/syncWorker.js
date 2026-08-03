@@ -255,12 +255,16 @@ async function processUpload(movie) {
         broadcastState();
 
         // Envia pelo Python
-        await uploadViaPython(movie.title, tmpPath, movie.id);
+        const messageId = await uploadViaPython(movie.title, tmpPath, movie.id);
 
         if (isPaused) return false;
 
         // Concluído
-        await dbInstance.run("UPDATE sync_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
+        if (messageId) {
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', telegram_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
+        } else {
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
+        }
         
     } catch (err) {
         console.error(`Erro no upload de ${movie.title}:`, err);
@@ -331,6 +335,8 @@ function uploadViaPython(title, filePath, dbId) {
         
         activeChildProcess = spawn('python3', [scriptPath, filePath, title]);
         
+        let foundMessageId = null;
+
         activeChildProcess.stdout.on('data', (data) => {
             const output = data.toString();
             // Pega o progresso: "Upload progresso: 45.20%"
@@ -338,6 +344,12 @@ function uploadViaPython(title, filePath, dbId) {
             if (match && match[1] && uploadTask) {
                 uploadTask.progress = parseFloat(match[1]);
                 broadcastState();
+            }
+            
+            // Pega o message id: "MESSAGE_ID: 12345"
+            const msgMatch = output.match(/MESSAGE_ID:\s*(\d+)/);
+            if (msgMatch && msgMatch[1]) {
+                foundMessageId = parseInt(msgMatch[1]);
             }
         });
 
@@ -347,7 +359,7 @@ function uploadViaPython(title, filePath, dbId) {
 
         activeChildProcess.on('close', (code) => {
             activeChildProcess = null;
-            if (code === 0) resolve();
+            if (code === 0) resolve(foundMessageId);
             else reject(new Error(`Processo python falhou com código ${code}`));
         });
     });

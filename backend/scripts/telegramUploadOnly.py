@@ -46,14 +46,14 @@ def main():
             for _ in app.get_dialogs():
                 pass
 
-        app.send_video(
+        msg = app.send_video(
             chat_id=CHANNEL_ID,
             video=file_path,
             caption=f"**{title}**\nUpload via Zoroflix Sync (Hybrid Worker)",
             supports_streaming=True,
             progress=progress
         )
-        print("\nUpload concluído com sucesso!")
+        print(f"\nUpload concluído com sucesso! MESSAGE_ID: {msg.id}")
 
 if __name__ == "__main__":
     main()
