@@ -157,7 +157,6 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
-                controls
             />
 
             {/* Giant Center Play Button */}
@@ -217,7 +216,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
                 opacity: showControls || !isPlaying ? 1 : 0,
                 transition: 'opacity 0.3s ease',
-                display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 5
             }}>
                 {/* Timeline */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
