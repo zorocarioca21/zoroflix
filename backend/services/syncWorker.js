@@ -208,7 +208,7 @@ async function processDownload(movie) {
     const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
 
     try {
-        await dbInstance.run("UPDATE sync_queue SET status = 'downloading' WHERE id = ?", [movie.id]);
+        await dbInstance.run("UPDATE sync_queue SET status = 'downloading', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         
         downloadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
@@ -221,7 +221,7 @@ async function processDownload(movie) {
         const fileSize = stats.size;
         
         // Finaliza download: altera para pending_upload para que o loop 2 assuma
-        await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload' WHERE id = ?", [fileSize, movie.id]);
+        await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [fileSize, movie.id]);
         downloadTask = null;
         broadcastState();
         return true;
@@ -229,7 +229,7 @@ async function processDownload(movie) {
     } catch (err) {
         console.error(`Erro no download de ${movie.title}:`, err);
         if (!isPaused) {
-            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ? WHERE id = ?", [err.message, movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [err.message, movie.id]);
         }
         downloadTask = null;
         broadcastState();
@@ -245,11 +245,11 @@ async function processUpload(movie) {
     try {
         if (!fs.existsSync(tmpPath)) {
             // Se o arquivo sumiu, joga de volta pra pending pra tentar baixar de novo
-            await dbInstance.run("UPDATE sync_queue SET status = 'pending', error_message = 'Arquivo temp não encontrado. Rebaixando.' WHERE id = ?", [movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'pending', error_message = 'Arquivo temp não encontrado. Rebaixando.', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
             return true; // não é erro fatal, o loop 1 pode pegar ele depois
         }
 
-        await dbInstance.run("UPDATE sync_queue SET status = 'uploading' WHERE id = ?", [movie.id]);
+        await dbInstance.run("UPDATE sync_queue SET status = 'uploading', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         
         uploadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
@@ -260,12 +260,12 @@ async function processUpload(movie) {
         if (isPaused) return false;
 
         // Concluído
-        await dbInstance.run("UPDATE sync_queue SET status = 'completed' WHERE id = ?", [movie.id]);
+        await dbInstance.run("UPDATE sync_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         
     } catch (err) {
         console.error(`Erro no upload de ${movie.title}:`, err);
         if (!isPaused) {
-            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ? WHERE id = ?", [err.message, movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [err.message, movie.id]);
         }
     } finally {
         uploadTask = null;
