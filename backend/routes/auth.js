@@ -80,5 +80,61 @@ export default function authRoutes(db) {
         }
     });
 
+    // ESQUECI A SENHA
+    router.post('/forgot-password', async (req, res) => {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email obrigatório.' });
+
+        try {
+            const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+            if (!user) {
+                // Return success even if user not found to prevent email enumeration
+                return res.json({ message: 'Se o email existir, um link de recuperação foi enviado.' });
+            }
+
+            const { v4: uuidv4 } = await import('uuid');
+            const token = uuidv4();
+            const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+            await db.run(
+                'INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)',
+                [email, token, expiresAt.toISOString()]
+            );
+
+            const { enviarResetSenha } = await import('../services/email.service.js');
+            await enviarResetSenha(email, user.nick, token);
+
+            res.json({ message: 'Se o email existir, um link de recuperação foi enviado.' });
+        } catch (err) {
+            console.error("Erro no forgot-password:", err);
+            res.status(500).json({ error: 'Erro interno no servidor.' });
+        }
+    });
+
+    // REDEFINIR SENHA
+    router.post('/reset-password', async (req, res) => {
+        const { token, password } = req.body;
+        if (!token || !password) return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+
+        try {
+            const resetObj = await db.get('SELECT * FROM password_resets WHERE token = ?', [token]);
+            if (!resetObj) return res.status(400).json({ error: 'Link de redefinição inválido.' });
+
+            if (new Date(resetObj.expires_at) < new Date()) {
+                return res.status(400).json({ error: 'Link de redefinição expirado.' });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            
+            await db.run('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, resetObj.email]);
+            await db.run('DELETE FROM password_resets WHERE email = ?', [resetObj.email]);
+
+            res.json({ message: 'Senha redefinida com sucesso!' });
+        } catch (err) {
+            console.error("Erro no reset-password:", err);
+            res.status(500).json({ error: 'Erro interno no servidor.' });
+        }
+    });
+
     return router;
 }

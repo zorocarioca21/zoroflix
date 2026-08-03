@@ -229,6 +229,17 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Recuperação de Senha
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

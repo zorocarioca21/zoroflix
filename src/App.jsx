@@ -26,6 +26,7 @@ import UserProfile from './components/UserProfile';
 import AdminPanel from './components/AdminPanel';
 import WhatsappPopup from './components/WhatsappPopup';
 import TvGuideModal from './components/TvGuideModal';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import { getSlug } from './utils/slug';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -376,6 +377,7 @@ function AppContent() {
         <Route path="/doramas" element={<CatalogPage key="doramas" type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
         <Route path="/historico" element={<UserListPage type="history" />} />
         <Route path="/favoritos" element={<UserListPage type="favorites" />} />
+        <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
         <Route path="/filme/:id" element={<DetailsPage />} />
         <Route path="/serie/:id" element={<DetailsPage />} />
         <Route path="/filme/:id/player" element={<PlayerPage />} />
