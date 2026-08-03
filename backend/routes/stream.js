@@ -102,14 +102,16 @@ router.get('/telegram/:message_id', async (req, res) => {
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                 'Accept-Ranges': 'bytes',
                 'Content-Length': end - start + 1,
-                'Content-Type': 'video/mp4'
+                'Content-Type': 'video/mp4',
+                'X-Accel-Buffering': 'no'
             });
         } else {
             res.status(200);
             res.set({
                 'Content-Length': fileSize,
                 'Content-Type': 'video/mp4',
-                'Accept-Ranges': 'bytes'
+                'Accept-Ranges': 'bytes',
+                'X-Accel-Buffering': 'no'
             });
         }
 
