@@ -201,6 +201,30 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Refazer Download (Reseta o item)
+    router.post('/queue/:id/retry', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const item = await db.get("SELECT * FROM sync_queue WHERE id = ?", [id]);
+            if (!item) return res.status(404).json({ error: 'Não encontrado' });
+            
+            if (item.telegram_message_id) {
+                // Tenta apagar do telegram
+                const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramManage.py');
+                const py = spawn('python3', [scriptPath, 'delete', item.telegram_message_id.toString()]);
+                py.stdout.on('data', data => console.log(data.toString()));
+                py.stderr.on('data', data => console.error(data.toString()));
+            }
+
+            // Reseta o status para pending e limpa os dados de conclusão
+            await db.run("UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, file_size = 0, error_message = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Erro refazer download:", err);
+            res.status(500).json({ error: 'Erro ao refazer download' });
+        }
+    });
+
     // Edita o título do item
     router.put('/queue/:id', async (req, res) => {
         try {

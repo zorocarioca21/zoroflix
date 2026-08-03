@@ -379,6 +379,17 @@ export default function AdminSync() {
                                         >
                                             <Edit size={20} />
                                         </button>
+                                        <button 
+                                            onClick={async () => {
+                                                if(!window.confirm("Deseja refazer o download deste item? Ele voltará para a fila e a versão antiga no Telegram será apagada.")) return;
+                                                await fetch(`/api/sync/queue/${item.id}/retry`, { method: 'POST' });
+                                                fetchQueue();
+                                            }}
+                                            title="Refazer Download"
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#00ff88', marginRight: '0.5rem' }}
+                                        >
+                                            <RefreshCcw size={20} />
+                                        </button>
                                         {item.status !== 'completed' && item.status !== 'skipped' && (
                                             <button 
                                                 onClick={() => skipItem(item)}
@@ -390,7 +401,7 @@ export default function AdminSync() {
                                         )}
                                         <button 
                                             onClick={() => deleteItem(item)}
-                                            title="Apagar e baixar novamente"
+                                            title="Apagar permanentemente"
                                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff4444' }}
                                         >
                                             <Trash2 size={20} />
