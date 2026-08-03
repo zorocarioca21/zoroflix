@@ -240,12 +240,17 @@ export default function AdminSync() {
                             <Send size={20} /> Enviando pro Telegram
                         </h3>
                         <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTask.title}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTask.title || 'Desconhecido'}</div>
                             <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
-                                <div style={{ width: `${state.uploadTask.progress}%`, backgroundColor: '#ff00ff', height: '100%', transition: 'width 0.3s' }} />
+                                <div style={{ 
+                                    width: (typeof state.uploadTask.progress === 'number' && !isNaN(state.uploadTask.progress)) ? `${state.uploadTask.progress}%` : '100%', 
+                                    backgroundColor: (typeof state.uploadTask.progress === 'number' && !isNaN(state.uploadTask.progress)) ? '#ff00ff' : '#00ff88', 
+                                    height: '100%', 
+                                    transition: 'width 0.3s' 
+                                }} />
                             </div>
                             <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
-                                {state.uploadTask.progress.toFixed(2)}%
+                                {String(state.uploadTask.progress || 0).startsWith('MODO') ? state.uploadTask.progress : (Number(state.uploadTask.progress) || 0).toFixed(2) + '%'}
                             </div>
                         </div>
                     </div>

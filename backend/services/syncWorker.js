@@ -412,7 +412,7 @@ async function uploadViaDocker(title, filePath, dbId) {
     }
 
     if (uploadTask) {
-        uploadTask.progress = 'MODO TURBO';
+        uploadTask.progress = 'MOTOR TURBO (Aguarde o envio...)';
         broadcastState();
     }
 
