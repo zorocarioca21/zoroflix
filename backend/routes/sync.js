@@ -51,6 +51,17 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Rota para limpar todos os pendentes (Limpar Fila)
+    router.delete('/queue/pending/clear', async (req, res) => {
+        try {
+            await db.run("DELETE FROM sync_queue WHERE status = 'pending'");
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Erro clear pending:", err);
+            res.status(500).json({ error: 'Erro ao limpar pendentes' });
+        }
+    });
+
     // Rota para iniciar varredura do M3U
     router.post('/scan', async (req, res) => {
         try {

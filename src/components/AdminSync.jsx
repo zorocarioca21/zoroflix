@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser } from 'lucide-react';
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
@@ -113,6 +113,12 @@ export default function AdminSync() {
         window.open('/api/sync/export', '_blank');
     };
 
+    const clearPending = async () => {
+        if (!window.confirm("Deseja apagar TODOS os itens pendentes da fila? Isso não afetará os concluídos ou com erro.")) return;
+        await fetch('/api/sync/queue/pending/clear', { method: 'DELETE' });
+        fetchQueue();
+    };
+
     const formatBytes = (bytes) => {
         if (!bytes || bytes === 0) return '0 B';
         const k = 1024;
@@ -159,6 +165,12 @@ export default function AdminSync() {
                             style={{ padding: '0.5rem 1rem', background: '#333', color: '#00ccff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                             <Download size={16} /> Exportar BD
+                        </button>
+                        <button 
+                            onClick={clearPending}
+                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#ff4444', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Eraser size={16} /> Limpar Pendentes
                         </button>
                     </div>
                 </div>
