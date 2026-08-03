@@ -155,12 +155,14 @@ export default function PlayerPage() {
 
   useEffect(() => {
     if (id && !canalId) {
-        fetch(`${BASE_URL}/tv/${id}?api_key=${API_KEY}&language=pt-BR`)
+        const isMovie = location.pathname.includes('/filme/');
+        const type = isMovie ? 'movie' : 'tv';
+        fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`)
             .then(r => r.json())
             .then(data => setSeriesDetail(data))
             .catch(() => {});
     }
-  }, [id, canalId]);
+  }, [id, canalId, location.pathname]);
 
   // Checa se existe no Telegram (Para testes do Player Nativo VIP)
   useEffect(() => {
@@ -169,10 +171,13 @@ export default function PlayerPage() {
       
       let searchStr = '';
       if (state.title) {
-          searchStr = state.title.split(' - ')[0]; // Pega o nome do filme/série
+          searchStr = state.title.split(' - ')[0];
+      } else if (seriesDetail && (seriesDetail.title || seriesDetail.name)) {
+          searchStr = seriesDetail.title || seriesDetail.name;
+      }
+
+      if (searchStr) {
           if (season && episode) {
-              // Formato típico salvo no banco S01E01 ou S1E1 ou algo do tipo,
-              // mas para garantir, vamos buscar apenas pelo título no /queue e filtrar no JS
               searchStr = searchStr.trim();
           }
       }
