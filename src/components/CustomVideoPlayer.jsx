@@ -149,7 +149,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             <video
                 ref={videoRef}
                 src={`/api/stream/telegram/${messageId}`}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }}
                 onClick={togglePlay}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
@@ -157,12 +157,29 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
                 onWaiting={() => setIsBuffering(true)}
                 onPlaying={() => setIsBuffering(false)}
+                controls
             />
+
+            {/* Giant Center Play Button */}
+            {!isPlaying && !isBuffering && !showResumePopup && (
+                <div onClick={togglePlay} style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    zIndex: 2, cursor: 'pointer', background: 'rgba(0, 255, 136, 0.2)',
+                    borderRadius: '50%', padding: '20px', border: '3px solid #00ff88',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 0 20px rgba(0,255,136,0.3)', transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
+                >
+                    <Play size={64} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />
+                </div>
+            )}
 
             {/* Buffering Indicator */}
             {isBuffering && (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}>
-                    <Loader size={48} color="#00ff88" className="spin-anim" />
+                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 3, pointerEvents: 'none' }}>
+                    <Loader size={64} color="#00ff88" className="spin-anim" />
                 </div>
             )}
 
