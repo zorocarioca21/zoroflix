@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser } from 'lucide-react';
 
@@ -9,8 +9,18 @@ export default function AdminSync() {
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
+    
+    const filterRef = useRef(filter);
+    const searchRef = useRef(searchQuery);
+    const sortRef = useRef(sortSize);
 
-    const fetchQueue = async (currentFilter = filter, currentSearch = searchQuery, currentSort = sortSize) => {
+    useEffect(() => {
+        filterRef.current = filter;
+        searchRef.current = searchQuery;
+        sortRef.current = sortSize;
+    }, [filter, searchQuery, sortSize]);
+
+    const fetchQueue = async (currentFilter = filterRef.current, currentSearch = searchRef.current, currentSort = sortRef.current) => {
         try {
             const res = await fetch(`/api/sync/queue?filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}&sortSize=${currentSort}`);
             const data = await res.json();
@@ -30,7 +40,7 @@ export default function AdminSync() {
         
         newSocket.on('sync_state', (data) => {
             setState(data);
-            fetchQueue(); // Atualiza fila quando o estado muda
+            fetchQueue(filterRef.current, searchRef.current, sortRef.current); // Atualiza fila usando os valores mais recentes das Refs
         });
 
         setSocket(newSocket);
