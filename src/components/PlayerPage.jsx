@@ -77,18 +77,13 @@ export default function PlayerPage() {
     if (canalId) return;
     if (!rawId || loading) return;
     
-    // Se for apenas ID numérico puro (compatibilidade)
-    if (/^\d+$/.test(rawId)) {
-        setId(rawId);
-        return;
-    }
-    
-    // Se o ID foi passado no state
+    // Se o ID foi passado no state (novo padrão com slug)
     if (location.state?.id) {
         setId(location.state.id);
         return;
     }
 
+    // Caso seja acesso direto pelo link (ex: usuário enviou link no whatsapp)
     // Busca o ID no TMDB pelo título no slug
     const isMovie = location.pathname.includes('/filme/');
     const type = isMovie ? 'movie' : 'tv';
@@ -101,9 +96,14 @@ export default function PlayerPage() {
             const bestMatch = data.results?.[0];
             if (bestMatch) {
                 setId(bestMatch.id);
+            } else if (/^\d+$/.test(rawId)) {
+                // Fallback para URLs antigas que usavam TMDB ID direto na URL
+                setId(rawId);
             }
         })
-        .catch(() => {});
+        .catch(() => {
+            if (/^\d+$/.test(rawId)) setId(rawId);
+        });
   }, [rawId, canalId, loading, location.state]);
 
   useEffect(() => {

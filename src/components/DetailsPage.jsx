@@ -39,18 +39,13 @@ export default function DetailsPage() {
   useEffect(() => {
     if (!rawId || authLoading) return;
     
-    // Se for apenas ID numérico puro (compatibilidade)
-    if (/^\d+$/.test(rawId)) {
-        setId(rawId);
-        return;
-    }
-    
-    // Se o ID foi passado no stage
+    // Se o ID foi passado no stage (Navegação interna via React Router tem prioridade máxima)
     if (location.state?.id) {
         setId(location.state.id);
         return;
     }
 
+    // Caso seja acesso direto pelo link (ex: usuário enviou link no whatsapp)
     // Busca o ID no TMDB pelo título no slug
     const type = isMovie ? 'movie' : 'tv';
     const query = rawId.replace(/-/g, ' ');
@@ -62,11 +57,17 @@ export default function DetailsPage() {
             const bestMatch = data.results?.[0];
             if (bestMatch) {
                 setId(bestMatch.id);
+            } else if (/^\d+$/.test(rawId)) {
+                // Fallback de segurança: se a pesquisa falhar mas o slug for apenas números, assume que é um Link Antigo usando TMDB ID
+                setId(rawId);
             } else {
                 setLoading(false);
             }
         })
-        .catch(() => setLoading(false));
+        .catch(() => {
+            if (/^\d+$/.test(rawId)) setId(rawId);
+            else setLoading(false);
+        });
   }, [rawId, isMovie, authLoading, location.state]);
 
   useEffect(() => {
