@@ -6,10 +6,11 @@ export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTask: null });
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null });
+    const [filter, setFilter] = useState('all');
 
-    const fetchQueue = async () => {
+    const fetchQueue = async (currentFilter = filter) => {
         try {
-            const res = await fetch('/api/sync/queue');
+            const res = await fetch(`/api/sync/queue?filter=${currentFilter}`);
             const data = await res.json();
             if (res.ok) {
                 setQueue(data);
@@ -159,7 +160,15 @@ export default function AdminSync() {
                 )}
             </div>
 
-            <h3 style={{ marginBottom: '1rem' }}>Últimos Filmes na Fila</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0 }}>Últimos Filmes na Fila</h3>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => { setFilter('all'); fetchQueue('all'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
+                    <button onClick={() => { setFilter('pending'); fetchQueue('pending'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
+                    <button onClick={() => { setFilter('completed'); fetchQueue('completed'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
+                    <button onClick={() => { setFilter('error'); fetchQueue('error'); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
+                </div>
+            </div>
             <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
                 <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
                     <thead>

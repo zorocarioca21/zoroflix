@@ -71,8 +71,19 @@ export default function syncRoutes(db, io) {
             const limit = 50;
             const offset = (page - 1) * limit;
 
-            // Passamos os parâmetros separadamente em vez de array, por segurança em versões antigas
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, error_message FROM sync_queue ORDER BY updated_at DESC LIMIT ? OFFSET ?`, limit, offset);
+            const filter = req.query.filter || 'all';
+
+            let queryCondition = '';
+            let params = [];
+
+            if (filter !== 'all') {
+                queryCondition = 'WHERE status = ?';
+                params.push(filter);
+            }
+
+            params.push(limit, offset);
+
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, error_message FROM sync_queue ${queryCondition} ORDER BY updated_at DESC LIMIT ? OFFSET ?`, ...params);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
