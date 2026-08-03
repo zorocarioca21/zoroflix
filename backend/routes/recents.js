@@ -53,17 +53,15 @@ export default function recentsRoutes(db) {
         }
     });
 
-    // POST /api/recents — Registra um conteúdo assistido (após 30s no player)
+    // POST /api/recents — Registra um conteúdo assistido (após 30s no player) e salva progresso
     router.post('/', authOrUuid, async (req, res) => {
-        const { content_id, media_type, title, poster_path, season, episode } = req.body;
+        const { content_id, media_type, title, poster_path, season, episode, resume_time } = req.body;
 
         if (!content_id || !media_type || (!req.user_id && !req.uuid)) {
             return res.status(400).json({ error: 'Dados incompletos.' });
         }
 
         try {
-            // Verifica se já existe esse conteúdo no histórico do usuário
-            // Para séries: usa content_id (ID da série), assim ep diferentes sobrescrevem
             let existing;
             if (req.user_id) {
                 existing = await db.get(
@@ -78,16 +76,16 @@ export default function recentsRoutes(db) {
             }
 
             if (existing) {
-                // Já existe: atualiza o episódio/temporada e o timestamp (sobe pro topo)
+                // Já existe: atualiza o episódio/temporada, resume_time e o timestamp (sobe pro topo)
                 await db.run(
-                    'UPDATE watch_history SET title = ?, poster_path = ?, season = ?, episode = ?, watched_at = CURRENT_TIMESTAMP WHERE id = ?',
-                    [title, poster_path, season || null, episode || null, existing.id]
+                    'UPDATE watch_history SET title = ?, poster_path = ?, season = ?, episode = ?, resume_time = ?, watched_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    [title, poster_path, season || null, episode || null, resume_time || 0, existing.id]
                 );
             } else {
                 // Não existe: insere novo registro
                 await db.run(
-                    'INSERT INTO watch_history (uuid, user_id, content_id, media_type, title, poster_path, season, episode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null]
+                    'INSERT INTO watch_history (uuid, user_id, content_id, media_type, title, poster_path, season, episode, resume_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, resume_time || 0]
                 );
 
                 // Limpa os excedentes (mantém apenas os 10 mais recentes)
@@ -110,6 +108,43 @@ export default function recentsRoutes(db) {
         } catch (e) {
             console.error(e);
             res.status(500).json({ error: 'Erro ao registrar histórico.' });
+        }
+    });
+
+    // PUT /api/recents/progress — Atualiza apenas o resume_time do vídeo atual
+    router.put('/progress', authOrUuid, async (req, res) => {
+        const { content_id, season, episode, resume_time } = req.body;
+
+        if (!content_id || (!req.user_id && !req.uuid) || resume_time === undefined) {
+            return res.status(400).json({ error: 'Dados incompletos.' });
+        }
+
+        try {
+            let existing;
+            if (req.user_id) {
+                existing = await db.get(
+                    'SELECT id FROM watch_history WHERE user_id = ? AND content_id = ?',
+                    [req.user_id, content_id]
+                );
+            } else {
+                existing = await db.get(
+                    'SELECT id FROM watch_history WHERE uuid = ? AND content_id = ? AND user_id IS NULL',
+                    [req.uuid, content_id]
+                );
+            }
+
+            if (existing) {
+                await db.run(
+                    'UPDATE watch_history SET resume_time = ?, season = ?, episode = ? WHERE id = ?',
+                    [resume_time, season || null, episode || null, existing.id]
+                );
+                res.json({ success: true, message: 'Progresso salvo.' });
+            } else {
+                res.status(404).json({ error: 'Item não encontrado no histórico.' });
+            }
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: 'Erro ao salvar progresso.' });
         }
     });
 

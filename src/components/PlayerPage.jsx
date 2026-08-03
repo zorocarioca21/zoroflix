@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, X as CloseIcon } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
+import CustomVideoPlayer from './CustomVideoPlayer';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -26,6 +27,7 @@ export default function PlayerPage() {
   const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
   const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
   const [isWatched, setIsWatched] = useState(false);
+  const [telegramMessageId, setTelegramMessageId] = useState(null);
   
   // Modal de Download
   const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
@@ -159,6 +161,54 @@ export default function PlayerPage() {
             .catch(() => {});
     }
   }, [id, canalId]);
+
+  // Checa se existe no Telegram (Para testes do Player Nativo VIP)
+  useEffect(() => {
+      if (canalId) return;
+      if (!user || user.role !== 'admin') return; // POR ENQUANTO SÓ ADMIN TESTA
+      
+      let searchStr = '';
+      if (state.title) {
+          searchStr = state.title.split(' - ')[0]; // Pega o nome do filme/série
+          if (season && episode) {
+              // Formato típico salvo no banco S01E01 ou S1E1 ou algo do tipo,
+              // mas para garantir, vamos buscar apenas pelo título no /queue e filtrar no JS
+              searchStr = searchStr.trim();
+          }
+      }
+
+      if (searchStr) {
+          const token = localStorage.getItem('cinegeek_token');
+          const headers = { 'Authorization': `Bearer ${token}` };
+          
+          fetch(`/api/sync/queue?search=${encodeURIComponent(searchStr)}`, { headers })
+              .then(r => r.json())
+              .then(data => {
+                  if (data && data.items && data.items.length > 0) {
+                      // Procura o item concluído com telegram_message_id
+                      let foundItem = null;
+                      if (season && episode) {
+                          // Tenta achar S01E01 ou S1E1 no título
+                          const epStr1 = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                          const epStr2 = `S${season}E${episode}`;
+                          foundItem = data.items.find(i => 
+                              i.status === 'completed' && i.telegram_message_id && 
+                              (i.title.includes(epStr1) || i.title.includes(epStr2) || i.title.includes(`Episódio ${episode}`))
+                          );
+                      } else {
+                          foundItem = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
+                      }
+                      
+                      if (foundItem) {
+                          setTelegramMessageId(foundItem.telegram_message_id);
+                      } else {
+                          setTelegramMessageId(null);
+                      }
+                  }
+              })
+              .catch(() => setTelegramMessageId(null));
+      }
+  }, [id, season, episode, state.title, canalId, user]);
 
   // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
   useEffect(() => {
@@ -372,7 +422,16 @@ export default function PlayerPage() {
       {/* Player Area (Top) */}
       <div className="player-view-layout">
           <div className="fullscreen-player-wrapper">
-            <iframe src={playerUrl} allowFullScreen title="Zoroflix Player"></iframe>
+            {telegramMessageId ? (
+                <CustomVideoPlayer 
+                    messageId={telegramMessageId}
+                    contentId={id}
+                    season={season}
+                    episode={episode}
+                />
+            ) : (
+                <iframe src={playerUrl} allowFullScreen title="Zoroflix Player"></iframe>
+            )}
           </div>
 
           {showList && (
