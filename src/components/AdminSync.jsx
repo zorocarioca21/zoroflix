@@ -62,8 +62,8 @@ export default function AdminSync() {
     };
 
     return (
-        <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', color: '#fff', paddingTop: '100px' }}>
-            <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ padding: '0', maxWidth: '100%', margin: '0', color: '#fff' }}>
+            <h1 style={{ display: 'none' }}>
                 <HardDriveUpload size={28} /> Dashboard de Sincronização IPTV
             </h1>
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import AdminSync from './AdminSync';
 
 export default function AdminPanel() {
     const { user } = useAuth();
@@ -342,6 +343,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>
                         <ChartBar size={18} /> Analytics
+                    </button>
+                    <button className={activeTab === 'sync' ? 'active' : ''} onClick={() => setActiveTab('sync')}>
+                        <HardDriveUpload size={18} /> Sync IPTV
                     </button>
                 </div>
             </div>
@@ -747,6 +751,13 @@ export default function AdminPanel() {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                )}
+
+                {/* ABA SYNC IPTV */}
+                {activeTab === 'sync' && (
+                    <div className="admin-sync-wrapper" style={{ margin: '-1rem' }}>
+                        <AdminSync />
                     </div>
                 )}
             </div>
