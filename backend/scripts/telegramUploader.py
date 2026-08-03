@@ -123,6 +123,14 @@ def main():
         app = Client(session_name, api_id=int(API_ID), api_hash=API_HASH)
         
         with app:
+            # Força o Pyrogram a reconhecer o canal carregando os chats recentes
+            try:
+                app.get_chat(CHANNEL_ID)
+            except:
+                # Se falhar direto, carrega os dialogs para popular o cache interno
+                for _ in app.get_dialogs():
+                    pass
+
             app.send_video(
                 chat_id=CHANNEL_ID,
                 video=tmp_file,
