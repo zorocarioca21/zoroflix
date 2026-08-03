@@ -67,18 +67,34 @@ router.get('/telegram/:message_id', async (req, res) => {
             entityId = '-100' + entityId.replace('-', '');
         }
 
-        // Busca a mensagem
-        const result = await tgClient.getMessages(entityId, { ids: messageId });
+        console.log(`[Stream] Buscando mensagem ${messageId} na entidade ${entityId}...`);
+        
+        // Busca a mensagem (força BigInt para canais se possível)
+        let resolvedEntity;
+        try {
+            resolvedEntity = await tgClient.getInputEntity(entityId);
+            console.log("[Stream] Entidade resolvida com sucesso!");
+        } catch (e) {
+            console.log("[Stream] Aviso: getInputEntity falhou (normal se for string direta). Tentando direto...");
+            resolvedEntity = entityId; // Fallback
+        }
+
+        const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
+        console.log(`[Stream] Busca concluída. Resultado: ${result ? result.length : 'null'}`);
+
         if (!result || result.length === 0 || !result[0]) {
+            console.log("[Stream] ERRO: Mensagem não encontrada.");
             return res.status(404).send("Mensagem não encontrada");
         }
 
         const message = result[0];
         if (!message.media || !message.media.document) {
+            console.log("[Stream] ERRO: Mensagem não contém um documento de vídeo.");
             return res.status(404).send("A mensagem não contém um documento de vídeo");
         }
 
         const document = message.media.document;
+        console.log(`[Stream] Documento encontrado! Tamanho: ${document.size}`);
         const fileSize = document.size.toJSNumber ? document.size.toJSNumber() : Number(document.size);
 
         // Suporte a Range Headers (Essencial para o player de vídeo pular partes)
