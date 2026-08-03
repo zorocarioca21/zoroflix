@@ -175,13 +175,8 @@ async function processMovie(movie) {
         currentTask = { id: movie.id, title: movie.title, type: 'upload', progress: 0 };
         broadcastState();
 
-        if (fileSize < MAX_BOT_API_SIZE) {
-            // Rota rápida C++ (Local Bot API)
-            await uploadViaLocalBotApi(movie.title, tmpPath, movie.id);
-        } else {
-            // Rota Premium Python
-            await uploadViaPython(movie.title, tmpPath, movie.id);
-        }
+        // Usa Rota Premium Python para todos os arquivos (sem depender de Docker)
+        await uploadViaPython(movie.title, tmpPath, movie.id);
 
         if (isPaused) return;
 
