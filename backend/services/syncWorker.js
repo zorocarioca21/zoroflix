@@ -2,20 +2,26 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
-import axios from 'axios';
-import FormData from 'form-data';
 import readline from 'readline';
 
 // Worker Global State
 let isRunning = false;
 let isPaused = false;
-let currentTask = null; // { id, title, type: 'download' | 'upload', progress: 0 }
+
+// Estado Separado para Download e Upload (Pipeline Produtor-Consumidor)
+let downloadTask = null; // { id, title, progress: 0 }
+let uploadTask = null; // { id, title, progress: 0 }
+
 let ioInstance = null;
 let dbInstance = null;
-let activeChildProcess = null; // Para poder matar o upload python se pausar
-let activeDownloadController = null; // Para abortar o download fetch se pausar
 
-const MAX_BOT_API_SIZE = 1950 * 1024 * 1024; // ~1.95 GB para margem de segurança
+// Controladores para poder cancelar tarefas caso pause
+let activeDownloadController = null;
+let activeChildProcess = null;
+
+// Promessas ativas dos loops para sabermos quando parar
+let activeDownloadLoop = null;
+let activeUploadLoop = null;
 
 export function initSyncWorker(db, io) {
     dbInstance = db;
@@ -25,6 +31,7 @@ export function initSyncWorker(db, io) {
 export function setPauseState(paused) {
     isPaused = paused;
     if (paused) {
+        isRunning = false;
         // Interrompe processos ativos
         if (activeDownloadController) {
             activeDownloadController.abort();
@@ -34,11 +41,17 @@ export function setPauseState(paused) {
             activeChildProcess.kill();
             activeChildProcess = null;
         }
-        // Devolve a task pro status pending
-        if (currentTask && currentTask.id) {
-            dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [currentTask.id]);
+        
+        // Devolve tasks pro status adequado no BD para serem retomadas depois
+        if (downloadTask && downloadTask.id) {
+            dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [downloadTask.id]);
         }
-        currentTask = null;
+        if (uploadTask && uploadTask.id) {
+            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTask.id]);
+        }
+        
+        downloadTask = null;
+        uploadTask = null;
         broadcastState();
     } else {
         // Retoma worker
@@ -49,28 +62,12 @@ export function setPauseState(paused) {
     }
 }
 
-export async function addMoviesToQueue(movies) {
-    let added = 0;
-    for (const movie of movies) {
-        try {
-            const result = await dbInstance.run(
-                "INSERT INTO sync_queue (title, url, status) VALUES (?, ?, 'pending')",
-                [movie.title, movie.url]
-            );
-            if (result.changes > 0) added++;
-        } catch (err) {
-            // Ignora duplicados (UNIQUE constraint no url)
-        }
-    }
-    if (!isRunning && !isPaused) startWorker();
-    return added;
-}
-
 export function broadcastStateTo(socket) {
     socket.emit('sync_state', {
         isRunning,
         isPaused,
-        currentTask
+        downloadTask,
+        uploadTask
     });
 }
 
@@ -79,7 +76,8 @@ function broadcastState() {
     ioInstance.emit('sync_state', {
         isRunning,
         isPaused,
-        currentTask
+        downloadTask,
+        uploadTask
     });
 }
 
@@ -89,118 +87,194 @@ export async function startWorker() {
     broadcastState();
 
     try {
-        const m3uPath = path.join(process.cwd(), 'iptv_list.m3u');
-        if (!fs.existsSync(m3uPath)) {
-            throw new Error("Arquivo iptv_list.m3u não encontrado na raiz");
-        }
-
-        const fileStream = fs.createReadStream(m3uPath, 'utf-8');
-        const rl = readline.createInterface({
-            input: fileStream,
-            crlfDelay: Infinity
-        });
-
-        let currentTitle = null;
-
-        for await (const line of rl) {
-            if (isPaused) {
-                break;
-            }
-
-            const trimmed = line.trim();
-            if (trimmed.startsWith('#EXTINF')) {
-                const lastQuoteComma = trimmed.lastIndexOf('",');
-                if (lastQuoteComma !== -1) {
-                    currentTitle = trimmed.substring(lastQuoteComma + 2).trim();
-                } else {
-                    const firstComma = trimmed.indexOf(',');
-                    if (firstComma !== -1) {
-                        currentTitle = trimmed.substring(firstComma + 1).trim();
-                    }
-                }
-            } else if (trimmed.startsWith('http') && currentTitle) {
-                const title = currentTitle;
-                const url = trimmed;
-                currentTitle = null;
-
-                const ext = url.split('?')[0].split('.').pop().toLowerCase();
-                if (ext !== 'mp4' && ext !== 'mkv') {
-                    continue;
-                }
-
-                // Verifica se já foi baixado
-                const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
-                
-                if (existing && existing.status === 'completed') {
-                    continue; // Pula se já baixou com sucesso
-                }
-
-                let dbId;
-                if (existing) {
-                    await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [existing.id]);
-                    dbId = existing.id;
-                } else {
-                    const res = await dbInstance.run("INSERT INTO sync_queue (title, url, status) VALUES (?, ?, 'pending')", [title, url]);
-                    dbId = res.lastID;
-                }
-
-                await processMovie({ id: dbId, title, url });
-            }
-        }
+        // Inicia as duas rotinas (loops) paralelamente
+        activeDownloadLoop = downloadLoop();
+        activeUploadLoop = uploadLoop();
+        
+        // Espera as duas finalizarem (se der pause, elas quebram o loop)
+        await Promise.all([activeDownloadLoop, activeUploadLoop]);
+        
     } catch (err) {
         console.error("Erro fatal no worker:", err);
     } finally {
         isRunning = false;
-        currentTask = null;
+        downloadTask = null;
+        uploadTask = null;
         broadcastState();
     }
 }
 
-async function processMovie(movie) {
+// ==========================================
+// LOOP 1: PRODUTOR (Baixa arquivos para a VPS)
+// ==========================================
+async function downloadLoop() {
+    const m3uPath = path.join(process.cwd(), 'iptv_list.m3u');
+    if (!fs.existsSync(m3uPath)) {
+        throw new Error("Arquivo iptv_list.m3u não encontrado na raiz");
+    }
+
+    const fileStream = fs.createReadStream(m3uPath, 'utf-8');
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    let currentTitle = null;
+
+    for await (const line of rl) {
+        if (isPaused) break; // Sai imediatamente se pausado
+
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#EXTINF')) {
+            const lastQuoteComma = trimmed.lastIndexOf('",');
+            if (lastQuoteComma !== -1) {
+                currentTitle = trimmed.substring(lastQuoteComma + 2).trim();
+            } else {
+                const firstComma = trimmed.indexOf(',');
+                if (firstComma !== -1) {
+                    currentTitle = trimmed.substring(firstComma + 1).trim();
+                }
+            }
+        } else if (trimmed.startsWith('http') && currentTitle) {
+            const title = currentTitle;
+            const url = trimmed;
+            currentTitle = null;
+
+            const ext = url.split('?')[0].split('.').pop().toLowerCase();
+            if (ext !== 'mp4' && ext !== 'mkv') continue;
+
+            // Verifica se já existe e seu status atual
+            const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
+            
+            // Se já está completo ou aguardando upload, pulamos o download
+            if (existing && (existing.status === 'completed' || existing.status === 'pending_upload' || existing.status === 'uploading')) {
+                continue;
+            }
+
+            let dbId;
+            if (existing) {
+                await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [existing.id]);
+                dbId = existing.id;
+            } else {
+                const res = await dbInstance.run("INSERT INTO sync_queue (title, url, status) VALUES (?, ?, 'pending')", [title, url]);
+                dbId = res.lastID;
+            }
+
+            // Executa a tarefa de download (Fica travado aqui até o DOWNLOAD deste item terminar)
+            const success = await processDownload({ id: dbId, title, url });
+            
+            if (!success || isPaused) {
+                break; // Se deu erro fatal ou pausou, para o loop
+            }
+        }
+    }
+}
+
+// ==========================================
+// LOOP 2: CONSUMIDOR (Envia arquivos para o Telegram)
+// ==========================================
+async function uploadLoop() {
+    while (!isPaused) {
+        try {
+            // Busca o próximo item pronto para ser enviado (pending_upload)
+            const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY id ASC LIMIT 1");
+            
+            if (!item) {
+                // Se não tem nada para upar, dorme 5 segundos e tenta de novo
+                await new Promise(r => setTimeout(r, 5000));
+                continue;
+            }
+
+            // Tem item! Processa o upload
+            const success = await processUpload(item);
+            
+            if (!success || isPaused) {
+                break; // Se deu erro fatal ou pausou, sai do loop
+            }
+        } catch (err) {
+            console.error("Erro no loop de upload:", err);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+}
+
+// ==========================================
+// FUNÇÕES AUXILIARES DE EXECUÇÃO
+// ==========================================
+
+async function processDownload(movie) {
     const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const ext = movie.url.split('?')[0].split('.').pop() || 'mp4';
     const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
 
     try {
-        // Marca como downloading
         await dbInstance.run("UPDATE sync_queue SET status = 'downloading' WHERE id = ?", [movie.id]);
         
-        // Fase 1: Download
-        currentTask = { id: movie.id, title: movie.title, type: 'download', progress: 0 };
+        downloadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
         
         await downloadFile(movie.url, tmpPath, movie.id);
         
-        if (isPaused) return; // Se pausou durante o download, aborta fluxo
+        if (isPaused) return false; 
 
         const stats = fs.statSync(tmpPath);
         const fileSize = stats.size;
         
-        // Atualiza tamanho no banco
-        await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'uploading' WHERE id = ?", [fileSize, movie.id]);
+        // Finaliza download: altera para pending_upload para que o loop 2 assuma
+        await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload' WHERE id = ?", [fileSize, movie.id]);
+        downloadTask = null;
+        broadcastState();
+        return true;
         
-        // Fase 2: Upload
-        currentTask = { id: movie.id, title: movie.title, type: 'upload', progress: 0 };
+    } catch (err) {
+        console.error(`Erro no download de ${movie.title}:`, err);
+        if (!isPaused) {
+            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ? WHERE id = ?", [err.message, movie.id]);
+        }
+        downloadTask = null;
+        broadcastState();
+        return true; // Continua para o próximo filme apesar do erro deste
+    }
+}
+
+async function processUpload(movie) {
+    const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const ext = movie.url.split('?')[0].split('.').pop() || 'mp4';
+    const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
+
+    try {
+        if (!fs.existsSync(tmpPath)) {
+            // Se o arquivo sumiu, joga de volta pra pending pra tentar baixar de novo
+            await dbInstance.run("UPDATE sync_queue SET status = 'pending', error_message = 'Arquivo temp não encontrado. Rebaixando.' WHERE id = ?", [movie.id]);
+            return true; // não é erro fatal, o loop 1 pode pegar ele depois
+        }
+
+        await dbInstance.run("UPDATE sync_queue SET status = 'uploading' WHERE id = ?", [movie.id]);
+        
+        uploadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
 
-        // Usa Rota Premium Python para todos os arquivos (sem depender de Docker)
+        // Envia pelo Python
         await uploadViaPython(movie.title, tmpPath, movie.id);
 
-        if (isPaused) return;
+        if (isPaused) return false;
 
-        // Fase 3: Concluir
+        // Concluído
         await dbInstance.run("UPDATE sync_queue SET status = 'completed' WHERE id = ?", [movie.id]);
         
     } catch (err) {
-        console.error(`Erro processando ${movie.title}:`, err);
+        console.error(`Erro no upload de ${movie.title}:`, err);
         if (!isPaused) {
             await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ? WHERE id = ?", [err.message, movie.id]);
         }
     } finally {
-        // Limpeza do temp
-        if (fs.existsSync(tmpPath)) {
+        uploadTask = null;
+        broadcastState();
+        // Limpeza do temp após o envio com sucesso ou falha fatal (exceto pause)
+        if (!isPaused && fs.existsSync(tmpPath)) {
             try { fs.unlinkSync(tmpPath); } catch (e) {}
         }
+        return true;
     }
 }
 
@@ -217,7 +291,7 @@ async function downloadFile(url, destPath, dbId) {
             signal: activeDownloadController.signal
         });
 
-        if (!response.ok) throw new Error(`Status ${response.status}`);
+        if (!response.ok) throw new Error(`Status HTTP ${response.status}`);
 
         const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
         let downloadedBytes = 0;
@@ -233,10 +307,10 @@ async function downloadFile(url, destPath, dbId) {
             downloadedBytes += value.length;
             fileStream.write(value);
             
-            if (totalBytes > 0) {
+            if (totalBytes > 0 && downloadTask) {
                 const now = Date.now();
-                if (now - lastEmit > 500) { // Atualiza front-end a cada 500ms
-                    currentTask.progress = (downloadedBytes / totalBytes) * 100;
+                if (now - lastEmit > 500) { 
+                    downloadTask.progress = (downloadedBytes / totalBytes) * 100;
                     broadcastState();
                     lastEmit = now;
                 }
@@ -259,10 +333,10 @@ function uploadViaPython(title, filePath, dbId) {
         
         activeChildProcess.stdout.on('data', (data) => {
             const output = data.toString();
-            // Tenta pescar o progresso do stdout: "Upload progresso: 45.20%"
+            // Pega o progresso: "Upload progresso: 45.20%"
             const match = output.match(/Upload progresso:\s*([\d.]+)%/);
-            if (match && match[1]) {
-                currentTask.progress = parseFloat(match[1]);
+            if (match && match[1] && uploadTask) {
+                uploadTask.progress = parseFloat(match[1]);
                 broadcastState();
             }
         });
@@ -276,57 +350,5 @@ function uploadViaPython(title, filePath, dbId) {
             if (code === 0) resolve();
             else reject(new Error(`Processo python falhou com código ${code}`));
         });
-    });
-}
-
-async function uploadViaLocalBotApi(title, filePath, dbId) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const token = process.env.TELEGRAM_BOT_TOKEN;
-            const channelId = process.env.TELEGRAM_CHANNEL_ID;
-            
-            if (!token) throw new Error("TELEGRAM_BOT_TOKEN não configurado no .env");
-
-            const filename = path.basename(filePath);
-            const form = new FormData();
-            form.append('chat_id', channelId);
-            form.append('video', fs.createReadStream(filePath));
-            form.append('caption', `**${title}**\nUpload via Zoroflix Sync (Bot C++ Turbo)`);
-            form.append('parse_mode', 'Markdown');
-            form.append('supports_streaming', 'true');
-
-            // A URL aponta para o servidor C++ Local (que estará rodando no Docker da VPS na porta 8081)
-            const apiUrl = `http://127.0.0.1:8081/bot${token}/sendVideo`;
-            
-            activeDownloadController = new AbortController(); // Reutilizamos a variável de abort pra cancelar se pausar
-
-            const response = await axios.post(apiUrl, form, {
-                headers: form.getHeaders(),
-                signal: activeDownloadController.signal,
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity,
-                onUploadProgress: (progressEvent) => {
-                    if (progressEvent.total) {
-                        const percentCompleted = (progressEvent.loaded / progressEvent.total) * 100;
-                        currentTask.progress = percentCompleted;
-                        broadcastState();
-                    }
-                }
-            });
-
-            if (response.data && response.data.ok) {
-                resolve();
-            } else {
-                reject(new Error("Erro na resposta do Bot API"));
-            }
-        } catch (err) {
-            if (axios.isCancel(err)) {
-                reject(new Error("Upload cancelado pelo usuário (Pause)"));
-            } else {
-                reject(err);
-            }
-        } finally {
-            activeDownloadController = null;
-        }
     });
 }
