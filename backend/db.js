@@ -229,6 +229,14 @@ export async function initDB() {
         )
     `);
 
+    // Auto-migration: adiciona priority caso o banco seja antigo
+    try {
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN priority INTEGER DEFAULT 0`);
+        console.log("Migration: Coluna 'priority' adicionada à tabela sync_queue.");
+    } catch (e) {
+        // Ignora se a coluna já existir
+    }
+
     // Tabela de Recuperação de Senha
     await db.exec(`
         CREATE TABLE IF NOT EXISTS password_resets (
