@@ -274,7 +274,13 @@ async function processDownload(movie) {
         
         console.log(`[Download] ✅ Concluído: "${movie.title}" | Tamanho: ${fileSizeMB} MB | Arquivo: ${tmpPath}`);
         
+        if (fileSize === 0) {
+            try { fs.unlinkSync(tmpPath); } catch (e) {}
+            throw new Error('O arquivo baixado tem 0 bytes (provável erro 404/indisponível na IPTV).');
+        }
+
         // Verificação de integridade com ffprobe
+        let videoDuration = 0;
         try {
             const ffprobeResult = await new Promise((resolve, reject) => {
                 const proc = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tmpPath]);
@@ -287,12 +293,14 @@ async function processDownload(movie) {
                 });
                 proc.on('error', () => reject(new Error('ffprobe não instalado')));
             });
-            console.log(`[Download] 🔍 ffprobe validou: duração = ${ffprobeResult}s`);
+            videoDuration = parseFloat(ffprobeResult) || 0;
+            console.log(`[Download] 🔍 ffprobe validou: duração = ${videoDuration}s`);
         } catch (probeErr) {
             console.warn(`[Download] ⚠️ ffprobe não conseguiu validar o arquivo: ${probeErr.message}`);
         }
 
         // Finaliza download: altera para pending_upload para que o loop 2 assuma
+        // Salvamos a duração no erro_message apenas temporariamente para o upload recuperar, ou não precisamos pois o upload extrai.
         await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [fileSize, movie.id]);
         downloadTask = null;
         broadcastState();
@@ -572,12 +580,41 @@ async function uploadViaDocker(title, filePath, dbId) {
     try {
         const LOCAL_API_URL = `http://127.0.0.1:8081/bot${BOT_TOKEN}/sendVideo`;
         
+        let duration = 0;
+        let width = 1280;
+        let height = 720;
+        
+        // Tenta extrair metadados para forçar no payload do Telegram
+        try {
+            const ffprobeResult = await new Promise((resolve) => {
+                const proc = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'default=noprint_wrappers=1:nokey=1', filePath]);
+                let output = '';
+                proc.stdout.on('data', d => output += d.toString());
+                proc.on('close', code => {
+                    if (code === 0) resolve(output.trim().split('\n'));
+                    else resolve([]);
+                });
+                proc.on('error', () => resolve([]));
+            });
+            
+            if (ffprobeResult.length >= 3) {
+                width = parseInt(ffprobeResult[0]) || 1280;
+                height = parseInt(ffprobeResult[1]) || 720;
+                duration = parseInt(parseFloat(ffprobeResult[2])) || 0;
+            } else if (ffprobeResult.length === 1) {
+                duration = parseInt(parseFloat(ffprobeResult[0])) || 0;
+            }
+        } catch (e) {}
+
         const payload = {
             chat_id: CHAT_ID,
             video: `file://${filePath}`,
             caption: `<b>${title}</b>`,
             parse_mode: 'HTML',
-            supports_streaming: true
+            supports_streaming: true,
+            duration: duration || undefined,
+            width: width || undefined,
+            height: height || undefined
         };
 
         const response = await fetch(LOCAL_API_URL, {
