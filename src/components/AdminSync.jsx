@@ -1,6 +1,119 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X } from 'lucide-react';
+
+const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteItem, prioritizeItem, editItem, skipItem, formatBytes, fetchQueueParent }) => {
+    const [items, setItems] = useState([]);
+    const [page, setPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setItems([]);
+        setPage(1);
+        setHasMore(true);
+        fetchData(1);
+    }, [isOpen, filter, searchQuery, sortSize]);
+
+    const fetchData = async (pageNum) => {
+        if (loading) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/sync/queue?filter=${filter}&search=${encodeURIComponent(searchQuery)}&sortSize=${sortSize}&page=${pageNum}&limit=30`);
+            if (res.ok) {
+                const data = await res.json();
+                if (pageNum === 1) setItems(data.items || []);
+                else setItems(prev => [...prev, ...(data.items || [])]);
+                if (pageNum >= data.totalPages || data.items.length === 0) setHasMore(false);
+            }
+        } catch(e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleScroll = (e) => {
+        const { scrollTop, clientHeight, scrollHeight } = e.target;
+        if (scrollHeight - scrollTop <= clientHeight + 100 && hasMore && !loading) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            fetchData(nextPage);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '95%', maxWidth: '1200px', height: '90%', backgroundColor: '#1a1a1a', borderRadius: '8px', display: 'flex', flexDirection: 'column', border: '1px solid #333' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, color: '#fff' }}>Lista Completa (Filtro: {filter})</h2>
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={30} /></button>
+                </div>
+                
+                <div onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+                    <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', backgroundColor: '#1a1a1a' }}>
+                        <thead>
+                            <tr style={{ backgroundColor: '#222' }}>
+                                <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
+                                <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
+                                <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                                <th style={{ padding: '1rem', textAlign: 'left' }}>Tamanho</th>
+                                <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map(item => (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
+                                    <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold' }}>⭐ [PRIORIDADE]</span>}
+                                        {item.title}
+                                    </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <span style={{ 
+                                            padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem',
+                                            backgroundColor: item.status === 'completed' ? '#00ff8822' : 
+                                                            item.status === 'error' ? '#ff444422' : 
+                                                            item.status === 'skipped' ? '#ffaa0022' : '#ffffff22',
+                                            color: item.status === 'completed' ? '#00ff88' : 
+                                                   item.status === 'error' ? '#ff4444' : 
+                                                   item.status === 'skipped' ? '#ffaa00' : '#fff'
+                                        }}>
+                                            {item.status.toUpperCase()}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '1rem', color: '#888' }}>{formatBytes(item.file_size)}</td>
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        {(item.status === 'pending' || item.status === 'error') && (
+                                            <button 
+                                                onClick={async () => { await prioritizeItem(item); fetchData(1); fetchQueueParent(); }}
+                                                title="Furar Fila"
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ffff00', marginRight: '0.5rem' }}
+                                            >
+                                                <ChevronsUp size={20} />
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={async () => { await deleteItem(item); fetchData(1); fetchQueueParent(); }}
+                                            title="Apagar"
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff4444' }}
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem' }}>Carregando...</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
@@ -10,6 +123,7 @@ export default function AdminSync() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
     const [manualUpload, setManualUpload] = useState({ title: '', file: null, progress: 0, status: 'idle' });
+    const [modalOpen, setModalOpen] = useState(false);
     
     const filterRef = useRef(filter);
     const searchRef = useRef(searchQuery);
@@ -176,6 +290,22 @@ export default function AdminSync() {
             }
         } catch (e) {
             alert('Erro de conexão ao priorizar em lote');
+        }
+    };
+
+    const clearPriorities = async () => {
+        if (!window.confirm("Deseja ZERAR a prioridade de TODOS os itens priorizados?")) return;
+        try {
+            const res = await fetch(`/api/sync/queue/clear-priorities`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`${data.updated} prioridades removidas!`);
+                fetchQueue();
+            } else {
+                alert("Erro ao limpar prioridades");
+            }
+        } catch (e) {
+            alert('Erro de conexão ao limpar prioridades');
         }
     };
 
@@ -463,6 +593,7 @@ export default function AdminSync() {
 
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
+                    <button onClick={() => { setFilter('prioritized'); filterRef.current='prioritized'; fetchQueue('prioritized', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'prioritized' ? '#ffff00' : '#333', color: filter === 'prioritized' ? '#000' : '#fff' }}>⭐ Priorizados</button>
                     <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
                     <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
                     <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
@@ -470,6 +601,9 @@ export default function AdminSync() {
                     
                     <button onClick={prioritizeFiltered} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ff00ff', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.3rem', marginLeft: '0.5rem', fontWeight: 'bold' }}>
                         <ChevronsUp size={16} /> Priorizar Busca
+                    </button>
+                    <button onClick={clearPriorities} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: '1px solid #ff4444', cursor: 'pointer', background: '#333', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold' }}>
+                        <Eraser size={16} /> Limpar Prioridades
                     </button>
                 </div>
             </div>
@@ -593,6 +727,31 @@ export default function AdminSync() {
                     </tbody>
                 </table>
             </div>
+
+            {queue.total > 10 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+                    <button 
+                        onClick={() => setModalOpen(true)}
+                        style={{ padding: '0.75rem 2rem', background: '#00ccff', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', width: '100%', maxWidth: '400px' }}
+                    >
+                        Ver Lista Completa
+                    </button>
+                </div>
+            )}
+            
+            <FullListModal 
+                isOpen={modalOpen} 
+                onClose={() => setModalOpen(false)} 
+                filter={filter} 
+                searchQuery={searchQuery} 
+                sortSize={sortSize} 
+                deleteItem={deleteItem} 
+                prioritizeItem={prioritizeItem} 
+                editItem={editItem} 
+                skipItem={skipItem} 
+                formatBytes={formatBytes} 
+                fetchQueueParent={fetchQueue}
+            />
         </div>
     );
 }

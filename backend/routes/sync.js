@@ -186,7 +186,7 @@ export default function syncRoutes(db, io) {
     router.get('/queue', async (req, res) => {
         try {
             const page = parseInt(req.query.page) || 1;
-            const limit = 50;
+            const limit = parseInt(req.query.limit) || 10;
             const offset = (page - 1) * limit;
 
             const filter = req.query.filter || 'all';
@@ -199,6 +199,8 @@ export default function syncRoutes(db, io) {
             if (filter !== 'all') {
                 if (filter === 'pending') {
                     queryCondition += " AND status IN ('pending', 'pending_upload')";
+                } else if (filter === 'prioritized') {
+                    queryCondition += " AND priority > 0";
                 } else {
                     queryCondition += ' AND status = ?';
                     params.push(filter);
@@ -354,6 +356,17 @@ export default function syncRoutes(db, io) {
         } catch (err) {
             console.error("Erro prioritize-batch:", err);
             res.status(500).json({ error: 'Erro ao priorizar em lote' });
+        }
+    });
+
+    // Rota para Limpar Prioridades
+    router.post('/queue/clear-priorities', async (req, res) => {
+        try {
+            const result = await db.run("UPDATE sync_queue SET priority = 0 WHERE priority > 0");
+            res.json({ success: true, updated: result.changes });
+        } catch (err) {
+            console.error("Erro clear-priorities:", err);
+            res.status(500).json({ error: 'Erro ao limpar prioridades' });
         }
     });
 

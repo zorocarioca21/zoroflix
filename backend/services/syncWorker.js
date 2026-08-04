@@ -325,9 +325,9 @@ async function processUpload(movie, workerType) {
 
         // Concluído
         if (messageId) {
-            await dbInstance.run("UPDATE sync_queue SET status = 'completed', telegram_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, telegram_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
         } else {
-            await dbInstance.run("UPDATE sync_queue SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         }
         
     } catch (err) {
