@@ -86,25 +86,13 @@ export default function streamRoutes(db) {
             console.log(`[Stream] Busca concluída. Resultado: ${result ? result.length : 'null'}`);
 
             if (!result || result.length === 0 || !result[0] || result[0].className === "MessageEmpty") {
-                console.log("[Stream] ERRO: Mensagem não encontrada. AUTO-REPARO INICIADO!");
-                if (db) {
-                    await db.run(
-                        "UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, error_message = 'Faltando no Telegram (Auto-reparo)', updated_at = CURRENT_TIMESTAMP WHERE telegram_message_id = ?",
-                        [messageId]
-                    );
-                }
+                console.log(`[Stream] ERRO: Mensagem ${messageId} não encontrada no Telegram. Isso pode ser falha de cache do GramJS ou a mensagem foi apagada.`);
                 return res.status(404).send("Mensagem não encontrada");
             }
 
             const message = result[0];
             if (!message.media || !message.media.document) {
-                console.log("[Stream] ERRO: Mensagem não contém um documento de vídeo. AUTO-REPARO INICIADO!");
-                if (db) {
-                    await db.run(
-                        "UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, error_message = 'Faltando Vídeo no Telegram (Auto-reparo)', updated_at = CURRENT_TIMESTAMP WHERE telegram_message_id = ?",
-                        [messageId]
-                    );
-                }
+                console.log(`[Stream] ERRO: Mensagem ${messageId} não contém um documento de vídeo.`);
                 return res.status(404).send("A mensagem não contém um documento de vídeo");
             }
 
