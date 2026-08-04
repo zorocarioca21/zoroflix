@@ -392,8 +392,17 @@ async function downloadFile(url, destPath, dbId) {
         console.log(`[FFmpeg] 🚀 Iniciando download via FFmpeg: ${url}`);
         
         let totalDurationSec = 0;
+        let lastActivity = Date.now();
+
+        const watchdog = setInterval(() => {
+            if (Date.now() - lastActivity > 60000) { // 60 segundos sem receber dados
+                console.warn(`[FFmpeg] ⚠️ Timeout detectado! Nenhuma resposta por 60s. Matando processo...`);
+                ffmpegProcess.kill('SIGKILL');
+            }
+        }, 10000); // checa a cada 10s
 
         ffmpegProcess.stderr.on('data', (data) => {
+            lastActivity = Date.now();
             const str = data.toString();
 
             // Pega a duração total na primeira vez (ex: "Duration: 01:15:23.64")
@@ -437,6 +446,7 @@ async function downloadFile(url, destPath, dbId) {
         });
 
         ffmpegProcess.on('close', (code) => {
+            clearInterval(watchdog);
             activeDownloadController = null;
             if (wasAborted || code === null) {
                 // Usuário pausou ou abortou — NÃO cai no fallback fetch
