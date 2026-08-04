@@ -343,6 +343,74 @@ async function processUpload(movie, workerType) {
 async function downloadFile(url, destPath, dbId) {
     activeDownloadController = new AbortController();
     
+    return new Promise((resolve, reject) => {
+        // Opção 1: Usar FFmpeg para baixar e consertar o moov atom (Fast Start)
+        // Isso previne que vídeos com conexão interrompida ou m3u8 fiquem corrompidos
+        const ffmpegArgs = [
+            '-y',
+            '-i', url,
+            '-c', 'copy',
+            '-movflags', 'faststart',
+            destPath
+        ];
+
+        const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+        
+        let ffmpegOutput = '';
+
+        ffmpegProcess.stderr.on('data', (data) => {
+            const str = data.toString();
+            ffmpegOutput += str;
+
+            // Extrai progresso de tempo do FFmpeg
+            const timeMatch = str.match(/time=(\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+            if (timeMatch && downloadTask) {
+                // Como não sabemos a duração total exata da stream facilmente sem ffprobe, 
+                // vamos só mostrar o progresso base em megabytes gravados ou deixar pulsando
+                try {
+                    const stats = fs.statSync(destPath);
+                    const mb = (stats.size / (1024 * 1024)).toFixed(1);
+                    downloadTask.progress = `Baixando... (${mb} MB)`;
+                    broadcastState();
+                } catch (e) {}
+            }
+        });
+
+        // Caso o usuário cancele a task pelo painel ou VPS pause
+        activeDownloadController.signal.addEventListener('abort', () => {
+            ffmpegProcess.kill('SIGKILL');
+            if (fs.existsSync(destPath)) {
+                try { fs.unlinkSync(destPath); } catch (e) {}
+            }
+            reject(new Error('Download abortado.'));
+        });
+
+        ffmpegProcess.on('close', (code) => {
+            activeDownloadController = null;
+            if (code === 0) {
+                // Download via FFmpeg foi um sucesso!
+                resolve();
+            } else {
+                // Se falhar (talvez ffmpeg não instalado), vamos pro fallback
+                console.warn(`[FFmpeg] Falhou com código ${code}. Tentando via Node Fetch fallback...`);
+                if (fs.existsSync(destPath)) {
+                    try { fs.unlinkSync(destPath); } catch (e) {}
+                }
+                fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
+            }
+        });
+
+        ffmpegProcess.on('error', (err) => {
+            console.warn(`[FFmpeg] Não instalado ou erro grave (${err.message}). Tentando fallback Fetch...`);
+            fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
+        });
+    });
+}
+
+// Fallback nativo
+async function fallbackDownloadNodeFetch(url, destPath) {
+    activeDownloadController = new AbortController();
+    
     try {
         const response = await fetch(url, {
             headers: {
@@ -372,7 +440,15 @@ async function downloadFile(url, destPath, dbId) {
             if (totalBytes > 0 && downloadTask) {
                 const now = Date.now();
                 if (now - lastEmit > 500) { 
-                    downloadTask.progress = (downloadedBytes / totalBytes) * 100;
+                    downloadTask.progress = ((downloadedBytes / totalBytes) * 100).toFixed(1);
+                    broadcastState();
+                    lastEmit = now;
+                }
+            } else if (downloadTask) {
+                // Sem content-length (ex: M3U8 chunked)
+                const now = Date.now();
+                if (now - lastEmit > 1000) { 
+                    downloadTask.progress = `Baixando... (${(downloadedBytes / (1024*1024)).toFixed(1)} MB)`;
                     broadcastState();
                     lastEmit = now;
                 }
@@ -381,7 +457,14 @@ async function downloadFile(url, destPath, dbId) {
         
         fileStream.end();
         await new Promise(res => fileStream.on('finish', res));
-        
+
+        // Valida se o arquivo baixado está completo (apenas se soubermos o totalBytes)
+        if (totalBytes > 0 && downloadedBytes < totalBytes) {
+            if (fs.existsSync(destPath)) {
+                fs.unlinkSync(destPath);
+            }
+            throw new Error(`Download interrompido. Baixado: ${downloadedBytes} / Total: ${totalBytes}`);
+        }
     } finally {
         activeDownloadController = null;
     }
