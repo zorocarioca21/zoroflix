@@ -348,9 +348,10 @@ async function downloadFile(url, destPath, dbId) {
         // Isso previne que vídeos com conexão interrompida ou m3u8 fiquem corrompidos
         const ffmpegArgs = [
             '-y',
+            '-user_agent', 'VLC/3.0.18 LibVLC/3.0.18',
             '-i', url,
             '-c', 'copy',
-            '-movflags', 'faststart',
+            '-movflags', '+faststart',
             destPath
         ];
 
