@@ -191,11 +191,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <video
                 ref={videoRef}
-                src={`/api/stream/telegram/${messageId}`}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
                 onClick={() => setShowControls(prev => !prev)}
                 playsInline
                 webkit-playsinline="true"
+                crossOrigin="anonymous"
+                preload="auto"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
@@ -208,7 +209,9 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                         setVideoError(true);
                     }
                 }}
-            />
+            >
+                <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
+            </video>
 
             {/* Error Message */}
             {videoError && (
