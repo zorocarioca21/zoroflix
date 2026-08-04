@@ -138,8 +138,6 @@ export default function AdminSync() {
     };
 
     const prioritizeItem = async (item) => {
-        if (!window.confirm("Deseja priorizar este item para que ele fure a fila e seja o próximo a ser baixado?")) return;
-        
         try {
             const res = await fetch(`/api/sync/queue/${item.id}/prioritize`, { method: 'POST' });
             if (res.ok) {
