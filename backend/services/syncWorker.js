@@ -270,7 +270,28 @@ async function processDownload(movie) {
 
         const stats = fs.statSync(tmpPath);
         const fileSize = stats.size;
+        const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
         
+        console.log(`[Download] ✅ Concluído: "${movie.title}" | Tamanho: ${fileSizeMB} MB | Arquivo: ${tmpPath}`);
+        
+        // Verificação de integridade com ffprobe
+        try {
+            const ffprobeResult = await new Promise((resolve, reject) => {
+                const proc = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', tmpPath]);
+                let output = '';
+                proc.stdout.on('data', d => output += d.toString());
+                proc.stderr.on('data', d => {}); // Ignora avisos
+                proc.on('close', code => {
+                    if (code === 0 && output.trim()) resolve(output.trim());
+                    else reject(new Error(`ffprobe falhou (code ${code})`));
+                });
+                proc.on('error', () => reject(new Error('ffprobe não instalado')));
+            });
+            console.log(`[Download] 🔍 ffprobe validou: duração = ${ffprobeResult}s`);
+        } catch (probeErr) {
+            console.warn(`[Download] ⚠️ ffprobe não conseguiu validar o arquivo: ${probeErr.message}`);
+        }
+
         // Finaliza download: altera para pending_upload para que o loop 2 assuma
         await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [fileSize, movie.id]);
         downloadTask = null;
@@ -295,9 +316,13 @@ async function processUpload(movie, workerType) {
 
     try {
         if (!fs.existsSync(tmpPath)) {
+            console.log(`[Upload] ❌ Arquivo não encontrado: ${tmpPath}`);
             await dbInstance.run("UPDATE sync_queue SET status = 'pending', error_message = 'Arquivo temp não encontrado. Rebaixando.', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
             return true; 
         }
+        
+        const uploadStats = fs.statSync(tmpPath);
+        console.log(`[Upload] 📤 Iniciando upload: "${movie.title}" | Método: ${workerType} | Tamanho: ${(uploadStats.size / (1024*1024)).toFixed(2)} MB | Arquivo: ${tmpPath}`);
         
         if (workerType === 'docker') {
             uploadTaskDocker = { id: movie.id, title: movie.title, progress: 0 };
@@ -356,6 +381,7 @@ async function downloadFile(url, destPath, dbId) {
         ];
 
         const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
+        console.log(`[FFmpeg] 🚀 Iniciando download via FFmpeg: ${url}`);
         
         let totalDurationSec = 0;
 
