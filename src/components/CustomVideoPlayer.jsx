@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, contentId, season, episode }) {
     const videoRef = useRef(null);
@@ -96,6 +96,20 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         };
     }, [isPlaying]);
 
+    // Handle Fullscreen Change correctly (for ESC key or OS back button)
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const isFull = !!document.fullscreenElement;
+            setIsFullscreen(isFull);
+            if (!isFull && screen.orientation && screen.orientation.unlock) {
+                try { screen.orientation.unlock(); } catch (e) {}
+            }
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     const togglePlay = () => {
         if (videoError) return;
         if (videoRef.current.paused) {
@@ -112,15 +126,19 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         setIsMuted(!isMuted);
     };
 
-    const toggleFullscreen = () => {
+    const toggleFullscreen = async () => {
         if (!document.fullscreenElement) {
-            containerRef.current.requestFullscreen().catch(err => {
+            try {
+                await containerRef.current.requestFullscreen();
+                // Tenta forçar a orientação para paisagem (útil para celulares)
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape').catch(e => console.warn("Orientação não suportada ou bloqueada", e));
+                }
+            } catch (err) {
                 console.error(`Erro ao ativar tela cheia: ${err.message}`);
-            });
-            setIsFullscreen(true);
+            }
         } else {
             document.exitFullscreen();
-            setIsFullscreen(false);
         }
     };
 
@@ -144,6 +162,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         const s = Math.floor(timeInSeconds % 60);
         if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const skipTime = (seconds) => {
+        if (!videoRef.current) return;
+        videoRef.current.currentTime = Math.min(Math.max(videoRef.current.currentTime + seconds, 0), duration);
+        setCurrentTime(videoRef.current.currentTime);
     };
 
     return (
@@ -182,6 +206,18 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 </div>
             )}
 
+            {/* Skip Backward Button */}
+            {showControls && !videoError && !showResumePopup && (
+                <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
+                    position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
+                    zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
+                    borderRadius: '50%', padding: '15px', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <RotateCcw size={32} />
+                </div>
+            )}
+
             {/* Giant Center Play Button */}
             {!isPlaying && !isBuffering && !showResumePopup && !videoError && (
                 <div onClick={togglePlay} style={{
@@ -195,6 +231,18 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
                 >
                     <Play size={64} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />
+                </div>
+            )}
+
+            {/* Skip Forward Button */}
+            {showControls && !videoError && !showResumePopup && (
+                <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
+                    position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
+                    zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
+                    borderRadius: '50%', padding: '15px', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <RotateCw size={32} />
                 </div>
             )}
 
