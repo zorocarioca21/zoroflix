@@ -198,7 +198,7 @@ export default function syncRoutes(db, io) {
 
             if (filter !== 'all') {
                 if (filter === 'pending') {
-                    queryCondition += " AND status = 'pending'";
+                    queryCondition += " AND status IN ('pending', 'pending_upload')";
                 } else {
                     queryCondition += ' AND status = ?';
                     params.push(filter);
