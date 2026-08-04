@@ -99,7 +99,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     // Handle Fullscreen Change correctly (for ESC key or OS back button)
     useEffect(() => {
         const handleFullscreenChange = () => {
-            const isFull = !!document.fullscreenElement;
+            const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
             setIsFullscreen(isFull);
             if (!isFull && screen.orientation && screen.orientation.unlock) {
                 try { screen.orientation.unlock(); } catch (e) {}
@@ -107,7 +107,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         };
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange); // Para Safari antigo
+        
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
     }, []);
 
     const togglePlay = () => {
@@ -127,9 +132,17 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     };
 
     const toggleFullscreen = async () => {
-        if (!document.fullscreenElement) {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
             try {
-                await containerRef.current.requestFullscreen();
+                if (containerRef.current.requestFullscreen) {
+                    await containerRef.current.requestFullscreen();
+                } else if (containerRef.current.webkitRequestFullscreen) {
+                    await containerRef.current.webkitRequestFullscreen();
+                } else if (videoRef.current.webkitEnterFullscreen) {
+                    // Fallback nativo do iOS para iPhones (só permite tela cheia no elemento de vídeo)
+                    videoRef.current.webkitEnterFullscreen();
+                }
+                
                 // Tenta forçar a orientação para paisagem (útil para celulares)
                 if (screen.orientation && screen.orientation.lock) {
                     await screen.orientation.lock('landscape').catch(e => console.warn("Orientação não suportada ou bloqueada", e));
@@ -138,7 +151,11 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 console.error(`Erro ao ativar tela cheia: ${err.message}`);
             }
         } else {
-            document.exitFullscreen();
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
         }
     };
 
@@ -177,6 +194,8 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 src={`/api/stream/telegram/${messageId}`}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
                 onClick={() => setShowControls(prev => !prev)}
+                playsInline
+                webkit-playsinline="true"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
