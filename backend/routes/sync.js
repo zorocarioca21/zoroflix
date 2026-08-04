@@ -197,8 +197,12 @@ export default function syncRoutes(db, io) {
             let params = [];
 
             if (filter !== 'all') {
-                queryCondition += ' AND status = ?';
-                params.push(filter);
+                if (filter === 'pending') {
+                    queryCondition += " AND status IN ('pending', 'pending_upload', 'downloading', 'uploading')";
+                } else {
+                    queryCondition += ' AND status = ?';
+                    params.push(filter);
+                }
             }
 
             if (search) {
@@ -217,7 +221,7 @@ export default function syncRoutes(db, io) {
 
             const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message, priority FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
-            const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
+            const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status IN ('pending', 'pending_upload', 'downloading', 'uploading')`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
             const skipped = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'skipped'`);
             const error = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'error'`);
