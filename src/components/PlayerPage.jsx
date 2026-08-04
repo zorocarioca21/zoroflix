@@ -169,61 +169,67 @@ export default function PlayerPage() {
       if (canalId) return;
       if (!user || (user.role !== 'admin' && user.role !== 'vip')) return;
       
-      let searchStr = '';
+      let seriesName = '';
       if (state.title) {
-          searchStr = state.title.split(' - ')[0];
+          seriesName = state.title.split(' - ')[0].trim();
       } else if (seriesDetail && (seriesDetail.title || seriesDetail.name)) {
-          searchStr = seriesDetail.title || seriesDetail.name;
+          seriesName = (seriesDetail.title || seriesDetail.name).trim();
       }
 
-      if (searchStr) {
-          if (season && episode) {
-              searchStr = searchStr.trim();
-          }
-      }
+      if (!seriesName) return;
 
-      if (searchStr) {
-          const token = localStorage.getItem('cinegeek_token');
-          const headers = { 'Authorization': `Bearer ${token}` };
-          
-          fetch(`/api/sync/queue?search=${encodeURIComponent(searchStr)}`, { headers })
-              .then(r => r.json())
-              .then(data => {
-                  if (data && data.items && data.items.length > 0) {
-                      // Procura o item concluído com telegram_message_id
-                      let foundItem = null;
-                      if (season && episode) {
-                          // Formatos possíveis no Telegram: S01E01, S1E1, S01 E01, S1 E1
-                          const s = String(season).padStart(2, '0');
-                          const e = String(episode).padStart(2, '0');
-                          const patterns = [
-                              `S${s}E${e}`,           // S01E01
-                              `S${s} E${e}`,           // S01 E01 (formato do Telegram)
-                              `S${season}E${episode}`, // S1E1
-                              `S${season} E${episode}`,// S1 E1
-                              `Episódio ${episode}`,
-                              `EP${e}`,
-                              `EP ${e}`,
-                              `E${e}`,
-                          ];
-                          foundItem = data.items.find(i => 
-                              i.status === 'completed' && i.telegram_message_id && 
-                              patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()))
-                          );
-                      } else {
-                          foundItem = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
-                      }
-                      
-                      if (foundItem) {
-                          setTelegramMessageId(foundItem.telegram_message_id);
-                      } else {
-                          setTelegramMessageId(null);
-                      }
+      const token = localStorage.getItem('cinegeek_token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+
+      const findEpisode = async () => {
+          try {
+              if (season && episode) {
+                  // Busca específica: inclui S01 E01 na query para pegar direto o episódio certo
+                  const s = String(season).padStart(2, '0');
+                  const e = String(episode).padStart(2, '0');
+                  const specificSearch = `${seriesName} S${s} E${e}`;
+                  
+                  const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(specificSearch)}&limit=10`, { headers });
+                  const data = await res.json();
+                  
+                  if (data?.items?.length > 0) {
+                      const found = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
+                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
                   }
-              })
-              .catch(() => setTelegramMessageId(null));
-      }
-  }, [id, season, episode, state.title, canalId, user]);
+                  
+                  // Fallback: busca pelo nome da série e filtra localmente
+                  const res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=500`, { headers });
+                  const data2 = await res2.json();
+                  
+                  if (data2?.items?.length > 0) {
+                      const patterns = [
+                          `S${s}E${e}`, `S${s} E${e}`,
+                          `S${season}E${episode}`, `S${season} E${episode}`,
+                          `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
+                      ];
+                      const found = data2.items.find(i => 
+                          i.status === 'completed' && i.telegram_message_id && 
+                          patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()))
+                      );
+                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
+                  }
+              } else {
+                  // Filme: busca simples pelo nome
+                  const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=50`, { headers });
+                  const data = await res.json();
+                  if (data?.items?.length > 0) {
+                      const found = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
+                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
+                  }
+              }
+              setTelegramMessageId(null);
+          } catch {
+              setTelegramMessageId(null);
+          }
+      };
+      
+      findEpisode();
+  }, [id, season, episode, state.title, canalId, user, seriesDetail]);
 
   // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
   useEffect(() => {
