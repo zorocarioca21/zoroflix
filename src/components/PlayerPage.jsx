@@ -193,12 +193,22 @@ export default function PlayerPage() {
                       // Procura o item concluído com telegram_message_id
                       let foundItem = null;
                       if (season && episode) {
-                          // Tenta achar S01E01 ou S1E1 no título
-                          const epStr1 = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-                          const epStr2 = `S${season}E${episode}`;
+                          // Formatos possíveis no Telegram: S01E01, S1E1, S01 E01, S1 E1
+                          const s = String(season).padStart(2, '0');
+                          const e = String(episode).padStart(2, '0');
+                          const patterns = [
+                              `S${s}E${e}`,           // S01E01
+                              `S${s} E${e}`,           // S01 E01 (formato do Telegram)
+                              `S${season}E${episode}`, // S1E1
+                              `S${season} E${episode}`,// S1 E1
+                              `Episódio ${episode}`,
+                              `EP${e}`,
+                              `EP ${e}`,
+                              `E${e}`,
+                          ];
                           foundItem = data.items.find(i => 
                               i.status === 'completed' && i.telegram_message_id && 
-                              (i.title.includes(epStr1) || i.title.includes(epStr2) || i.title.includes(`Episódio ${episode}`))
+                              patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()))
                           );
                       } else {
                           foundItem = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
