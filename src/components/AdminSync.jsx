@@ -412,8 +412,14 @@ export default function AdminSync() {
                         placeholder="Pesquisar por título ou ID..." 
                         value={searchQuery}
                         onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            fetchQueue(filter, e.target.value, sortSize);
+                            const val = e.target.value;
+                            setSearchQuery(val);
+                            searchRef.current = val; // Atualiza a ref na hora para o socket não usar valor antigo
+                            
+                            if (window.searchTimeout) clearTimeout(window.searchTimeout);
+                            window.searchTimeout = setTimeout(() => {
+                                fetchQueue(filter, val, sortSize);
+                            }, 400);
                         }}
                         style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '0.3rem' }}
                     />

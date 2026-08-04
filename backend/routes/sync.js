@@ -323,5 +323,16 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Rota para Priorizar ("Furar Fila") um item
+    router.post('/queue/:id/prioritize', async (req, res) => {
+        try {
+            // Aumenta a prioridade para o topo
+            await db.run("UPDATE sync_queue SET priority = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao priorizar item' });
+        }
+    });
+
     return router;
 }
