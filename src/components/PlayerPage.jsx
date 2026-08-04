@@ -31,7 +31,10 @@ export default function PlayerPage() {
   
   // Modal de Download
   const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
-  const [isCheckingTelegram, setIsCheckingTelegram] = useState(user && (user.role === 'admin' || user.role === 'vip'));
+  const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
+      if (canalId) return false;
+      return !!(user && (user.role === 'admin' || user.role === 'vip'));
+  });
 
   // Resolvendo as informações do Canal (Nome e Logo_url)
   useEffect(() => {
