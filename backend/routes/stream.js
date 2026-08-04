@@ -153,18 +153,28 @@ export default function streamRoutes(db) {
         });
 
         let chunkCount = 0;
+        let bytesSent = 0;
         for await (const chunk of iterator) {
             if (isCancelled) break;
             
             chunkCount++;
-            if (chunkCount === 1) console.log(`[Stream] Primeiro chunk recebido! Tamanho: ${chunk.length}`);
+            
+            // Trunca o chunk se ele for ultrapassar o limite requisitado pelo browser
+            const remaining = limit - bytesSent;
+            const chunkToSend = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+            
+            bytesSent += chunkToSend.length;
+            
+            if (chunkCount === 1) console.log(`[Stream] Primeiro chunk recebido! Tamanho original: ${chunk.length}, Enviado: ${chunkToSend.length}`);
             
             // Grava o pedaço no buffer HTTP
-            const canWrite = res.write(chunk);
+            const canWrite = res.write(chunkToSend);
             if (!canWrite) {
                 // Aguarda o drain se o buffer estiver cheio
                 await new Promise(resolve => res.once('drain', resolve));
             }
+            
+            if (bytesSent >= limit) break;
         }
         
         console.log(`[Stream] Fim da stream. Chunks enviados: ${chunkCount}, isCancelled: ${isCancelled}`);
