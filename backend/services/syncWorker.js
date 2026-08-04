@@ -125,81 +125,55 @@ export async function startWorker() {
 // LOOP 1: PRODUTOR (Baixa arquivos para a VPS)
 // ==========================================
 async function downloadLoop() {
-    const m3uPath = path.join(process.cwd(), 'iptv_list.m3u');
-    if (!fs.existsSync(m3uPath)) {
-        throw new Error("Arquivo iptv_list.m3u não encontrado na raiz");
-    }
+    while (true) {
+        if (isPaused) {
+            await new Promise(r => setTimeout(r, 5000));
+            continue;
+        }
 
-    const fileStream = fs.createReadStream(m3uPath, 'utf-8');
-    const rl = readline.createInterface({
-        input: fileStream,
-        crlfDelay: Infinity
-    });
-
-    let currentTitle = null;
-
-    for await (const line of rl) {
-        if (isPaused) break; // Sai imediatamente se pausado
-
-        const trimmed = line.trim();
-        if (trimmed.startsWith('#EXTINF')) {
-            const lastQuoteComma = trimmed.lastIndexOf('",');
-            if (lastQuoteComma !== -1) {
-                currentTitle = trimmed.substring(lastQuoteComma + 2).trim();
-            } else {
-                const firstComma = trimmed.indexOf(',');
-                if (firstComma !== -1) {
-                    currentTitle = trimmed.substring(firstComma + 1).trim();
-                }
-            }
-        } else if (trimmed.startsWith('http') && currentTitle) {
-            const title = currentTitle;
-            const url = trimmed;
-            currentTitle = null;
-
-            const ext = url.split('?')[0].split('.').pop().toLowerCase();
-            if (ext !== 'mp4' && ext !== 'mkv') continue;
-
-            // Verifica se já existe e seu status atual
-            const existing = await dbInstance.get("SELECT id, status FROM sync_queue WHERE url = ?", [url]);
+        // Verifica o espaço atual ocupado antes de iniciar o download
+        let hasSpace = false;
+        while (!isPaused) {
+            const row = await dbInstance.get("SELECT SUM(file_size) as total FROM sync_queue WHERE status IN ('pending_upload', 'uploading')");
+            const totalUsed = row ? (row.total || 0) : 0;
+            const LIMIT = 50 * 1024 * 1024 * 1024; // 50 GB
             
-            // Se já está completo ou aguardando upload, pulamos o download
-            if (existing && (existing.status === 'completed' || existing.status === 'pending_upload' || existing.status === 'uploading' || existing.status === 'skipped')) {
-                continue;
+            if (totalUsed < LIMIT) {
+                hasSpace = true;
+                break;
             }
+            
+            downloadTask = { id: 'N/A', title: 'PAUSADO: LIMITE 50GB ATINGIDO', progress: 'WAITING_SPACE' };
+            broadcastState();
+            
+            await new Promise(r => setTimeout(r, 15000)); // Checa a cada 15 segundos
+        }
 
-            // Verifica o espaço atual ocupado antes de iniciar o download
-            while (!isPaused) {
-                const row = await dbInstance.get("SELECT SUM(file_size) as total FROM sync_queue WHERE status IN ('pending_upload', 'uploading')");
-                const totalUsed = row ? (row.total || 0) : 0;
-                const LIMIT = 50 * 1024 * 1024 * 1024; // 50 GB
-                
-                if (totalUsed < LIMIT) {
-                    break;
-                }
-                
-                downloadTask = { id: existing ? existing.id : 'N/A', title: 'PAUSADO: LIMITE 50GB ATINGIDO', progress: 'WAITING_SPACE' };
-                broadcastState();
-                
-                await new Promise(r => setTimeout(r, 15000)); // Checa a cada 15 segundos
-            }
-            if (isPaused) break;
+        if (!hasSpace || isPaused) {
+            await new Promise(r => setTimeout(r, 5000));
+            continue;
+        }
 
-            let dbId;
-            if (existing) {
-                await dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [existing.id]);
-                dbId = existing.id;
-            } else {
-                const res = await dbInstance.run("INSERT INTO sync_queue (title, url, status) VALUES (?, ?, 'pending')", [title, url]);
-                dbId = res.lastID;
-            }
+        // Busca o próximo item pendente (priorizando os com priority > 0)
+        const nextItem = await dbInstance.get("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY priority DESC, id ASC LIMIT 1");
+        
+        if (!nextItem) {
+            // Se não tem mais nada pra baixar, aguarda um pouco e tenta de novo
+            downloadTask = null;
+            broadcastState();
+            await new Promise(r => setTimeout(r, 10000));
+            continue;
+        }
 
+        // Marcar como downloading
+        await dbInstance.run("UPDATE sync_queue SET status = 'downloading' WHERE id = ?", [nextItem.id]);
+
+        try {
             // Executa a tarefa de download (Fica travado aqui até o DOWNLOAD deste item terminar)
-            const success = await processDownload({ id: dbId, title, url });
-            
-            if (!success || isPaused) {
-                break; // Se deu erro fatal ou pausou, para o loop
-            }
+            await processDownload(nextItem);
+        } catch (err) {
+            console.error(`Erro no loop de download ao processar ${nextItem.title}:`, err);
+            await new Promise(r => setTimeout(r, 5000));
         }
     }
 }

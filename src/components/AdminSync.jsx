@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp } from 'lucide-react';
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
@@ -126,6 +126,21 @@ export default function AdminSync() {
         
         await fetch(`/api/sync/queue/${item.id}`, { method: 'DELETE' });
         fetchQueue();
+    };
+
+    const prioritizeItem = async (item) => {
+        if (!window.confirm("Deseja priorizar este item para que ele fure a fila e seja o próximo a ser baixado?")) return;
+        
+        try {
+            const res = await fetch(`/api/sync/queue/${item.id}/prioritize`, { method: 'POST' });
+            if (res.ok) {
+                fetchQueue();
+            } else {
+                alert("Erro ao priorizar o item");
+            }
+        } catch (e) {
+            alert('Erro de conexão ao priorizar item');
+        }
     };
 
     const editItem = async (item) => {
@@ -443,7 +458,10 @@ export default function AdminSync() {
                             queue.items.map(item => (
                                 <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
                                     <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
-                                    <td style={{ padding: '1rem' }}>{item.title}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold' }}>⭐ [PRIORIDADE]</span>}
+                                        {item.title}
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{ 
                                             padding: '0.2rem 0.5rem', 
@@ -477,6 +495,15 @@ export default function AdminSync() {
                                         >
                                             <Edit size={20} />
                                         </button>
+                                        {(item.status === 'pending' || item.status === 'error') && (
+                                            <button 
+                                                onClick={() => prioritizeItem(item)}
+                                                title="Furar Fila (Priorizar)"
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ffff00', marginRight: '0.5rem' }}
+                                            >
+                                                <ChevronsUp size={22} />
+                                            </button>
+                                        )}
                                         <button 
                                             onClick={async () => {
                                                 if(!window.confirm("Deseja refazer o download deste item? Ele voltará para a fila e a versão antiga no Telegram será apagada.")) return;

@@ -141,8 +141,29 @@ export default function syncRoutes(db, io) {
                 }
             } // Fechar for await loop
 
+            // Inicia o processo de inserção em lote
+            await db.run("BEGIN TRANSACTION");
+            let insertedCount = 0;
+            
+            try {
+                for (const movie of movies) {
+                    const ext = movie.url.split('?')[0].split('.').pop().toLowerCase();
+                    if (ext !== 'mp4' && ext !== 'mkv') continue; // Filtro de extensão
+                    
+                    const res = await db.run(
+                        "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?)",
+                        [movie.title, movie.url, movie.url]
+                    );
+                    if (res.changes > 0) insertedCount++;
+                }
+                await db.run("COMMIT");
+            } catch (insertErr) {
+                await db.run("ROLLBACK");
+                throw insertErr;
+            }
+
             // Responde imediatamente
-            res.json({ message: 'Varredura concluída', totalFound: movies.length });
+            res.json({ message: 'Varredura e indexação concluída', totalFound: movies.length, inserted: insertedCount });
         } catch (err) {
             console.error("Erro no scan:", err);
             res.status(500).json({ error: 'Erro interno ao processar arquivo M3U.' });
@@ -190,11 +211,11 @@ export default function syncRoutes(db, io) {
                 }
             }
 
-            let orderBy = 'ORDER BY updated_at DESC';
-            if (sortSize === 'asc') orderBy = 'ORDER BY file_size ASC';
-            if (sortSize === 'desc') orderBy = 'ORDER BY file_size DESC';
+            let orderBy = 'ORDER BY priority DESC, updated_at DESC';
+            if (sortSize === 'asc') orderBy = 'ORDER BY priority DESC, file_size ASC';
+            if (sortSize === 'desc') orderBy = 'ORDER BY priority DESC, file_size DESC';
 
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message, priority FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'pending'`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
