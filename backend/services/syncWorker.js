@@ -357,23 +357,37 @@ async function downloadFile(url, destPath, dbId) {
 
         const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
         
-        let ffmpegOutput = '';
+        let totalDurationSec = 0;
 
         ffmpegProcess.stderr.on('data', (data) => {
             const str = data.toString();
-            ffmpegOutput += str;
 
-            // Extrai progresso de tempo do FFmpeg
+            // Pega a duração total na primeira vez (ex: "Duration: 01:15:23.64")
+            if (totalDurationSec === 0) {
+                const durMatch = str.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d+)/);
+                if (durMatch) {
+                    totalDurationSec = parseInt(durMatch[1]) * 3600 + parseInt(durMatch[2]) * 60 + parseFloat(durMatch[3]);
+                }
+            }
+
+            // Extrai progresso de tempo do FFmpeg (ex: "time=00:12:34.56")
             const timeMatch = str.match(/time=(\d{2}):(\d{2}):(\d{2}\.\d{2})/);
             if (timeMatch && downloadTask) {
-                // Como não sabemos a duração total exata da stream facilmente sem ffprobe, 
-                // vamos só mostrar o progresso base em megabytes gravados ou deixar pulsando
-                try {
-                    const stats = fs.statSync(destPath);
-                    const mb = (stats.size / (1024 * 1024)).toFixed(1);
-                    downloadTask.progress = `Baixando... (${mb} MB)`;
-                    broadcastState();
-                } catch (e) {}
+                const currentSec = parseInt(timeMatch[1]) * 3600 + parseInt(timeMatch[2]) * 60 + parseFloat(timeMatch[3]);
+                
+                if (totalDurationSec > 0) {
+                    // Porcentagem real baseada no tempo
+                    downloadTask.progress = Math.min((currentSec / totalDurationSec) * 100, 99.9);
+                } else {
+                    // Fallback: mostra MB baixados como porcentagem fake crescente
+                    try {
+                        const stats = fs.statSync(destPath);
+                        downloadTask.progress = Math.min((stats.size / (1024 * 1024 * 1024)) * 10, 99); // Fake %
+                    } catch (e) {
+                        downloadTask.progress = 1;
+                    }
+                }
+                broadcastState();
             }
         });
 
