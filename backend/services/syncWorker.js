@@ -392,21 +392,27 @@ async function downloadFile(url, destPath, dbId) {
         });
 
         // Caso o usuário cancele a task pelo painel ou VPS pause
+        let wasAborted = false;
         activeDownloadController.signal.addEventListener('abort', () => {
+            wasAborted = true;
             ffmpegProcess.kill('SIGKILL');
             if (fs.existsSync(destPath)) {
                 try { fs.unlinkSync(destPath); } catch (e) {}
             }
-            reject(new Error('Download abortado.'));
+            // NÃO reject aqui — deixa o 'close' handler cuidar
         });
 
         ffmpegProcess.on('close', (code) => {
             activeDownloadController = null;
-            if (code === 0) {
+            if (wasAborted || code === null) {
+                // Usuário pausou ou abortou — NÃO cai no fallback fetch
+                reject(new Error('Download cancelado pelo usuário.'));
+            } else if (code === 0) {
                 // Download via FFmpeg foi um sucesso!
                 resolve();
             } else {
-                // Se falhar (talvez ffmpeg não instalado), vamos pro fallback
+                // FFmpeg falhou genuinamente (ex: codec não suportado)
+                // Nesse caso sim, tenta o fallback via fetch
                 console.warn(`[FFmpeg] Falhou com código ${code}. Tentando via Node Fetch fallback...`);
                 if (fs.existsSync(destPath)) {
                     try { fs.unlinkSync(destPath); } catch (e) {}
@@ -416,6 +422,7 @@ async function downloadFile(url, destPath, dbId) {
         });
 
         ffmpegProcess.on('error', (err) => {
+            if (wasAborted) return; // Já tratado pelo close
             console.warn(`[FFmpeg] Não instalado ou erro grave (${err.message}). Tentando fallback Fetch...`);
             fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
         });
