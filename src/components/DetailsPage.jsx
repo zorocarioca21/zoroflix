@@ -118,69 +118,80 @@ export default function DetailsPage() {
   useEffect(() => {
     if (!id) return;
     window.scrollTo(0, 0);
+    
+    let isCurrent = true;
+
+    const fetchDetails = async () => {
+      setLoading(true);
+      try {
+        const type = isMovie ? 'movie' : 'tv';
+        const [detailsResp, creditsResp, videosResp] = await Promise.all([
+          fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
+          fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`),
+          fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`) // Puxando videos tbm em inglês para garantir
+        ]);
+
+        if (!isCurrent) return;
+
+        const detailsData = await detailsResp.json();
+        const creditsData = await creditsResp.json();
+        const videosData = await videosResp.json();
+
+        const vid = videosData.results?.find(v => v.type === 'Trailer') || videosData.results?.find(v => v.type === 'Teaser');
+        if (vid) setTrailerKey(vid.key);
+
+        const title = detailsData.title || detailsData.name;
+        
+        // Atualiza aba do navegador e URL com slug pra ficar profissional (sem ID)
+        document.title = `${title} - CineGeek`;
+        const slug = getSlug(title);
+        const newUrl = `/${isMovie ? 'filme' : 'serie'}/${slug}`;
+        window.history.replaceState({ id }, '', newUrl);
+
+        setData(detailsData);
+        setCast(creditsData.cast?.slice(0, 15) || []);
+
+        if (!isMovie) {
+          fetchEpisodes(1);
+          const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
+          const certData = await certResp.json();
+          const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
+          if (isCurrent) setCertification(br?.rating || 'L');
+
+          // Buscar episódios concluídos
+          try {
+              const token = localStorage.getItem('cinegeek_token');
+              const uuidVal = localStorage.getItem('cinegeek_uuid') || uuid;
+              const headers = { 'x-device-uuid': uuidVal || '' };
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+              const watchedResp = await fetch(`/api/recents/watched-episodes/${id}`, { headers });
+              if (watchedResp.ok) {
+                  const watchedData = await watchedResp.json();
+                  if (isCurrent) setWatchedEpisodes(watchedData);
+              }
+          } catch (err) {}
+        } else {
+          const certResp = await fetch(`${BASE_URL}/movie/${id}/release_dates?api_key=${API_KEY}`);
+          const certData = await certResp.json();
+          const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
+          const cert = br?.release_dates?.find(d => d.certification)?.certification;
+          if (isCurrent) setCertification(cert || 'L');
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        if (isCurrent) setLoading(false);
+      }
+    };
+
     fetchDetails();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [id, location.pathname]);
 
-  const fetchDetails = async () => {
-    setLoading(true);
-    try {
-      const type = isMovie ? 'movie' : 'tv';
-      const [detailsResp, creditsResp, videosResp] = await Promise.all([
-        fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
-        fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`),
-        fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`) // Puxando videos tbm em inglês para garantir
-      ]);
 
-      const detailsData = await detailsResp.json();
-      const creditsData = await creditsResp.json();
-      const videosData = await videosResp.json();
-
-      const vid = videosData.results?.find(v => v.type === 'Trailer') || videosData.results?.find(v => v.type === 'Teaser');
-      if (vid) setTrailerKey(vid.key);
-
-      const title = detailsData.title || detailsData.name;
-      
-      // Atualiza aba do navegador e URL com slug pra ficar profissional (sem ID)
-      document.title = `${title} - CineGeek`;
-      const slug = getSlug(title);
-      const newUrl = `/${isMovie ? 'filme' : 'serie'}/${slug}`;
-      window.history.replaceState({ id }, '', newUrl);
-
-      setData(detailsData);
-      setCast(creditsData.cast?.slice(0, 15) || []);
-
-      if (!isMovie) {
-        fetchEpisodes(1);
-        const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
-        const certData = await certResp.json();
-        const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
-        setCertification(br?.rating || 'L');
-
-        // Buscar episódios concluídos
-        try {
-            const token = localStorage.getItem('cinegeek_token');
-            const uuidVal = localStorage.getItem('cinegeek_uuid') || uuid;
-            const headers = { 'x-device-uuid': uuidVal || '' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const watchedResp = await fetch(`/api/recents/watched-episodes/${id}`, { headers });
-            if (watchedResp.ok) {
-                const watchedData = await watchedResp.json();
-                setWatchedEpisodes(watchedData);
-            }
-        } catch (err) {}
-      } else {
-        const certResp = await fetch(`${BASE_URL}/movie/${id}/release_dates?api_key=${API_KEY}`);
-        const certData = await certResp.json();
-        const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
-        const cert = br?.release_dates?.find(d => d.certification)?.certification;
-        setCertification(cert || 'L');
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchEpisodes = async (seasonNumber) => {
     try {

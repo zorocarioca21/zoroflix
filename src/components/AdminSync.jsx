@@ -159,6 +159,26 @@ export default function AdminSync() {
         }
     };
 
+    const prioritizeFiltered = async () => {
+        if (!window.confirm("Deseja priorizar TODOS os itens pendentes listados atualmente na busca/filtro?")) return;
+        try {
+            const res = await fetch(`/api/sync/queue/prioritize-batch`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filter: filterRef.current, search: searchRef.current })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`${data.updated} itens priorizados com sucesso!`);
+                fetchQueue();
+            } else {
+                alert("Erro ao priorizar em lote");
+            }
+        } catch (e) {
+            alert('Erro de conexão ao priorizar em lote');
+        }
+    };
+
     const editItem = async (item) => {
         const newTitle = window.prompt("Digite o novo título para este filme:", item.title);
         if (!newTitle || newTitle === item.title) return;
@@ -447,6 +467,10 @@ export default function AdminSync() {
                     <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
                     <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
                     <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'skipped' ? '#ffaa00' : '#333', color: filter === 'skipped' ? '#000' : '#fff' }}>Ignorados</button>
+                    
+                    <button onClick={prioritizeFiltered} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ff00ff', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.3rem', marginLeft: '0.5rem', fontWeight: 'bold' }}>
+                        <ChevronsUp size={16} /> Priorizar Busca
+                    </button>
                 </div>
             </div>
             

@@ -323,6 +323,40 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Rota para Priorizar em Lote
+    router.post('/queue/prioritize-batch', async (req, res) => {
+        try {
+            const { filter, search } = req.body;
+            let queryCondition = "WHERE status NOT IN ('completed', 'downloading', 'uploading')";
+            let params = [];
+
+            if (filter && filter !== 'all') {
+                if (filter === 'pending') {
+                    queryCondition += " AND status IN ('pending', 'pending_upload')";
+                } else {
+                    queryCondition += ' AND status = ?';
+                    params.push(filter);
+                }
+            }
+
+            if (search) {
+                if (!isNaN(search)) {
+                    queryCondition += ' AND (id = ? OR title LIKE ?)';
+                    params.push(search, `%${search}%`);
+                } else {
+                    queryCondition += ' AND title LIKE ?';
+                    params.push(`%${search}%`);
+                }
+            }
+
+            const result = await db.run(`UPDATE sync_queue SET priority = 1, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
+            res.json({ success: true, updated: result.changes });
+        } catch (err) {
+            console.error("Erro prioritize-batch:", err);
+            res.status(500).json({ error: 'Erro ao priorizar em lote' });
+        }
+    });
+
     // Rota para Priorizar ("Furar Fila") um item
     router.post('/queue/:id/prioritize', async (req, res) => {
         try {
