@@ -212,9 +212,10 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
                     borderRadius: '50%', padding: '15px', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                 }}>
                     <RotateCcw size={32} />
+                    <span style={{ fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}>-10s</span>
                 </div>
             )}
 
@@ -240,9 +241,10 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
                     borderRadius: '50%', padding: '15px', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                 }}>
                     <RotateCw size={32} />
+                    <span style={{ fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}>+10s</span>
                 </div>
             )}
 
