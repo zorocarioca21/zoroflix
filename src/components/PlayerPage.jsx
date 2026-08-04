@@ -31,6 +31,7 @@ export default function PlayerPage() {
   
   // Modal de Download
   const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
+  const [isCheckingTelegram, setIsCheckingTelegram] = useState(user && (user.role === 'admin' || user.role === 'vip'));
 
   // Resolvendo as informações do Canal (Nome e Logo_url)
   useEffect(() => {
@@ -225,9 +226,12 @@ export default function PlayerPage() {
               setTelegramMessageId(null);
           } catch {
               setTelegramMessageId(null);
+          } finally {
+              setIsCheckingTelegram(false);
           }
       };
       
+      setIsCheckingTelegram(true);
       findEpisode();
   }, [id, season, episode, state.title, canalId, user, seriesDetail]);
 
@@ -443,12 +447,18 @@ export default function PlayerPage() {
       {/* Player Area (Top) */}
       <div className="player-view-layout">
           <div className="fullscreen-player-wrapper">
-            {telegramMessageId ? (
+            {isCheckingTelegram ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#00ff88', flexDirection: 'column' }}>
+                    <Loader size={48} className="spin-anim" style={{ marginBottom: '1rem' }} />
+                    <span style={{ fontWeight: 'bold' }}>Carregando CineGeek VIP...</span>
+                </div>
+            ) : telegramMessageId ? (
                 <CustomVideoPlayer 
                     messageId={telegramMessageId}
                     contentId={id}
                     season={season}
                     episode={episode}
+                    onNextEpisode={season && episode ? handleNext : null}
                 />
             ) : (
                 <iframe src={playerUrl} allowFullScreen title="Zoroflix Player"></iframe>

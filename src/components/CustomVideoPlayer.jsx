@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, contentId, season, episode }) {
+export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -176,7 +176,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 ref={videoRef}
                 src={`/api/stream/telegram/${messageId}`}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
-                onClick={togglePlay}
+                onClick={() => setShowControls(prev => !prev)}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
@@ -219,19 +219,19 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 </div>
             )}
 
-            {/* Giant Center Play Button */}
-            {!isPlaying && !isBuffering && !showResumePopup && !videoError && (
-                <div onClick={togglePlay} style={{
+            {/* Center Play/Pause Button */}
+            {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && (
+                <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    zIndex: 2, cursor: 'pointer', background: 'rgba(0, 255, 136, 0.2)',
-                    borderRadius: '50%', padding: '20px', border: '3px solid #00ff88',
+                    zIndex: 2, cursor: 'pointer', background: 'rgba(0, 0, 0, 0.6)',
+                    borderRadius: '50%', padding: '20px', border: '2px solid #00ff88',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 20px rgba(0,255,136,0.3)', transition: 'transform 0.2s'
+                    boxShadow: '0 0 15px rgba(0,255,136,0.2)', transition: 'transform 0.2s'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
                 >
-                    <Play size={64} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />
+                    {isPlaying ? <Pause size={48} color="#00ff88" /> : <Play size={48} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />}
                 </div>
             )}
 
@@ -252,6 +252,24 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {isBuffering && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 3, pointerEvents: 'none' }}>
                     <Loader size={64} color="#00ff88" className="spin-anim" />
+                </div>
+            )}
+
+            {/* Next Episode Floating Button */}
+            {onNextEpisode && duration > 0 && (duration - currentTime) <= 90 && !showResumePopup && !videoError && (
+                <div 
+                    onClick={(e) => { e.stopPropagation(); onNextEpisode(); }}
+                    style={{
+                        position: 'absolute', bottom: '90px', right: '20px', zIndex: 5,
+                        background: 'rgba(0, 255, 136, 0.95)', color: '#000',
+                        padding: '12px 24px', borderRadius: '8px', cursor: 'pointer',
+                        fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px',
+                        boxShadow: '0 4px 15px rgba(0,255,136,0.4)', transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#00ff88'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(0, 255, 136, 0.95)'; }}
+                >
+                    Próximo Episódio ⏭
                 </div>
             )}
 
@@ -306,9 +324,6 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 {/* Bottom Buttons */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <button onClick={togglePlay} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
-                            {isPlaying ? <Pause size={28} /> : <Play size={28} />}
-                        </button>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <button onClick={toggleMute} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
