@@ -49,8 +49,17 @@ export default function AdminSync() {
         const newSocket = io({ path: '/socket.io' });
         
         newSocket.on('sync_state', (data) => {
-            setState(data);
-            fetchQueue(filterRef.current, searchRef.current, sortRef.current); // Atualiza fila usando os valores mais recentes das Refs
+            setState(prev => {
+                // Só atualiza a fila no banco de dados se houver mudança de ID de tarefa (evita flood de 10 requests por segundo pelo progresso)
+                if (
+                    prev.downloadTask?.dbId !== data.downloadTask?.dbId ||
+                    prev.uploadTaskDocker?.dbId !== data.uploadTaskDocker?.dbId ||
+                    prev.uploadTaskPython?.dbId !== data.uploadTaskPython?.dbId
+                ) {
+                    fetchQueue(filterRef.current, searchRef.current, sortRef.current);
+                }
+                return data;
+            });
         });
 
         setSocket(newSocket);
