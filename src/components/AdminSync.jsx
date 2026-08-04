@@ -21,17 +21,26 @@ export default function AdminSync() {
         sortRef.current = sortSize;
     }, [filter, searchQuery, sortSize]);
 
+    const fetchCounterRef = useRef(0);
+
     const fetchQueue = async (currentFilter = filterRef.current, currentSearch = searchRef.current, currentSort = sortRef.current) => {
+        const currentFetchId = ++fetchCounterRef.current;
         try {
             const res = await fetch(`/api/sync/queue?filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}&sortSize=${currentSort}`);
             const data = await res.json();
+            
+            // Ignora a resposta se um fetch mais recente já foi disparado
+            if (currentFetchId !== fetchCounterRef.current) return;
+
             if (res.ok) {
                 setQueue(data);
             } else {
                 setQueue({ items: [], pending: 0, completed: 0, total: 0, error: data.error });
             }
         } catch (e) {
-            setQueue({ items: [], pending: 0, completed: 0, total: 0, error: 'Erro de conexão' });
+            if (currentFetchId === fetchCounterRef.current) {
+                setQueue({ items: [], pending: 0, completed: 0, total: 0, error: 'Erro de conexão' });
+            }
         }
     };
 
@@ -426,11 +435,11 @@ export default function AdminSync() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button onClick={() => { setFilter('all'); fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
-                    <button onClick={() => { setFilter('pending'); fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
-                    <button onClick={() => { setFilter('completed'); fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
-                    <button onClick={() => { setFilter('error'); fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
-                    <button onClick={() => { setFilter('skipped'); fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'skipped' ? '#ffaa00' : '#333', color: filter === 'skipped' ? '#000' : '#fff' }}>Ignorados</button>
+                    <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
+                    <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
+                    <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
+                    <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
+                    <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'skipped' ? '#ffaa00' : '#333', color: filter === 'skipped' ? '#000' : '#fff' }}>Ignorados</button>
                 </div>
             </div>
             
@@ -451,6 +460,7 @@ export default function AdminSync() {
                                 onClick={() => {
                                     const nextSort = sortSize === '' ? 'desc' : (sortSize === 'desc' ? 'asc' : '');
                                     setSortSize(nextSort);
+                                    sortRef.current = nextSort;
                                     fetchQueue(filter, searchQuery, nextSort);
                                 }}
                             >
