@@ -5,6 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import readline from 'readline';
+import multer from 'multer';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +19,50 @@ export default function syncRoutes(db, io) {
     
     // Inicia automaticamente o worker assim que o servidor ligar
     startWorker();
+
+    // Configuração do Multer para Upload Manual
+    const upload = multer({ 
+        dest: path.join(os.tmpdir(), 'manual_uploads'), 
+        limits: { fileSize: 20 * 1024 * 1024 * 1024 } // 20GB limit
+    });
+
+    // Rota de Upload Manual
+    router.post('/manual-upload', upload.single('video'), async (req, res) => {
+        try {
+            if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+            
+            const title = req.body.title || 'Upload Manual Sem Título';
+            const originalExt = req.file.originalname.split('.').pop() || 'mp4';
+            const fakeUrl = `local://manual-upload.${originalExt}`;
+            
+            // 1. Insere no DB para pegar o ID
+            const result = await db.run(
+                "INSERT INTO sync_queue (title, url, status, file_size) VALUES (?, ?, 'pending_upload', ?)",
+                [title, fakeUrl, req.file.size]
+            );
+            const dbId = result.lastID;
+            
+            // 2. Renomeia e move para o tmp com o formato esperado pelo worker
+            const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const finalTmpPath = path.join(os.tmpdir(), `${safeTitle}_${dbId}.${originalExt}`);
+            
+            // Cria diretório de destino do multer se não existir
+            if (!fs.existsSync(path.dirname(req.file.path))) {
+                fs.mkdirSync(path.dirname(req.file.path), { recursive: true });
+            }
+            
+            // Move o arquivo pro destino final
+            fs.renameSync(req.file.path, finalTmpPath);
+            
+            res.json({ success: true, message: 'Upload manual enviado para a fila!', id: dbId });
+        } catch (err) {
+            console.error("Erro no manual-upload:", err);
+            if (req.file && fs.existsSync(req.file.path)) {
+                try { fs.unlinkSync(req.file.path); } catch(e){}
+            }
+            res.status(500).json({ error: 'Erro interno no upload.' });
+        }
+    });
 
     // Rota para exportar catálogo
     router.get('/export', async (req, res) => {
