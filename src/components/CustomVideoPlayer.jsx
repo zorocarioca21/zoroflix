@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode }) {
     const videoRef = useRef(null);
@@ -159,6 +159,19 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         }
     };
 
+    const togglePip = async () => {
+        if (!videoRef.current) return;
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else if (document.pictureInPictureEnabled) {
+                await videoRef.current.requestPictureInPicture();
+            }
+        } catch (err) {
+            console.error(`Erro ao ativar PiP: ${err.message}`);
+        }
+    };
+
     const handleVolumeChange = (e) => {
         const val = parseFloat(e.target.value);
         videoRef.current.volume = val;
@@ -232,12 +245,13 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {showControls && !videoError && !showResumePopup && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
-                    zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
-                    borderRadius: '50%', padding: '15px', color: '#fff',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                    zIndex: 2, cursor: 'pointer', background: 'transparent',
+                    borderRadius: '50%', padding: '5px', color: '#fff',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    textShadow: '0 2px 5px rgba(0,0,0,0.8)'
                 }}>
-                    <RotateCcw size={32} />
-                    <span style={{ fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}>-10s</span>
+                    <RotateCcw size={isFullscreen ? 32 : 24} />
+                    <span style={{ fontSize: isFullscreen ? '0.8rem' : '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>-10s</span>
                 </div>
             )}
 
@@ -261,12 +275,13 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {showControls && !videoError && !showResumePopup && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
-                    zIndex: 2, cursor: 'pointer', background: 'rgba(0,0,0,0.5)',
-                    borderRadius: '50%', padding: '15px', color: '#fff',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                    zIndex: 2, cursor: 'pointer', background: 'transparent',
+                    borderRadius: '50%', padding: '5px', color: '#fff',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    textShadow: '0 2px 5px rgba(0,0,0,0.8)'
                 }}>
-                    <RotateCw size={32} />
-                    <span style={{ fontSize: '0.8rem', marginTop: '4px', fontWeight: 'bold' }}>+10s</span>
+                    <RotateCw size={isFullscreen ? 32 : 24} />
+                    <span style={{ fontSize: isFullscreen ? '0.8rem' : '0.7rem', marginTop: '4px', fontWeight: 'bold' }}>+10s</span>
                 </div>
             )}
 
@@ -360,13 +375,18 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                         </div>
                     </div>
 
-                    <button onClick={toggleFullscreen} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
-                        {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
-                    </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <button onClick={togglePip} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Minimizar (PiP)">
+                                <PictureInPicture size={22} />
+                            </button>
+                            <button onClick={toggleFullscreen} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                                {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <style>{`
+                <style>{`
                 .spin-anim { animation: spin 1s linear infinite; }
                 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             `}</style>

@@ -28,6 +28,8 @@ export default function PlayerPage() {
   const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
   const [isWatched, setIsWatched] = useState(false);
   const [telegramMessageId, setTelegramMessageId] = useState(null);
+  const [languageOptions, setLanguageOptions] = useState(null); // { dub: id, leg: id }
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   
   // Modal de Download
   const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
@@ -185,23 +187,60 @@ export default function PlayerPage() {
       const token = localStorage.getItem('cinegeek_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
+      const getBestMatches = (items, releaseYear = null) => {
+          const validItems = items.filter(i => i.status === 'completed' && i.telegram_message_id);
+          if (validItems.length === 0) return null;
+          
+          let targetItems = validItems;
+          if (releaseYear) {
+              const withYear = validItems.filter(i => i.title.includes(releaseYear));
+              if (withYear.length > 0) targetItems = withYear;
+          }
+          
+          let dub = null;
+          let leg = null;
+          
+          for (const i of targetItems) {
+              const isLeg = /leg|legendado/i.test(i.title);
+              if (isLeg && !leg) leg = i.telegram_message_id;
+              if (!isLeg && !dub) dub = i.telegram_message_id;
+          }
+          
+          return { dub, leg };
+      };
+
+      const handleMatches = (matches) => {
+          if (!matches) {
+              setTelegramMessageId(null);
+              return;
+          }
+          if (matches.dub && matches.leg) {
+              setLanguageOptions(matches);
+              setShowLanguageSelector(true);
+              setTelegramMessageId(null);
+          } else {
+              setTelegramMessageId(matches.dub || matches.leg);
+          }
+      };
+
       const findEpisode = async () => {
           try {
               if (season && episode) {
-                  // Busca específica: inclui S01 E01 na query para pegar direto o episódio certo
                   const s = String(season).padStart(2, '0');
                   const e = String(episode).padStart(2, '0');
                   const specificSearch = `${seriesName} S${s} E${e}`;
                   
-                  const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(specificSearch)}&limit=10`, { headers });
+                  const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(specificSearch)}&limit=20`, { headers });
                   const data = await res.json();
                   
                   if (data?.items?.length > 0) {
-                      const found = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
-                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
+                      const matches = getBestMatches(data.items);
+                      if (matches && (matches.dub || matches.leg)) {
+                          handleMatches(matches);
+                          return;
+                      }
                   }
                   
-                  // Fallback: busca pelo nome da série e filtra localmente
                   const res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=500`, { headers });
                   const data2 = await res2.json();
                   
@@ -213,48 +252,30 @@ export default function PlayerPage() {
                       ];
                       
                       const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
-                      let bestMatch = null;
+                      const validItems = data2.items.filter(i => {
+                          if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                          return patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()));
+                      });
                       
-                      for (const i of data2.items) {
-                          if (i.status !== 'completed' || !i.telegram_message_id) continue;
-                          
-                          const hasPattern = patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()));
-                          if (!hasPattern) continue;
-                          
-                          // Se o título no Telegram tiver o ano, é o match perfeito
-                          if (releaseYear && i.title.includes(releaseYear)) {
-                              bestMatch = i;
-                              break;
+                      if (validItems.length > 0) {
+                          const matches = getBestMatches(validItems, releaseYear);
+                          if (matches && (matches.dub || matches.leg)) {
+                              handleMatches(matches);
+                              return;
                           }
-                          
-                          if (!bestMatch) bestMatch = i; // Fallback para o primeiro encontrado
                       }
-                      
-                      if (bestMatch) { setTelegramMessageId(bestMatch.telegram_message_id); return; }
                   }
               } else {
-                  // Filme: busca simples pelo nome
                   const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=50`, { headers });
                   const data = await res.json();
                   
                   if (data?.items?.length > 0) {
                       const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
-                      let bestMatch = null;
-                      
-                      for (const i of data.items) {
-                          if (i.status !== 'completed' || !i.telegram_message_id) continue;
-                          
-                          // Se o título do telegram contém o ano exato de lançamento, é prioridade total
-                          if (releaseYear && i.title.includes(releaseYear)) {
-                              bestMatch = i;
-                              break;
-                          }
-                          
-                          // Como fallback, pegamos o primeiro que aparecer
-                          if (!bestMatch) bestMatch = i;
+                      const matches = getBestMatches(data.items, releaseYear);
+                      if (matches && (matches.dub || matches.leg)) {
+                          handleMatches(matches);
+                          return;
                       }
-                      
-                      if (bestMatch) { setTelegramMessageId(bestMatch.telegram_message_id); return; }
                   }
               }
               setTelegramMessageId(null);
@@ -486,6 +507,28 @@ export default function PlayerPage() {
                     <Loader size={48} className="spin-anim" style={{ marginBottom: '1rem' }} />
                     <span style={{ fontWeight: 'bold' }}>Carregando CineGeek VIP...</span>
                 </div>
+            ) : showLanguageSelector ? (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
+                    <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                            onClick={() => { setTelegramMessageId(languageOptions.dub); setShowLanguageSelector(false); }}
+                            style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                        >
+                            🎤 Dublado
+                        </button>
+                        <button 
+                            onClick={() => { setTelegramMessageId(languageOptions.leg); setShowLanguageSelector(false); }}
+                            style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                        >
+                            📝 Legendado
+                        </button>
+                    </div>
+                </div>
             ) : telegramMessageId ? (
                 <CustomVideoPlayer 
                     messageId={telegramMessageId}
@@ -566,6 +609,11 @@ export default function PlayerPage() {
             </div>
             {!canalId && (
                 <div className="player-nav-group" style={{ width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: '0.8rem', marginTop: '0.5rem' }}>
+                    {languageOptions && languageOptions.dub && languageOptions.leg && (
+                        <button className="nav-btn-modern" onClick={() => setShowLanguageSelector(true)} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
+                            Trocar Idioma
+                        </button>
+                    )}
                     {season && (
                         <>
                             <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>
