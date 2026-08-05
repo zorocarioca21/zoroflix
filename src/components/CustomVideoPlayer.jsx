@@ -98,15 +98,21 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             }
         };
 
+        const handlePointerLeave = (e) => {
+            // Ignora pointerleave se for touch (o dedo sair da tela nao deve esconder os controles instantaneamente)
+            if (e && e.pointerType !== 'mouse') return;
+            if (isPlaying) setShowControls(false);
+        };
+
         const el = containerRef.current;
         if (el) {
             el.addEventListener('pointermove', handlePointerMove);
-            el.addEventListener('pointerleave', () => { if(isPlaying) setShowControls(false) });
+            el.addEventListener('pointerleave', handlePointerLeave);
         }
         return () => {
             if (el) {
                 el.removeEventListener('pointermove', handlePointerMove);
-                el.removeEventListener('pointerleave', () => { if(isPlaying) setShowControls(false) });
+                el.removeEventListener('pointerleave', handlePointerLeave);
             }
         };
     }, [isPlaying]);
