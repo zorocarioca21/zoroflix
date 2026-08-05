@@ -211,19 +211,50 @@ export default function PlayerPage() {
                           `S${season}E${episode}`, `S${season} E${episode}`,
                           `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
                       ];
-                      const found = data2.items.find(i => 
-                          i.status === 'completed' && i.telegram_message_id && 
-                          patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()))
-                      );
-                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
+                      
+                      const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
+                      let bestMatch = null;
+                      
+                      for (const i of data2.items) {
+                          if (i.status !== 'completed' || !i.telegram_message_id) continue;
+                          
+                          const hasPattern = patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()));
+                          if (!hasPattern) continue;
+                          
+                          // Se o título no Telegram tiver o ano, é o match perfeito
+                          if (releaseYear && i.title.includes(releaseYear)) {
+                              bestMatch = i;
+                              break;
+                          }
+                          
+                          if (!bestMatch) bestMatch = i; // Fallback para o primeiro encontrado
+                      }
+                      
+                      if (bestMatch) { setTelegramMessageId(bestMatch.telegram_message_id); return; }
                   }
               } else {
                   // Filme: busca simples pelo nome
                   const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=50`, { headers });
                   const data = await res.json();
+                  
                   if (data?.items?.length > 0) {
-                      const found = data.items.find(i => i.status === 'completed' && i.telegram_message_id);
-                      if (found) { setTelegramMessageId(found.telegram_message_id); return; }
+                      const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
+                      let bestMatch = null;
+                      
+                      for (const i of data.items) {
+                          if (i.status !== 'completed' || !i.telegram_message_id) continue;
+                          
+                          // Se o título do telegram contém o ano exato de lançamento, é prioridade total
+                          if (releaseYear && i.title.includes(releaseYear)) {
+                              bestMatch = i;
+                              break;
+                          }
+                          
+                          // Como fallback, pegamos o primeiro que aparecer
+                          if (!bestMatch) bestMatch = i;
+                      }
+                      
+                      if (bestMatch) { setTelegramMessageId(bestMatch.telegram_message_id); return; }
                   }
               }
               setTelegramMessageId(null);
