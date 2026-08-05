@@ -233,8 +233,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
             <video
                 ref={videoRef}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
-                onClick={handleVideoClick}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 0, display: videoError ? 'none' : 'block' }}
                 playsInline
                 webkit-playsinline="true"
                 crossOrigin="anonymous"
@@ -254,6 +253,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             >
                 <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
             </video>
+
+            {/* Click Catcher Overlay - Garante que 100% da tela registre os cliques, até fora do video */}
+            <div 
+                onClick={handleVideoClick} 
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: 'pointer' }} 
+            />
 
             {/* Error Message */}
             {videoError && (
