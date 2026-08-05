@@ -13,6 +13,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [isBuffering, setIsBuffering] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const controlsTimeoutRef = useRef(null);
+    const lastMousePos = useRef({x: 0, y: 0});
     
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
@@ -75,7 +76,15 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
     // Auto-hide controls
     useEffect(() => {
-        const resetControls = () => {
+        const handleMouseMove = (e) => {
+            // Evita que um simples "click" (que move o mouse 1px) faça os controles aparecerem de novo instantaneamente
+            if (e && Math.abs(e.clientX - lastMousePos.current.x) < 5 && Math.abs(e.clientY - lastMousePos.current.y) < 5) {
+                return; 
+            }
+            if (e) {
+                lastMousePos.current = { x: e.clientX, y: e.clientY };
+            }
+
             setShowControls(true);
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
             if (isPlaying) {
@@ -85,12 +94,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
         const el = containerRef.current;
         if (el) {
-            el.addEventListener('mousemove', resetControls);
+            el.addEventListener('mousemove', handleMouseMove);
             el.addEventListener('mouseleave', () => { if(isPlaying) setShowControls(false) });
         }
         return () => {
             if (el) {
-                el.removeEventListener('mousemove', resetControls);
+                el.removeEventListener('mousemove', handleMouseMove);
                 el.removeEventListener('mouseleave', () => { if(isPlaying) setShowControls(false) });
             }
         };
@@ -114,6 +123,19 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
         };
     }, []);
+
+    const handleVideoClick = (e) => {
+        e.stopPropagation();
+        setShowControls(prev => {
+            const nextState = !prev;
+            if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+            
+            if (nextState && isPlaying) {
+                controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+            }
+            return nextState;
+        });
+    };
 
     const togglePlay = () => {
         if (videoError) return;
@@ -205,7 +227,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             <video
                 ref={videoRef}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: videoError ? 'none' : 'block' }}
-                onClick={() => setShowControls(prev => !prev)}
+                onClick={handleVideoClick}
                 playsInline
                 webkit-playsinline="true"
                 crossOrigin="anonymous"
