@@ -23,6 +23,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
+import analyticsRoutes from './backend/routes/analytics.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -50,6 +51,7 @@ initDB().then((db) => {
     app.use('/api/epg', epgRoutes());
     app.use('/api/downloads', downloadsRoutes(db));
     app.use('/api/stream', streamRoutes(db));
+    app.use('/api/analytics', analyticsRoutes(db));
 
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));

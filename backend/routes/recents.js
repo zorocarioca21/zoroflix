@@ -88,6 +88,15 @@ export default function recentsRoutes(db) {
                     [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, resume_time || 0]
                 );
 
+                // Incrementa contador global de views em content_analytics (apenas uma vez por usuário/sessão nova para esse conteúdo)
+                const analyticsExist = await db.get('SELECT content_id FROM content_analytics WHERE content_id = ?', [content_id]);
+                if (analyticsExist) {
+                    await db.run('UPDATE content_analytics SET views = views + 1, last_viewed_at = CURRENT_TIMESTAMP WHERE content_id = ?', [content_id]);
+                } else {
+                    await db.run('INSERT INTO content_analytics (content_id, media_type, title, poster_path, views) VALUES (?, ?, ?, ?, 1)', 
+                        [content_id, media_type, title, poster_path]);
+                }
+
                 // Limpa os excedentes (mantém apenas os 10 mais recentes)
                 if (req.user_id) {
                     await db.run(`

@@ -120,6 +120,26 @@ export async function initDB() {
         )
     `);
 
+    // Tabelas de Analytics
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS content_analytics (
+            content_id TEXT PRIMARY KEY,
+            media_type TEXT,
+            title TEXT,
+            poster_path TEXT,
+            views INTEGER DEFAULT 1,
+            last_viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS search_analytics (
+            query TEXT PRIMARY KEY,
+            count INTEGER DEFAULT 1,
+            last_searched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Tabela de visualizações de página (page_views)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS page_views (

@@ -244,6 +244,14 @@ function AppContent() {
     if (!searchQuery) return;
     setIsSearching(true);
     navigate('/search');
+    
+    // Registrar analytics de busca
+    fetch('/api/analytics/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: searchQuery })
+    }).catch(() => {});
+
     try {
       const fetchOriginal = fetch(`${BASE_URL}/search/multi?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(searchQuery)}`).then(r => r.json());
       const [dataOrig] = await Promise.all([fetchOriginal]);
