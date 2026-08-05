@@ -121,7 +121,6 @@ export default function recentsRoutes(db) {
                         )
                     `, [req.uuid, req.uuid, MAX_RECENTS]);
                 }
-            }
 
             res.json({ success: true, message: 'Histórico atualizado.' });
         } catch (e) {
