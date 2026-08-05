@@ -77,11 +77,13 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
     // Auto-hide controls
     useEffect(() => {
-        const handleMouseMove = (e) => {
-            // Se o usuario acabou de clicar para esconder, ignora o mousemove por meio segundo
+        const handlePointerMove = (e) => {
+            // No celular (touch), o tap simula um movimento que entra em conflito com o click. 
+            // Só vamos considerar o "mover" se for com mouse de verdade.
+            if (e && e.pointerType !== 'mouse') return;
+
             if (Date.now() - lastClickTime.current < 500) return;
 
-            // Evita que um simples "click" (que move o mouse 1px) faça os controles aparecerem de novo instantaneamente
             if (e && Math.abs(e.clientX - lastMousePos.current.x) < 5 && Math.abs(e.clientY - lastMousePos.current.y) < 5) {
                 return; 
             }
@@ -98,13 +100,13 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
         const el = containerRef.current;
         if (el) {
-            el.addEventListener('mousemove', handleMouseMove);
-            el.addEventListener('mouseleave', () => { if(isPlaying) setShowControls(false) });
+            el.addEventListener('pointermove', handlePointerMove);
+            el.addEventListener('pointerleave', () => { if(isPlaying) setShowControls(false) });
         }
         return () => {
             if (el) {
-                el.removeEventListener('mousemove', handleMouseMove);
-                el.removeEventListener('mouseleave', () => { if(isPlaying) setShowControls(false) });
+                el.removeEventListener('pointermove', handlePointerMove);
+                el.removeEventListener('pointerleave', () => { if(isPlaying) setShowControls(false) });
             }
         };
     }, [isPlaying]);
