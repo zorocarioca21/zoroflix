@@ -275,7 +275,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
-                    borderRadius: '50%', padding: '5px', color: '#fff',
+                    color: '#fff',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     textShadow: '0 2px 5px rgba(0,0,0,0.8)'
                 }}>
@@ -288,10 +288,10 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && (
                 <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    zIndex: 2, cursor: 'pointer', background: 'rgba(0, 0, 0, 0.6)',
-                    borderRadius: '50%', padding: isFullscreen ? '20px' : '15px', border: '2px solid #00ff88',
+                    zIndex: 2, cursor: 'pointer', background: 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 0 15px rgba(0,255,136,0.2)', transition: 'transform 0.2s'
+                    transition: 'transform 0.2s',
+                    filter: 'drop-shadow(0px 4px 8px rgba(0,0,0,0.6))'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
@@ -305,7 +305,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
-                    borderRadius: '50%', padding: '5px', color: '#fff',
+                    color: '#fff',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     textShadow: '0 2px 5px rgba(0,0,0,0.8)'
                 }}>
