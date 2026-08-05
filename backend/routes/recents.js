@@ -82,13 +82,20 @@ export default function recentsRoutes(db) {
                     [title, poster_path, season || null, episode || null, resume_time || 0, existing.id]
                 );
             } else {
-                // Não existe: insere novo registro
+                // Não existe no recents: insere novo registro
                 await db.run(
                     'INSERT INTO watch_history (uuid, user_id, content_id, media_type, title, poster_path, season, episode, resume_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, resume_time || 0]
                 );
+            }
 
-                // Incrementa contador global de views em content_analytics (apenas uma vez por usuário/sessão nova para esse conteúdo)
+            // --- SISTEMA DE ESTATÍSTICAS GLOBAIS (Top Assistidos) ---
+            // Tenta inserir na tabela de views únicos do usuário. Se falhar por UNIQUE constraint, ele já contabilizou antes na vida!
+            const identifier = req.user_id ? `user_${req.user_id}` : `uuid_${req.uuid}`;
+            try {
+                await db.run('INSERT INTO user_content_views (identifier, content_id) VALUES (?, ?)', [identifier, content_id]);
+                
+                // Se chegou aqui, é um view totalmente inédito dessa pessoa nesse filme/série!
                 const analyticsExist = await db.get('SELECT content_id FROM content_analytics WHERE content_id = ?', [content_id]);
                 if (analyticsExist) {
                     await db.run('UPDATE content_analytics SET views = views + 1, last_viewed_at = CURRENT_TIMESTAMP WHERE content_id = ?', [content_id]);
@@ -96,8 +103,11 @@ export default function recentsRoutes(db) {
                     await db.run('INSERT INTO content_analytics (content_id, media_type, title, poster_path, views) VALUES (?, ?, ?, ?, 1)', 
                         [content_id, media_type, title, poster_path]);
                 }
+            } catch (err) {
+                // Erro esperado: UNIQUE constraint falhou (usuário já assistiu em algum momento do passado)
+            }
 
-                // Limpa os excedentes (mantém apenas os 10 mais recentes)
+            // Limpa os excedentes (mantém apenas os 10 mais recentes)
                 if (req.user_id) {
                     await db.run(`
                         DELETE FROM watch_history WHERE user_id = ? AND id NOT IN (

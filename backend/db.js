@@ -140,6 +140,15 @@ export async function initDB() {
         )
     `);
 
+    // Tabela para evitar votos duplos de visualização (1 view por usuário por conteúdo)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS user_content_views (
+            identifier TEXT,
+            content_id TEXT,
+            PRIMARY KEY (identifier, content_id)
+        )
+    `);
+
     // Tabela de visualizações de página (page_views)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS page_views (
