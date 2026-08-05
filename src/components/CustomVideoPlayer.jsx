@@ -14,6 +14,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [showControls, setShowControls] = useState(true);
     const controlsTimeoutRef = useRef(null);
     const lastMousePos = useRef({x: 0, y: 0});
+    const lastClickTime = useRef(0);
     
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
@@ -77,6 +78,9 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     // Auto-hide controls
     useEffect(() => {
         const handleMouseMove = (e) => {
+            // Se o usuario acabou de clicar para esconder, ignora o mousemove por meio segundo
+            if (Date.now() - lastClickTime.current < 500) return;
+
             // Evita que um simples "click" (que move o mouse 1px) faça os controles aparecerem de novo instantaneamente
             if (e && Math.abs(e.clientX - lastMousePos.current.x) < 5 && Math.abs(e.clientY - lastMousePos.current.y) < 5) {
                 return; 
@@ -126,6 +130,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
     const handleVideoClick = (e) => {
         e.stopPropagation();
+        lastClickTime.current = Date.now();
         setShowControls(prev => {
             const nextState = !prev;
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -282,14 +287,14 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                     zIndex: 2, cursor: 'pointer', background: 'rgba(0, 0, 0, 0.6)',
-                    borderRadius: '50%', padding: '20px', border: '2px solid #00ff88',
+                    borderRadius: '50%', padding: isFullscreen ? '20px' : '15px', border: '2px solid #00ff88',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 0 15px rgba(0,255,136,0.2)', transition: 'transform 0.2s'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1.1)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'translate(-50%, -50%) scale(1)'}
                 >
-                    {isPlaying ? <Pause size={48} color="#00ff88" /> : <Play size={48} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />}
+                    {isPlaying ? <Pause size={isFullscreen ? 48 : 32} color="#00ff88" /> : <Play size={isFullscreen ? 48 : 32} color="#00ff88" fill="#00ff88" style={{ marginLeft: '8px' }} />}
                 </div>
             )}
 
@@ -365,6 +370,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 position: 'absolute', bottom: 0, left: 0, right: 0, padding: '2rem 1rem 1rem 1rem',
                 background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
                 opacity: showControls || !isPlaying ? 1 : 0,
+                pointerEvents: showControls || !isPlaying ? 'auto' : 'none',
                 transition: 'opacity 0.3s ease',
                 display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 5
             }}>
