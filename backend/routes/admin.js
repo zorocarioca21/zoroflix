@@ -1,10 +1,52 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import fs from 'fs/promises';
+import path from 'path';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
 export default function adminRoutes(db) {
+    // Endpoint para obter o tamanho da pasta temp
+    router.get('/temp-stats', async (req, res) => {
+        try {
+            const tempPath = path.join(process.cwd(), 'temp');
+            let size = 0;
+            let count = 0;
+            try {
+                const files = await fs.readdir(tempPath);
+                for (const file of files) {
+                    const stat = await fs.stat(path.join(tempPath, file));
+                    size += stat.size;
+                    count++;
+                }
+            } catch (err) {
+                // Se a pasta não existir ou estiver vazia
+            }
+            res.json({ size, count });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao ler pasta temp' });
+        }
+    });
+
+    // Endpoint para limpar a pasta temp
+    router.post('/clear-temp', async (req, res) => {
+        try {
+            const tempPath = path.join(process.cwd(), 'temp');
+            try {
+                const files = await fs.readdir(tempPath);
+                for (const file of files) {
+                    await fs.unlink(path.join(tempPath, file));
+                }
+            } catch (err) {
+                // ignora
+            }
+            res.json({ success: true, message: 'Cache limpo com sucesso!' });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao limpar cache' });
+        }
+    });
+
     // Ver denúncias com suporte a paginação e busca
     router.get('/reports', async (req, res) => {
         const { limit = 5, offset = 0, search = '' } = req.query;

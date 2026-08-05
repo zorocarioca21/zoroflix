@@ -18,6 +18,7 @@ export default function AdminPanel() {
     const [apiKeys, setApiKeys] = useState([]);
     const [newKeyName, setNewKeyName] = useState('');
     const [newKeyResult, setNewKeyResult] = useState(null);
+    const [tempStats, setTempStats] = useState({ size: 0, count: 0 });
 
     // Estados de Listagem
     const [reports, setReports] = useState([]);
@@ -77,7 +78,10 @@ export default function AdminPanel() {
         if (activeTab === 'moderated') fetchModerated(true);
         if (activeTab === 'hidden') fetchHidden(true);
         if (activeTab === 'users') fetchUsersList(true);
-        if (activeTab === 'settings') fetchConfigs();
+        if (activeTab === 'settings') {
+            fetchConfigs();
+            fetchTempStats();
+        }
         if (activeTab === 'analytics') {
             fetchStats();
             fetchLive();
@@ -200,6 +204,27 @@ export default function AdminPanel() {
             body: JSON.stringify({ key, enabled: newValue })
         });
         if (resp.ok) setConfigs(prev => ({ ...prev, [key]: newValue }));
+    };
+
+    // Temp Cache
+    const fetchTempStats = async () => {
+        try {
+            const resp = await fetch('/api/admin/temp-stats');
+            const data = await resp.json();
+            setTempStats(data);
+        } catch (err) { console.error(err); }
+    };
+
+    const clearTempCache = async () => {
+        if (!window.confirm('Tem certeza que deseja apagar todos os arquivos do cache temporário?')) return;
+        try {
+            const resp = await fetch('/api/admin/clear-temp', { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                alert(data.message);
+                fetchTempStats();
+            }
+        } catch (err) { console.error(err); }
     };
 
     // API Keys
@@ -577,6 +602,20 @@ export default function AdminPanel() {
                             <div className="settings-row-card warning">
                                 <div className="setting-info"><h3>Bloquear F12</h3><p>Impede que inspecionem a página.</p></div>
                                 <button className={`btn-toggle-ads ${configs.anti_devtools ? 'active' : ''}`} onClick={() => updateConfig('anti_devtools')}>{configs.anti_devtools ? 'ON' : 'OFF'}</button>
+                            </div>
+                        </div>
+
+                        <h2 style={{ marginTop: '3rem' }}>Gerenciamento de Servidor</h2>
+                        <div className="settings-grid-admin">
+                            <div className="settings-row-card">
+                                <div className="setting-info">
+                                    <h3>Cache de Temporários</h3>
+                                    <p>Tamanho atual da pasta temp: <strong>{(tempStats.size / 1024 / 1024).toFixed(2)} MB</strong> ({tempStats.count} arquivos)</p>
+                                    <p style={{ fontSize: '0.8rem', color: '#888' }}>Arquivos de vídeo baixados parcialmente.</p>
+                                </div>
+                                <button className="btn-action danger" onClick={clearTempCache}>
+                                    <Trash2 size={18} /> Limpar Cache
+                                </button>
                             </div>
                         </div>
                     </div>
