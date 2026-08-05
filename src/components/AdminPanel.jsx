@@ -663,73 +663,6 @@ export default function AdminPanel() {
                             </table>
                         </div>
 
-                        {/* Top Conteúdos e Top Buscas */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '3rem' }}>
-                            {/* Top Buscas */}
-                            <div>
-                                <div className="admin-tab-header">
-                                    <h2><Search size={20} /> Termos Mais Buscados</h2>
-                                </div>
-                                <div className="admin-table-wrap">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Termo de Busca</th>
-                                                <th style={{textAlign: 'right'}}>Pesquisas</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {advancedStats.topSearches.length === 0 ? (
-                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhuma busca registrada.</td></tr>
-                                            ) : advancedStats.topSearches.map((s, index) => (
-                                                <tr key={index}>
-                                                    <td><strong>{s.query}</strong></td>
-                                                    <td style={{textAlign: 'right', color: 'var(--primary)'}}><strong>{s.count}</strong></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Top Assistidos */}
-                            <div>
-                                <div className="admin-tab-header">
-                                    <h2><Film size={20} /> Conteúdos Mais Assistidos</h2>
-                                </div>
-                                <div className="admin-table-wrap">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Conteúdo</th>
-                                                <th style={{textAlign: 'right'}}>Views</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {advancedStats.topWatched.length === 0 ? (
-                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhum conteúdo registrado.</td></tr>
-                                            ) : advancedStats.topWatched.map((w, index) => (
-                                                <tr key={index}>
-                                                    <td style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        {w.poster_path ? (
-                                                            <img src={w.poster_path.startsWith('http') ? w.poster_path : `https://image.tmdb.org/t/p/w92${w.poster_path}`} style={{ width: '40px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} alt="" />
-                                                        ) : (
-                                                            <div style={{ width: '40px', height: '60px', background: '#333', borderRadius: '4px' }}></div>
-                                                        )}
-                                                        <div>
-                                                            <strong>{w.title}</strong>
-                                                            <div style={{fontSize: '0.75rem', color: '#aaa'}}>{w.media_type === 'movie' ? 'Filme' : 'Série'}</div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{textAlign: 'right', verticalAlign: 'middle', color: '#4caf50'}}><strong>{w.views}</strong></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 )}
 
@@ -834,6 +767,74 @@ export default function AdminPanel() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Top Conteúdos e Top Buscas */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '3rem' }}>
+                            {/* Top Buscas */}
+                            <div>
+                                <div className="admin-tab-header">
+                                    <h2><Search size={20} /> Termos Mais Buscados</h2>
+                                </div>
+                                <div className="admin-table-wrap">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Termo de Busca</th>
+                                                <th style={{textAlign: 'right'}}>Pesquisas</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {advancedStats.topSearches.length === 0 ? (
+                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhuma busca registrada.</td></tr>
+                                            ) : advancedStats.topSearches.map((s, index) => (
+                                                <tr key={index}>
+                                                    <td><strong>{s.query}</strong></td>
+                                                    <td style={{textAlign: 'right', color: 'var(--primary)'}}><strong>{s.count}</strong></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Top Assistidos */}
+                            <div>
+                                <div className="admin-tab-header">
+                                    <h2><Film size={20} /> Conteúdos Mais Assistidos</h2>
+                                </div>
+                                <div className="admin-table-wrap">
+                                    <table className="admin-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Conteúdo</th>
+                                                <th style={{textAlign: 'right'}}>Views</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {advancedStats.topWatched.length === 0 ? (
+                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhum conteúdo registrado.</td></tr>
+                                            ) : advancedStats.topWatched.map((w, index) => (
+                                                <tr key={index}>
+                                                    <td style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        {w.poster_path ? (
+                                                            <img src={w.poster_path.startsWith('http') ? w.poster_path : `https://image.tmdb.org/t/p/w92${w.poster_path}`} style={{ width: '40px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} alt="" />
+                                                        ) : (
+                                                            <div style={{ width: '40px', height: '60px', background: '#333', borderRadius: '4px' }}></div>
+                                                        )}
+                                                        <div>
+                                                            <strong>{w.title}</strong>
+                                                            <div style={{fontSize: '0.75rem', color: '#aaa'}}>{w.media_type === 'movie' ? 'Filme' : 'Série'}</div>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{textAlign: 'right', verticalAlign: 'middle', color: '#4caf50'}}><strong>{w.views}</strong></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 )}
 
