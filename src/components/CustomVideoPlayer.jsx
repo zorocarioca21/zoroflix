@@ -263,7 +263,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {/* Click Catcher Overlay - Garante que 100% da tela registre os cliques, até fora do video */}
             <div 
                 onClick={handleVideoClick} 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: 'pointer' }} 
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }} 
             />
 
             {/* Error Message */}
