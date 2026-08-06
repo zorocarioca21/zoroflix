@@ -236,7 +236,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     };
 
     return (
-        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: showControls ? 'default' : 'none' }}>
             <video
                 ref={videoRef}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 0, display: videoError ? 'none' : 'block' }}
@@ -263,7 +263,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             {/* Click Catcher Overlay - Garante que 100% da tela registre os cliques, até fora do video */}
             <div 
                 onClick={handleVideoClick} 
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }} 
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: showControls ? 'pointer' : 'none', WebkitTapHighlightColor: 'transparent' }} 
             />
 
             {/* Error Message */}
@@ -339,7 +339,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     style={{
                         position: 'absolute', bottom: '90px', right: '20px', zIndex: 5,
                         background: 'rgba(0, 255, 136, 0.95)', color: '#000',
-                        padding: '12px 24px', borderRadius: '8px', cursor: 'pointer',
+                        padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem',
                         fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px',
                         boxShadow: '0 4px 15px rgba(0,255,136,0.4)', transition: 'all 0.2s'
                     }}
