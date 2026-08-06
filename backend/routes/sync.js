@@ -230,7 +230,7 @@ export default function syncRoutes(db, io) {
             
             // Novos Dashboards
             const totalSizeRow = await db.get(`SELECT SUM(file_size) as total_size FROM sync_queue WHERE status = 'completed'`);
-            const completedTodayRow = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed' AND DATE(updated_at) = DATE('now')`);
+            const completedTodayRow = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed' AND DATE(updated_at, '-3 hours') = DATE('now', '-3 hours')`);
 
             res.json({
                 items: rows,
