@@ -28,6 +28,7 @@ let activeUploadLoop = null;
 export function initSyncWorker(db, io) {
     dbInstance = db;
     ioInstance = io;
+    startAutoCleanup();
 }
 
 export function setPauseState(paused) {
@@ -622,5 +623,44 @@ async function uploadViaDocker(title, filePath, dbId) {
     } finally {
         activeUploadControllerDocker = null;
     }
+}
+
+// ==========================================
+// ROTINA DE LIMPEZA AUTOMÁTICA DE CACHE
+// ==========================================
+function startAutoCleanup() {
+    setInterval(async () => {
+        try {
+            if (isPaused) return; // Não apaga se o worker inteiro estiver pausado, por segurança
+            
+            const tempPath = os.tmpdir();
+            const files = await fs.promises.readdir(tempPath);
+            
+            // Busca os IDs que estão ativos (baixando ou enviando)
+            const activeJobs = await dbInstance.all("SELECT id FROM sync_queue WHERE status IN ('downloading', 'pending_upload', 'uploading', 'processing')");
+            const activeIds = activeJobs.map(job => job.id.toString());
+
+            for (const file of files) {
+                const match = file.match(/_(\d+)\.(mp4|mkv|avi|webm)$/i);
+                if (match) {
+                    const fileId = match[1];
+                    // Se o arquivo NÃO está na lista de ativos, apaga
+                    if (!activeIds.includes(fileId)) {
+                        const filePath = path.join(tempPath, file);
+                        try {
+                            const stats = await fs.promises.stat(filePath);
+                            // Se faz mais de 5 minutos que o arquivo não é modificado (segurança extra)
+                            if (Date.now() - stats.mtimeMs > 5 * 60 * 1000) {
+                                await fs.promises.unlink(filePath);
+                                console.log(`[Auto-Cleanup] Arquivo órfão apagado da /tmp/: ${file}`);
+                            }
+                        } catch (err) {}
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("[Auto-Cleanup] Erro na rotina de limpeza:", err);
+        }
+    }, 30000); // 30 segundos
 }
 

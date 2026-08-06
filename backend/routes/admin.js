@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
@@ -10,38 +11,47 @@ export default function adminRoutes(db) {
     // Endpoint para obter o tamanho da pasta temp
     router.get('/temp-stats', async (req, res) => {
         try {
-            const tempPath = path.join(process.cwd(), 'temp');
+            const tempPath = os.tmpdir();
             let size = 0;
             let count = 0;
             try {
                 const files = await fs.readdir(tempPath);
                 for (const file of files) {
-                    const stat = await fs.stat(path.join(tempPath, file));
-                    size += stat.size;
-                    count++;
+                    // Só contabiliza arquivos de vídeo que criamos (com _id no final)
+                    if (file.match(/_(\d+)\.(mp4|mkv|avi|webm)$/i)) {
+                        const stat = await fs.stat(path.join(tempPath, file));
+                        size += stat.size;
+                        count++;
+                    }
                 }
-            } catch (err) {
-                // Se a pasta não existir ou estiver vazia
-            }
+            } catch (err) { }
             res.json({ size, count });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao ler pasta temp' });
         }
     });
 
-    // Endpoint para limpar a pasta temp
+    // Endpoint para limpar a pasta temp manualmente (Painel Admin)
     router.post('/clear-temp', async (req, res) => {
         try {
-            const tempPath = path.join(process.cwd(), 'temp');
+            const tempPath = os.tmpdir();
             try {
                 const files = await fs.readdir(tempPath);
+                // Busca quais estão na fila ativos para não apagar eles sem querer
+                const activeJobs = await db.all("SELECT id FROM sync_queue WHERE status IN ('downloading', 'pending_upload', 'uploading', 'processing')");
+                const activeIds = activeJobs.map(job => job.id.toString());
+
                 for (const file of files) {
-                    await fs.unlink(path.join(tempPath, file));
+                    const match = file.match(/_(\d+)\.(mp4|mkv|avi|webm)$/i);
+                    if (match) {
+                        const fileId = match[1];
+                        if (!activeIds.includes(fileId)) {
+                            await fs.unlink(path.join(tempPath, file)).catch(() => {});
+                        }
+                    }
                 }
-            } catch (err) {
-                // ignora
-            }
-            res.json({ success: true, message: 'Cache limpo com sucesso!' });
+            } catch (err) { }
+            res.json({ success: true, message: 'Arquivos não-ativos removidos do cache com sucesso!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao limpar cache' });
         }
