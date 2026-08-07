@@ -92,10 +92,10 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             .catch(err => console.error("Erro ao buscar histórico:", err));
     }, [contentId, season, episode]);
 
-    // Timer para salvar o progresso a cada 10 segundos
+    // Timer para salvar o progresso a cada 10 segundos e ao sair
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (videoRef.current && !videoRef.current.paused && videoRef.current.currentTime > 5 && !videoError) {
+        const saveProgress = () => {
+            if (videoRef.current && videoRef.current.currentTime > 5 && !videoError) {
                 const token = localStorage.getItem('cinegeek_token');
                 const uuidVal = localStorage.getItem('cinegeek_uuid');
                 const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
@@ -104,6 +104,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 fetch('/api/recents/progress', {
                     method: 'PUT',
                     headers,
+                    keepalive: true, // Garante que a requisição seja concluída mesmo se a página fechar
                     body: JSON.stringify({
                         content_id: String(contentId),
                         season: season ? parseInt(season) : null,
@@ -112,9 +113,28 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     })
                 }).catch(err => console.error("Erro ping progresso:", err));
             }
+        };
+
+        const interval = setInterval(() => {
+            if (videoRef.current && !videoRef.current.paused) {
+                saveProgress();
+            }
         }, 10000); // Salva a cada 10s
 
-        return () => clearInterval(interval);
+        const handlePause = () => saveProgress();
+        
+        const videoElement = videoRef.current;
+        if (videoElement) {
+            videoElement.addEventListener('pause', handlePause);
+        }
+
+        return () => {
+            clearInterval(interval);
+            saveProgress(); // Salva exatamente no segundo em que saiu
+            if (videoElement) {
+                videoElement.removeEventListener('pause', handlePause);
+            }
+        };
     }, [contentId, season, episode, videoError]);
 
     // Auto-hide controls
