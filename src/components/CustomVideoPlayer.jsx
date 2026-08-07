@@ -21,6 +21,8 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [videoError, setVideoError] = useState(false);
     const [showLanguageMenu, setShowLanguageMenu] = useState(false);
     const prevMessageId = useRef(messageId);
+    const prevEpisode = useRef(episode);
+    const prevContentId = useRef(contentId);
 
     const [showSafariWarning, setShowSafariWarning] = useState(() => {
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -30,24 +32,23 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     // Seamlessly handle messageId changes (language swap or next episode)
     useEffect(() => {
         if (prevMessageId.current !== messageId && videoRef.current) {
-            const timeToRestore = videoRef.current.currentTime;
+            const isSameEpisode = prevEpisode.current === episode && prevContentId.current === contentId;
+            const timeToRestore = isSameEpisode ? videoRef.current.currentTime : 0;
             const wasPlaying = !videoRef.current.paused;
             
             prevMessageId.current = messageId;
+            prevEpisode.current = episode;
+            prevContentId.current = contentId;
+            
             videoRef.current.load();
             
             const handleLoadedData = () => {
-                // Se mudou de episódio (via onNextEpisode), talvez o currentTime deva ser 0, mas
-                // como a lógica de resume lida com episódios novos, aqui focamos apenas em 
-                // restaurar o tempo exato, o que é perfeito para troca de idioma.
-                // Se for novo episódio e o backend não enviou resume, ele deve tocar do 0, 
-                // então podemos checar se o timeToRestore é válido para o novo vídeo,
-                // mas na verdade, se mudou de episódio, PlayerPage passa isLoadingEpisode,
-                // o que significa que o componente principal buscou novos dados.
-                // Na troca de idioma, o currentTime deve ser mantido.
-                // Vamos tentar sempre manter, a menos que seja próximo episódio (nesse caso a prop episode mudou).
-                videoRef.current.currentTime = timeToRestore;
-                if (wasPlaying) {
+                if (isSameEpisode) {
+                    videoRef.current.currentTime = timeToRestore;
+                }
+                
+                // Sempre tentar autoplay em novo episódio, ou manter o estado tocando se for mudança de idioma
+                if (wasPlaying || !isSameEpisode) {
                     videoRef.current.play().catch(() => {});
                 }
                 videoRef.current.removeEventListener('loadeddata', handleLoadedData);
@@ -55,7 +56,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             
             videoRef.current.addEventListener('loadeddata', handleLoadedData);
         }
-    }, [messageId]);
+    }, [messageId, episode, contentId]);
 
     // Oculta o menu de idiomas se clicar fora ou esconder controles
     useEffect(() => {
