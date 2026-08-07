@@ -150,7 +150,11 @@ async function downloadLoop() {
             await new Promise(r => setTimeout(r, 15000)); // Checa a cada 15 segundos
         }
 
-        if (!hasSpace || isPaused) {
+        if (!hasSpace || isPaused || uploadTaskPython !== null) {
+            if (uploadTaskPython !== null) {
+                downloadTask = { id: 'N/A', title: 'AGUARDANDO UPLOAD PYTHON', progress: 'ESPERANDO...' };
+                broadcastState();
+            }
             await new Promise(r => setTimeout(r, 5000));
             continue;
         }
@@ -186,8 +190,8 @@ async function downloadLoop() {
 async function uploadLoop() {
     while (!isPaused) {
         try {
-            // Busca o próximo item pronto para ser enviado (pending_upload)
-            const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY id ASC LIMIT 1");
+            // Busca o próximo item pronto para ser enviado (pending_upload), priorizando prioridades altas
+            const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY priority DESC, id ASC LIMIT 1");
             
             if (!item) {
                 // Se não tem nada para upar, dorme 5 segundos e tenta de novo

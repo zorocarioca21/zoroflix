@@ -300,7 +300,7 @@ function AppContent() {
         </div>
         
         <nav className="nav-pill">
-          <Link to="/" className="nav-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
+          <Link to="/" className="nav-item home-item"><span className="nav-icon"><HomeIcon size={20} /></span><span className="nav-label">Home</span></Link>
           <Link to="/filmes" className="nav-item"><span className="nav-icon"><Film size={20} /></span><span className="nav-label">Filmes</span></Link>
           <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
           <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
