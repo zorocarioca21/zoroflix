@@ -242,7 +242,6 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 0, display: videoError ? 'none' : 'block' }}
                 playsInline
                 webkit-playsinline="true"
-                crossOrigin="anonymous"
                 preload="auto"
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
