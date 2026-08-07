@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange }) {
+export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -20,6 +20,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [showResumePopup, setShowResumePopup] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+    const [showQualityMenu, setShowQualityMenu] = useState(false);
     const prevMessageId = useRef(messageId);
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
@@ -58,9 +59,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         }
     }, [messageId, episode, contentId]);
 
-    // Oculta o menu de idiomas se clicar fora ou esconder controles
+    // Oculta o menu de idiomas/qualidade se clicar fora ou esconder controles
     useEffect(() => {
-        if (!showControls) setShowLanguageMenu(false);
+        if (!showControls) {
+            setShowLanguageMenu(false);
+            setShowQualityMenu(false);
+        }
     }, [showControls]);
 
     // Buscar o progresso (se tem resume_time salvo)
@@ -234,10 +238,18 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
     const handleLanguageSelect = (e, id, type) => {
         e.stopPropagation();
+        setShowLanguageMenu(false);
         if (onLanguageChange && id !== messageId) {
             onLanguageChange(id, type);
         }
-        setShowLanguageMenu(false);
+    };
+
+    const handleQualitySelect = (e, newQuality) => {
+        e.stopPropagation();
+        setShowQualityMenu(false);
+        if (onQualityChange && newQuality !== currentQuality) {
+            onQualityChange(newQuality);
+        }
     };
 
     const toggleMute = () => {
@@ -564,6 +576,41 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                                                 Legendado
                                             </button>
                                         )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Quality Selector */}
+                        {videoQualities && Object.keys(videoQualities).length > 1 && (
+                            <div style={{ position: 'relative' }}>
+                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} title="Qualidade" onClick={(e) => { e.stopPropagation(); setShowQualityMenu(!showQualityMenu); setShowLanguageMenu(false); }}>
+                                    <Settings size={24} color={showQualityMenu ? '#00ff88' : '#fff'} />
+                                    <span style={{ color: showQualityMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>{currentQuality}</span>
+                                </button>
+                                
+                                {showQualityMenu && (
+                                    <div style={{
+                                        position: 'absolute', bottom: '100%', right: '0',
+                                        marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
+                                        borderRadius: '8px', padding: '10px', minWidth: '120px',
+                                        border: '1px solid #333', display: 'flex', flexDirection: 'column',
+                                        gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
+                                    }}>
+                                        <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Qualidade</div>
+                                        {Object.keys(videoQualities).map((q) => (
+                                            <button 
+                                                key={q}
+                                                onClick={(e) => handleQualitySelect(e, q)}
+                                                style={{
+                                                    padding: '8px 12px', background: currentQuality === q ? '#00ff88' : 'transparent',
+                                                    color: currentQuality === q ? '#000' : '#fff',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                                }}
+                                            >
+                                                {q}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                             </div>

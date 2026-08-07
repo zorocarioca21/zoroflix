@@ -28,7 +28,8 @@ export default function PlayerPage() {
     const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
     const [isWatched, setIsWatched] = useState(false);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
-    const [languageOptions, setLanguageOptions] = useState(null); // { dub: id, leg: id }
+    const [languageOptions, setLanguageOptions] = useState(null); // Agora armazenará TODAS as qualidades: { Normal: { dub, leg }, FHD: { dub, leg } }
+    const [currentQuality, setCurrentQuality] = useState('Normal'); // Qualidade selecionada atualmente
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const prevLanguageType = useRef(null); // 'dub' or 'leg'
 
@@ -205,16 +206,31 @@ export default function PlayerPage() {
                 if (withYear.length > 0) targetItems = withYear;
             }
 
-            let dub = null;
-            let leg = null;
-
+            const versions = {};
+            
             for (const i of targetItems) {
                 const isLeg = /leg|legendado/i.test(i.title);
-                if (isLeg && !leg) leg = i.telegram_message_id;
-                if (!isLeg && !dub) dub = i.telegram_message_id;
+                const titleUpper = i.title.toUpperCase();
+                
+                let version = 'Normal';
+                if (titleUpper.includes('FHD') || titleUpper.includes('1080P') || titleUpper.includes('1080')) version = 'FHD';
+                else if (titleUpper.includes('4K') || titleUpper.includes('2160P')) version = '4K';
+                else if (titleUpper.includes('TS') || titleUpper.includes('CAMRIP') || titleUpper.includes('CAM RIP')) version = 'TS';
+                
+                if (!versions[version]) versions[version] = { dub: null, leg: null };
+                
+                if (isLeg && !versions[version].leg) versions[version].leg = i.telegram_message_id;
+                if (!isLeg && !versions[version].dub) versions[version].dub = i.telegram_message_id;
             }
 
-            return { dub, leg };
+            // Remover chaves vazias
+            for (const key in versions) {
+                if (!versions[key].dub && !versions[key].leg) {
+                    delete versions[key];
+                }
+            }
+            
+            return Object.keys(versions).length > 0 ? versions : null;
         };
 
         const handleMatches = (matches) => {
@@ -224,25 +240,37 @@ export default function PlayerPage() {
             }
             setLanguageOptions(matches);
             
-            const prefLang = localStorage.getItem('cinegeek_preferred_language');
+            const prefLang = localStorage.getItem('cinegeek_preferred_language') || 'dub';
             const autoLang = location.state?.autoPlayLanguage; // Passed when navigating to Next Episode
             
+            // Choose best default quality (FHD > Normal > 4K > TS)
+            const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+            let selectedQuality = Object.keys(matches)[0];
+            for (let q of qualityOrder) {
+                if (matches[q]) {
+                    selectedQuality = q;
+                    break;
+                }
+            }
+            setCurrentQuality(selectedQuality);
+            const currentOpts = matches[selectedQuality];
+            
             // Se veio do 'Próximo Episódio' e tem o idioma preferido disponível, pula a tela de escolha
-            if (autoLang && matches[autoLang]) {
-                handleSetMessageId(matches[autoLang], autoLang);
+            if (autoLang && currentOpts[autoLang]) {
+                handleSetMessageId(currentOpts[autoLang], autoLang);
                 setShowLanguageSelector(false);
             } 
             // Se veio do 'Próximo Episódio' mas o idioma preferido não existe, toca o que tiver
-            else if (autoLang && (matches.dub || matches.leg)) {
-                const fallback = matches.dub ? 'dub' : 'leg';
-                handleSetMessageId(matches[fallback], fallback);
+            else if (autoLang && (currentOpts.dub || currentOpts.leg)) {
+                const fallback = currentOpts.dub ? 'dub' : 'leg';
+                handleSetMessageId(currentOpts[fallback], fallback);
                 setShowLanguageSelector(false);
             } 
             // Caso padrão: Primeira vez abrindo o filme/série (Sempre mostra a tela se não for Next Episode)
             else {
                 // Se já tinha um messageId tocando (troca via menu interno do player)
-                if (telegramMessageId && prefLang && matches[prefLang]) {
-                    handleSetMessageId(matches[prefLang], prefLang);
+                if (telegramMessageId && prefLang && currentOpts[prefLang]) {
+                    handleSetMessageId(currentOpts[prefLang], prefLang);
                     setShowLanguageSelector(false);
                 } else {
                     // Novo acesso: mostra a tela de escolha
@@ -551,22 +579,18 @@ export default function PlayerPage() {
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
                             <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                {languageOptions.dub && (
+                                {languageOptions && languageOptions[currentQuality]?.dub && (
                                     <button
-                                        onClick={() => { handleSetMessageId(languageOptions.dub, 'dub'); setShowLanguageSelector(false); }}
-                                        style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                        className="lang-btn"
+                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].dub, 'dub'); setShowLanguageSelector(false); }}
                                     >
                                         <Mic size={24} /> Dublado
                                     </button>
                                 )}
-                                {languageOptions.leg && (
+                                {languageOptions && languageOptions[currentQuality]?.leg && (
                                     <button
-                                        onClick={() => { handleSetMessageId(languageOptions.leg, 'leg'); setShowLanguageSelector(false); }}
-                                        style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
-                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                        className="lang-btn"
+                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].leg, 'leg'); setShowLanguageSelector(false); }}
                                     >
                                         <Subtitles size={24} /> Legendado
                                     </button>
@@ -577,8 +601,11 @@ export default function PlayerPage() {
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
                             isLoadingEpisode={isCheckingTelegram}
-                            languageOptions={languageOptions}
+                            languageOptions={languageOptions ? languageOptions[currentQuality] : null}
                             onLanguageChange={(id, type) => handleSetMessageId(id, type)}
+                            videoQualities={languageOptions}
+                            currentQuality={currentQuality}
+                            onQualityChange={(newQuality) => setCurrentQuality(newQuality)}
                             contentId={id}
                             season={season}
                             episode={episode}
