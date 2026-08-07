@@ -479,7 +479,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                         
                         {/* Volume Control */}
                         <div className="volume-container" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <button className="control-btn" onClick={(e) => { e.stopPropagation(); toggleMute(); }}>
+                            <button style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={(e) => { e.stopPropagation(); toggleMute(); }}>
                                 {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
                             </button>
                             <input
@@ -497,7 +497,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                         {/* Language Selector */}
                         {languageOptions && languageOptions.dub && languageOptions.leg && (
                             <div style={{ position: 'relative' }}>
-                                <button className="control-btn" title="Idiomas" onClick={(e) => { e.stopPropagation(); setShowLanguageMenu(!showLanguageMenu); }}>
+                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} title="Idiomas" onClick={(e) => { e.stopPropagation(); setShowLanguageMenu(!showLanguageMenu); }}>
                                     <Headphones size={24} color={showLanguageMenu ? '#00ff88' : '#fff'} />
                                 </button>
                                 
