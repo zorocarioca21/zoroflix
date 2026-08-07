@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode }) {
     const videoRef = useRef(null);
@@ -19,6 +19,11 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
     const [videoError, setVideoError] = useState(false);
+    const [showSafariWarning, setShowSafariWarning] = useState(() => {
+        // Simple check for Safari (excluding Chrome)
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        return isSafari;
+    });
 
     // Buscar o progresso (se tem resume_time salvo)
     useEffect(() => {
@@ -277,6 +282,23 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                             O nosso sistema inteligente já detectou o problema e mandou o robô baixar este filme de novo! Tente assistir novamente daqui a alguns minutos.
                         </p>
                     </div>
+                </div>
+            )}
+
+            {/* Safari Warning */}
+            {showSafariWarning && !videoError && (
+                <div style={{
+                    position: 'absolute', top: '10px', left: '10px', right: '10px',
+                    background: 'rgba(255, 165, 0, 0.8)', color: '#fff',
+                    padding: '10px 15px', borderRadius: '8px', zIndex: 10,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    backdropFilter: 'blur(10px)', fontSize: '0.85rem', fontWeight: 'bold'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <AlertTriangle size={20} color="#fff" />
+                        <span>Tela preta sem imagem? O Safari bloqueia o formato de alguns filmes. Recomendamos baixar o <strong>Google Chrome</strong>!</span>
+                    </div>
+                    <button onClick={() => setShowSafariWarning(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', marginLeft: '10px' }}>&times;</button>
                 </div>
             )}
 
