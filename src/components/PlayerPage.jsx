@@ -254,7 +254,23 @@ export default function PlayerPage() {
                       const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
                       const validItems = data2.items.filter(i => {
                           if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                          return patterns.some(p => i.title.toUpperCase().includes(p.toUpperCase()));
+                          const upperTitle = i.title.toUpperCase();
+                          
+                          const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                          if (!hasEp) return false;
+                          
+                          // Evita parear com outra temporada (ex: achar S02E08 por causa do E08 quando pedimos S03)
+                          const seasonMatch = upperTitle.match(/S(\d{1,2})/);
+                          if (seasonMatch) {
+                              if (parseInt(seasonMatch[1]) !== parseInt(season)) return false;
+                          }
+                          
+                          const seasonWordMatch = upperTitle.match(/TEMPORADA\s*(\d{1,2})/);
+                          if (seasonWordMatch) {
+                              if (parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
+                          }
+
+                          return true;
                       });
                       
                       if (validItems.length > 0) {
