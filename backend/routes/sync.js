@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import readline from 'readline';
 import multer from 'multer';
 import os from 'os';
+import https from 'https';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -168,6 +169,66 @@ export default function syncRoutes(db, io) {
             console.error("Erro no scan:", err);
             res.status(500).json({ error: 'Erro interno ao processar arquivo M3U.' });
         }
+    });
+
+    // Nova Rota para puxar M3U remotamente
+    router.post('/fetch-remote-m3u', async (req, res) => {
+        const { m3uUrl } = req.body;
+        
+        if (!m3uUrl) {
+            return res.status(400).json({ error: 'URL do M3U não fornecida.' });
+        }
+
+        let movies = [];
+        let currentTitle = null;
+        let insertedCount = 0;
+
+        https.get(m3uUrl, (response) => {
+            if (response.statusCode !== 200) {
+                return res.status(500).json({ error: 'Erro ao baixar o M3U. Código HTTP: ' + response.statusCode });
+            }
+
+            const rl = readline.createInterface({
+                input: response,
+                crlfDelay: Infinity
+            });
+
+            rl.on('line', (line) => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('#EXTINF')) {
+                    const match = trimmed.match(/,(.+)/);
+                    if (match) {
+                        currentTitle = match[1].trim();
+                    }
+                } else if (trimmed.startsWith('http') && currentTitle) {
+                    movies.push({ title: currentTitle, url: trimmed });
+                    currentTitle = null;
+                }
+            });
+
+            rl.on('close', async () => {
+                try {
+                    await db.run("BEGIN TRANSACTION");
+                    for (const movie of movies) {
+                        // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
+                        const result = await db.run(
+                            "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?)",
+                            [movie.title, movie.url, movie.url]
+                        );
+                        if (result.changes > 0) insertedCount++;
+                    }
+                    await db.run("COMMIT");
+                    res.json({ message: 'Sincronização remota concluída', totalFound: movies.length, inserted: insertedCount });
+                } catch (dbErr) {
+                    await db.run("ROLLBACK");
+                    console.error("Erro no banco:", dbErr);
+                    res.status(500).json({ error: 'Erro ao salvar no banco de dados.' });
+                }
+            });
+        }).on('error', (err) => {
+            console.error("Erro no download M3U:", err);
+            res.status(500).json({ error: 'Erro na requisição da URL M3U.' });
+        });
     });
 
     // Rota para pausar a fila

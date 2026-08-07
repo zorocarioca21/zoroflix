@@ -197,6 +197,26 @@ export default function AdminSync() {
         }
     };
 
+    const startRemoteScan = async () => {
+        try {
+            alert('Baixando e processando lista remotamente... isso pode demorar alguns segundos.');
+            const res = await fetch('/api/sync/fetch-remote-m3u', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ m3uUrl: 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts' })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Varredura remota concluída! ${data.totalFound} encontrados, ${data.inserted} novos adicionados.`);
+                fetchQueue();
+            } else {
+                alert(data.error || 'Erro ao iniciar scan remoto');
+            }
+        } catch (e) {
+            alert('Erro de conexão ao iniciar scan remoto');
+        }
+    };
+
     const handleManualUpload = () => {
         if (!manualUpload.title || !manualUpload.file) {
             alert("Preencha o título e selecione um arquivo de vídeo.");
@@ -388,9 +408,15 @@ export default function AdminSync() {
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
                         <button 
                             onClick={startScan}
+                            style={{ flex: 1, padding: '0.5rem', background: '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            Escanear iptv_list.m3u (Local)
+                        </button>
+                        <button 
+                            onClick={startRemoteScan}
                             style={{ flex: 1, padding: '0.5rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                         >
-                            Re-escanear iptv_list.m3u
+                            Atualizar Catálogo (Auto)
                         </button>
                         <button 
                             onClick={retryErrors}
