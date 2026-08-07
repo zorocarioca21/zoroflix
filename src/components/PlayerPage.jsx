@@ -300,7 +300,7 @@ export default function PlayerPage() {
 
                     if (data?.items?.length > 0) {
                         const matches = getBestMatches(data.items);
-                        if (matches && (matches.dub || matches.leg)) {
+                        if (matches) {
                             handleMatches(matches);
                             return;
                         }
@@ -339,7 +339,7 @@ export default function PlayerPage() {
 
                         if (validItems.length > 0) {
                             const matches = getBestMatches(validItems, releaseYear);
-                            if (matches && (matches.dub || matches.leg)) {
+                            if (matches) {
                                 handleMatches(matches);
                                 return;
                             }
