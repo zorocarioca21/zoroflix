@@ -179,6 +179,8 @@ export default function PlayerPage() {
         }
     }, [id, canalId, location.pathname]);
 
+    const lastSearched = useRef('');
+
     // Checa se existe no Telegram (Para Player Nativo VIP/Admin)
     useEffect(() => {
         if (canalId) return;
@@ -192,6 +194,10 @@ export default function PlayerPage() {
         }
 
         if (!seriesName) return;
+        
+        const searchKey = `${id}-${season}-${episode}-${seriesName}`;
+        if (lastSearched.current === searchKey) return;
+        lastSearched.current = searchKey;
 
         const token = localStorage.getItem('cinegeek_token');
         const headers = { 'Authorization': `Bearer ${token}` };
