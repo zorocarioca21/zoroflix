@@ -71,26 +71,41 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       onClick={onClick}
     >
       <div className="card-media-wrapper">
-        <div className="card-badges-top">
+        <div className="card-badges-top" style={{ position: 'absolute', zIndex: 3 }}>
           <AgeBadge rating={certification} />
         </div>
-        {badges}
+        <div style={{ position: 'absolute', zIndex: 3, top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+           {badges}
+        </div>
         
-        {!videoKey ? (
-          <img src={poster} alt={title} className="card-poster-img" />
-        ) : (
-          <div className="teaser-iframe-wrapper">
+        {/* IFRAME DE FUNDO (Z-INDEX 0) */}
+        {videoKey && (
+          <div className="teaser-iframe-wrapper" style={{ zIndex: 0 }}>
             <iframe
-              src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoKey}&modestbranding=1`}
+              src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoKey}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`}
               frameBorder="0"
               allow="autoplay; encrypted-media"
               title="teaser"
             />
           </div>
         )}
+
+        {/* PÔSTER DO FILME (Z-INDEX 1) */}
+        <img 
+            src={poster} 
+            alt={title} 
+            className="card-poster-img" 
+            style={{
+                position: 'relative', 
+                zIndex: 1, 
+                opacity: isHovered && videoKey ? 0 : 1, 
+                transition: 'opacity 0.6s ease',
+                display: 'block'
+            }} 
+        />
         
-        {!videoKey && (
-          <div className="card-overlay">
+        {(!isHovered || !videoKey) && (
+          <div className="card-overlay" style={{ zIndex: 2 }}>
             <span className="play-icon">▶</span>
           </div>
         )}

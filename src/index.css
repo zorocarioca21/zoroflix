@@ -650,10 +650,13 @@ body.hide-body-texture::after {
 }
 
 .teaser-iframe-wrapper iframe {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.4);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 350%;
+  height: 150%;
+  transform: translate(-50%, -50%); /* Super Zoom & Crop */
+  pointer-events: none;
 }
 
 .card-badges-top {
@@ -1965,9 +1968,13 @@ body.hide-body-texture::after {
 }
 
 .teaser-iframe-wrapper iframe {
-  width: 100%;
-  height: 100%;
-  transform: scale(1.5); /* Corta bordas pretas do youtube */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 350%;
+  height: 150%;
+  transform: translate(-50%, -50%); /* Super Zoom & Crop */
+  pointer-events: none;
 }
 
 .card-overlay {
