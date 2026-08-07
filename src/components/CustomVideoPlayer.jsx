@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
@@ -21,9 +21,12 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [videoError, setVideoError] = useState(false);
     const [showLanguageMenu, setShowLanguageMenu] = useState(false);
     const [showQualityMenu, setShowQualityMenu] = useState(false);
+    const [zoomMode, setZoomMode] = useState('contain'); // Novo estado de Zoom
     const prevMessageId = useRef(messageId);
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
+
+    const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : 'contain');
 
     const [showSafariWarning, setShowSafariWarning] = useState(() => {
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -331,7 +334,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             <video
                 ref={videoRef}
                 autoPlay
-                style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 0, display: videoError ? 'none' : 'block' }}
+                style={{ width: '100%', height: '100%', objectFit: zoomMode, zIndex: 0, display: videoError ? 'none' : 'block' }}
                 playsInline
                 webkit-playsinline="true"
                 preload="auto"
@@ -618,6 +621,9 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
                         {/* PiP & Fullscreen Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <button onClick={toggleZoom} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title={zoomMode === 'contain' ? "Preencher Tela (Cortar Bordas)" : "Ajustar à Tela"}>
+                                <Crop size={22} color={zoomMode === 'cover' ? '#00ff88' : '#fff'} />
+                            </button>
                             <button onClick={togglePip} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Minimizar (PiP)">
                                 <PictureInPicture size={22} />
                             </button>
