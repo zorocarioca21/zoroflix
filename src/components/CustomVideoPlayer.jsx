@@ -93,6 +93,14 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             .catch(err => console.error("Erro ao buscar histórico:", err));
     }, [contentId, season, episode]);
 
+    // Pausar o vídeo se o popup de resume aparecer (para o autoplay não tocar o áudio por baixo)
+    useEffect(() => {
+        if (showResumePopup && videoRef.current) {
+            videoRef.current.pause();
+            setIsPlaying(false);
+        }
+    }, [showResumePopup]);
+
     // Timer para salvar o progresso a cada 10 segundos e ao sair
     useEffect(() => {
         const saveProgress = () => {
