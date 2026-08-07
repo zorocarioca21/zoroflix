@@ -524,7 +524,7 @@ export default function PlayerPage() {
   return (
     <div className="player-page-container">
       <div className="player-view-layout">
-          <div className="player-video-container" style={{ position: 'relative' }}>
+          <div className="fullscreen-player-wrapper" style={{ position: 'relative' }}>
             {(!telegramMessageId && isCheckingTelegram) ? (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#00ff88', flexDirection: 'column' }}>
                     <Loader size={48} className="spin-anim" style={{ marginBottom: '1rem' }} />
