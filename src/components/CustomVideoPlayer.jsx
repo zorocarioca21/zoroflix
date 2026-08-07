@@ -546,6 +546,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                         </div>
                     </div>
                 </div>
+            </div>
 
                 <style>{`
                 .spin-anim { animation: spin 1s linear infinite; }
