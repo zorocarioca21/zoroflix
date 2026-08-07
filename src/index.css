@@ -133,6 +133,7 @@ body.hide-body-texture::after {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   max-width: 45px; /* Tamanho apenas do ícone */
+  flex-shrink: 0;
 }
 
 .nav-item.home-item {
