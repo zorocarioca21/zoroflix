@@ -346,7 +346,7 @@ export default function PlayerPage() {
                     if (data?.items?.length > 0) {
                         const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
                         const matches = getBestMatches(data.items, releaseYear);
-                        if (matches && (matches.dub || matches.leg)) {
+                        if (matches) {
                             handleMatches(matches);
                             return;
                         }

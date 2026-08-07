@@ -5292,7 +5292,7 @@ body.hide-body-texture::after {
   gap: 10px;
   transition: 0.3s;
 }
-@media (hover: hover) {
+@media (pointer: fine) {
   .lang-btn:hover {
     border-color: #00ff88;
     transform: scale(1.05);
