@@ -26,7 +26,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
 
-    const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : 'contain');
+    const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
 
     const [showSafariWarning, setShowSafariWarning] = useState(() => {
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -621,8 +621,8 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
 
                         {/* PiP & Fullscreen Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <button onClick={toggleZoom} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title={zoomMode === 'contain' ? "Preencher Tela (Cortar Bordas)" : "Ajustar à Tela"}>
-                                <Crop size={22} color={zoomMode === 'cover' ? '#00ff88' : '#fff'} />
+                            <button onClick={toggleZoom} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title={zoomMode === 'contain' ? "Zoom (Cortar Bordas)" : (zoomMode === 'cover' ? "Esticar (Preencher Tela)" : "Ajustar à Tela (Padrão)")}>
+                                <Crop size={22} color={zoomMode === 'contain' ? '#fff' : (zoomMode === 'cover' ? '#00ff88' : '#00ccff')} />
                             </button>
                             <button onClick={togglePip} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Minimizar (PiP)">
                                 <PictureInPicture size={22} />
