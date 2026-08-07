@@ -176,6 +176,12 @@ body.hide-body-texture::after {
   opacity: 1;
 }
 
+@media (max-width: 768px) {
+  .nav-item { max-width: 45px !important; }
+  .nav-item:hover, .nav-item.active, .nav-item.home-item { max-width: 45px !important; }
+  .nav-label { display: none !important; }
+}
+
 /* --- Custom Scrollbar --- */
 ::-webkit-scrollbar {
   width: 8px;
@@ -3840,7 +3846,6 @@ body.hide-body-texture::after {
 .nav-item-btn {
   background: none;
   border: none;
-  padding: 0;
   font: inherit;
   cursor: pointer;
   color: inherit;
