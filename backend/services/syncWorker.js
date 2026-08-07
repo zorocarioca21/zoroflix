@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 import readline from 'readline';
+import https from 'https';
 
 // Worker Global State
 let isRunning = false;
@@ -29,6 +30,7 @@ export function initSyncWorker(db, io) {
     dbInstance = db;
     ioInstance = io;
     startAutoCleanup();
+    startAutoM3uSync();
 }
 
 export function setPauseState(paused) {
@@ -668,3 +670,60 @@ function startAutoCleanup() {
     }, 30000); // 30 segundos
 }
 
+// ==========================================
+// ROTINA DE ATUALIZAÇÃO AUTOMÁTICA DA M3U
+// ==========================================
+function startAutoM3uSync() {
+    // 3600000 = 1 hora
+    setInterval(() => {
+        if (isPaused) return;
+        const m3uUrl = 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts';
+        console.log("[AutoSync] Iniciando varredura remota M3U automática (1h)...");
+        let movies = [];
+        let currentTitle = null;
+
+        https.get(m3uUrl, (response) => {
+            if (response.statusCode !== 200) {
+                console.error(`[AutoSync] Erro HTTP ${response.statusCode} ao tentar baixar o M3U.`);
+                return;
+            }
+            const rl = readline.createInterface({ input: response, crlfDelay: Infinity });
+
+            rl.on('line', (line) => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('#EXTINF')) {
+                    const match = trimmed.match(/,(.+)/);
+                    if (match) currentTitle = match[1].trim();
+                } else if (trimmed.startsWith('http') && currentTitle) {
+                    movies.push({ title: currentTitle, url: trimmed });
+                    currentTitle = null;
+                }
+            });
+
+            rl.on('close', async () => {
+                try {
+                    await dbInstance.run("BEGIN TRANSACTION");
+                    let insertedCount = 0;
+                    for (const movie of movies) {
+                        const result = await dbInstance.run(
+                            "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?)",
+                            [movie.title, movie.url, movie.url]
+                        );
+                        if (result.changes > 0) insertedCount++;
+                    }
+                    await dbInstance.run("COMMIT");
+                    if (insertedCount > 0) {
+                        console.log(`[AutoSync] Varredura remota concluída! ${insertedCount} novos itens adicionados à fila de pendentes.`);
+                    } else {
+                        console.log(`[AutoSync] Varredura remota concluída. Nenhum item novo encontrado no momento.`);
+                    }
+                } catch (dbErr) {
+                    await dbInstance.run("ROLLBACK");
+                    console.error("[AutoSync] Erro ao salvar no banco:", dbErr);
+                }
+            });
+        }).on('error', (err) => {
+            console.error("[AutoSync] Falha ao tentar conectar na URL M3U:", err);
+        });
+    }, 3600000);
+}
