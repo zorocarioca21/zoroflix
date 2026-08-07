@@ -309,6 +309,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ width: '100%', height: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: showControls ? 'default' : 'none' }}>
             <video
                 ref={videoRef}
+                autoPlay
                 style={{ width: '100%', height: '100%', objectFit: 'contain', zIndex: 0, display: videoError ? 'none' : 'block' }}
                 playsInline
                 webkit-playsinline="true"
@@ -515,7 +516,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         
                         {/* Language Selector */}
-                        {languageOptions && languageOptions.dub && languageOptions.leg && (
+                        {languageOptions && (languageOptions.dub || languageOptions.leg) && (
                             <div style={{ position: 'relative' }}>
                                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} title="Idiomas" onClick={(e) => { e.stopPropagation(); setShowLanguageMenu(!showLanguageMenu); }}>
                                     <Headphones size={24} color={showLanguageMenu ? '#00ff88' : '#fff'} />
@@ -530,26 +531,30 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                                         gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
                                     }}>
                                         <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Áudio</div>
-                                        <button 
-                                            onClick={(e) => handleLanguageSelect(e, languageOptions.dub, 'dub')}
-                                            style={{
-                                                padding: '8px 12px', background: messageId === languageOptions.dub ? '#00ff88' : 'transparent',
-                                                color: messageId === languageOptions.dub ? '#000' : '#fff',
-                                                border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
-                                            }}
-                                        >
-                                            Dublado
-                                        </button>
-                                        <button 
-                                            onClick={(e) => handleLanguageSelect(e, languageOptions.leg, 'leg')}
-                                            style={{
-                                                padding: '8px 12px', background: messageId === languageOptions.leg ? '#00ff88' : 'transparent',
-                                                color: messageId === languageOptions.leg ? '#000' : '#fff',
-                                                border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
-                                            }}
-                                        >
-                                            Legendado
-                                        </button>
+                                        {languageOptions.dub && (
+                                            <button 
+                                                onClick={(e) => handleLanguageSelect(e, languageOptions.dub, 'dub')}
+                                                style={{
+                                                    padding: '8px 12px', background: messageId === languageOptions.dub ? '#00ff88' : 'transparent',
+                                                    color: messageId === languageOptions.dub ? '#000' : '#fff',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                                }}
+                                            >
+                                                Dublado
+                                            </button>
+                                        )}
+                                        {languageOptions.leg && (
+                                            <button 
+                                                onClick={(e) => handleLanguageSelect(e, languageOptions.leg, 'leg')}
+                                                style={{
+                                                    padding: '8px 12px', background: messageId === languageOptions.leg ? '#00ff88' : 'transparent',
+                                                    color: messageId === languageOptions.leg ? '#000' : '#fff',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                                }}
+                                            >
+                                                Legendado
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>

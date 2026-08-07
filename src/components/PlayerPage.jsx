@@ -35,7 +35,8 @@ export default function PlayerPage() {
     // Handler customizado para mudar messageId e guardar a preferência
     const handleSetMessageId = (id, type) => {
         setTelegramMessageId(id);
-        if (type) prevLanguageType.current = type;
+        prevLanguageType.current = type;
+        localStorage.setItem('cinegeek_preferred_language', type);
     };
 
     // Modal de Download
@@ -221,20 +222,33 @@ export default function PlayerPage() {
                 setTelegramMessageId(null);
                 return;
             }
-            if (matches.dub && matches.leg) {
-                setLanguageOptions(matches);
-
-                if (telegramMessageId && prevLanguageType.current && matches[prevLanguageType.current]) {
-                    handleSetMessageId(matches[prevLanguageType.current], prevLanguageType.current);
+            setLanguageOptions(matches);
+            
+            const prefLang = localStorage.getItem('cinegeek_preferred_language');
+            const autoLang = location.state?.autoPlayLanguage; // Passed when navigating to Next Episode
+            
+            // Se veio do 'Próximo Episódio' e tem o idioma preferido disponível, pula a tela de escolha
+            if (autoLang && matches[autoLang]) {
+                handleSetMessageId(matches[autoLang], autoLang);
+                setShowLanguageSelector(false);
+            } 
+            // Se veio do 'Próximo Episódio' mas o idioma preferido não existe, toca o que tiver
+            else if (autoLang && (matches.dub || matches.leg)) {
+                const fallback = matches.dub ? 'dub' : 'leg';
+                handleSetMessageId(matches[fallback], fallback);
+                setShowLanguageSelector(false);
+            } 
+            // Caso padrão: Primeira vez abrindo o filme/série (Sempre mostra a tela se não for Next Episode)
+            else {
+                // Se já tinha um messageId tocando (troca via menu interno do player)
+                if (telegramMessageId && prefLang && matches[prefLang]) {
+                    handleSetMessageId(matches[prefLang], prefLang);
                     setShowLanguageSelector(false);
                 } else {
+                    // Novo acesso: mostra a tela de escolha
                     setShowLanguageSelector(true);
                     setTelegramMessageId(null);
                 }
-            } else {
-                const type = matches.dub ? 'dub' : 'leg';
-                setLanguageOptions(matches);
-                handleSetMessageId(matches.dub || matches.leg, type);
             }
         };
 
@@ -481,7 +495,8 @@ export default function PlayerPage() {
         const nextEp = parseInt(episode) + 1;
         const exists = episodes.find(e => e.episode_number === nextEp);
         if (exists) {
-            navigate(`/serie/${rawId}/${season}/${nextEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists.name}`, poster_path: state.poster_path } });
+            const autoLang = localStorage.getItem('cinegeek_preferred_language') || prevLanguageType.current || 'dub';
+            navigate(`/serie/${rawId}/${season}/${nextEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists.name}`, poster_path: state.poster_path, autoPlayLanguage: autoLang } });
         } else {
             const nextSeasonNum = parseInt(season) + 1;
             const nextSeasonExists = seriesDetail?.seasons?.find(s => s.season_number === nextSeasonNum && s.episode_count > 0);
@@ -494,11 +509,13 @@ export default function PlayerPage() {
     const handleConfirmNextSeason = () => {
         const nextSeasonNum = parseInt(season) + 1;
         setShowNextSeasonModal(false);
+        const autoLang = localStorage.getItem('cinegeek_preferred_language') || prevLanguageType.current || 'dub';
         navigate(`/serie/${rawId}/${nextSeasonNum}/1/player`, {
             state: {
                 id,
                 title: `${state.title?.split(' - ')[0]} - Temporada ${nextSeasonNum}, Episódio 1`,
-                poster_path: state.poster_path
+                poster_path: state.poster_path,
+                autoPlayLanguage: autoLang
             }
         });
     };
@@ -534,22 +551,26 @@ export default function PlayerPage() {
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
                             <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button
-                                    onClick={() => { handleSetMessageId(languageOptions.dub, 'dub'); setShowLanguageSelector(false); }}
-                                    style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                >
-                                    <Mic size={24} /> Dublado
-                                </button>
-                                <button
-                                    onClick={() => { handleSetMessageId(languageOptions.leg, 'leg'); setShowLanguageSelector(false); }}
-                                    style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
-                                >
-                                    <Subtitles size={24} /> Legendado
-                                </button>
+                                {languageOptions.dub && (
+                                    <button
+                                        onClick={() => { handleSetMessageId(languageOptions.dub, 'dub'); setShowLanguageSelector(false); }}
+                                        style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                    >
+                                        <Mic size={24} /> Dublado
+                                    </button>
+                                )}
+                                {languageOptions.leg && (
+                                    <button
+                                        onClick={() => { handleSetMessageId(languageOptions.leg, 'leg'); setShowLanguageSelector(false); }}
+                                        style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
+                                    >
+                                        <Subtitles size={24} /> Legendado
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ) : telegramMessageId ? (
