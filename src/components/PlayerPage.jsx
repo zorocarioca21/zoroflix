@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, X as CloseIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
 import CustomVideoPlayer from './CustomVideoPlayer';
@@ -30,7 +30,14 @@ export default function PlayerPage() {
   const [telegramMessageId, setTelegramMessageId] = useState(null);
   const [languageOptions, setLanguageOptions] = useState(null); // { dub: id, leg: id }
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const prevLanguageType = useRef(null); // 'dub' or 'leg'
   
+  // Handler customizado para mudar messageId e guardar a preferência
+  const handleSetMessageId = (id, type) => {
+      setTelegramMessageId(id);
+      if (type) prevLanguageType.current = type;
+  };
+
   // Modal de Download
   const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
   const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
@@ -216,10 +223,18 @@ export default function PlayerPage() {
           }
           if (matches.dub && matches.leg) {
               setLanguageOptions(matches);
-              setShowLanguageSelector(true);
-              setTelegramMessageId(null);
+              
+              if (telegramMessageId && prevLanguageType.current && matches[prevLanguageType.current]) {
+                  handleSetMessageId(matches[prevLanguageType.current], prevLanguageType.current);
+                  setShowLanguageSelector(false);
+              } else {
+                  setShowLanguageSelector(true);
+                  setTelegramMessageId(null);
+              }
           } else {
-              setTelegramMessageId(matches.dub || matches.leg);
+              const type = matches.dub ? 'dub' : 'leg';
+              setLanguageOptions(matches);
+              handleSetMessageId(matches.dub || matches.leg, type);
           }
       };
 
@@ -259,7 +274,6 @@ export default function PlayerPage() {
                           const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                           if (!hasEp) return false;
                           
-                          // Evita parear com outra temporada (ex: achar S02E08 por causa do E08 quando pedimos S03)
                           const seasonMatch = upperTitle.match(/S(\d{1,2})/);
                           if (seasonMatch) {
                               if (parseInt(seasonMatch[1]) !== parseInt(season)) return false;
@@ -306,11 +320,8 @@ export default function PlayerPage() {
       findEpisode();
   }, [id, season, episode, state.title, canalId, user, seriesDetail]);
 
-  // Timer de 30s: registra nos recentes após assistir pelo menos meio minuto
   useEffect(() => {
-    hasTracked.current = false; // Reseta ao mudar de episódio/conteúdo
-    
-    // Se for canal, espera carregar o resolvedChannel para registrar corretamente
+    hasTracked.current = false; 
     if (canalId && !resolvedChannel) return;
 
     const timer = setTimeout(async () => {
@@ -325,7 +336,7 @@ export default function PlayerPage() {
       const mediaType = canalId ? 'canal' : (season ? 'tv' : 'movie');
       const trackId = canalId ? canalId : id;
 
-      let targetTitle = canalId ? resolvedChannel?.name : (seriesDetail?.name || state?.title || (title !== 'Carregando...' ? title : null));
+      let targetTitle = canalId ? resolvedChannel?.name : (seriesDetail?.name || state?.title || null);
       let targetPoster = canalId ? resolvedChannel?.logo_url : (seriesDetail?.poster_path || state?.poster_path || null);
 
       if ((!targetTitle || targetTitle === 'Carregando...') && id && !canalId) {
@@ -357,17 +368,16 @@ export default function PlayerPage() {
             episode: episode ? parseInt(episode) : null,
           })
         });
-      } catch (e) { /* silencioso */ }
-    }, 30000); // 30 segundos
+      } catch (e) { }
+    }, 30000); 
 
     return () => clearTimeout(timer);
   }, [id, season, episode, canalId, resolvedChannel]);
 
-  // Timer de 80%: registra o episódio como concluído (assistido)
   useEffect(() => {
     if (!id || !season || !episode || canalId) return;
 
-    let durationMin = 40; // Fallback padrão
+    let durationMin = 40; 
     const currentEpObj = episodes.find(e => e.episode_number === parseInt(episode));
     if (currentEpObj && currentEpObj.runtime) {
         durationMin = currentEpObj.runtime;
@@ -393,13 +403,12 @@ export default function PlayerPage() {
                     episode: parseInt(episode)
                 })
             });
-        } catch (e) { /* silencioso */ }
+        } catch (e) { }
     }, eightyPercentMs);
 
     return () => clearTimeout(checkTimer);
   }, [id, season, episode, canalId, episodes, seriesDetail]);
 
-  // Buscar se o episódio já está marcado como assistido
   useEffect(() => {
     if (!id || !season || !episode || canalId) {
         setIsWatched(false);
@@ -474,7 +483,6 @@ export default function PlayerPage() {
     if (exists) {
         navigate(`/serie/${rawId}/${season}/${nextEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists.name}`, poster_path: state.poster_path } });
     } else {
-        // É o último episódio da temporada atual
         const nextSeasonNum = parseInt(season) + 1;
         const nextSeasonExists = seriesDetail?.seasons?.find(s => s.season_number === nextSeasonNum && s.episode_count > 0);
         if (nextSeasonExists) {
@@ -515,39 +523,41 @@ export default function PlayerPage() {
 
   return (
     <div className="player-page-container">
-      {/* Player Area (Top) */}
       <div className="player-view-layout">
-          <div className="fullscreen-player-wrapper">
-            {isCheckingTelegram ? (
+          <div className="player-video-container" style={{ position: 'relative' }}>
+            {(!telegramMessageId && isCheckingTelegram) ? (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#00ff88', flexDirection: 'column' }}>
                     <Loader size={48} className="spin-anim" style={{ marginBottom: '1rem' }} />
                     <span style={{ fontWeight: 'bold' }}>Carregando CineGeek VIP...</span>
                 </div>
-            ) : showLanguageSelector ? (
+            ) : (!telegramMessageId && showLanguageSelector) ? (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
                     <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                         <button 
-                            onClick={() => { setTelegramMessageId(languageOptions.dub); setShowLanguageSelector(false); }}
+                            onClick={() => { handleSetMessageId(languageOptions.dub, 'dub'); setShowLanguageSelector(false); }}
                             style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
                         >
-                            🎤 Dublado
+                            <Mic size={24} /> Dublado
                         </button>
                         <button 
-                            onClick={() => { setTelegramMessageId(languageOptions.leg); setShowLanguageSelector(false); }}
+                            onClick={() => { handleSetMessageId(languageOptions.leg, 'leg'); setShowLanguageSelector(false); }}
                             style={{ padding: '1rem 2rem', fontSize: '1.2rem', background: '#1c1c24', border: '2px solid #333', borderRadius: '8px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: '0.3s' }}
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#00ff88'; e.currentTarget.style.transform = 'scale(1.05)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'scale(1)'; }}
                         >
-                            📝 Legendado
+                            <Subtitles size={24} /> Legendado
                         </button>
                     </div>
                 </div>
             ) : telegramMessageId ? (
                 <CustomVideoPlayer 
                     messageId={telegramMessageId}
+                    isLoadingEpisode={isCheckingTelegram}
+                    languageOptions={languageOptions}
+                    onLanguageChange={(id, type) => handleSetMessageId(id, type)}
                     contentId={id}
                     season={season}
                     episode={episode}
@@ -625,11 +635,6 @@ export default function PlayerPage() {
             </div>
             {!canalId && (
                 <div className="player-nav-group" style={{ width: '100%', justifyContent: 'flex-start', flexWrap: 'wrap', gap: '0.8rem', marginTop: '0.5rem' }}>
-                    {languageOptions && languageOptions.dub && languageOptions.leg && (
-                        <button className="nav-btn-modern" onClick={() => setShowLanguageSelector(true)} style={{ borderColor: '#00ff88', color: '#00ff88' }}>
-                            Trocar Idioma
-                        </button>
-                    )}
                     {season && (
                         <>
                             <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20}/> Anterior</button>

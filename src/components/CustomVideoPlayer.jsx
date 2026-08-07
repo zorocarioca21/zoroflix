@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode }) {
+export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -19,11 +19,48 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
     const [videoError, setVideoError] = useState(false);
+    const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+    const prevMessageId = useRef(messageId);
+
     const [showSafariWarning, setShowSafariWarning] = useState(() => {
-        // Simple check for Safari (excluding Chrome)
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         return isSafari;
     });
+
+    // Seamlessly handle messageId changes (language swap or next episode)
+    useEffect(() => {
+        if (prevMessageId.current !== messageId && videoRef.current) {
+            const timeToRestore = videoRef.current.currentTime;
+            const wasPlaying = !videoRef.current.paused;
+            
+            prevMessageId.current = messageId;
+            videoRef.current.load();
+            
+            const handleLoadedData = () => {
+                // Se mudou de episódio (via onNextEpisode), talvez o currentTime deva ser 0, mas
+                // como a lógica de resume lida com episódios novos, aqui focamos apenas em 
+                // restaurar o tempo exato, o que é perfeito para troca de idioma.
+                // Se for novo episódio e o backend não enviou resume, ele deve tocar do 0, 
+                // então podemos checar se o timeToRestore é válido para o novo vídeo,
+                // mas na verdade, se mudou de episódio, PlayerPage passa isLoadingEpisode,
+                // o que significa que o componente principal buscou novos dados.
+                // Na troca de idioma, o currentTime deve ser mantido.
+                // Vamos tentar sempre manter, a menos que seja próximo episódio (nesse caso a prop episode mudou).
+                videoRef.current.currentTime = timeToRestore;
+                if (wasPlaying) {
+                    videoRef.current.play().catch(() => {});
+                }
+                videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+            };
+            
+            videoRef.current.addEventListener('loadeddata', handleLoadedData);
+        }
+    }, [messageId]);
+
+    // Oculta o menu de idiomas se clicar fora ou esconder controles
+    useEffect(() => {
+        if (!showControls) setShowLanguageMenu(false);
+    }, [showControls]);
 
     // Buscar o progresso (se tem resume_time salvo)
     useEffect(() => {
@@ -166,6 +203,14 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
         }
     };
 
+    const handleLanguageSelect = (e, id, type) => {
+        e.stopPropagation();
+        if (onLanguageChange && id !== messageId) {
+            onLanguageChange(id, type);
+        }
+        setShowLanguageMenu(false);
+    };
+
     const toggleMute = () => {
         videoRef.current.muted = !isMuted;
         setIsMuted(!isMuted);
@@ -271,7 +316,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             />
 
             {/* Error Message */}
-            {videoError && (
+            {videoError && !isLoadingEpisode && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#111', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
                     <div style={{ background: 'rgba(255, 68, 68, 0.1)', padding: '2rem', borderRadius: '16px', border: '2px solid #ff4444', maxWidth: '500px' }}>
                         <h3 style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '1.5rem' }}>Problema no Servidor de Vídeo</h3>
@@ -285,8 +330,16 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 </div>
             )}
 
+            {/* Is Loading Episode Overlay */}
+            {isLoadingEpisode && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backdropFilter: 'blur(5px)' }}>
+                    <Loader size={48} className="spin-anim" style={{ color: '#00ff88', marginBottom: '1rem' }} />
+                    <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.2rem' }}>Carregando próximo episódio...</span>
+                </div>
+            )}
+
             {/* Safari Warning */}
-            {showSafariWarning && !videoError && (
+            {showSafariWarning && !videoError && !isLoadingEpisode && (
                 <div style={{
                     position: 'absolute', top: '10px', left: '10px', right: '10px',
                     background: 'rgba(255, 165, 0, 0.8)', color: '#fff',
@@ -303,7 +356,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             )}
 
             {/* Skip Backward Button */}
-            {showControls && !videoError && !showResumePopup && (
+            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -317,7 +370,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             )}
 
             {/* Center Play/Pause Button */}
-            {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && (
+            {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -333,7 +386,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             )}
 
             {/* Skip Forward Button */}
-            {showControls && !videoError && !showResumePopup && (
+            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -347,14 +400,14 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             )}
 
             {/* Buffering Indicator */}
-            {isBuffering && (
+            {isBuffering && !isLoadingEpisode && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 3, pointerEvents: 'none' }}>
                     <Loader size={64} color="#00ff88" className="spin-anim" />
                 </div>
             )}
 
             {/* Next Episode Floating Button */}
-            {onNextEpisode && duration > 0 && (duration - currentTime) <= 90 && !showResumePopup && !videoError && (
+            {onNextEpisode && duration > 0 && (duration - currentTime) <= 90 && !showResumePopup && !videoError && !isLoadingEpisode && (
                 <div 
                     onClick={(e) => { e.stopPropagation(); onNextEpisode(); }}
                     style={{
@@ -372,7 +425,7 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             )}
 
             {/* Resume Popup */}
-            {showResumePopup && (
+            {showResumePopup && !isLoadingEpisode && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ background: '#13131a', border: '2px solid #00ff88', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 30px rgba(0,255,136,0.2)' }}>
                         <h3 style={{ color: '#00ff88', marginBottom: '1rem', fontSize: '1.4rem' }}>Continuar de onde parou?</h3>
@@ -424,19 +477,65 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <button onClick={toggleMute} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
-                                {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                        {/* Volume Control */}
+                        <div className="volume-container" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <button className="control-btn" onClick={(e) => { e.stopPropagation(); toggleMute(); }}>
+                                {isMuted || volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
                             </button>
-                            <input 
-                                type="range" 
-                                min={0} max={1} step={0.01} value={isMuted ? 0 : volume}
+                            <input
+                                type="range" min="0" max="1" step="0.05" value={isMuted ? 0 : volume}
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={handleVolumeChange}
+                                className="volume-slider"
                                 style={{ width: '80px', accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
                             />
                         </div>
                     </div>
 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        
+                        {/* Language Selector */}
+                        {languageOptions && languageOptions.dub && languageOptions.leg && (
+                            <div style={{ position: 'relative' }}>
+                                <button className="control-btn" title="Idiomas" onClick={(e) => { e.stopPropagation(); setShowLanguageMenu(!showLanguageMenu); }}>
+                                    <Headphones size={24} color={showLanguageMenu ? '#00ff88' : '#fff'} />
+                                </button>
+                                
+                                {showLanguageMenu && (
+                                    <div style={{
+                                        position: 'absolute', bottom: '100%', right: '0',
+                                        marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
+                                        borderRadius: '8px', padding: '10px', minWidth: '150px',
+                                        border: '1px solid #333', display: 'flex', flexDirection: 'column',
+                                        gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
+                                    }}>
+                                        <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Áudio</div>
+                                        <button 
+                                            onClick={(e) => handleLanguageSelect(e, languageOptions.dub, 'dub')}
+                                            style={{
+                                                padding: '8px 12px', background: messageId === languageOptions.dub ? '#00ff88' : 'transparent',
+                                                color: messageId === languageOptions.dub ? '#000' : '#fff',
+                                                border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                            }}
+                                        >
+                                            Dublado
+                                        </button>
+                                        <button 
+                                            onClick={(e) => handleLanguageSelect(e, languageOptions.leg, 'leg')}
+                                            style={{
+                                                padding: '8px 12px', background: messageId === languageOptions.leg ? '#00ff88' : 'transparent',
+                                                color: messageId === languageOptions.leg ? '#000' : '#fff',
+                                                border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                            }}
+                                        >
+                                            Legendado
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* PiP & Fullscreen Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <button onClick={togglePip} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Minimizar (PiP)">
                                 <PictureInPicture size={22} />
