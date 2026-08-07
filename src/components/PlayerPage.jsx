@@ -202,13 +202,15 @@ export default function PlayerPage() {
 
             let targetItems = validItems;
             if (releaseYear) {
-                const withYear = validItems.filter(i => i.title.includes(releaseYear));
+                const withYear = validItems.filter(i => i.title && i.title.includes(releaseYear));
                 if (withYear.length > 0) targetItems = withYear;
             }
 
             const versions = {};
             
             for (const i of targetItems) {
+                if (!i.title) continue; // Pular se não tiver título
+                
                 const isLeg = /leg|legendado/i.test(i.title);
                 const titleUpper = i.title.toUpperCase();
                 
