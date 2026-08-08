@@ -5309,7 +5309,7 @@ body.hide-body-texture::after {
   -webkit-user-select: none;
 }
 
-@media (max-width: 950px) {
+@media (max-width: 1200px) {
   .navbar { flex-wrap: wrap; justify-content: center; gap: 1rem; }
 }
 
