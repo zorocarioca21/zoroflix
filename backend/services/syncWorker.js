@@ -721,7 +721,6 @@ function startAutoM3uSync() {
                     } else {
                         console.log(`[AutoSync] Varredura remota concluída. Nenhum item novo encontrado no momento.`);
                     }
-                    }
                 } catch (dbErr) {
                     console.error("[AutoSync] Erro ao salvar no banco:", dbErr);
                 }

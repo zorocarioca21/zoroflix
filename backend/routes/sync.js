@@ -493,10 +493,10 @@ export default function syncRoutes(db, io) {
                     const batchSize = 100;
 
                     while (true) {
-                        const messages = await client.getMessages(resolvedEntity, {
-                            limit: batchSize,
-                            offsetId: offsetId,
-                        });
+                        const fetchOpts = { limit: batchSize };
+                        if (offsetId > 0) fetchOpts.offsetId = offsetId;
+                        
+                        const messages = await client.getMessages(resolvedEntity, fetchOpts);
 
                         if (!messages || messages.length === 0) break;
 
