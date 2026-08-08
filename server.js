@@ -96,13 +96,13 @@ initDB().then((db) => {
             const streamId = getOrCreateStream(targetUrl);
             const m3u8Path = path.join(HLS_DIR, streamId, 'index.m3u8');
             
-            // Aguarda o FFmpeg criar o arquivo (até 10 segundos)
+            // Aguarda o FFmpeg criar o arquivo (até 20 segundos)
             let retries = 0;
             const checkInterval = setInterval(() => {
                 if (fs.existsSync(m3u8Path)) {
                     clearInterval(checkInterval);
                     res.redirect(`/hls/${streamId}/index.m3u8`);
-                } else if (retries >= 20) { // 20 * 500ms = 10s
+                } else if (retries >= 40) { // 40 * 500ms = 20s
                     clearInterval(checkInterval);
                     res.status(504).send('Gateway Timeout - Stream demorou muito para iniciar');
                 }
