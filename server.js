@@ -28,6 +28,8 @@ import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
+import { getOrCreateStream, pingStream, HLS_DIR } from './backend/hlsManager.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -35,8 +37,17 @@ const app = express();
 const PORT = 4000;
 
 app.use(cors());
-app.use(cookieParser()); // Faltava essa ativação para podermos ler o Cookie de rastreio!
-app.use(express.json()); // Necessário para ler o corpo das requisições JSON
+app.use(cookieParser());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve arquivos estáticos do HLS gerados pelo FFmpeg
+app.use('/hls', (req, res, next) => {
+    // Ping o stream caso a requisição seja para ele
+    const match = req.path.match(/^\/([a-f0-9-]+)\//);
+    if (match) pingStream(match[1]);
+    next();
+}, express.static(HLS_DIR));
 
 // Inicializa o Banco e monta as rotas
 initDB().then((db) => {
@@ -75,43 +86,20 @@ initDB().then((db) => {
         }
     });
 
-    // Proxy reverso para Streaming de IPTV usando request http nativo para estabilidade
+    // Proxy reverso para Streaming de IPTV via HLS dinâmico
     app.get('/api/stream/proxy', async (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         try {
-            const axios = (await import('axios')).default;
-            const proxyRes = await axios({
-                method: 'get',
-                url: targetUrl,
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9',
-                    'Accept': '*/*'
-                }
-            });
-
-            res.writeHead(proxyRes.status, {
-                'Content-Type': proxyRes.headers['content-type'] || 'video/mp2t',
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-cache'
-            });
-
-            proxyRes.data.pipe(res);
-
-            proxyRes.data.on('error', (err) => {
-                console.error('[Proxy] Erro no stream IPTV:', err.message);
-                res.end();
-            });
-
-            req.on('close', () => {
-                proxyRes.data.destroy();
-            });
-
+            // Inicia o processo do FFmpeg e recebe o ID
+            const streamId = getOrCreateStream(targetUrl);
+            
+            // Redireciona o player para o m3u8 do HLS
+            res.redirect(`/hls/${streamId}/index.m3u8`);
         } catch (err) {
-            console.error('[Proxy] Erro de rede:', err.message);
-            if (!res.headersSent) res.status(502).send('Bad Gateway');
+            console.error('[Proxy] Erro:', err.message);
+            res.status(502).send('Bad Gateway');
         }
     });// Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));

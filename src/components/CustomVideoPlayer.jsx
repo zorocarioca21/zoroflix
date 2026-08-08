@@ -80,12 +80,17 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 mpegtsRef.current = null;
             }
 
-            if (srcUrl.includes('.m3u8')) {
+            // Se for IPTV VIP, forçamos o HLS nativo apontando para o proxy reverso do HlsManager
+            const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
+            const isHlsStream = srcUrl.includes('.m3u8') || isVip;
+            const finalHlsUrl = isVip ? proxyUrl : srcUrl;
+
+            if (isHlsStream) {
                 // HLS NATTY
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     hlsRef.current = hls;
-                    hls.loadSource(srcUrl);
+                    hls.loadSource(finalHlsUrl);
                     hls.attachMedia(videoRef.current);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         videoRef.current.play().catch(() => {});
@@ -110,19 +115,18 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     });
 
                 } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-                    videoRef.current.src = srcUrl;
+                    videoRef.current.src = finalHlsUrl;
                     videoRef.current.addEventListener('loadedmetadata', () => {
                         videoRef.current.play().catch(() => {});
                     });
                 }
             } else {
-                // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
+                // Outros formatos via mpegts.js (se sobrar algum)
                 if (mpegts.getFeatureList().mseLivePlayback) {
-                    const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
                     mpegtsRef.current = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
-                        url: proxyUrl,
+                        url: srcUrl,
                         hasAudio: true,
                         hasVideo: true
                     }, {
@@ -444,8 +448,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 }}
             >
                 {srcUrl ? (
-                    // Se a URL não contiver m3u8, o mpegts.js vai assumir. Se contiver, HLS nativo apenas se suportado.
-                    (!Hls.isSupported() || !srcUrl.includes('.m3u8')) && (srcUrl.includes('.m3u8')) && <source src={srcUrl} />
+                    // Se não for HLS nativo (e nem IPTV VIP), assume a tag source padrão (o que não deve ocorrer na prática, pois HLS/mpegts montam o blob)
+                    (!Hls.isSupported() || (!srcUrl.includes('.m3u8') && !isVip)) && (srcUrl.includes('.m3u8') || isVip) && <source src={srcUrl} />
                 ) : (
                     <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
                 )}

@@ -5312,3 +5312,6 @@ body.hide-body-texture::after {
 @media (max-width: 950px) {
   .navbar { flex-wrap: wrap; justify-content: center; gap: 1rem; }
 }
+
+.nav-pill { flex-shrink: 0; min-width: min-content; }
+.navbar-search-input { min-width: 200px; }
