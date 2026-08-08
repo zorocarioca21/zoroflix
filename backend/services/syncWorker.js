@@ -204,8 +204,10 @@ async function uploadLoop() {
             // Tem item! Processa o upload.
             // Para decidir se é docker ou python, olhamos o tamanho
             const safeTitle = item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const ext = item.url.split('?')[0].split('.').pop() || 'mp4';
-            const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${item.id}.${ext}`);
+            const safeId = String(item.id).replace(/[^a-z0-9]/gi, '_');
+            const rawExt = item.url.split('?')[0].split('.').pop();
+            const ext = (rawExt && rawExt.length <= 4 && /^[a-z0-9]+$/i.test(rawExt)) ? rawExt : 'mp4';
+            const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${safeId}.${ext}`);
             
             let workerType = 'python';
             if (fs.existsSync(tmpPath)) {
@@ -236,8 +238,10 @@ async function uploadLoop() {
 
 async function processDownload(movie) {
     const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const ext = movie.url.split('?')[0].split('.').pop() || 'mp4';
-    const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
+    const safeId = String(movie.id).replace(/[^a-z0-9]/gi, '_');
+    const rawExt = movie.url.split('?')[0].split('.').pop();
+    const ext = (rawExt && rawExt.length <= 4 && /^[a-z0-9]+$/i.test(rawExt)) ? rawExt : 'mp4';
+    const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${safeId}.${ext}`);
 
     try {
         await dbInstance.run("UPDATE sync_queue SET status = 'downloading', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
@@ -300,8 +304,10 @@ async function processDownload(movie) {
 
 async function processUpload(movie, workerType) {
     const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const ext = movie.url.split('?')[0].split('.').pop() || 'mp4';
-    const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${movie.id}.${ext}`);
+    const safeId = String(movie.id).replace(/[^a-z0-9]/gi, '_');
+    const rawExt = movie.url.split('?')[0].split('.').pop();
+    const ext = (rawExt && rawExt.length <= 4 && /^[a-z0-9]+$/i.test(rawExt)) ? rawExt : 'mp4';
+    const tmpPath = path.join(os.tmpdir(), `${safeTitle}_${safeId}.${ext}`);
 
     try {
         if (!fs.existsSync(tmpPath)) {
