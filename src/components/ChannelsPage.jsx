@@ -191,7 +191,8 @@ export default function ChannelsPage() {
             key={ch.id} 
             ch={ch} 
             onClick={() => {
-              if (ch.isVip && (!user || (user.role !== 'admin' && user.role !== 'vip'))) {
+              const uRole = user?.role?.toLowerCase() || '';
+              if (ch.isVip && (!user || (uRole !== 'admin' && uRole !== 'vip'))) {
                 setShowVipPopup(true);
               } else {
                 navigate(`/canal/${ch.id}`, { state: { embed_url: ch.embed_url, title: ch.name, isVip: ch.isVip } });
