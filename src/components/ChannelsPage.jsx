@@ -102,13 +102,24 @@ export default function ChannelsPage() {
     
     Promise.allSettled([
       fetchWithProxy(superflixUrl).then(data => data && data.data ? data.data : []),
-      fetch(vipUrl).then(r => r.json()).catch(() => [])
+      fetch(vipUrl).then(async r => {
+        const text = await r.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error('VIP response not JSON:', text.substring(0, 100));
+          return [];
+        }
+      }).catch(err => {
+        console.error('VIP fetch error:', err);
+        return [];
+      })
     ]).then(results => {
       const superflixData = results[0].status === 'fulfilled' ? results[0].value : [];
       const vipData = results[1].status === 'fulfilled' ? results[1].value : [];
 
-      const formattedVip = vipData.map(v => ({
-        id: v.id,
+      const formattedVip = vipData.map((v, index) => ({
+        id: v.id || `vip-${index}`,
         name: v.name,
         category: 'VIPs',
         logo_url: v.logo,
