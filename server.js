@@ -28,7 +28,6 @@ import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
-import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
