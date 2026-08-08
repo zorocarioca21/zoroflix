@@ -28,7 +28,7 @@ import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
-import { getOrCreateStream, pingStream, HLS_DIR } from './backend/hlsManager.js';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,14 +40,6 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Serve arquivos estáticos do HLS gerados pelo FFmpeg
-app.use('/hls', (req, res, next) => {
-    // Ping o stream caso a requisição seja para ele
-    const match = req.path.match(/^\/([a-f0-9-]+)\//);
-    if (match) pingStream(match[1]);
-    next();
-}, express.static(HLS_DIR));
 
 // Inicializa o Banco e monta as rotas
 initDB().then((db) => {
@@ -86,32 +78,55 @@ initDB().then((db) => {
         }
     });
 
-    // Proxy reverso para Streaming de IPTV via HLS dinâmico
+    // Proxy reverso para Streaming de IPTV usando FFmpeg pipe direto com correção de timestamps
     app.get('/api/stream/proxy', async (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         try {
-            // Inicia o processo do FFmpeg e recebe o ID
-            const streamId = getOrCreateStream(targetUrl);
-            const m3u8Path = path.join(HLS_DIR, streamId, 'index.m3u8');
-            
-            // Aguarda o FFmpeg criar o arquivo (até 20 segundos)
-            let retries = 0;
-            const checkInterval = setInterval(() => {
-                if (fs.existsSync(m3u8Path)) {
-                    clearInterval(checkInterval);
-                    res.redirect(`/hls/${streamId}/index.m3u8`);
-                } else if (retries >= 40) { // 40 * 500ms = 20s
-                    clearInterval(checkInterval);
-                    res.status(504).send('Gateway Timeout - Stream demorou muito para iniciar');
-                }
-                retries++;
-            }, 500);
+            res.writeHead(200, {
+                'Content-Type': 'video/mp2t',
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'no-cache'
+            });
+
+            // FFmpeg vai regenerar a linha do tempo (+genpts+igndts) e forçar o envio de pacotes logo
+            const ffmpegArgs = [
+                '-hide_banner',
+                '-loglevel', 'error',
+                '-reconnect', '1',
+                '-reconnect_at_eof', '1',
+                '-reconnect_streamed', '1',
+                '-reconnect_delay_max', '2',
+                '-user_agent', 'VLC/3.0.9 LibVLC/3.0.9',
+                '-i', targetUrl,
+                '-c', 'copy',
+                '-fflags', '+genpts+igndts+flush_packets',
+                '-muxdelay', '0.1',
+                '-f', 'mpegts',
+                'pipe:1'
+            ];
+
+            const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+
+            ffmpeg.stdout.pipe(res);
+
+            ffmpeg.stderr.on('data', (data) => {
+                const msg = data.toString();
+                console.error(`[Proxy FFmpeg] ${msg.trim()}`);
+            });
+
+            req.on('close', () => {
+                ffmpeg.kill('SIGKILL');
+            });
+
+            ffmpeg.on('close', () => {
+                res.end();
+            });
 
         } catch (err) {
-            console.error('[Proxy] Erro:', err.message);
-            res.status(502).send('Bad Gateway');
+            console.error('[Proxy] Erro de execução:', err.message);
+            if (!res.headersSent) res.status(502).send('Bad Gateway');
         }
     });// Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
