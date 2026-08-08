@@ -21,7 +21,6 @@ import epgRoutes from './backend/routes/epg.js';
 import downloadsRoutes from './backend/routes/downloads.js';
 import http, { createServer } from 'http';
 import https from 'https';
-import axios from 'axios';
 import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
