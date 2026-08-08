@@ -21,6 +21,7 @@ import epgRoutes from './backend/routes/epg.js';
 import downloadsRoutes from './backend/routes/downloads.js';
 import http, { createServer } from 'http';
 import https from 'https';
+import axios from 'axios';
 import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
@@ -67,32 +68,38 @@ initDB().then((db) => {
     });
 
     // Proxy reverso para Streaming de IPTV (Mixed Content / CORS bypass)
-    app.get('/api/stream/proxy', (req, res) => {
+    app.get('/api/stream/proxy', async (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
-        // Fazer a requisição para a URL remota (MPEG-TS ou similar)
-        const httpReq = targetUrl.startsWith('https') ? https : http;
-        
-        const proxyReq = httpReq.get(targetUrl, (proxyRes) => {
-            // Repassar os headers essenciais
-            res.writeHead(proxyRes.statusCode, {
+        try {
+            const proxyRes = await axios({
+                method: 'get',
+                url: targetUrl,
+                responseType: 'stream',
+                headers: {
+                    'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9'
+                },
+                maxRedirects: 10
+            });
+
+            res.writeHead(proxyRes.status, {
                 'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
                 'Access-Control-Allow-Origin': '*',
                 'Cache-Control': 'no-cache'
             });
-            
-            // Fazer o "Piping" dos blocos de vídeo cru direto pro usuário em tempo real
-            proxyRes.pipe(res);
-        }).on('error', (err) => {
+
+            proxyRes.data.pipe(res);
+
+            req.on('close', () => {
+                if (proxyRes.data && typeof proxyRes.data.destroy === 'function') {
+                    proxyRes.data.destroy();
+                }
+            });
+        } catch (err) {
             console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
             if (!res.headersSent) res.status(502).send('Bad Gateway');
-        });
-
-        // Se o usuário fechar a aba/player, a conexão cai, precisamos derrubar o download
-        req.on('close', () => {
-            proxyReq.destroy();
-        });
+        }
     });
 
     // Serve a pasta de uploads de fotos
