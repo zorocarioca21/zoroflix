@@ -76,7 +76,7 @@ initDB().then((db) => {
     });
 
     // Proxy reverso para Streaming de IPTV usando request http nativo para estabilidade
-    app.get('/api/stream/proxy', (req, res) => {
+    app.get('/api/stream/proxy', async (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
