@@ -34,6 +34,11 @@ export async function initDB() {
 
     console.log(`SQLite conectado em: ${dbFile}`);
 
+    // Configurações anti-corrupção (Muito importante para VPS/PM2)
+    await db.exec('PRAGMA journal_mode = WAL;');
+    await db.exec('PRAGMA synchronous = NORMAL;');
+    await db.exec('PRAGMA busy_timeout = 5000;');
+
     // Tabela de Usuários
     await db.exec(`
         CREATE TABLE IF NOT EXISTS users (
