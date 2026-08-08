@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio } from 'lucide-react';
 
 const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteItem, prioritizeItem, editItem, skipItem, formatBytes, fetchQueueParent }) => {
     const [items, setItems] = useState([]);
@@ -377,6 +377,26 @@ export default function AdminSync() {
         fetchQueue();
     };
 
+    const [isRemapping, setIsRemapping] = useState(false);
+    const remapTelegram = async () => {
+        if (!window.confirm('Isso vai ler TODAS as mensagens do seu canal do Telegram e recriar as entradas no banco de dados. Deseja continuar?')) return;
+        setIsRemapping(true);
+        try {
+            const res = await fetch('/api/sync/remap-telegram', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Remapeamento iniciado! Acompanhe o progresso no log do servidor (pm2 logs). A página irá atualizar em 30 segundos.');
+                setTimeout(() => { fetchQueue(); setIsRemapping(false); }, 30000);
+            } else {
+                alert(data.error || 'Erro ao iniciar remapeamento');
+                setIsRemapping(false);
+            }
+        } catch (e) {
+            alert('Erro de rede ao iniciar remapeamento');
+            setIsRemapping(false);
+        }
+    };
+
     const formatBytes = (bytes) => {
         if (!bytes || bytes === 0) return '0 B';
         const k = 1024;
@@ -436,6 +456,13 @@ export default function AdminSync() {
                             style={{ padding: '0.5rem 1rem', background: '#333', color: '#ff4444', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                             <Eraser size={16} /> Limpar Pendentes
+                        </button>
+                        <button 
+                            onClick={remapTelegram}
+                            disabled={isRemapping}
+                            style={{ padding: '0.5rem 1rem', background: isRemapping ? '#555' : '#333', color: '#ffaa00', border: '1px solid #ffaa00', borderRadius: '4px', cursor: isRemapping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isRemapping ? 0.6 : 1 }}
+                        >
+                            <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
                         </button>
                     </div>
                 </div>

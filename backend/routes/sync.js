@@ -8,6 +8,9 @@ import readline from 'readline';
 import multer from 'multer';
 import os from 'os';
 import https from 'https';
+import { TelegramClient } from 'telegram';
+import { StringSession } from 'telegram/sessions/index.js';
+import 'dotenv/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -441,6 +444,129 @@ export default function syncRoutes(db, io) {
             res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao priorizar item' });
+        }
+    });
+
+    // ==========================================
+    // REMAPEAMENTO: Lê o canal do Telegram e recria as entradas no sync_queue
+    // ==========================================
+    router.post('/remap-telegram', async (req, res) => {
+        const apiId = parseInt(process.env.TELEGRAM_API_ID);
+        const apiHash = process.env.TELEGRAM_API_HASH;
+        const sessionStr = process.env.TELEGRAM_SESSION;
+        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+
+        if (!apiId || !apiHash || !sessionStr || !channelId) {
+            return res.status(400).json({ error: 'Variáveis de ambiente do Telegram não configuradas.' });
+        }
+
+        try {
+            res.json({ success: true, message: 'Remapeamento iniciado em background. Acompanhe o log do servidor.' });
+
+            // Executa em background para não travar a resposta HTTP
+            (async () => {
+                let client;
+                try {
+                    console.log('[Remap] 🔌 Conectando ao Telegram...');
+                    const stringSession = new StringSession(sessionStr);
+                    client = new TelegramClient(stringSession, apiId, apiHash, {
+                        connectionRetries: 5,
+                    });
+                    client.setLogLevel('none');
+                    await client.connect();
+
+                    // Carrega os diálogos para resolver a entidade do canal
+                    try { await client.getDialogs({}); } catch (e) {}
+
+                    let entityId = channelId;
+                    if (channelId.startsWith('-100')) {
+                        entityId = channelId.replace('-100', '');
+                    }
+
+                    let resolvedEntity;
+                    try {
+                        resolvedEntity = await client.getInputEntity(entityId);
+                    } catch (e) {
+                        resolvedEntity = entityId;
+                    }
+
+                    console.log('[Remap] 📡 Lendo mensagens do canal...');
+                    let totalFound = 0;
+                    let totalInserted = 0;
+                    let totalSkipped = 0;
+                    let offsetId = 0;
+                    const batchSize = 100;
+
+                    while (true) {
+                        const messages = await client.getMessages(resolvedEntity, {
+                            limit: batchSize,
+                            offsetId: offsetId,
+                        });
+
+                        if (!messages || messages.length === 0) break;
+
+                        for (const msg of messages) {
+                            // Só nos interessam mensagens que contêm vídeo/documento de vídeo
+                            if (!msg.media) continue;
+                            const isVideo = msg.media.className === 'MessageMediaDocument' || msg.media.className === 'MessageMediaVideo';
+                            if (!isVideo) continue;
+
+                            const messageId = msg.id;
+                            const caption = msg.message || '';
+                            const title = caption.trim() || `Video_${messageId}`;
+
+                            // Extrair tamanho do arquivo
+                            let fileSize = 0;
+                            try {
+                                if (msg.media.document) {
+                                    fileSize = Number(msg.media.document.size) || 0;
+                                }
+                            } catch (e) {}
+
+                            totalFound++;
+
+                            // Verifica se já existe no banco por telegram_message_id
+                            const existing = await db.get(
+                                'SELECT id FROM sync_queue WHERE telegram_message_id = ?',
+                                [messageId]
+                            );
+
+                            if (existing) {
+                                totalSkipped++;
+                                continue;
+                            }
+
+                            // Insere no banco com status completed
+                            try {
+                                await db.run(
+                                    `INSERT INTO sync_queue (title, url, status, file_size, telegram_message_id, created_at, updated_at)
+                                     VALUES (?, ?, 'completed', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                                    [title, `telegram://msg/${messageId}`, fileSize, messageId]
+                                );
+                                totalInserted++;
+                            } catch (e) {
+                                // UNIQUE constraint (url duplicada) - pula
+                                totalSkipped++;
+                            }
+                        }
+
+                        // Avança para o próximo lote
+                        offsetId = messages[messages.length - 1].id;
+                        console.log(`[Remap] 📦 Processado lote... Total encontrados: ${totalFound} | Inseridos: ${totalInserted} | Já existiam: ${totalSkipped}`);
+                    }
+
+                    console.log(`[Remap] ✅ REMAPEAMENTO CONCLUÍDO! ${totalFound} vídeos encontrados no canal. ${totalInserted} inseridos no banco. ${totalSkipped} já existiam.`);
+                } catch (err) {
+                    console.error('[Remap] ❌ Erro durante remapeamento:', err);
+                } finally {
+                    if (client) {
+                        try { await client.disconnect(); } catch (e) {}
+                    }
+                }
+            })();
+        } catch (err) {
+            console.error('[Remap] Erro:', err);
+            res.status(500).json({ error: 'Erro ao iniciar remapeamento.' });
         }
     });
 
