@@ -63,7 +63,9 @@ export default function ChannelsPage() {
   const [searchTerm, setSearchTerm] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-search`) || '') : '');
   const [selectedCategory, setSelectedCategory] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-category`) || 'Todos') : 'Todos');
   const [showVipPopup, setShowVipPopup] = useState(false);
+  const [displayCount, setDisplayCount] = useState(20);
   const isFirstMount = React.useRef(true);
+  const observerRef = React.useRef(null);
 
   // Salva o estado dos filtros
   useEffect(() => {
@@ -149,7 +151,33 @@ export default function ChannelsPage() {
     }
     
     setFilteredChannels(result);
+    setDisplayCount(20); // Resetar display count ao filtrar
   }, [searchTerm, selectedCategory, channels]);
+
+  // Intersection Observer para Infinity Scroll
+  useEffect(() => {
+    if (loading) return;
+    
+    const handleObserver = (entries) => {
+      const target = entries[0];
+      if (target.isIntersecting && displayCount < filteredChannels.length) {
+        setDisplayCount(prev => prev + 20);
+      }
+    };
+
+    observerRef.current = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: "200px",
+      threshold: 0.1
+    });
+
+    const trigger = document.getElementById('infinite-scroll-trigger');
+    if (trigger) observerRef.current.observe(trigger);
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [loading, displayCount, filteredChannels.length]);
 
   if (loading) return <div className="details-loading">Buscando canais...</div>;
 
@@ -186,7 +214,7 @@ export default function ChannelsPage() {
       </div>
 
       <div className="search-grid">
-        {filteredChannels.map((ch) => (
+        {filteredChannels.slice(0, displayCount).map((ch) => (
           <ChannelCard 
             key={ch.id} 
             ch={ch} 
@@ -201,6 +229,10 @@ export default function ChannelsPage() {
           />
         ))}
       </div>
+      
+      {displayCount < filteredChannels.length && (
+        <div id="infinite-scroll-trigger" style={{ height: '20px', width: '100%', margin: '20px 0' }}></div>
+      )}
 
       {showVipPopup && (
         <div className="vip-popup-overlay" onClick={() => setShowVipPopup(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
