@@ -177,7 +177,7 @@ body.hide-body-texture::after {
   opacity: 1;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) and (pointer: coarse) {
   .nav-item { max-width: 45px !important; }
   .nav-item:hover, .nav-item.active, .nav-item.home-item { max-width: 45px !important; background: transparent; box-shadow: none; }
   .nav-label { display: none !important; }

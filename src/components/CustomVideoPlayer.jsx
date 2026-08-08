@@ -515,7 +515,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                    zIndex: 2, cursor: 'pointer', background: 'transparent',
+                    zIndex: 10, cursor: 'pointer', background: 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'transform 0.2s',
                     filter: 'drop-shadow(0px 4px 8px rgba(0,0,0,0.6))'
@@ -552,12 +552,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             {onNextEpisode && duration > 0 && (duration - currentTime) <= 90 && !showResumePopup && !videoError && !isLoadingEpisode && (
                 <div 
                     onClick={(e) => { e.stopPropagation(); onNextEpisode(); }}
+                    className={`next-ep-btn ${isFullscreen ? 'fullscreen' : 'windowed'}`}
                     style={{
-                        position: 'absolute', bottom: '90px', right: '20px', zIndex: 5,
+                        position: 'absolute', bottom: isFullscreen ? '90px' : '60px', right: '20px', zIndex: 10,
                         background: 'rgba(0, 255, 136, 0.95)', color: '#000',
-                        padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem',
+                        padding: isFullscreen ? '12px 24px' : '6px 12px', borderRadius: '30px', cursor: 'pointer',
                         fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px',
-                        boxShadow: '0 4px 15px rgba(0,255,136,0.4)', transition: 'all 0.2s'
+                        boxShadow: '0 4px 15px rgba(0, 255, 136, 0.3)',
+                        transition: '0.2s', fontSize: isFullscreen ? '1rem' : '0.75rem',
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = '#00ff88'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'rgba(0, 255, 136, 0.95)'; }}
