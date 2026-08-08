@@ -212,9 +212,7 @@ initDB().then((db) => {
     httpServer.listen(PORT, '0.0.0.0', () => {
         console.log(`Servidor Zoroflix FullStack rodando em http://localhost:${PORT}`);
         
-        // Iniciar scanner IPTV em segundo plano
-        runScanner();
-        // Agendar para rodar a cada 1 hora
+        // Agendar para rodar a cada 1 hora (sem varredura imediata ao iniciar o servidor)
         setInterval(runScanner, 60 * 60 * 1000);
     });
 });
