@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -388,7 +388,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, contentId, season
                 }}
             >
                 {srcUrl ? (
-                    <source src={srcUrl} />
+                    // Se for .m3u8, NÃO coloque o <source> nativo a menos que HLS nativo seja suportado, senão dá erro!
+                    // O hls.js vai injetar o blob diretamente no src do <video>.
+                    (!Hls.isSupported() || !srcUrl.includes('.m3u8')) && <source src={srcUrl} />
                 ) : (
                     <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
                 )}
@@ -401,7 +403,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, contentId, season
             />
 
             {/* Error Message */}
-            {videoError && !isLoadingEpisode && (
+            {videoError && !isLoadingEpisode && !isVip && (
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#111', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
                     <div style={{ background: 'rgba(255, 68, 68, 0.1)', padding: '2rem', borderRadius: '16px', border: '2px solid #ff4444', maxWidth: '500px' }}>
                         <h3 style={{ color: '#ff4444', marginBottom: '1rem', fontSize: '1.5rem' }}>Problema no Servidor de Vídeo</h3>

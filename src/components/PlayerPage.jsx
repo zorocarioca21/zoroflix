@@ -613,6 +613,7 @@ export default function PlayerPage() {
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
                             srcUrl={state?.isVip ? playerUrl : null}
+                            isVip={state?.isVip}
                             isLoadingEpisode={isCheckingTelegram}
                             languageOptions={languageOptions ? languageOptions[currentQuality] : null}
                             onLanguageChange={(id, type) => handleSetMessageId(id, type)}
