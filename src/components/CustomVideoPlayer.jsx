@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
+    const hlsRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [volume, setVolume] = useState(1);
@@ -44,23 +46,57 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
             prevEpisode.current = episode;
             prevContentId.current = contentId;
             
-            videoRef.current.load();
-            
-            const handleLoadedData = () => {
-                if (isSameEpisode) {
-                    videoRef.current.currentTime = timeToRestore;
-                }
+            if (!srcUrl) {
+                videoRef.current.load();
                 
-                // Sempre tentar autoplay em novo episódio, ou manter o estado tocando se for mudança de idioma
-                if (wasPlaying || !isSameEpisode) {
-                    videoRef.current.play().catch(() => {});
-                }
-                videoRef.current.removeEventListener('loadeddata', handleLoadedData);
-            };
-            
-            videoRef.current.addEventListener('loadeddata', handleLoadedData);
+                const handleLoadedData = () => {
+                    if (isSameEpisode) {
+                        videoRef.current.currentTime = timeToRestore;
+                    }
+                    
+                    if (wasPlaying || !isSameEpisode) {
+                        videoRef.current.play().catch(() => {});
+                    }
+                    videoRef.current.removeEventListener('loadeddata', handleLoadedData);
+                };
+                
+                videoRef.current.addEventListener('loadeddata', handleLoadedData);
+            }
         }
-    }, [messageId, episode, contentId]);
+    }, [messageId, episode, contentId, srcUrl]);
+
+    // HLS.js Integration for Live Streams (.m3u8)
+    useEffect(() => {
+        if (videoRef.current && srcUrl) {
+            if (Hls.isSupported() && srcUrl.includes('.m3u8')) {
+                if (hlsRef.current) {
+                    hlsRef.current.destroy();
+                }
+                const hls = new Hls();
+                hlsRef.current = hls;
+                hls.loadSource(srcUrl);
+                hls.attachMedia(videoRef.current);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoRef.current.play().catch(() => {});
+                });
+            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari native support
+                videoRef.current.src = srcUrl;
+                videoRef.current.addEventListener('loadedmetadata', () => {
+                    videoRef.current.play().catch(() => {});
+                });
+            } else {
+                videoRef.current.src = srcUrl;
+            }
+        }
+
+        return () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+        };
+    }, [srcUrl]);
 
     // Oculta o menu de idiomas/qualidade se clicar fora ou esconder controles
     useEffect(() => {
@@ -351,7 +387,11 @@ export default function CustomVideoPlayer({ messageId, contentId, season, episod
                     }
                 }}
             >
-                <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
+                {srcUrl ? (
+                    <source src={srcUrl} />
+                ) : (
+                    <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
+                )}
             </video>
 
             {/* Click Catcher Overlay - Garante que 100% da tela registre os cliques, até fora do video */}

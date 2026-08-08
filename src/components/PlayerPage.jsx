@@ -516,7 +516,11 @@ export default function PlayerPage() {
         : (state.title || 'Carregando...');
 
     if (canalId) {
-        playerUrl = (state.embed_url || `https://superflixapi.fit/canal/${canalId}`) + '#noEpList';
+        if (state.isVip) {
+            playerUrl = state.embed_url;
+        } else {
+            playerUrl = (state.embed_url || `https://superflixapi.fit/canal/${canalId}`) + '#noEpList';
+        }
     } else {
         const isMovie = location.pathname.includes('/filme/');
         const apiType = isMovie ? 'filme' : 'serie';
@@ -605,9 +609,10 @@ export default function PlayerPage() {
                                 )}
                             </div>
                         </div>
-                    ) : telegramMessageId ? (
+                    ) : (telegramMessageId || state?.isVip) ? (
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
+                            srcUrl={state?.isVip ? playerUrl : null}
                             isLoadingEpisode={isCheckingTelegram}
                             languageOptions={languageOptions ? languageOptions[currentQuality] : null}
                             onLanguageChange={(id, type) => handleSetMessageId(id, type)}
