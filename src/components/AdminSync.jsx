@@ -377,6 +377,18 @@ export default function AdminSync() {
         fetchQueue();
     };
 
+    const cleanupDuplicates = async () => {
+        if (!window.confirm("Deseja remover da fila de download os itens pendentes que já possuem um vídeo concluído com o mesmo nome?")) return;
+        const res = await fetch('/api/sync/queue/pending/cleanup_duplicates', { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            alert(`Foram removidos ${data.removed} filmes/séries duplicados da fila de downloads!`);
+            fetchQueue();
+        } else {
+            alert('Erro ao limpar duplicados');
+        }
+    };
+
     const [isRemapping, setIsRemapping] = useState(false);
     const remapTelegram = async () => {
         if (!window.confirm('Isso vai ler TODAS as mensagens do seu canal do Telegram e recriar as entradas no banco de dados. Deseja continuar?')) return;
@@ -455,7 +467,13 @@ export default function AdminSync() {
                             onClick={clearPending}
                             style={{ padding: '0.5rem 1rem', background: '#333', color: '#ff4444', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
-                            <Eraser size={16} /> Limpar Pendentes
+                            <Eraser size={16} /> Limpar Todos Pendentes
+                        </button>
+                        <button 
+                            onClick={cleanupDuplicates}
+                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00e676', border: '1px solid #00e676', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Eraser size={16} /> Remover Duplicados
                         </button>
                         <button 
                             onClick={remapTelegram}

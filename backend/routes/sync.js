@@ -115,6 +115,17 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Rota para remover pendentes duplicados
+    router.delete('/queue/pending/cleanup_duplicates', async (req, res) => {
+        try {
+            const result = await db.run("DELETE FROM sync_queue WHERE status = 'pending' AND title IN (SELECT title FROM sync_queue WHERE status = 'completed')");
+            res.json({ success: true, removed: result.changes });
+        } catch (err) {
+            console.error("Erro cleanup duplicates:", err);
+            res.status(500).json({ error: 'Erro ao limpar duplicados' });
+        }
+    });
+
     // Rota para iniciar varredura do M3U
     router.post('/scan', async (req, res) => {
         try {
