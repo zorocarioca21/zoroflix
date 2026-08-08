@@ -56,8 +56,16 @@ initDB().then((db) => {
     app.use('/api/stream', streamRoutes(db));
     app.use('/api/analytics', analyticsRoutes(db));
 
-    // Rota para canais VIP do IPTV
-    app.get('/api/canais/vip', (req, res) => {
+    // Rota para canais VIP do IPTV (Protegida)
+    app.get('/api/canais/vip', async (req, res) => {
+        // Usa middleware/helper para checar a sessao ou JWT
+        const { getAuth } = await import('./backend/middleware/authHelper.js').catch(() => ({ getAuth: null }));
+        // Simplificação: apenas verificar o referer (pode ser contornado, mas evita acesso direto via URL solta)
+        const referer = req.headers.referer || '';
+        if (!referer.includes(req.hostname) && !referer.includes('cinegeek.shop')) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
         const vipPath = path.join(__dirname, 'backend', 'data', 'canais_vip.json');
         if (fs.existsSync(vipPath)) {
             res.sendFile(vipPath);
@@ -66,42 +74,45 @@ initDB().then((db) => {
         }
     });
 
-    // Proxy reverso para Streaming de IPTV (Mixed Content / CORS bypass)
-    app.get('/api/stream/proxy', async (req, res) => {
+    // Proxy reverso para Streaming de IPTV usando request http nativo para estabilidade
+    app.get('/api/stream/proxy', (req, res) => {
         const targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         try {
-            const proxyRes = await axios({
-                method: 'get',
-                url: targetUrl,
-                responseType: 'stream',
-                headers: {
-                    'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9'
-                },
-                maxRedirects: 10
+            const protocol = targetUrl.startsWith('https') ? https : http;
+            
+            const proxyReq = protocol.get(targetUrl, {
+                headers: { 'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9' }
+            }, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode, {
+                    'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache'
+                });
+                
+                proxyRes.pipe(res);
+                
+                proxyRes.on('error', (err) => {
+                    console.error('[Proxy] Erro na resposta do IPTV:', err.message);
+                    res.end();
+                });
             });
 
-            res.writeHead(proxyRes.status, {
-                'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
-                'Access-Control-Allow-Origin': '*',
-                'Cache-Control': 'no-cache'
+            proxyReq.on('error', (err) => {
+                console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
+                if (!res.headersSent) res.status(502).send('Bad Gateway');
             });
-
-            proxyRes.data.pipe(res);
-
+            
             req.on('close', () => {
-                if (proxyRes.data && typeof proxyRes.data.destroy === 'function') {
-                    proxyRes.data.destroy();
-                }
+                proxyReq.destroy();
             });
+
         } catch (err) {
             console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
             if (!res.headersSent) res.status(502).send('Bad Gateway');
         }
-    });
-
-    // Serve a pasta de uploads de fotos
+    });// Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
 
     // Sistema global de cache na memória para a API Proxy

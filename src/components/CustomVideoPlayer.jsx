@@ -119,15 +119,22 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
                     const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
-                    const player = mpegts.createPlayer({
+                    mpegtsRef.current = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
                         url: proxyUrl,
+                        hasAudio: true,
+                        hasVideo: true
+                    }, {
+                        enableStashBuffer: false,
+                        liveBufferLatencyChasing: true,
+                        liveBufferLatencyMaxLatency: 3,
+                        liveBufferLatencyMinRemain: 1,
+                        stashInitialSize: 128
                     });
-                    mpegtsRef.current = player;
-                    player.attachMediaElement(videoRef.current);
-                    player.load();
-                    player.play().catch(e => console.error("MPEG-TS Play Error:", e));
+                    mpegtsRef.current.attachMediaElement(videoRef.current);
+                    mpegtsRef.current.load();
+                    mpegtsRef.current.play().catch(e => console.error("MPEG-TS Play Error:", e));
                 } else {
                     // Fallback
                     videoRef.current.src = srcUrl;

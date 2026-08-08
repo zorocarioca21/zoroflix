@@ -140,6 +140,8 @@ export default function ChannelsPage() {
     
     if (selectedCategory !== 'Todos') {
       result = result.filter(ch => ch.category?.toLowerCase() === selectedCategory.toLowerCase());
+    } else {
+      result = result.filter(ch => !ch.isVip); // Ocultar VIPs na aba 'Todos'
     }
     
     if (searchTerm) {
