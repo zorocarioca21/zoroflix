@@ -19,7 +19,8 @@ import mobileRoutes from './backend/routes/mobile.js';
 import recentsRoutes from './backend/routes/recents.js';
 import epgRoutes from './backend/routes/epg.js';
 import downloadsRoutes from './backend/routes/downloads.js';
-import { createServer } from 'http';
+import http, { createServer } from 'http';
+import https from 'https';
 import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
@@ -71,7 +72,7 @@ initDB().then((db) => {
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         // Fazer a requisição para a URL remota (MPEG-TS ou similar)
-        const httpReq = targetUrl.startsWith('https') ? require('https') : require('http');
+        const httpReq = targetUrl.startsWith('https') ? https : http;
         
         const proxyReq = httpReq.get(targetUrl, (proxyRes) => {
             // Repassar os headers essenciais
