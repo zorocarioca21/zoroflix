@@ -708,7 +708,6 @@ function startAutoM3uSync() {
 
             rl.on('close', async () => {
                 try {
-                    await dbInstance.run("BEGIN TRANSACTION");
                     let insertedCount = 0;
                     for (const movie of movies) {
                         const result = await dbInstance.run(
@@ -717,14 +716,13 @@ function startAutoM3uSync() {
                         );
                         if (result.changes > 0) insertedCount++;
                     }
-                    await dbInstance.run("COMMIT");
                     if (insertedCount > 0) {
                         console.log(`[AutoSync] Varredura remota concluída! ${insertedCount} novos itens adicionados à fila de pendentes.`);
                     } else {
                         console.log(`[AutoSync] Varredura remota concluída. Nenhum item novo encontrado no momento.`);
                     }
+                    }
                 } catch (dbErr) {
-                    await dbInstance.run("ROLLBACK");
                     console.error("[AutoSync] Erro ao salvar no banco:", dbErr);
                 }
             });

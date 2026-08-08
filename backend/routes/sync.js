@@ -146,7 +146,6 @@ export default function syncRoutes(db, io) {
             } // Fechar for await loop
 
             // Inicia o processo de inserção em lote
-            await db.run("BEGIN TRANSACTION");
             let insertedCount = 0;
             
             try {
@@ -160,9 +159,8 @@ export default function syncRoutes(db, io) {
                     );
                     if (res.changes > 0) insertedCount++;
                 }
-                await db.run("COMMIT");
             } catch (insertErr) {
-                await db.run("ROLLBACK");
+                console.error("Erro na inserção em lote:", insertErr);
                 throw insertErr;
             }
 
@@ -184,7 +182,6 @@ export default function syncRoutes(db, io) {
 
         let movies = [];
         let currentTitle = null;
-        let insertedCount = 0;
 
         https.get(m3uUrl, (response) => {
             if (response.statusCode !== 200) {
@@ -211,7 +208,7 @@ export default function syncRoutes(db, io) {
 
             rl.on('close', async () => {
                 try {
-                    await db.run("BEGIN TRANSACTION");
+                    let insertedCount = 0;
                     for (const movie of movies) {
                         // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
                         const result = await db.run(
@@ -220,11 +217,9 @@ export default function syncRoutes(db, io) {
                         );
                         if (result.changes > 0) insertedCount++;
                     }
-                    await db.run("COMMIT");
                     res.json({ message: 'Sincronização remota concluída', totalFound: movies.length, inserted: insertedCount });
                 } catch (dbErr) {
-                    await db.run("ROLLBACK");
-                    console.error("Erro no banco:", dbErr);
+                    console.error("Erro ao salvar no banco:", dbErr);
                     res.status(500).json({ error: 'Erro ao salvar no banco de dados.' });
                 }
             });
