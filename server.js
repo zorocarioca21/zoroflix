@@ -65,6 +65,35 @@ initDB().then((db) => {
         }
     });
 
+    // Proxy reverso para Streaming de IPTV (Mixed Content / CORS bypass)
+    app.get('/api/stream/proxy', (req, res) => {
+        const targetUrl = req.query.url;
+        if (!targetUrl) return res.status(400).send('Missing url param');
+        
+        // Fazer a requisição para a URL remota (MPEG-TS ou similar)
+        const httpReq = targetUrl.startsWith('https') ? require('https') : require('http');
+        
+        const proxyReq = httpReq.get(targetUrl, (proxyRes) => {
+            // Repassar os headers essenciais
+            res.writeHead(proxyRes.statusCode, {
+                'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'no-cache'
+            });
+            
+            // Fazer o "Piping" dos blocos de vídeo cru direto pro usuário em tempo real
+            proxyRes.pipe(res);
+        }).on('error', (err) => {
+            console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
+            if (!res.headersSent) res.status(502).send('Bad Gateway');
+        });
+
+        // Se o usuário fechar a aba/player, a conexão cai, precisamos derrubar o download
+        req.on('close', () => {
+            proxyReq.destroy();
+        });
+    });
+
     // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
 

@@ -21,6 +21,7 @@
     "input": "^1.0.1",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.17.0",
+    "mpegts.js": "^1.8.1",
     "multer": "^2.1.1",
     "nodemailer": "^9.0.3",
     "playwright": "^1.62.1",

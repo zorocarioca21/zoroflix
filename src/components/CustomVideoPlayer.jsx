@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
+import mpegts from 'mpegts.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
+    const mpegtsRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [volume, setVolume] = useState(1);
@@ -68,25 +70,68 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
     // HLS.js Integration for Live Streams (.m3u8)
     useEffect(() => {
         if (videoRef.current && srcUrl) {
-            if (Hls.isSupported() && srcUrl.includes('.m3u8')) {
-                if (hlsRef.current) {
-                    hlsRef.current.destroy();
+            // Limpa players anteriores
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+            if (mpegtsRef.current) {
+                mpegtsRef.current.destroy();
+                mpegtsRef.current = null;
+            }
+
+            if (srcUrl.includes('.m3u8')) {
+                // HLS NATTY
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hlsRef.current = hls;
+                    hls.loadSource(srcUrl);
+                    hls.attachMedia(videoRef.current);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        videoRef.current.play().catch(() => {});
+                    });
+                    
+                    hls.on(Hls.Events.ERROR, function (event, data) {
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.log('fatal network error encountered, try to recover');
+                                    hls.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.log('fatal media error encountered, try to recover');
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    hls.destroy();
+                                    break;
+                            }
+                        }
+                    });
+
+                } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoRef.current.src = srcUrl;
+                    videoRef.current.addEventListener('loadedmetadata', () => {
+                        videoRef.current.play().catch(() => {});
+                    });
                 }
-                const hls = new Hls();
-                hlsRef.current = hls;
-                hls.loadSource(srcUrl);
-                hls.attachMedia(videoRef.current);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoRef.current.play().catch(() => {});
-                });
-            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari native support
-                videoRef.current.src = srcUrl;
-                videoRef.current.addEventListener('loadedmetadata', () => {
-                    videoRef.current.play().catch(() => {});
-                });
             } else {
-                videoRef.current.src = srcUrl;
+                // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
+                if (mpegts.getFeatureList().mseLivePlayback) {
+                    const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
+                    const player = mpegts.createPlayer({
+                        type: 'mse',
+                        isLive: true,
+                        url: proxyUrl,
+                    });
+                    mpegtsRef.current = player;
+                    player.attachMediaElement(videoRef.current);
+                    player.load();
+                    player.play().catch(e => console.error("MPEG-TS Play Error:", e));
+                } else {
+                    // Fallback
+                    videoRef.current.src = srcUrl;
+                }
             }
         }
 
@@ -94,6 +139,10 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
+            }
+            if (mpegtsRef.current) {
+                mpegtsRef.current.destroy();
+                mpegtsRef.current = null;
             }
         };
     }, [srcUrl]);
@@ -388,9 +437,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 }}
             >
                 {srcUrl ? (
-                    // Se for .m3u8, NÃO coloque o <source> nativo a menos que HLS nativo seja suportado, senão dá erro!
-                    // O hls.js vai injetar o blob diretamente no src do <video>.
-                    (!Hls.isSupported() || !srcUrl.includes('.m3u8')) && <source src={srcUrl} />
+                    // Se a URL não contiver m3u8, o mpegts.js vai assumir. Se contiver, HLS nativo apenas se suportado.
+                    (!Hls.isSupported() || !srcUrl.includes('.m3u8')) && (srcUrl.includes('.m3u8')) && <source src={srcUrl} />
                 ) : (
                     <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
                 )}
