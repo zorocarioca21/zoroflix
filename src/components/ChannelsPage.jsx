@@ -3,7 +3,7 @@ import { useNavigate, useNavigationType } from 'react-router-dom';
 import { fetchWithProxy } from '../utils/api';
 import SportsFixtures from './SportsFixtures';
 import { Tv } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 function ChannelCard({ ch, onClick }) {
   const [imgError, setImgError] = useState(!ch.logo_url);
@@ -47,7 +47,7 @@ export default function ChannelsPage() {
   const navigate = useNavigate();
   const navType = useNavigationType();
   const isPop = navType === 'POP';
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
   const [channels, setChannels] = useState(() => {
     if (!isPop) return [];
