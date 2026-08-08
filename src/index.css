@@ -5298,3 +5298,13 @@ body.hide-body-texture::after {
     transform: scale(1.05);
   }
 }
+
+/* --- Custom Player Fixes for Mobile --- */
+.custom-player-container * {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.next-ep-btn, .player-controls-overlay * {
+  user-select: none;
+  -webkit-user-select: none;
+}
