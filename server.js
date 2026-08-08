@@ -94,9 +94,21 @@ initDB().then((db) => {
         try {
             // Inicia o processo do FFmpeg e recebe o ID
             const streamId = getOrCreateStream(targetUrl);
+            const m3u8Path = path.join(HLS_DIR, streamId, 'index.m3u8');
             
-            // Redireciona o player para o m3u8 do HLS
-            res.redirect(`/hls/${streamId}/index.m3u8`);
+            // Aguarda o FFmpeg criar o arquivo (até 10 segundos)
+            let retries = 0;
+            const checkInterval = setInterval(() => {
+                if (fs.existsSync(m3u8Path)) {
+                    clearInterval(checkInterval);
+                    res.redirect(`/hls/${streamId}/index.m3u8`);
+                } else if (retries >= 20) { // 20 * 500ms = 10s
+                    clearInterval(checkInterval);
+                    res.status(504).send('Gateway Timeout - Stream demorou muito para iniciar');
+                }
+                retries++;
+            }, 500);
+
         } catch (err) {
             console.error('[Proxy] Erro:', err.message);
             res.status(502).send('Bad Gateway');
