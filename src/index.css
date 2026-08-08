@@ -5308,3 +5308,7 @@ body.hide-body-texture::after {
   user-select: none;
   -webkit-user-select: none;
 }
+
+@media (max-width: 950px) {
+  .navbar { flex-wrap: wrap; justify-content: center; gap: 1rem; }
+}
