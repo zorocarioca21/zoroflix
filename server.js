@@ -80,36 +80,54 @@ initDB().then((db) => {
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         try {
-            const protocol = targetUrl.startsWith('https') ? https : http;
+            const { spawn } = require('child_process');
             
-            const proxyReq = protocol.get(targetUrl, {
-                headers: { 'User-Agent': 'VLC/3.0.9 LibVLC/3.0.9' }
-            }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode, {
-                    'Content-Type': proxyRes.headers['content-type'] || 'application/octet-stream',
-                    'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'no-cache'
-                });
-                
-                proxyRes.pipe(res);
-                
-                proxyRes.on('error', (err) => {
-                    console.error('[Proxy] Erro na resposta do IPTV:', err.message);
-                    res.end();
-                });
+            res.writeHead(200, {
+                'Content-Type': 'video/mp2t',
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
             });
 
-            proxyReq.on('error', (err) => {
-                console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
-                if (!res.headersSent) res.status(502).send('Bad Gateway');
+            const ffmpegArgs = [
+                '-reconnect', '1',
+                '-reconnect_streamed', '1',
+                '-reconnect_delay_max', '5',
+                '-user_agent', 'VLC/3.0.9 LibVLC/3.0.9',
+                '-i', targetUrl,
+                '-c:v', 'copy',
+                '-c:a', 'copy',
+                '-f', 'mpegts',
+                'pipe:1'
+            ];
+
+            const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+
+            ffmpeg.stdout.pipe(res);
+
+            ffmpeg.stderr.on('data', (data) => {
+                // Silenciar logs excessivos, mas manter vivos os erros se precisar debugar
+                const msg = data.toString();
+                if (msg.includes('403 Forbidden')) {
+                    console.error('[Proxy] Provedor bloqueou o FFmpeg com 403 Forbidden!');
+                }
             });
-            
+
+            ffmpeg.on('error', (err) => {
+                console.error('[Proxy] Erro ao iniciar FFmpeg:', err.message);
+                if (!res.headersSent) res.status(502).end();
+            });
+
+            ffmpeg.on('close', (code) => {
+                res.end();
+            });
+
             req.on('close', () => {
-                proxyReq.destroy();
+                ffmpeg.kill('SIGKILL');
             });
 
         } catch (err) {
-            console.error('[Proxy] Erro de rede no streaming IPTV:', err.message);
+            console.error('[Proxy] Erro ao preparar FFmpeg:', err.message);
             if (!res.headersSent) res.status(502).send('Bad Gateway');
         }
     });// Serve a pasta de uploads de fotos
