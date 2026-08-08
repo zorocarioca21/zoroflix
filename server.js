@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -80,8 +81,6 @@ initDB().then((db) => {
         if (!targetUrl) return res.status(400).send('Missing url param');
         
         try {
-            const { spawn } = require('child_process');
-            
             res.writeHead(200, {
                 'Content-Type': 'video/mp2t',
                 'Access-Control-Allow-Origin': '*',
