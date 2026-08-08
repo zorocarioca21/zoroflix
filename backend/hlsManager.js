@@ -116,5 +116,3 @@ function pingStream(streamId) {
 }
 
 export { getOrCreateStream, pingStream, HLS_DIR };
-
-export { getOrCreateStream, pingStream, HLS_DIR };
