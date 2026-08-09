@@ -20,7 +20,34 @@ export default function UserProfile() {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Comprimir e redimensionar a imagem no frontend antes de enviar
+        const uploadToServer = async (fileOrBlob, filename) => {
+            const formData = new FormData();
+            formData.append('avatar', fileOrBlob, filename);
+            formData.append('userId', user.id);
+
+            try {
+                setLoading(true);
+                const resp = await fetch('/api/profile/upload-avatar', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!resp.ok) throw new Error('Servidor recusou a imagem');
+                const data = await resp.json();
+                login({ ...user, avatar: data.avatar }, localStorage.getItem('cinegeek_token'));
+                setMsg({ type: 'success', text: 'Foto atualizada!' });
+            } catch (err) {
+                setMsg({ type: 'error', text: 'Erro ao enviar imagem.' });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // Se for GIF animado, manda direto sem passar pelo Canvas (que transforma em imagem estática)
+        if (file.type === 'image/gif') {
+            return uploadToServer(file, file.name);
+        }
+
+        // Para outras imagens (JPG, PNG, HEIC do iPhone), comprime e redimensiona
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (event) => {
@@ -49,27 +76,9 @@ export default function UserProfile() {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Converte para JPEG leve (resolve problemas de HEIC do iPhone e limites de tamanho)
-                canvas.toBlob(async (blob) => {
-                    const formData = new FormData();
-                    formData.append('avatar', blob, 'avatar.jpg');
-                    formData.append('userId', user.id);
-
-                    try {
-                        setLoading(true);
-                        const resp = await fetch('/api/profile/upload-avatar', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        if (!resp.ok) throw new Error('Servidor recusou a imagem');
-                        const data = await resp.json();
-                        login({ ...user, avatar: data.avatar }, localStorage.getItem('cinegeek_token'));
-                        setMsg({ type: 'success', text: 'Foto atualizada!' });
-                    } catch (err) {
-                        setMsg({ type: 'error', text: 'Erro ao enviar imagem.' });
-                    } finally {
-                        setLoading(false);
-                    }
+                // Converte para JPEG leve
+                canvas.toBlob((blob) => {
+                    uploadToServer(blob, 'avatar.jpg');
                 }, 'image/jpeg', 0.8);
             };
         };
