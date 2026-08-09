@@ -325,6 +325,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
     const togglePlay = () => {
         if (videoError) return;
+        
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            const finalUrl = srcUrl || `/api/stream/telegram/${messageId}`;
+            window.location.href = finalUrl;
+            return;
+        }
+
         if (videoRef.current.paused) {
             videoRef.current.play();
             setIsPlaying(true);
