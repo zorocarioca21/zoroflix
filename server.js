@@ -27,6 +27,7 @@ import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import storageRoutes from './backend/routes/storage.js';
+import { initStorageDB } from './backend/storageDB.js';
 import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
@@ -43,7 +44,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Inicializa o Banco e monta as rotas
-initDB().then((db) => {
+Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     // Apply tracking middleware for page views and live sessions
     app.use(trackView(db));
 
@@ -60,14 +61,14 @@ initDB().then((db) => {
     app.use('/api/downloads', downloadsRoutes(db));
     app.use('/api/stream', streamRoutes(db));
     app.use('/api/analytics', analyticsRoutes(db));
-    app.use('/api/storage', storageRoutes(db));
+    app.use('/api/storage', storageRoutes(storageDb));
 
     // ==========================================
     // ZORO STORAGE CDN PROXY (LINK DIRETO)
     // ==========================================
     app.get('/s/:id', async (req, res) => {
         try {
-            const file = await db.get(`SELECT message_id, mime_type, size FROM storage_files WHERE id = ?`, [req.params.id]);
+            const file = await storageDb.get(`SELECT message_id, mime_type, size FROM storage_files WHERE id = ?`, [req.params.id]);
             if (!file) return res.status(404).send('Arquivo não encontrado');
 
             const tgClient = await getTelegramClient();

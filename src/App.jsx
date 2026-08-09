@@ -18,6 +18,7 @@ import ApiDocsPage from './components/ApiDocsPage'
 import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
 import AntiDevTools from './components/AntiDevTools'
+import StoragePage from './components/StoragePage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -396,6 +397,7 @@ function AppContent() {
         <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
+        <Route path="/storage" element={<StoragePage />} />
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}

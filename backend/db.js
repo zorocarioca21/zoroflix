@@ -180,23 +180,7 @@ export async function initDB() {
         )
     `);
 
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS storage_files (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            message_id INTEGER,
-            file_name TEXT,
-            mime_type TEXT,
-            size INTEGER,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    `);
-
     // Migrations
-    try {
-        await db.exec(`ALTER TABLE users ADD COLUMN api_key TEXT UNIQUE`);
-    } catch(e) {}
     try {
         await db.exec(`ALTER TABLE comments ADD COLUMN status TEXT DEFAULT 'visible'`);
     } catch(e) {}
