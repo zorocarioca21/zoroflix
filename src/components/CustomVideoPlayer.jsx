@@ -134,10 +134,13 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     });
                     mpegtsRef.current.attachMediaElement(videoRef.current);
                     mpegtsRef.current.load();
-                    mpegtsRef.current.play().catch(e => console.error("MPEG-TS Play Error:", e));
+                    mpegtsRef.current.play().catch(() => {});
                 } else {
-                    // Fallback
+                    // Fallback para iOS (Player Nativo com link direto)
                     videoRef.current.src = srcUrl;
+                    videoRef.current.addEventListener('loadedmetadata', () => {
+                        videoRef.current.play().catch(() => {});
+                    });
                 }
             }
         }
@@ -443,10 +446,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     }
                 }}
             >
-                {srcUrl ? (
-                    // Se a URL não contiver m3u8, o mpegts.js vai assumir. Se contiver, HLS nativo apenas se suportado.
-                    (!Hls.isSupported() || !srcUrl.includes('.m3u8')) && (srcUrl.includes('.m3u8')) && <source src={srcUrl} />
-                ) : (
+                {srcUrl ? null : (
                     <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
                 )}
             </video>
