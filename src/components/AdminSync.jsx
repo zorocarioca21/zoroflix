@@ -1062,7 +1062,7 @@ export default function AdminSync() {
                 formatBytes={formatBytes} 
                 fetchQueueParent={fetchQueue}
             />
-            {DialogPortal}
+            {dialog.DialogPortal}
         </div>
     );
 }
