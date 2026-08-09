@@ -83,7 +83,6 @@ body.hide-body-texture::after {
 .main-header {
   display: flex;
   justify-content: space-between;
-  flex-wrap: wrap;
   align-items: center;
   margin-bottom: 3rem;
   padding-bottom: 1.5rem;
@@ -5308,5 +5307,15 @@ body.hide-body-texture::after {
   -webkit-user-select: none;
 }
 
-.nav-pill { flex-shrink: 0; min-width: min-content; }
-.navbar-search-input { min-width: 200px; }
+@media (max-width: 1400px) {
+  .main-header {
+    gap: 0.5rem;
+  }
+  .nav-item {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.75rem;
+  }
+  .navbar-search-input {
+    width: 160px;
+  }
+}
