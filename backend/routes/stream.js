@@ -1,57 +1,10 @@
 import express from 'express';
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
+import { getTelegramClient } from '../telegram.js';
 import bigInt from "big-integer";
 import 'dotenv/config';
 
 const router = express.Router();
-
-const apiId = parseInt(process.env.TELEGRAM_API_ID);
-const apiHash = process.env.TELEGRAM_API_HASH;
-const sessionStr = process.env.TELEGRAM_SESSION;
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
-
-let client = null;
-let clientConnecting = false;
-let clientConnected = false;
-
-// Inicializa o cliente do Telegram como Singleton
-async function getTelegramClient() {
-    if (clientConnected) return client;
-    if (clientConnecting) {
-        // Aguarda conectar
-        while (!clientConnected) {
-            await new Promise(r => setTimeout(r, 500));
-        }
-        return client;
-    }
-
-    clientConnecting = true;
-    try {
-        const stringSession = new StringSession(sessionStr);
-        client = new TelegramClient(stringSession, apiId, apiHash, {
-            connectionRetries: 5,
-        });
-        client.setLogLevel("none");
-        await client.connect();
-        
-        // Carrega os diálogos para popular o cache de entidades do GramJS
-        // Evita o erro: Could not find the input entity for {"channelId":"..."}
-        try {
-            await client.getDialogs({});
-        } catch (e) {
-            console.log("Aviso: Falha ao carregar dialogos", e);
-        }
-
-        clientConnected = true;
-        console.log("Cliente GramJS conectado para Streaming!");
-    } catch (e) {
-        console.error("Erro ao conectar GramJS:", e);
-    } finally {
-        clientConnecting = false;
-    }
-    return client;
-}
 
 export default function streamRoutes(db) {
     const router = express.Router();

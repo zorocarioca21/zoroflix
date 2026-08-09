@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2, Crown, ShieldCheck, EyeOff } from 'lucide-react';
+import { Send, Reply, ThumbsUp, ThumbsDown, AlertTriangle, Trash2, Crown, ShieldCheck, EyeOff, Image as ImageIcon, Loader } from 'lucide-react';
 
 export default function CommentSection({ contentId, mediaType, episodeId }) {
     const { user } = useAuth();
@@ -8,6 +8,8 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
     const [newComment, setNewComment] = useState('');
     const [replyingTo, setReplyingTo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [uploadingSticker, setUploadingSticker] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     useEffect(() => {
         fetchComments();
@@ -63,6 +65,50 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    const handleStickerUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !user) return;
+
+        setUploadingSticker(true);
+        try {
+            const token = localStorage.getItem('cinegeek_token');
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/storage/upload', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setNewComment(prev => prev + ` [STICKER:${data.url}]`);
+            } else {
+                alert("Erro ao enviar figurinha.");
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setUploadingSticker(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const renderCommentText = (text) => {
+        if (!text) return null;
+        const stickerRegex = /\[STICKER:(\/s\/\d+)\]/g;
+        if (!text.match(stickerRegex)) return text;
+        
+        const parts = text.split(stickerRegex);
+        return parts.map((part, i) => {
+            if (part.startsWith('/s/')) {
+                return <img key={i} src={part} alt="Sticker" className="comment-sticker" />;
+            }
+            return <span key={i}>{part}</span>;
+        });
     };
 
     const handleReact = async (commentId, type) => {
@@ -133,6 +179,13 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
                     ></textarea>
+                    
+                    <input type="file" ref={fileInputRef} accept="image/*" style={{display: 'none'}} onChange={handleStickerUpload} />
+                    
+                    <button className="comment-sticker-btn" onClick={() => fileInputRef.current?.click()} disabled={uploadingSticker} title="Anexar Imagem ou GIF">
+                        {uploadingSticker ? <Loader size={18} className="spin" /> : <ImageIcon size={18} />}
+                    </button>
+
                     <button className="comment-send-btn" onClick={() => handleSend()}>
                         <Send size={18} />
                     </button>
@@ -159,7 +212,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                     </span>
                                     <span className="comment-date">{new Date(c.created_at).toLocaleDateString()}</span>
                                 </div>
-                                <div className="comment-text">{c.text}</div>
+                                <div className="comment-text">{renderCommentText(c.text)}</div>
                                 <div className="comment-actions">
                                     <button onClick={() => !isDeleted && handleReact(c.id, 'like')} disabled={isDeleted}>
                                         <ThumbsUp size={14} /> {c.likes}
@@ -204,7 +257,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                                 </span>
                                                 <span className="comment-date">{new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <div className="comment-text">{r.text}</div>
+                                            <div className="comment-text">{renderCommentText(r.text)}</div>
                                             {user?.role === 'admin' && (
                                                 <div className="admin-quick-actions mini">
                                                     <button className="btn-delete-adm mini warn" onClick={() => handleDeleteADM(r.id)}>

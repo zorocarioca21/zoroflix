@@ -2591,6 +2591,51 @@ body.hide-body-texture::after {
   border: 2px solid var(--primary);
 }
 
+.comment-sticker {
+  max-height: 120px;
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.comment-sticker:hover {
+  transform: scale(1.05);
+}
+
+.comment-sticker-btn {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.8rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  margin-right: 10px;
+}
+.comment-sticker-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: translateY(-2px);
+}
+.comment-sticker-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 .comment-send-btn {
   align-self: flex-end;
   background: var(--primary);

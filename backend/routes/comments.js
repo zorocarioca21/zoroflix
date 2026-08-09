@@ -1,8 +1,30 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { UPLOADS_PATH } from '../db.js';
 
 const router = express.Router();
 
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, UPLOADS_PATH);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'sticker-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage });
+
 export default function commentRoutes(db) {
+
+    // UPLOAD DE FIGURINHA
+    router.post('/upload-sticker', upload.single('sticker'), (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+        }
+        res.json({ stickerUrl: `/uploads/${req.file.filename}` });
+    });
 
     // LISTAR COMENTÁRIOS (com repostas e reações)
     router.get('/:mediaType/:contentId', async (req, res) => {

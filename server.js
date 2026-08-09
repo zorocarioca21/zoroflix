@@ -26,6 +26,8 @@ import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
 import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
+import storageRoutes from './backend/routes/storage.js';
+import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
 
@@ -58,6 +60,57 @@ initDB().then((db) => {
     app.use('/api/downloads', downloadsRoutes(db));
     app.use('/api/stream', streamRoutes(db));
     app.use('/api/analytics', analyticsRoutes(db));
+    app.use('/api/storage', storageRoutes(db));
+
+    // ==========================================
+    // ZORO STORAGE CDN PROXY (LINK DIRETO)
+    // ==========================================
+    app.get('/s/:id', async (req, res) => {
+        try {
+            const file = await db.get(`SELECT message_id, mime_type, size FROM storage_files WHERE id = ?`, [req.params.id]);
+            if (!file) return res.status(404).send('Arquivo não encontrado');
+
+            const tgClient = await getTelegramClient();
+            if (!tgClient) return res.status(500).send('Serviço indisponível');
+
+            const storageChannelId = process.env.STORAGE_CHANNEL_ID;
+            let entityId = storageChannelId;
+            if (!entityId.startsWith('-100')) entityId = '-100' + entityId.replace('-', '');
+
+            let resolvedEntity;
+            try { resolvedEntity = await tgClient.getInputEntity(entityId); } 
+            catch (e) { resolvedEntity = entityId; }
+
+            const result = await tgClient.getMessages(resolvedEntity, { ids: parseInt(file.message_id) });
+            if (!result || result.length === 0 || !result[0] || result[0].className === "MessageEmpty") {
+                return res.status(404).send("Arquivo indisponível no Storage");
+            }
+
+            const message = result[0];
+            if (!message.media || !message.media.document) return res.status(404).send("Documento não encontrado na mensagem");
+
+            res.set({
+                'Content-Type': file.mime_type,
+                'Content-Length': file.size,
+                'Cache-Control': 'public, max-age=31536000'
+            });
+
+            // Faz o download via Buffer pro Client
+            const iterator = tgClient.iterDownload({
+                file: message.media,
+                requestSize: 512 * 1024,
+            });
+
+            for await (const chunk of iterator) {
+                const canWrite = res.write(chunk);
+                if (!canWrite) await new Promise(r => res.once('drain', r));
+            }
+            res.end();
+        } catch (err) {
+            console.error("Erro no Storage CDN Proxy:", err);
+            if (!res.headersSent) res.status(500).send("Erro interno ao transmitir arquivo");
+        }
+    });
 
     // Rota para canais VIP do IPTV (Protegida)
     app.get('/api/canais/vip', async (req, res) => {
