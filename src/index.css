@@ -3229,14 +3229,14 @@ body.hide-body-texture::after {
   background: rgba(0, 0, 0, 0.9);
 }
 .favorite-btn-overlay.active {
-  color: #ff3333;
-  border-color: #ff3333;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .favorite-btn-overlay svg {
   transition: all 0.3s;
 }
 .favorite-btn-overlay.active svg {
-  fill: #ff3333;
+  fill: var(--primary);
 }
 
 .favorite-btn-overlay { bottom: 10px !important; left: 10px !important; }
