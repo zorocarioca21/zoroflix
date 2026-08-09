@@ -710,7 +710,14 @@ export default function AdminSync() {
                             onClick={cleanupDuplicates}
                             style={{ padding: '0.5rem 1rem', background: '#333', color: '#00e676', border: '1px solid #00e676', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
-                            <Eraser size={16} /> Remover Duplicados
+                            <Eraser size={16} /> Limpar Fila Pendentes (Duplicados)
+                        </button>
+                        <button 
+                            onClick={cleanupTelegramDuplicates}
+                            disabled={isCleaningTG}
+                            style={{ padding: '0.5rem 1rem', background: isCleaningTG ? '#555' : '#333', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '4px', cursor: isCleaningTG ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isCleaningTG ? 0.6 : 1 }}
+                        >
+                            <Trash2 size={16} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados do TG'}
                         </button>
                         <button 
                             onClick={remapTelegram}
