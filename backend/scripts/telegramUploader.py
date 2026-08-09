@@ -134,7 +134,7 @@ def main():
             app.send_video(
                 chat_id=CHANNEL_ID,
                 video=tmp_file,
-                caption=f"**{selected['title']}**\nUpload via Zoroflix Bot (Python Turbo)",
+                caption=f"**{selected['title']}**",
                 supports_streaming=True, # Magia pra criar o Player
                 progress=progress
             )

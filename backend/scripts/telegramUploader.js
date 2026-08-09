@@ -171,7 +171,7 @@ function parseM3uAndSearch(filePath, query) {
             await client.sendFile(entityId, {
                 file: destPath,
                 workers: 2, // Reduzido de 4 para 2 para evitar block do Telegram (FloodWait)
-                caption: `**${selected.title}**\nUpload via Zoroflix Bot`,
+                caption: `**${selected.title}**`,
                 parseMode: "markdown",
                 forceDocument: false,
                 attributes: [

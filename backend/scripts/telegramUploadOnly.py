@@ -49,7 +49,7 @@ def main():
         msg = app.send_video(
             chat_id=CHANNEL_ID,
             video=file_path,
-            caption=f"**{title}**\nUpload via Zoroflix Sync (Hybrid Worker)",
+            caption=f"**{title}**",
             supports_streaming=True,
             progress=progress
         )

@@ -118,7 +118,22 @@ export default function syncRoutes(db, io) {
     // Rota para remover pendentes duplicados
     router.delete('/queue/pending/cleanup_duplicates', async (req, res) => {
         try {
-            const result = await db.run("DELETE FROM sync_queue WHERE status = 'pending' AND title IN (SELECT title FROM sync_queue WHERE status = 'completed')");
+            // Primeiro, limpa títulos sujos no banco (ex: títulos importados pelo remap que vieram com caption do Telegram)
+            // Remove markdown bold (**) e sufixos "Upload via..." de TODOS os títulos completed
+            await db.run(`
+                UPDATE sync_queue SET title = REPLACE(REPLACE(REPLACE(REPLACE(TRIM(title), 
+                    '**', ''), 
+                    CHAR(10) || 'Upload via Zoroflix Sync (Hybrid Worker)', ''),
+                    CHAR(10) || 'Upload via Zoroflix Bot (Python Turbo)', ''),
+                    CHAR(10) || 'Upload via Zoroflix Bot', '')
+                WHERE status = 'completed' AND (
+                    title LIKE '%**%' OR 
+                    title LIKE '%Upload via Zoroflix%'
+                )
+            `);
+
+            // Agora compara os títulos limpos normalmente
+            const result = await db.run("DELETE FROM sync_queue WHERE status = 'pending' AND TRIM(title) IN (SELECT TRIM(title) FROM sync_queue WHERE status = 'completed')");
             res.json({ success: true, removed: result.changes });
         } catch (err) {
             console.error("Erro cleanup duplicates:", err);
@@ -519,7 +534,9 @@ export default function syncRoutes(db, io) {
 
                             const messageId = msg.id;
                             const caption = msg.message || '';
-                            const title = caption.trim() || `Video_${messageId}`;
+                            // Limpa o título: remove markdown bold (**) e o sufixo "Upload via..." que os scripts Python adicionavam
+                            let title = caption.trim() || `Video_${messageId}`;
+                            title = title.replace(/\*\*/g, '').replace(/\nUpload via Zoroflix Sync \(Hybrid Worker\)/gi, '').replace(/\nUpload via Zoroflix Bot \(Python Turbo\)/gi, '').replace(/\nUpload via Zoroflix Bot/gi, '').trim();
 
                             // Extrair tamanho do arquivo
                             let fileSize = 0;

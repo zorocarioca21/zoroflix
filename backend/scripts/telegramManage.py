@@ -44,7 +44,7 @@ def main():
                 app.edit_message_caption(
                     chat_id=CHANNEL_ID,
                     message_id=message_id,
-                    caption=f"**{new_title}**\nUpload via Zoroflix Sync (Hybrid Worker)"
+                    caption=f"**{new_title}**"
                 )
                 print(f"Sucesso: Mensagem {message_id} editada com novo título '{new_title}'.")
             else:
