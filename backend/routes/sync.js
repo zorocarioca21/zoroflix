@@ -469,6 +469,168 @@ export default function syncRoutes(db, io) {
     });
 
     // ==========================================
+    // AUTO-PRIORITIZE: Prioriza itens baseado na demanda do usuário no front-end
+    // ==========================================
+    const autoPrioritizeCache = new Map(); // Para evitar spam do mesmo título
+    
+    router.post('/auto-prioritize', async (req, res) => {
+        try {
+            const { title, media_type } = req.body;
+            if (!title) return res.json({ prioritized: 0 });
+
+            // Debounce: Evita processar o mesmo título a cada clique se múltiplos usuários acessarem
+            const cacheKey = title.toLowerCase();
+            const now = Date.now();
+            if (autoPrioritizeCache.has(cacheKey) && (now - autoPrioritizeCache.get(cacheKey) < 60000)) { // 60 segundos
+                return res.json({ prioritized: 0, cached: true });
+            }
+            autoPrioritizeCache.set(cacheKey, now);
+
+            // Tenta dar match parcial na fila de pendentes e com priority = 0
+            const result = await db.run(`
+                UPDATE sync_queue 
+                SET priority = 1, updated_at = CURRENT_TIMESTAMP 
+                WHERE status = 'pending' AND priority = 0 
+                AND title LIKE '%' || ? || '%'
+            `, [title]);
+
+            if (result.changes > 0) {
+                console.log(`[Auto-Prioritize] 🔥 Demanda alta detectada! Priorizados ${result.changes} itens para: "${title}"`);
+            }
+
+            res.json({ prioritized: result.changes });
+        } catch (err) {
+            console.error('[Auto-Prioritize] Erro:', err);
+            // Sempre retorna 200 pra não quebrar o frontend silencioso
+            res.json({ prioritized: 0, error: err.message });
+        }
+    });
+
+    // ==========================================
+    // LIMPAR DUPLICADOS DO TELEGRAM: Apaga vídeos duplicados do canal mantendo o mais recente
+    // ==========================================
+    router.post('/cleanup-telegram-duplicates', async (req, res) => {
+        const apiId = parseInt(process.env.TELEGRAM_API_ID);
+        const apiHash = process.env.TELEGRAM_API_HASH;
+        const sessionStr = process.env.TELEGRAM_SESSION;
+        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+
+        if (!apiId || !apiHash || !sessionStr || !channelId) {
+            return res.status(400).json({ error: 'Variáveis de ambiente do Telegram não configuradas.' });
+        }
+
+        try {
+            // Primeiro normaliza títulos sujos (mesma lógica do cleanup_duplicates)
+            await db.run(`
+                UPDATE sync_queue SET title = REPLACE(REPLACE(REPLACE(REPLACE(TRIM(title), 
+                    '**', ''), 
+                    CHAR(10) || 'Upload via Zoroflix Sync (Hybrid Worker)', ''),
+                    CHAR(10) || 'Upload via Zoroflix Bot (Python Turbo)', ''),
+                    CHAR(10) || 'Upload via Zoroflix Bot', '')
+                WHERE status = 'completed' AND (
+                    title LIKE '%**%' OR 
+                    title LIKE '%Upload via Zoroflix%'
+                )
+            `);
+
+            // Busca títulos duplicados com status completed que possuem telegram_message_id
+            const duplicates = await db.all(`
+                SELECT title, COUNT(*) as cnt 
+                FROM sync_queue 
+                WHERE status = 'completed' AND telegram_message_id IS NOT NULL 
+                GROUP BY TRIM(title) 
+                HAVING cnt > 1
+            `);
+
+            if (duplicates.length === 0) {
+                return res.json({ success: true, deleted: 0, message: 'Nenhum duplicado encontrado no canal.' });
+            }
+
+            // Para cada título duplicado, pega todos os IDs e mantém apenas o com maior telegram_message_id
+            let idsToDelete = []; // { dbId, telegramMsgId }
+            for (const dup of duplicates) {
+                const entries = await db.all(
+                    `SELECT id, telegram_message_id FROM sync_queue 
+                     WHERE TRIM(title) = TRIM(?) AND status = 'completed' AND telegram_message_id IS NOT NULL 
+                     ORDER BY telegram_message_id DESC`,
+                    [dup.title]
+                );
+                // Mantém o primeiro (maior message_id = mais recente), deleta os demais
+                for (let i = 1; i < entries.length; i++) {
+                    idsToDelete.push({ dbId: entries[i].id, telegramMsgId: entries[i].telegram_message_id });
+                }
+            }
+
+            if (idsToDelete.length === 0) {
+                return res.json({ success: true, deleted: 0, message: 'Nenhum duplicado para remover.' });
+            }
+
+            res.json({ success: true, deleting: idsToDelete.length, message: `Apagando ${idsToDelete.length} vídeos duplicados do Telegram em background...` });
+
+            // Executa a deleção em background
+            (async () => {
+                let client;
+                try {
+                    console.log(`[CleanupTG] 🔌 Conectando ao Telegram para apagar ${idsToDelete.length} duplicados...`);
+                    const stringSession = new StringSession(sessionStr);
+                    client = new TelegramClient(stringSession, apiId, apiHash, {
+                        connectionRetries: 5,
+                    });
+                    client.setLogLevel('none');
+                    await client.connect();
+
+                    try { await client.getDialogs({}); } catch (e) {}
+
+                    let entityId = channelId;
+                    if (channelId.startsWith('-100')) {
+                        entityId = channelId.replace('-100', '');
+                    }
+
+                    let resolvedEntity;
+                    try {
+                        resolvedEntity = await client.getInputEntity(entityId);
+                    } catch (e) {
+                        resolvedEntity = entityId;
+                    }
+
+                    let deletedCount = 0;
+                    // Deleta em lotes de 100 (limite do Telegram)
+                    const batchSize = 100;
+                    for (let i = 0; i < idsToDelete.length; i += batchSize) {
+                        const batch = idsToDelete.slice(i, i + batchSize);
+                        const msgIds = batch.map(b => b.telegramMsgId);
+                        
+                        try {
+                            await client.deleteMessages(resolvedEntity, msgIds, { revoke: true });
+                            
+                            // Remove do banco de dados
+                            for (const item of batch) {
+                                await db.run('DELETE FROM sync_queue WHERE id = ?', [item.dbId]);
+                            }
+                            
+                            deletedCount += batch.length;
+                            console.log(`[CleanupTG] 🗑️ Lote deletado: ${deletedCount}/${idsToDelete.length}`);
+                        } catch (e) {
+                            console.error(`[CleanupTG] ❌ Erro ao deletar lote:`, e.message);
+                        }
+                    }
+
+                    console.log(`[CleanupTG] ✅ CONCLUÍDO! ${deletedCount} vídeos duplicados removidos do Telegram e do banco.`);
+                } catch (err) {
+                    console.error('[CleanupTG] ❌ Erro durante limpeza:', err);
+                } finally {
+                    if (client) {
+                        try { await client.disconnect(); } catch (e) {}
+                    }
+                }
+            })();
+        } catch (err) {
+            console.error('[CleanupTG] Erro:', err);
+            res.status(500).json({ error: 'Erro ao iniciar limpeza de duplicados do Telegram.' });
+        }
+    });
+
+    // ==========================================
     // REMAPEAMENTO: Lê o canal do Telegram e recria as entradas no sync_queue
     // ==========================================
     router.post('/remap-telegram', async (req, res) => {

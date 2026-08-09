@@ -174,7 +174,18 @@ export default function PlayerPage() {
             const type = isMovie ? 'movie' : 'tv';
             fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`)
                 .then(r => r.json())
-                .then(data => setSeriesDetail(data))
+                .then(data => {
+                    setSeriesDetail(data);
+                    
+                    const title = data.title || data.name;
+                    if (title) {
+                        fetch('/api/sync/auto-prioritize', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ title, media_type: type })
+                        }).catch(() => {});
+                    }
+                })
                 .catch(() => { });
         }
     }, [id, canalId, location.pathname]);

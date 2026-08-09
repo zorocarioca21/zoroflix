@@ -148,6 +148,13 @@ export default function DetailsPage() {
         const newUrl = `/${isMovie ? 'filme' : 'serie'}/${slug}`;
         window.history.replaceState({ id }, '', newUrl);
 
+        // Auto-prioriza silenciosamente o conteúdo (Demanda Real-time)
+        fetch('/api/sync/auto-prioritize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, media_type: type })
+        }).catch(() => {}); // Fire and forget
+
         setData(detailsData);
         setCast(creditsData.cast?.slice(0, 15) || []);
 

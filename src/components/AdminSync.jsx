@@ -1,6 +1,180 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+
+// ==========================================
+// CUSTOM DIALOG SYSTEM - Substitui alert/confirm/prompt nativos
+// ==========================================
+const dialogStyles = {
+    overlay: {
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(6px)',
+        zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center',
+        animation: 'dialogFadeIn 0.2s ease-out',
+    },
+    container: {
+        background: 'linear-gradient(145deg, #1e1e2e 0%, #141420 100%)',
+        borderRadius: '16px', padding: '0', minWidth: '360px', maxWidth: '480px', width: '90%',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,200,255,0.05)',
+        animation: 'dialogSlideIn 0.25s ease-out',
+        overflow: 'hidden',
+    },
+    header: {
+        padding: '1.25rem 1.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+    },
+    body: {
+        padding: '0 1.5rem 1.25rem', color: '#c0c0d0', fontSize: '0.95rem', lineHeight: '1.6',
+    },
+    footer: {
+        padding: '0.75rem 1.5rem 1.25rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem',
+    },
+    input: {
+        width: '100%', padding: '0.75rem 1rem', borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.3)',
+        color: '#fff', fontSize: '0.95rem', outline: 'none', marginTop: '0.75rem',
+        transition: 'border-color 0.2s',
+    },
+};
+
+const iconMap = {
+    success: { icon: CheckCircle2, color: '#00ff88', glow: 'rgba(0,255,136,0.15)' },
+    error: { icon: XCircle, color: '#ff4444', glow: 'rgba(255,68,68,0.15)' },
+    warning: { icon: AlertTriangle, color: '#ffaa00', glow: 'rgba(255,170,0,0.15)' },
+    info: { icon: Info, color: '#00ccff', glow: 'rgba(0,204,255,0.15)' },
+    danger: { icon: AlertTriangle, color: '#ff4444', glow: 'rgba(255,68,68,0.15)' },
+};
+
+const btnBase = {
+    padding: '0.6rem 1.5rem', borderRadius: '8px', border: 'none',
+    cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem',
+    transition: 'all 0.15s ease', letterSpacing: '0.02em',
+};
+
+const CustomDialog = ({ config, onClose }) => {
+    const [inputValue, setInputValue] = useState(config.defaultValue || '');
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+        if (config.type === 'prompt' && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [config.type]);
+
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.key === 'Escape') onClose(config.type === 'prompt' ? null : false);
+            if (e.key === 'Enter' && config.type !== 'prompt') onClose(true);
+            if (e.key === 'Enter' && config.type === 'prompt') onClose(inputValue);
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [inputValue]);
+
+    if (!config) return null;
+
+    const variant = config.variant || 'info';
+    const { icon: IconComp, color, glow } = iconMap[variant] || iconMap.info;
+
+    return (
+        <div style={dialogStyles.overlay} onClick={() => onClose(config.type === 'prompt' ? null : false)}>
+            <style>{`
+                @keyframes dialogFadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes dialogSlideIn { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+                .zoro-dialog-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+                .zoro-dialog-btn:active { transform: translateY(0px); filter: brightness(0.95); }
+                .zoro-dialog-input:focus { border-color: ${color} !important; box-shadow: 0 0 0 3px ${glow}; }
+            `}</style>
+            <div style={dialogStyles.container} onClick={(e) => e.stopPropagation()}>
+                <div style={dialogStyles.header}>
+                    <div style={{ width: 40, height: 40, borderRadius: '10px', background: glow, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <IconComp size={22} color={color} />
+                    </div>
+                    <h3 style={{ margin: 0, color: '#fff', fontSize: '1.05rem', fontWeight: 600 }}>
+                        {config.title || (variant === 'success' ? 'Sucesso' : variant === 'error' ? 'Erro' : variant === 'warning' ? 'Atenção' : variant === 'danger' ? 'Cuidado' : 'Informação')}
+                    </h3>
+                </div>
+                <div style={dialogStyles.body}>
+                    <p style={{ margin: 0 }}>{config.message}</p>
+                    {config.type === 'prompt' && (
+                        <input
+                            ref={inputRef}
+                            className="zoro-dialog-input"
+                            style={dialogStyles.input}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder={config.placeholder || ''}
+                        />
+                    )}
+                </div>
+                <div style={dialogStyles.footer}>
+                    {config.type === 'alert' && (
+                        <button className="zoro-dialog-btn" onClick={() => onClose(true)} style={{ ...btnBase, background: color, color: variant === 'warning' || variant === 'success' ? '#000' : '#fff' }}>
+                            Entendi
+                        </button>
+                    )}
+                    {config.type === 'confirm' && (
+                        <>
+                            <button className="zoro-dialog-btn" onClick={() => onClose(false)} style={{ ...btnBase, background: 'rgba(255,255,255,0.06)', color: '#aaa', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                Cancelar
+                            </button>
+                            <button className="zoro-dialog-btn" onClick={() => onClose(true)} style={{ ...btnBase, background: color, color: variant === 'warning' || variant === 'success' ? '#000' : '#fff' }}>
+                                {config.confirmText || 'Confirmar'}
+                            </button>
+                        </>
+                    )}
+                    {config.type === 'prompt' && (
+                        <>
+                            <button className="zoro-dialog-btn" onClick={() => onClose(null)} style={{ ...btnBase, background: 'rgba(255,255,255,0.06)', color: '#aaa', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                Cancelar
+                            </button>
+                            <button className="zoro-dialog-btn" onClick={() => onClose(inputValue)} style={{ ...btnBase, background: color, color: variant === 'warning' || variant === 'success' ? '#000' : '#fff' }}>
+                                {config.confirmText || 'Salvar'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+function useDialog() {
+    const [dialogConfig, setDialogConfig] = useState(null);
+    const resolverRef = useRef(null);
+
+    const showDialog = useCallback((config) => {
+        return new Promise((resolve) => {
+            resolverRef.current = resolve;
+            setDialogConfig(config);
+        });
+    }, []);
+
+    const handleClose = useCallback((result) => {
+        setDialogConfig(null);
+        if (resolverRef.current) {
+            resolverRef.current(result);
+            resolverRef.current = null;
+        }
+    }, []);
+
+    const alert = useCallback((message, opts = {}) => {
+        return showDialog({ type: 'alert', message, ...opts });
+    }, [showDialog]);
+
+    const confirm = useCallback((message, opts = {}) => {
+        return showDialog({ type: 'confirm', message, ...opts });
+    }, [showDialog]);
+
+    const prompt = useCallback((message, defaultValue = '', opts = {}) => {
+        return showDialog({ type: 'prompt', message, defaultValue, ...opts });
+    }, [showDialog]);
+
+    const DialogPortal = dialogConfig ? <CustomDialog config={dialogConfig} onClose={handleClose} /> : null;
+
+    return { alert, confirm, prompt, DialogPortal };
+}
 
 const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteItem, prioritizeItem, editItem, skipItem, formatBytes, fetchQueueParent }) => {
     const [items, setItems] = useState([]);
@@ -125,6 +299,8 @@ export default function AdminSync() {
     const [manualUpload, setManualUpload] = useState({ title: '', file: null, progress: 0, status: 'idle' });
     const [modalOpen, setModalOpen] = useState(false);
     
+    const dialog = useDialog();
+    
     const filterRef = useRef(filter);
     const searchRef = useRef(searchQuery);
     const sortRef = useRef(sortSize);
@@ -187,19 +363,19 @@ export default function AdminSync() {
             const res = await fetch('/api/sync/scan', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
-                alert(`Varredura iniciada! ${data.totalFound} encontrados.`);
+                dialog.alert(`Varredura iniciada! ${data.totalFound} encontrados.`, { variant: 'success', title: 'Varredura Concluída' });
                 fetchQueue();
             } else {
-                alert(data.error || 'Erro ao iniciar scan');
+                dialog.alert(data.error || 'Erro ao iniciar scan', { variant: 'error', title: 'Falha na Varredura' });
             }
         } catch (e) {
-            alert('Erro de conexão ao iniciar scan');
+            dialog.alert('Erro de conexão ao iniciar scan', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
     const startRemoteScan = async () => {
         try {
-            alert('Baixando e processando lista remotamente... isso pode demorar alguns segundos.');
+            dialog.alert('Baixando e processando lista remotamente... isso pode demorar alguns segundos.', { variant: 'info', title: 'Processando...' });
             const res = await fetch('/api/sync/fetch-remote-m3u', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -207,19 +383,19 @@ export default function AdminSync() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert(`Varredura remota concluída! ${data.totalFound} encontrados, ${data.inserted} novos adicionados.`);
+                dialog.alert(`Varredura remota concluída! ${data.totalFound} encontrados, ${data.inserted} novos adicionados.`, { variant: 'success', title: 'Catálogo Atualizado' });
                 fetchQueue();
             } else {
-                alert(data.error || 'Erro ao iniciar scan remoto');
+                dialog.alert(data.error || 'Erro ao iniciar scan remoto', { variant: 'error', title: 'Falha no Scan Remoto' });
             }
         } catch (e) {
-            alert('Erro de conexão ao iniciar scan remoto');
+            dialog.alert('Erro de conexão ao iniciar scan remoto', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
-    const handleManualUpload = () => {
+    const handleManualUpload = async () => {
         if (!manualUpload.title || !manualUpload.file) {
-            alert("Preencha o título e selecione um arquivo de vídeo.");
+            dialog.alert("Preencha o título e selecione um arquivo de vídeo.", { variant: 'warning', title: 'Campos Obrigatórios' });
             return;
         }
 
@@ -241,7 +417,7 @@ export default function AdminSync() {
 
         xhr.onload = () => {
             if (xhr.status === 200) {
-                alert("Upload enviado com sucesso para a esteira do bot!");
+                dialog.alert("Upload enviado com sucesso para a esteira do bot!", { variant: 'success', title: 'Upload Concluído' });
                 setManualUpload({ title: '', file: null, progress: 0, status: 'idle' });
                 if (document.getElementById('manual-file-input')) {
                     document.getElementById('manual-file-input').value = "";
@@ -250,13 +426,13 @@ export default function AdminSync() {
             } else {
                 let errorMsg = xhr.responseText;
                 try { errorMsg = JSON.parse(xhr.responseText).error; } catch(e){}
-                alert("Erro no upload: " + errorMsg);
+                dialog.alert("Erro no upload: " + errorMsg, { variant: 'error', title: 'Falha no Upload' });
                 setManualUpload(prev => ({ ...prev, status: 'error' }));
             }
         };
 
         xhr.onerror = () => {
-            alert("Erro de conexão durante o upload.");
+            dialog.alert("Erro de conexão durante o upload.", { variant: 'error', title: 'Erro de Conexão' });
             setManualUpload(prev => ({ ...prev, status: 'error' }));
         };
 
@@ -274,7 +450,12 @@ export default function AdminSync() {
             ? "Deseja apagar este item? Como ele já foi enviado, ele TAMBÉM SERÁ APAGADO DO TELEGRAM." 
             : "Deseja apagar este item do histórico? Isso fará o sistema baixá-lo novamente.";
         
-        if (!window.confirm(warning)) return;
+        const ok = await dialog.confirm(warning, { 
+            variant: 'danger', 
+            title: item.telegram_message_id ? '⚠️ Apagar do Telegram' : 'Apagar Item',
+            confirmText: 'Sim, Apagar'
+        });
+        if (!ok) return;
         
         await fetch(`/api/sync/queue/${item.id}`, { method: 'DELETE' });
         fetchQueue();
@@ -286,15 +467,18 @@ export default function AdminSync() {
             if (res.ok) {
                 fetchQueue();
             } else {
-                alert("Erro ao priorizar o item");
+                dialog.alert("Erro ao priorizar o item", { variant: 'error', title: 'Erro' });
             }
         } catch (e) {
-            alert('Erro de conexão ao priorizar item');
+            dialog.alert('Erro de conexão ao priorizar item', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
     const prioritizeFiltered = async () => {
-        if (!window.confirm("Deseja priorizar TODOS os itens pendentes listados atualmente na busca/filtro?")) return;
+        const ok = await dialog.confirm("Deseja priorizar TODOS os itens pendentes listados atualmente na busca/filtro?", { 
+            variant: 'warning', title: 'Priorizar em Lote', confirmText: 'Priorizar Todos' 
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`/api/sync/queue/prioritize-batch`, { 
                 method: 'POST',
@@ -303,41 +487,51 @@ export default function AdminSync() {
             });
             if (res.ok) {
                 const data = await res.json();
-                alert(`${data.updated} itens priorizados com sucesso!`);
+                dialog.alert(`${data.updated} itens priorizados com sucesso!`, { variant: 'success', title: 'Priorizados!' });
                 fetchQueue();
             } else {
-                alert("Erro ao priorizar em lote");
+                dialog.alert("Erro ao priorizar em lote", { variant: 'error', title: 'Erro' });
             }
         } catch (e) {
-            alert('Erro de conexão ao priorizar em lote');
+            dialog.alert('Erro de conexão ao priorizar em lote', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
     const clearPriorities = async () => {
-        if (!window.confirm("Deseja ZERAR a prioridade de TODOS os itens priorizados?")) return;
+        const ok = await dialog.confirm("Deseja ZERAR a prioridade de TODOS os itens priorizados?", { 
+            variant: 'warning', title: 'Limpar Prioridades', confirmText: 'Zerar Todas' 
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`/api/sync/queue/clear-priorities`, { method: 'POST' });
             if (res.ok) {
                 const data = await res.json();
-                alert(`${data.updated} prioridades removidas!`);
+                dialog.alert(`${data.updated} prioridades removidas!`, { variant: 'success', title: 'Prioridades Limpas' });
                 fetchQueue();
             } else {
-                alert("Erro ao limpar prioridades");
+                dialog.alert("Erro ao limpar prioridades", { variant: 'error', title: 'Erro' });
             }
         } catch (e) {
-            alert('Erro de conexão ao limpar prioridades');
+            dialog.alert('Erro de conexão ao limpar prioridades', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
     const editItem = async (item) => {
-        const newTitle = window.prompt("Digite o novo título para este filme:", item.title);
+        const newTitle = await dialog.prompt("Digite o novo título para este filme:", item.title, { 
+            variant: 'info', title: 'Editar Título', confirmText: 'Salvar', placeholder: 'Novo título...' 
+        });
         if (!newTitle || newTitle === item.title) return;
 
         const warning = item.telegram_message_id 
             ? "Este item já foi enviado. Ao editar o título aqui, a LEGENDA DO TELEGRAM também será alterada em tempo real. Continuar?" 
             : "Deseja alterar o título na fila de sincronização?";
         
-        if (!window.confirm(warning)) return;
+        const ok = await dialog.confirm(warning, { 
+            variant: item.telegram_message_id ? 'warning' : 'info', 
+            title: 'Confirmar Edição',
+            confirmText: 'Alterar'
+        });
+        if (!ok) return;
 
         try {
             const res = await fetch(`/api/sync/queue/${item.id}`, {
@@ -348,21 +542,27 @@ export default function AdminSync() {
             if (res.ok) {
                 fetchQueue();
             } else {
-                alert("Erro ao editar o título.");
+                dialog.alert("Erro ao editar o título.", { variant: 'error', title: 'Erro' });
             }
         } catch (e) {
-            alert("Erro de conexão ao editar.");
+            dialog.alert("Erro de conexão ao editar.", { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
     const retryErrors = async () => {
-        if (!window.confirm("Deseja colocar todos os itens com 'Erro' de volta na fila pendente?")) return;
+        const ok = await dialog.confirm("Deseja colocar todos os itens com 'Erro' de volta na fila pendente?", { 
+            variant: 'warning', title: 'Reprocessar Erros', confirmText: 'Sim, Reprocessar' 
+        });
+        if (!ok) return;
         await fetch('/api/sync/retry-errors', { method: 'POST' });
         fetchQueue();
     };
 
     const skipItem = async (item) => {
-        if (!window.confirm("Deseja ignorar este item? O worker não tentará baixá-lo novamente.")) return;
+        const ok = await dialog.confirm("Deseja ignorar este item? O worker não tentará baixá-lo novamente.", { 
+            variant: 'warning', title: 'Ignorar Item', confirmText: 'Sim, Ignorar' 
+        });
+        if (!ok) return;
         await fetch(`/api/sync/queue/${item.id}/skip`, { method: 'PUT' });
         fetchQueue();
     };
@@ -372,40 +572,77 @@ export default function AdminSync() {
     };
 
     const clearPending = async () => {
-        if (!window.confirm("Deseja apagar TODOS os itens pendentes da fila? Isso não afetará os concluídos ou com erro.")) return;
+        const ok = await dialog.confirm("Deseja apagar TODOS os itens pendentes da fila? Isso não afetará os concluídos ou com erro.", { 
+            variant: 'danger', title: 'Limpar Pendentes', confirmText: 'Apagar Todos' 
+        });
+        if (!ok) return;
         await fetch('/api/sync/queue/pending/clear', { method: 'DELETE' });
         fetchQueue();
     };
 
     const cleanupDuplicates = async () => {
-        if (!window.confirm("Deseja remover da fila de download os itens pendentes que já possuem um vídeo concluído com o mesmo nome?")) return;
+        const ok = await dialog.confirm("Deseja remover da fila de download os itens pendentes que já possuem um vídeo concluído com o mesmo nome?", { 
+            variant: 'info', title: 'Remover Duplicados', confirmText: 'Sim, Limpar' 
+        });
+        if (!ok) return;
         const res = await fetch('/api/sync/queue/pending/cleanup_duplicates', { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
-            alert(`Foram removidos ${data.removed} filmes/séries duplicados da fila de downloads!`);
+            dialog.alert(`Foram removidos ${data.removed} filmes/séries duplicados da fila de downloads!`, { variant: 'success', title: 'Duplicados Removidos' });
             fetchQueue();
         } else {
-            alert('Erro ao limpar duplicados');
+            dialog.alert('Erro ao limpar duplicados', { variant: 'error', title: 'Erro' });
         }
     };
 
     const [isRemapping, setIsRemapping] = useState(false);
+    const [isCleaningTG, setIsCleaningTG] = useState(false);
     const remapTelegram = async () => {
-        if (!window.confirm('Isso vai ler TODAS as mensagens do seu canal do Telegram e recriar as entradas no banco de dados. Deseja continuar?')) return;
+        const ok = await dialog.confirm('Isso vai ler TODAS as mensagens do seu canal do Telegram e recriar as entradas no banco de dados. Deseja continuar?', { 
+            variant: 'warning', title: 'Remapear Telegram', confirmText: 'Iniciar Remap' 
+        });
+        if (!ok) return;
         setIsRemapping(true);
         try {
             const res = await fetch('/api/sync/remap-telegram', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
-                alert('Remapeamento iniciado! Acompanhe o progresso no log do servidor (pm2 logs). A página irá atualizar em 30 segundos.');
+                dialog.alert('Remapeamento iniciado! Acompanhe o progresso no log do servidor (pm2 logs). A página irá atualizar em 30 segundos.', { variant: 'success', title: 'Remap Iniciado' });
                 setTimeout(() => { fetchQueue(); setIsRemapping(false); }, 30000);
             } else {
-                alert(data.error || 'Erro ao iniciar remapeamento');
+                dialog.alert(data.error || 'Erro ao iniciar remapeamento', { variant: 'error', title: 'Erro' });
                 setIsRemapping(false);
             }
         } catch (e) {
-            alert('Erro de rede ao iniciar remapeamento');
+            dialog.alert('Erro de rede ao iniciar remapeamento', { variant: 'error', title: 'Erro de Conexão' });
             setIsRemapping(false);
+        }
+    };
+
+    const cleanupTelegramDuplicates = async () => {
+        const ok = await dialog.confirm('Isso vai APAGAR do canal do Telegram os vídeos duplicados (mantendo o mais recente de cada título) e remover do banco. Deseja continuar?', { 
+            variant: 'danger', title: 'Limpar Duplicados do Telegram', confirmText: 'Sim, Apagar Duplicados' 
+        });
+        if (!ok) return;
+        setIsCleaningTG(true);
+        try {
+            const res = await fetch('/api/sync/cleanup-telegram-duplicates', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                if (data.deleted === 0 && !data.deleting) {
+                    dialog.alert(data.message || 'Nenhum duplicado encontrado!', { variant: 'info', title: 'Tudo Limpo' });
+                    setIsCleaningTG(false);
+                } else {
+                    dialog.alert(data.message || `Apagando ${data.deleting} duplicados em background...`, { variant: 'success', title: 'Limpeza Iniciada' });
+                    setTimeout(() => { fetchQueue(); setIsCleaningTG(false); }, 15000);
+                }
+            } else {
+                dialog.alert(data.error || 'Erro ao limpar duplicados do Telegram', { variant: 'error', title: 'Erro' });
+                setIsCleaningTG(false);
+            }
+        } catch (e) {
+            dialog.alert('Erro de rede ao limpar duplicados do Telegram', { variant: 'error', title: 'Erro de Conexão' });
+            setIsCleaningTG(false);
         }
     };
 
@@ -765,7 +1002,8 @@ export default function AdminSync() {
                                         )}
                                         <button 
                                             onClick={async () => {
-                                                if(!window.confirm("Deseja refazer o download deste item? Ele voltará para a fila e a versão antiga no Telegram será apagada.")) return;
+                                                const ok = await dialog.confirm("Deseja refazer o download deste item? Ele voltará para a fila e a versão antiga no Telegram será apagada.", { variant: 'warning', title: 'Refazer Download', confirmText: 'Refazer' });
+                                                if(!ok) return;
                                                 await fetch(`/api/sync/queue/${item.id}/retry`, { method: 'POST' });
                                                 fetchQueue();
                                             }}
@@ -824,6 +1062,7 @@ export default function AdminSync() {
                 formatBytes={formatBytes} 
                 fetchQueueParent={fetchQueue}
             />
+            {DialogPortal}
         </div>
     );
 }
