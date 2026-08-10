@@ -601,7 +601,7 @@ export default function PlayerPage() {
                     ) : (!telegramMessageId && showLanguageSelector) ? (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
                             <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                                 {languageOptions && languageOptions[currentQuality]?.dub && (
                                     <button
                                         className="lang-btn"

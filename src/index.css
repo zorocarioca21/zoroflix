@@ -5323,22 +5323,35 @@ body.hide-body-texture::after {
 }
 /* Language/Version Selector Buttons */
 .lang-btn {
-  padding: 1rem 2rem;
-  font-size: 1.2rem;
-  background: #1c1c24;
-  border: 2px solid #333;
-  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: rgba(20, 20, 30, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 12px;
   color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: 0.3s;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 @media (pointer: fine) {
   .lang-btn:hover {
     border-color: #00ff88;
-    transform: scale(1.05);
+    background: rgba(0, 255, 136, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 255, 136, 0.2);
+  }
+}
+@media (max-width: 768px) {
+  .lang-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: 140px;
   }
 }
 
