@@ -270,7 +270,7 @@ export default function adminRoutes(db) {
     router.post('/config/update', async (req, res) => {
         const { key, enabled } = req.body;
         try {
-            await db.run("UPDATE configs SET value = ? WHERE key = ?", [enabled ? '1' : '0', key]);
+            await db.run("INSERT OR REPLACE INTO configs (key, value) VALUES (?, ?)", [key, enabled ? '1' : '0']);
             res.json({ success: true });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao salvar config.' });
