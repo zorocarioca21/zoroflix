@@ -380,7 +380,7 @@ export default function PlayerPage() {
 
         setIsCheckingTelegram(true);
         findEpisode();
-    }, [id, season, episode, state.title, canalId, user, seriesDetail]);
+    }, [id, season, episode, state.title, canalId, user, seriesDetail, configs]);
 
     useEffect(() => {
         hasTracked.current = false;
