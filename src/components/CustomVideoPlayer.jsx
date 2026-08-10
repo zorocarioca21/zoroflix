@@ -78,7 +78,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 mpegtsRef.current = null;
             }
 
-            if (srcUrl.includes('.m3u8')) {
+            if (srcUrl) {
+                if (srcUrl.includes('.m3u8')) {
                 // HLS NATTY
                 if (Hls.isSupported()) {
                     const hls = new Hls();
