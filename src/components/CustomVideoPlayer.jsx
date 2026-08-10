@@ -328,6 +328,13 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
     const togglePlay = () => {
         if (videoError) return;
+        
+        if (isIOS) {
+            const finalUrl = srcUrl || `/api/stream/telegram/${messageId}`;
+            window.location.href = finalUrl;
+            return;
+        }
+
         if (videoRef.current.paused) {
             videoRef.current.play();
             setIsPlaying(true);
@@ -432,7 +439,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             <video
                 ref={videoRef}
                 autoPlay
-                controls={isIOS}
                 style={{ width: '100%', height: '100%', objectFit: zoomMode, zIndex: 0, display: videoError ? 'none' : 'block' }}
                 playsInline
                 webkit-playsinline="true"
@@ -446,11 +452,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 onError={(e) => {
                     const err = e.target.error;
                     if (err && err.code === 4) {
-                        if (isIOS) {
-                            const finalUrl = srcUrl || `/api/stream/telegram/${messageId}`;
-                            window.location.href = finalUrl;
-                            return;
-                        }
                         setVideoError(true);
                     }
                 }}
@@ -507,7 +508,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             )}
 
             {/* Skip Backward Button */}
-            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && !isIOS && (
+            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -521,7 +522,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             )}
 
             {/* Center Play/Pause Button */}
-            {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && !isLoadingEpisode && !isIOS && (
+            {(showControls || !isPlaying) && !isBuffering && !showResumePopup && !videoError && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); togglePlay(); }} style={{
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                     zIndex: 10, cursor: 'pointer', background: 'transparent',
@@ -537,7 +538,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             )}
 
             {/* Skip Forward Button */}
-            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && !isIOS && (
+            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -551,7 +552,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             )}
 
             {/* Buffering Indicator */}
-            {isBuffering && !isLoadingEpisode && !isIOS && (
+            {isBuffering && !isLoadingEpisode && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 3, pointerEvents: 'none' }}>
                     <Loader size={64} color="#00ff88" className="spin-anim" />
                 </div>
