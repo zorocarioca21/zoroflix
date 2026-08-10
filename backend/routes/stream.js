@@ -90,12 +90,17 @@ export default function streamRoutes(db) {
         const limit = end - start + 1;
         console.log(`[Stream] Iniciando download. Start: ${start}, End: ${end}, Limit: ${limit}`);
 
+        const chunkSize = 512 * 1024;
+        const alignedOffset = Math.floor(start / chunkSize) * chunkSize;
+        const skipBytes = start - alignedOffset;
+        const fetchLimit = limit + skipBytes;
+
         // Faz o download da stream
         const iterator = tgClient.iterDownload({
             file: message.media,
-            offset: bigInt(start), 
-            requestSize: 512 * 1024, 
-            limit: limit
+            offset: bigInt(alignedOffset), 
+            requestSize: chunkSize, 
+            limit: fetchLimit
         });
 
         // Evento se o cliente fechar a conexão
@@ -107,14 +112,22 @@ export default function streamRoutes(db) {
 
         let chunkCount = 0;
         let bytesSent = 0;
+        let isFirstChunk = true;
+
         for await (const chunk of iterator) {
             if (isCancelled) break;
             
+            let chunkData = chunk;
+            if (isFirstChunk) {
+                chunkData = chunk.slice(skipBytes);
+                isFirstChunk = false;
+            }
+
             chunkCount++;
             
             // Trunca o chunk se ele for ultrapassar o limite requisitado pelo browser
             const remaining = limit - bytesSent;
-            const chunkToSend = chunk.length > remaining ? chunk.slice(0, remaining) : chunk;
+            const chunkToSend = chunkData.length > remaining ? chunkData.slice(0, remaining) : chunkData;
             
             bytesSent += chunkToSend.length;
             
