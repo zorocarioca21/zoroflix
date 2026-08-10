@@ -141,7 +141,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                         videoRef.current.play().catch(() => {});
                     });
                 }
-            } else if (messageId) {
+            }
+        } else if (messageId) {
                 // Telegram Video Injection via JS (Evita bug do Safari com a tag <source>)
                 videoRef.current.src = `/api/stream/telegram/${messageId}`;
                 videoRef.current.load();
