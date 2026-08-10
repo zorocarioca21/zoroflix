@@ -330,12 +330,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
     const togglePlay = () => {
         if (videoError) return;
-        
-        if (isIOS) {
-            const finalUrl = srcUrl || `/api/stream/telegram/${messageId}`;
-            window.location.href = finalUrl;
-            return;
-        }
 
         if (videoRef.current.paused) {
             videoRef.current.play();
