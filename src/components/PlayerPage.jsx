@@ -192,10 +192,11 @@ export default function PlayerPage() {
 
     const lastSearched = useRef('');
 
-    // Checa se existe no Telegram (Para Player Nativo VIP/Admin)
+    // Checa se existe no Telegram (Para Player Nativo VIP/Admin ou se Forçado p/ Todos)
     useEffect(() => {
         if (canalId) return;
-        if (!user || (user.role !== 'admin' && user.role !== 'vip')) return;
+        const isForced = configs.force_custom_player_all;
+        if (!isForced && (!user || (user.role !== 'admin' && user.role !== 'vip'))) return;
 
         let seriesName = '';
         if (state.title) {
