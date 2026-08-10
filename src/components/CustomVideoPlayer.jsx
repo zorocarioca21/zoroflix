@@ -584,8 +584,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
             {/* Controls Bar */}
         {/* Player Controls Overlay */}
-        {!isIOS && (
-            <div className="player-controls-overlay" style={{
+        <div className="player-controls-overlay" style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0, padding: '2rem 1rem 1rem 1rem',
                 background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
                 opacity: showControls || !isPlaying ? 1 : 0,
@@ -721,7 +720,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     </div>
                 </div>
             </div>
-        )}
 
                 <style>{`
                 .spin-anim { animation: spin 1s linear infinite; }
