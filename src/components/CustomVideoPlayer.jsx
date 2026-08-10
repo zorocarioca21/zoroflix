@@ -35,11 +35,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
     const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
 
-    const [showSafariWarning, setShowSafariWarning] = useState(() => {
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        return isSafari;
-    });
-
     // Seamlessly handle messageId changes (language swap or next episode)
     useEffect(() => {
         if (prevMessageId.current !== messageId && videoRef.current) {
@@ -70,9 +65,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
         }
     }, [messageId, episode, contentId, srcUrl]);
 
-    // HLS.js Integration for Live Streams (.m3u8)
+    // HLS.js Integration for Live Streams (.m3u8) & Telegram MP4
     useEffect(() => {
-        if (videoRef.current && srcUrl) {
+        if (videoRef.current) {
             // Limpa players anteriores
             if (hlsRef.current) {
                 hlsRef.current.destroy();
@@ -146,6 +141,11 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     });
                 }
             }
+        } else if (messageId) {
+            // Telegram Video Injection via JS (Evita bug do Safari com a tag <source>)
+            videoRef.current.src = `/api/stream/telegram/${messageId}`;
+            videoRef.current.load();
+            videoRef.current.play().catch(() => {});
         }
 
         return () => {
@@ -158,7 +158,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 mpegtsRef.current = null;
             }
         };
-    }, [srcUrl]);
+    }, [srcUrl, messageId]);
 
     // Oculta o menu de idiomas/qualidade se clicar fora ou esconder controles
     useEffect(() => {
@@ -456,9 +456,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     }
                 }}
             >
-                {srcUrl ? null : (
-                    <source src={`/api/stream/telegram/${messageId}`} type="video/mp4" />
-                )}
             </video>
 
             {/* Click Catcher Overlay - Garante que 100% da tela registre os cliques, até fora do video */}
@@ -487,23 +484,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backdropFilter: 'blur(5px)' }}>
                     <Loader size={48} className="spin-anim" style={{ color: '#00ff88', marginBottom: '1rem' }} />
                     <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.2rem' }}>Carregando próximo episódio...</span>
-                </div>
-            )}
-
-            {/* Safari Warning */}
-            {showSafariWarning && !videoError && !isLoadingEpisode && (
-                <div style={{
-                    position: 'absolute', top: '10px', left: '10px', right: '10px',
-                    background: 'rgba(255, 165, 0, 0.8)', color: '#fff',
-                    padding: '10px 15px', borderRadius: '8px', zIndex: 10,
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    backdropFilter: 'blur(10px)', fontSize: '0.85rem', fontWeight: 'bold'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <AlertTriangle size={20} color="#fff" />
-                        <span>Tela preta sem imagem? O Safari bloqueia o formato de alguns filmes. Recomendamos baixar o <strong>Google Chrome</strong>!</span>
-                    </div>
-                    <button onClick={() => setShowSafariWarning(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer', marginLeft: '10px' }}>&times;</button>
                 </div>
             )}
 
