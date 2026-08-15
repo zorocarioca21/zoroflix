@@ -277,16 +277,7 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Nova rota: limpar estatísticas de visualizações
-    router.delete('/stats/clear', async (req, res) => {
-        try {
-            await db.run('DELETE FROM page_views');
-            res.json({ success: true });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: 'Erro ao limpar estatísticas.' });
-        }
-    });
+
 
     // Estatísticas de acessos
     router.get('/stats', async (req, res) => {

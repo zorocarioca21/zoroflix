@@ -8,7 +8,6 @@ dotenv.config();
 import axios from 'axios';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import trackView from './backend/middleware/trackView.js';
 import { initDB, UPLOADS_PATH } from './backend/db.js';
 import authRoutes from './backend/routes/auth.js';
 import commentRoutes from './backend/routes/comments.js';
@@ -45,8 +44,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Inicializa o Banco e monta as rotas
 Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
-    // Apply tracking middleware for page views and live sessions
-    app.use(trackView(db));
+    // Apply tracking middleware for page views and live sessions (Removed - Agora no front-end em /api/analytics/pageview)
 
     // Rotas da API
     app.use('/api/auth', authRoutes(db));

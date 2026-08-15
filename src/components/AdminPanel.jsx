@@ -812,68 +812,58 @@ export default function AdminPanel() {
                         </div>
 
                         {/* Top Conteúdos e Top Buscas */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '3rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem', marginTop: '3rem' }}>
                             {/* Top Buscas */}
-                            <div>
-                                <div className="admin-tab-header">
-                                    <h2><Search size={20} /> Termos Mais Buscados</h2>
+                            <div className="admin-glass-card" style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                                    <Search size={22} color="var(--primary)" /> 
+                                    <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Termos Mais Buscados</h2>
                                 </div>
-                                <div className="admin-table-wrap">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Termo de Busca</th>
-                                                <th style={{textAlign: 'right'}}>Pesquisas</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {advancedStats.topSearches.length === 0 ? (
-                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhuma busca registrada.</td></tr>
-                                            ) : advancedStats.topSearches.map((s, index) => (
-                                                <tr key={index}>
-                                                    <td><strong>{s.query}</strong></td>
-                                                    <td style={{textAlign: 'right', color: 'var(--primary)'}}><strong>{s.count}</strong></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {advancedStats.topSearches.length === 0 ? (
+                                        <p style={{textAlign: 'center', color: '#666', padding: '2rem 0'}}>Nenhuma busca registrada.</p>
+                                    ) : advancedStats.topSearches.map((s, index) => (
+                                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', transition: 'all 0.2s ease' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <span style={{ color: '#666', fontSize: '0.9rem', width: '20px' }}>{index + 1}</span>
+                                                <strong style={{ fontSize: '1rem', textTransform: 'capitalize' }}>{s.query}</strong>
+                                            </div>
+                                            <div style={{ background: 'rgba(255, 61, 0, 0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                {s.count}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
                             {/* Top Assistidos */}
-                            <div>
-                                <div className="admin-tab-header">
-                                    <h2><Film size={20} /> Conteúdos Mais Assistidos</h2>
+                            <div className="admin-glass-card" style={{ padding: '1.5rem', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                                    <Film size={22} color="#4caf50" /> 
+                                    <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Conteúdos Mais Assistidos</h2>
                                 </div>
-                                <div className="admin-table-wrap">
-                                    <table className="admin-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Conteúdo</th>
-                                                <th style={{textAlign: 'right'}}>Views</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {advancedStats.topWatched.length === 0 ? (
-                                                <tr><td colSpan="2" style={{textAlign: 'center', color: '#666'}}>Nenhum conteúdo registrado.</td></tr>
-                                            ) : advancedStats.topWatched.map((w, index) => (
-                                                <tr key={index}>
-                                                    <td style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        {w.poster_path ? (
-                                                            <img src={w.poster_path.startsWith('http') ? w.poster_path : `https://image.tmdb.org/t/p/w92${w.poster_path}`} style={{ width: '40px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} alt="" />
-                                                        ) : (
-                                                            <div style={{ width: '40px', height: '60px', background: '#333', borderRadius: '4px' }}></div>
-                                                        )}
-                                                        <div>
-                                                            <strong>{w.title}</strong>
-                                                            <div style={{fontSize: '0.75rem', color: '#aaa'}}>{w.media_type === 'movie' ? 'Filme' : 'Série'}</div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{textAlign: 'right', verticalAlign: 'middle', color: '#4caf50'}}><strong>{w.views}</strong></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {advancedStats.topWatched.length === 0 ? (
+                                        <p style={{textAlign: 'center', color: '#666', padding: '2rem 0'}}>Nenhum conteúdo registrado.</p>
+                                    ) : advancedStats.topWatched.map((w, index) => (
+                                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem 0.5rem 0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', transition: 'all 0.2s ease' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <span style={{ color: '#666', fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{index + 1}</span>
+                                                {w.poster_path ? (
+                                                    <img src={w.poster_path.startsWith('http') ? w.poster_path : `https://image.tmdb.org/t/p/w92${w.poster_path}`} style={{ width: '45px', height: '65px', objectFit: 'cover', borderRadius: '6px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }} alt="" />
+                                                ) : (
+                                                    <div style={{ width: '45px', height: '65px', background: '#333', borderRadius: '6px' }}></div>
+                                                )}
+                                                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <strong style={{ fontSize: '1rem', lineHeight: '1.2', marginBottom: '4px', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.title}</strong>
+                                                    <span style={{fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.5px'}}>{w.media_type === 'movie' ? '🎬 Filme' : '📺 Série'}</span>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                                <Eye size={14} /> {w.views}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>

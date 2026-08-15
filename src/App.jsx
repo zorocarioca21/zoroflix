@@ -203,15 +203,28 @@ function AppContent() {
 
   // Active Heartbeat System - Notifica o backend sobre a página atual a cada 15 segundos
   useEffect(() => {
+    const token = localStorage.getItem('cinegeek_token');
+    
+    // 1. Registra a visualização (Apenas uma vez por rota)
+    fetch('/api/analytics/pageview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      credentials: 'same-origin', // Envia o cookie zoroflix_uuid
+      body: JSON.stringify({ page: location.pathname })
+    }).catch(err => console.log('Analytics failed:', err));
+
+    // 2. Mantém o Heartbeat para Usuários Online
     const sendHeartbeat = () => {
-      const token = localStorage.getItem('cinegeek_token');
       fetch('/api/admin/heartbeat', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        credentials: 'same-origin', // ESSENCIAL: Garante que os cookies sejam enviados!
+        credentials: 'same-origin',
         body: JSON.stringify({
           page: location.pathname,
           title: document.title

@@ -136,21 +136,21 @@ export default function ApiDocsPage() {
                         <Shield size={24} />
                         <div>
                             <h3>Autenticação</h3>
-                            <p>Envie sua API Key no header <code>x-api-key</code> em toda requisição.</p>
+                            <p>Envie sua API Key no header <code style={{ wordBreak: 'break-all' }}>x-api-key</code> em toda requisição.</p>
                         </div>
                     </div>
                     <div className="api-info-card">
                         <Database size={24} />
                         <div>
                             <h3>Base URL</h3>
-                            <p><code>{baseUrl}/api/mobile</code></p>
+                            <p><code style={{ wordBreak: 'break-all' }}>{baseUrl}/api/mobile</code></p>
                         </div>
                     </div>
                     <div className="api-info-card">
                         <Code size={24} />
                         <div>
                             <h3>Content-Type</h3>
-                            <p>Todas as requisições POST devem usar <code>application/json</code></p>
+                            <p>Todas as requisições POST devem usar <code style={{ wordBreak: 'break-all' }}>application/json</code></p>
                         </div>
                     </div>
                 </div>
@@ -184,9 +184,83 @@ console.log(data);`}</code></pre>
                     </div>
                 </div>
 
-                {/* Endpoints */}
+                {/* Integração e Autenticação */}
                 <div className="api-docs-section">
-                    <h2><Database size={22} /> Endpoints</h2>
+                    <h2><Shield size={22} /> Integração Híbrida: Autenticação e Analytics</h2>
+                    <p style={{color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6'}}>
+                        Para garantir o correto funcionamento da criptografia de senhas e a sincronização do seu App Móvel com as estatísticas em tempo real do site, <strong>NÃO</strong> use consultas SQL brutas (<code>/execute</code>) para login ou para registrar acessos. Utilize as rotas oficiais abaixo:
+                    </p>
+
+                    <div className="api-endpoint-card">
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/auth/login</code>
+                        </div>
+                        <h3>Login de Usuário</h3>
+                        <p>Autentica o usuário validando a criptografia bcrypt e retorna o token JWT e dados do perfil.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON)</div>
+                            <pre><code>{`{
+  "email": "user@email.com",
+  "password": "senha123"
+}`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/auth/register</code>
+                        </div>
+                        <h3>Cadastro de Usuário</h3>
+                        <p>Cria um usuário criptografando a senha corretamente no padrão do site.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON)</div>
+                            <pre><code>{`{
+  "nick": "Geek",
+  "email": "user@email.com",
+  "password": "senha123"
+}`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/analytics/pageview</code>
+                        </div>
+                        <h3>Registrar Visualização (Acessos)</h3>
+                        <p>Soma uma visualização nas métricas do site. Para não cair no filtro anti-bot, garanta que o App envie o cabeçalho <code>Accept-Language</code>.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON)</div>
+                            <pre><code>{`{
+  "page": "/filme/matrix",
+  "contentId": 123
+}`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/admin/heartbeat</code>
+                        </div>
+                        <h3>Ping de Usuários Online</h3>
+                        <p>Chame essa rota a cada 10/15 segundos para que os usuários do seu App apareçam como "Online" no painel Admin do site.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON)</div>
+                            <pre><code>{`{
+  "page": "Navegando no App",
+  "title": "Home"
+}`}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Endpoints API Mobile */}
+                <div className="api-docs-section">
+                    <h2><Database size={22} /> Endpoints de Acesso SQL Direto</h2>
+
                     
                     {endpoints.map((ep, idx) => (
                         <div key={idx} className="api-endpoint-card">
