@@ -180,7 +180,7 @@ export default function syncRoutes(db, io) {
                     if (ext !== 'mp4' && ext !== 'mkv') continue; // Filtro de extensão
                     
                     const res = await db.run(
-                        "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                        "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 1 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                         [movie.title, movie.url, movie.url, movie.title]
                     );
                     if (res.changes > 0) insertedCount++;
@@ -238,7 +238,7 @@ export default function syncRoutes(db, io) {
                     for (const movie of movies) {
                         // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
                         const result = await db.run(
-                            "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 1 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]
                         );
                         if (result.changes > 0) insertedCount++;
