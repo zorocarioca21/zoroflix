@@ -195,6 +195,8 @@ export default function PlayerPage() {
     // Checa se existe no Telegram (Para Player Nativo VIP/Admin ou se Forçado p/ Todos)
     useEffect(() => {
         if (canalId) return;
+        if (!id) return; // Evita buscar com id null (causando double-fetch)
+        
         const isForced = configs.force_custom_player_all;
         if (!isForced && (!user || (user.role !== 'admin' && user.role !== 'vip'))) return;
 
