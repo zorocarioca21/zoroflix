@@ -311,10 +311,21 @@ export default function PlayerPage() {
                     const data = await res.json();
 
                     if (data?.items?.length > 0) {
-                        const matches = getBestMatches(data.items);
-                        if (matches) {
-                            handleMatches(matches);
-                            return;
+                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
+
+                        const validSpecificItems = data.items.filter(i => {
+                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (!exactMatchRegex.test(i.title)) return false;
+                            return true;
+                        });
+
+                        if (validSpecificItems.length > 0) {
+                            const matches = getBestMatches(validSpecificItems);
+                            if (matches) {
+                                handleMatches(matches);
+                                return;
+                            }
                         }
                     }
 
