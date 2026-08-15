@@ -328,9 +328,15 @@ export default function PlayerPage() {
                             `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
                         ];
 
-                        const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
+                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
+
                         const validItems = data2.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            
+                            // Verifica se o nome da série é uma palavra exata (evita Reacher dentro de Preacher)
+                            if (!exactMatchRegex.test(i.title)) return false;
+
                             const upperTitle = i.title.toUpperCase();
 
                             const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
@@ -363,7 +369,17 @@ export default function PlayerPage() {
 
                     if (data?.items?.length > 0) {
                         const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
-                        const matches = getBestMatches(data.items, releaseYear);
+                        
+                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
+
+                        const validItems = data.items.filter(i => {
+                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (!exactMatchRegex.test(i.title)) return false;
+                            return true;
+                        });
+
+                        const matches = getBestMatches(validItems, releaseYear);
                         if (matches) {
                             handleMatches(matches);
                             return;
