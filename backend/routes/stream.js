@@ -59,6 +59,9 @@ export default function streamRoutes(db) {
         let start = 0;
         let end = fileSize - 1;
 
+        const downloadTitle = req.query.download === 'true' && req.query.title ? req.query.title.replace(/[^\w\s-]/g, '') : 'video';
+        const disposition = req.query.download === 'true' ? `attachment; filename="${downloadTitle}.mp4"` : 'inline';
+
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
             start = parseInt(parts[0], 10);
@@ -75,7 +78,8 @@ export default function streamRoutes(db) {
                 'Accept-Ranges': 'bytes',
                 'Content-Length': end - start + 1,
                 'Content-Type': 'video/mp4',
-                'X-Accel-Buffering': 'no'
+                'X-Accel-Buffering': 'no',
+                'Content-Disposition': disposition
             });
         } else {
             res.status(200);
@@ -83,7 +87,8 @@ export default function streamRoutes(db) {
                 'Content-Length': fileSize,
                 'Content-Type': 'video/mp4',
                 'Accept-Ranges': 'bytes',
-                'X-Accel-Buffering': 'no'
+                'X-Accel-Buffering': 'no',
+                'Content-Disposition': disposition
             });
         }
 

@@ -40,8 +40,6 @@ export default function PlayerPage() {
         localStorage.setItem('cinegeek_preferred_language', type);
     };
 
-    // Modal de Download
-    const [dlState, setDlState] = useState({ isVisible: false, status: '', isError: false, isSuccess: false });
     const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
         if (canalId) return false;
         return !!(user && (user.role === 'admin' || user.role === 'vip'));
@@ -785,57 +783,21 @@ export default function PlayerPage() {
                                     </button>
                                 </>
                             )}
-                            {user?.role === 'admin' && (
-                                <button className="nav-btn-modern" disabled={dlState.isVisible && !dlState.isError && !dlState.isSuccess} onClick={async () => {
-                                    if (!id) return;
-                                    const token = localStorage.getItem('cinegeek_token');
-                                    const uuidVal = localStorage.getItem('cinegeek_uuid');
-                                    const headers = { 'Content-Type': 'application/json', 'x-device-uuid': uuidVal || '' };
-                                    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-                                    setDlState({ isVisible: true, status: 'Conectando aos indexadores...', isError: false, isSuccess: false });
-
-                                    try {
-                                        const steps = [
-                                            "Buscando melhor qualidade disponível...",
-                                            "Validando magnet links...",
-                                            "Preparando envio para o servidor..."
-                                        ];
-                                        let stepIdx = 0;
-                                        const interval = setInterval(() => {
-                                            if (stepIdx < steps.length) {
-                                                setDlState(prev => ({ ...prev, status: steps[stepIdx] }));
-                                                stepIdx++;
-                                            }
-                                        }, 3000);
-
-                                        const resp = await fetch('/api/downloads/request', {
-                                            method: 'POST',
-                                            headers,
-                                            body: JSON.stringify({
-                                                title: title.split(' - ')[0].split(':')[0].trim(),
-                                                type: location.pathname.includes('/filme/') ? 'movie' : 'tv',
-                                                year: seriesDetail?.first_air_date?.split('-')[0] || null,
-                                                season: season ? parseInt(season) : null,
-                                                episode: episode ? parseInt(episode) : null,
-                                                poster_path: state.poster_path
-                                            })
-                                        });
-
-                                        clearInterval(interval);
-
-                                        if (resp.ok) {
-                                            setDlState({ isVisible: true, status: 'Download iniciado no servidor com sucesso!', isError: false, isSuccess: true });
-                                        } else {
-                                            const err = await resp.json();
-                                            setDlState({ isVisible: true, status: err.error || 'Erro ao buscar torrent.', isError: true, isSuccess: false });
+                            {(state?.isVip || user?.isVip || user?.role === 'admin') && (
+                                <button 
+                                    className="nav-btn-modern" 
+                                    onClick={() => {
+                                        if (!telegramMessageId) {
+                                            dialog.alert('O vídeo ainda não foi carregado ou você precisa selecionar um idioma.', { variant: 'warning' });
+                                            return;
                                         }
-                                    } catch (e) {
-                                        setDlState({ isVisible: true, status: 'Falha de rede ao tentar iniciar o download.', isError: true, isSuccess: false });
-                                    }
-                                }} style={{ background: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)', color: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#888' : '#000', borderColor: dlState.isVisible && !dlState.isError && !dlState.isSuccess ? '#333' : 'var(--primary, #00ff88)' }}>
-                                    {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? <Loader size={20} className="spin-anim" /> : <Download size={20} />}
-                                    {dlState.isVisible && !dlState.isError && !dlState.isSuccess ? 'Buscando...' : 'Baixar'}
+                                        const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                        window.location.href = `/api/stream/telegram/${telegramMessageId}?download=true&title=${cleanTitle}`;
+                                    }} 
+                                    style={{ color: '#00ff88', borderColor: '#00ff88' }}
+                                >
+                                    <Download size={20} />
+                                    Baixar VIP
                                 </button>
                             )}
                         </div>
@@ -951,73 +913,6 @@ export default function PlayerPage() {
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Modal de Status de Download */}
-            {dlState.isVisible && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(10px)',
-                    zIndex: 9999,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                }}>
-                    <div style={{
-                        background: '#13131a',
-                        border: '1px solid #1a2f24',
-                        borderRadius: '20px',
-                        padding: '2rem',
-                        width: '90%',
-                        maxWidth: '400px',
-                        textAlign: 'center',
-                        boxShadow: '0 20px 50px rgba(0,255,136,0.1)',
-                        position: 'relative'
-                    }}>
-                        {!dlState.isSuccess && !dlState.isError && (
-                            <div style={{ margin: '0 auto 1.5rem auto', width: '50px', height: '50px', borderRadius: '50%', border: '3px solid rgba(0,255,136,0.1)', borderTopColor: '#00ff88', animation: 'spin 1s linear infinite' }} />
-                        )}
-                        {dlState.isSuccess && (
-                            <div style={{ margin: '0 auto 1.5rem auto', width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(0,255,136,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Check size={30} color="#00ff88" />
-                            </div>
-                        )}
-                        {dlState.isError && (
-                            <div style={{ margin: '0 auto 1.5rem auto', width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,59,48,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <CloseIcon size={30} color="#ff3b30" />
-                            </div>
-                        )}
-
-                        <h3 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.2rem' }}>
-                            {dlState.isSuccess ? 'Download Iniciado!' : dlState.isError ? 'Erro no Download' : 'Buscando Torrent...'}
-                        </h3>
-
-                        <p style={{ color: '#888', margin: '0 0 1.5rem 0', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                            {dlState.status}
-                        </p>
-
-                        {dlState.isSuccess && (
-                            <button onClick={() => navigate('/downloads')} style={{
-                                background: '#00ff88', color: '#000', border: 'none', borderRadius: '10px', padding: '0.8rem 1.5rem', fontWeight: 'bold', cursor: 'pointer', width: '100%'
-                            }}>
-                                Ver Meus Downloads
-                            </button>
-                        )}
-                        {dlState.isError && (
-                            <button onClick={() => setDlState({ isVisible: false, status: '', isError: false, isSuccess: false })} style={{
-                                background: '#ff3b30', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.8rem 1.5rem', fontWeight: 'bold', cursor: 'pointer', width: '100%'
-                            }}>
-                                Fechar
-                            </button>
-                        )}
-                    </div>
-                    <style>{`
-                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                    .spin-anim { animation: spin 1s linear infinite; }
-                `}</style>
                 </div>
             )}
         </div>
