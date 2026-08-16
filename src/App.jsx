@@ -302,7 +302,7 @@ function AppContent() {
       <header className="main-header">
         <div className="logo-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
           <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>
-            <img src="/cinegeek.png" alt="CineGeek Logo" className="logo-img" style={{ height: '35px', width: 'auto', objectFit: 'contain' }} />
+            <img src="/cinegeek.png" alt="CineGeek Logo" className="logo-img" style={{ height: '55px', width: 'auto', objectFit: 'contain' }} />
           </Link>
           {location.pathname === '/' && (
             <button className="install-app-btn-header" onClick={handleInstallClick} style={{ padding: '0.3rem 0.8rem', fontSize: '0.75rem', gap: '0.3rem' }}>
