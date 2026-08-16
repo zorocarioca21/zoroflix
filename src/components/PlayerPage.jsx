@@ -788,7 +788,7 @@ export default function PlayerPage() {
                                     className="nav-btn-modern" 
                                     onClick={() => {
                                         if (!telegramMessageId) {
-                                            dialog.alert('O vídeo ainda não foi carregado ou você precisa selecionar um idioma.', { variant: 'warning' });
+                                            window.alert('O vídeo ainda não foi carregado ou você precisa selecionar um idioma.');
                                             return;
                                         }
                                         const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
