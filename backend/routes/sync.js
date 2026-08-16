@@ -141,6 +141,42 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Helper para limpar nomes sujos importados do M3U
+    const cleanM3UTitle = (title) => {
+        if (!title) return '';
+        let cleaned = title.trim();
+        if (cleaned.includes('tvg-logo=') || cleaned.includes('group-title=')) {
+            const idx = cleaned.indexOf('",');
+            if (idx !== -1) {
+                cleaned = cleaned.substring(idx + 2).trim();
+            } else {
+                const parts = cleaned.split(',');
+                cleaned = parts[parts.length - 1].trim();
+            }
+        }
+        return cleaned;
+    };
+
+    // Nova Rota para Corrigir Títulos Sujos no DB (Painel Admin)
+    router.post('/queue/clean-m3u-titles', async (req, res) => {
+        try {
+            const rows = await db.all("SELECT id, title FROM sync_queue WHERE title LIKE '%tvg-logo=%' OR title LIKE '%group-title=%'");
+            let count = 0;
+            
+            for (const r of rows) {
+                const newTitle = cleanM3UTitle(r.title);
+                if (newTitle !== r.title && newTitle.length > 0) {
+                    await db.run('UPDATE sync_queue SET title = ? WHERE id = ?', [newTitle, r.id]);
+                    count++;
+                }
+            }
+            res.json({ success: true, updated: count, message: `Foram corrigidos ${count} títulos sujos.` });
+        } catch (err) {
+            console.error("Erro clean-m3u-titles:", err);
+            res.status(500).json({ error: 'Erro ao limpar títulos no banco.' });
+        }
+    });
+
     // Rota para iniciar varredura do M3U
     router.post('/scan', async (req, res) => {
         try {
@@ -163,7 +199,7 @@ export default function syncRoutes(db, io) {
                 if (trimmed.startsWith('#EXTINF')) {
                     const match = trimmed.match(/,(.+)/);
                     if (match) {
-                        currentTitle = match[1].trim();
+                        currentTitle = cleanM3UTitle(match[1]);
                     }
                 } else if (trimmed.startsWith('http') && currentTitle) {
                     movies.push({ title: currentTitle, url: trimmed });
@@ -224,7 +260,7 @@ export default function syncRoutes(db, io) {
                 if (trimmed.startsWith('#EXTINF')) {
                     const match = trimmed.match(/,(.+)/);
                     if (match) {
-                        currentTitle = match[1].trim();
+                        currentTitle = cleanM3UTitle(match[1]);
                     }
                 } else if (trimmed.startsWith('http') && currentTitle) {
                     movies.push({ title: currentTitle, url: trimmed });
@@ -701,6 +737,17 @@ export default function syncRoutes(db, io) {
                             // Limpa o título: remove markdown bold (**) e o sufixo "Upload via..." que os scripts Python adicionavam
                             let title = caption.trim() || `Video_${messageId}`;
                             title = title.replace(/\*\*/g, '').replace(/\nUpload via Zoroflix Sync \(Hybrid Worker\)/gi, '').replace(/\nUpload via Zoroflix Bot \(Python Turbo\)/gi, '').replace(/\nUpload via Zoroflix Bot/gi, '').trim();
+
+                            // Limpa sujeira de M3U se tiver
+                            if (title.includes('tvg-logo=') || title.includes('group-title=')) {
+                                const idx = title.indexOf('",');
+                                if (idx !== -1) {
+                                    title = title.substring(idx + 2).trim();
+                                } else {
+                                    const parts = title.split(',');
+                                    title = parts[parts.length - 1].trim();
+                                }
+                            }
 
                             // Extrair tamanho do arquivo
                             let fileSize = 0;

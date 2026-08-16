@@ -38,3 +38,7 @@ data/
 
 
 database/db/*.sqlite-*
+backend/storage.sqlite
+backend/scripts/*.session
+database/
+dist/

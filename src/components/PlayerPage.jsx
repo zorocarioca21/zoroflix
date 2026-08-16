@@ -307,10 +307,13 @@ export default function PlayerPage() {
                 // Limpeza de possíveis sujeiras do M3U que vieram no título
                 let cleanItemTitle = itemTitle;
                 if (cleanItemTitle.includes('tvg-logo=') || cleanItemTitle.includes('group-title=')) {
-                    // O título real no M3U fica após a última vírgula na maioria das vezes, 
-                    // ou podemos apenas remover os atributos
-                    const parts = cleanItemTitle.split(',');
-                    cleanItemTitle = parts[parts.length - 1].trim();
+                    const idx = cleanItemTitle.indexOf('",');
+                    if (idx !== -1) {
+                        cleanItemTitle = cleanItemTitle.substring(idx + 2).trim();
+                    } else {
+                        const parts = cleanItemTitle.split(',');
+                        cleanItemTitle = parts[parts.length - 1].trim();
+                    }
                 }
 
                 const seasonEpRegex = /\s*(S\d{1,2}\s*E\d{1,2}|S\d{1,2}E\d{1,2}|EPISÓDIO\s*\d+|EP\s*\d+|E\d{1,2}|TEMPORADA\s*\d+)/i;

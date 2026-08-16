@@ -595,6 +595,21 @@ export default function AdminSync() {
         }
     };
 
+    const cleanM3UTitles = async () => {
+        const ok = await dialog.confirm("Deseja verificar e limpar títulos sujos importados do M3U no banco de dados?", { 
+            variant: 'info', title: 'Limpar Títulos M3U', confirmText: 'Sim, Limpar' 
+        });
+        if (!ok) return;
+        const res = await fetch('/api/sync/queue/clean-m3u-titles', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            dialog.alert(data.message, { variant: 'success', title: 'Títulos Limpos' });
+            fetchQueue();
+        } else {
+            dialog.alert('Erro ao limpar títulos M3U.', { variant: 'error', title: 'Erro' });
+        }
+    };
+
     const [isRemapping, setIsRemapping] = useState(false);
     const [isCleaningTG, setIsCleaningTG] = useState(false);
     const remapTelegram = async () => {
@@ -711,6 +726,12 @@ export default function AdminSync() {
                             style={{ padding: '0.5rem 1rem', background: '#333', color: '#00e676', border: '1px solid #00e676', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                         >
                             <Eraser size={16} /> Limpar Fila Pendentes (Duplicados)
+                        </button>
+                        <button 
+                            onClick={cleanM3UTitles}
+                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00bfff', border: '1px solid #00bfff', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        >
+                            <Eraser size={16} /> Corrigir Títulos Sujos (M3U)
                         </button>
                         <button 
                             onClick={cleanupTelegramDuplicates}
