@@ -303,6 +303,46 @@ export default function PlayerPage() {
         };
 
         const findEpisode = async () => {
+            const checkTitleMatch = (itemTitle, targetSeriesName) => {
+                // Limpeza de possíveis sujeiras do M3U que vieram no título
+                let cleanItemTitle = itemTitle;
+                if (cleanItemTitle.includes('tvg-logo=') || cleanItemTitle.includes('group-title=')) {
+                    // O título real no M3U fica após a última vírgula na maioria das vezes, 
+                    // ou podemos apenas remover os atributos
+                    const parts = cleanItemTitle.split(',');
+                    cleanItemTitle = parts[parts.length - 1].trim();
+                }
+
+                const seasonEpRegex = /\s*(S\d{1,2}\s*E\d{1,2}|S\d{1,2}E\d{1,2}|EPISÓDIO\s*\d+|EP\s*\d+|E\d{1,2}|TEMPORADA\s*\d+)/i;
+                const match = cleanItemTitle.match(seasonEpRegex);
+                
+                let extractedName = cleanItemTitle;
+                if (match && match.index > 0) {
+                    extractedName = cleanItemTitle.substring(0, match.index).trim();
+                } else {
+                    const tagsRegex = /\s*(DUBLADO|LEGENDADO|FHD|4K|1080P|720P|2160P|TS|CAMRIP)/i;
+                    const tagMatch = extractedName.match(tagsRegex);
+                    if (tagMatch && tagMatch.index > 0) {
+                        extractedName = extractedName.substring(0, tagMatch.index).trim();
+                    }
+                }
+                
+                extractedName = extractedName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
+                extractedName = extractedName.replace(/[-:]$/g, '').trim();
+                
+                let targetClean = targetSeriesName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
+                targetClean = targetClean.replace(/[-:]$/g, '').trim();
+                
+                if (extractedName.toLowerCase() === targetClean.toLowerCase()) return true;
+                
+                if (extractedName.toLowerCase().startsWith(targetClean.toLowerCase())) {
+                    const remaining = extractedName.substring(targetClean.length).trim();
+                    if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return true;
+                }
+                
+                return false;
+            };
+
             try {
                 if (season && episode) {
                     const s = String(season).padStart(2, '0');
@@ -313,12 +353,9 @@ export default function PlayerPage() {
                     const data = await res.json();
 
                     if (data?.items?.length > 0) {
-                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
-
                         const validSpecificItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!exactMatchRegex.test(i.title)) return false;
+                            if (!checkTitleMatch(i.title, seriesName)) return false;
                             return true;
                         });
 
@@ -341,34 +378,25 @@ export default function PlayerPage() {
                             `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
                         ];
 
-                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
-
                         const validItems = data2.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            
-                            // Verifica se o nome da série é uma palavra exata (evita Reacher dentro de Preacher)
-                            if (!exactMatchRegex.test(i.title)) return false;
+                            if (!checkTitleMatch(i.title, seriesName)) return false;
 
                             const upperTitle = i.title.toUpperCase();
-
                             const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                             if (!hasEp) return false;
 
                             const seasonMatch = upperTitle.match(/S(\d{1,2})/);
-                            if (seasonMatch) {
-                                if (parseInt(seasonMatch[1]) !== parseInt(season)) return false;
-                            }
+                            if (seasonMatch && parseInt(seasonMatch[1]) !== parseInt(season)) return false;
 
                             const seasonWordMatch = upperTitle.match(/TEMPORADA\s*(\d{1,2})/);
-                            if (seasonWordMatch) {
-                                if (parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
-                            }
+                            if (seasonWordMatch && parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
 
                             return true;
                         });
 
                         if (validItems.length > 0) {
+                            const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
                             const matches = getBestMatches(validItems, releaseYear);
                             if (matches) {
                                 handleMatches(matches);
@@ -381,21 +409,19 @@ export default function PlayerPage() {
                     const data = await res.json();
 
                     if (data?.items?.length > 0) {
-                        const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
-                        
-                        const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const exactMatchRegex = new RegExp(`(^|[^a-zA-Z0-9À-ÿ])${escapeRegExp(seriesName)}([^a-zA-Z0-9À-ÿ]|$)`, 'i');
-
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!exactMatchRegex.test(i.title)) return false;
+                            if (!checkTitleMatch(i.title, seriesName)) return false;
                             return true;
                         });
 
-                        const matches = getBestMatches(validItems, releaseYear);
-                        if (matches) {
-                            handleMatches(matches);
-                            return;
+                        if (validItems.length > 0) {
+                            const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
+                            const matches = getBestMatches(validItems, releaseYear);
+                            if (matches) {
+                                handleMatches(matches);
+                                return;
+                            }
                         }
                     }
                 }
