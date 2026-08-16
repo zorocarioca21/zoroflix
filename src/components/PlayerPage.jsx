@@ -31,6 +31,7 @@ export default function PlayerPage() {
     const [languageOptions, setLanguageOptions] = useState(null); // Agora armazenará TODAS as qualidades: { Normal: { dub, leg }, FHD: { dub, leg } }
     const [currentQuality, setCurrentQuality] = useState('Normal'); // Qualidade selecionada atualmente
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+    const [downloadSelector, setDownloadSelector] = useState(false);
     const prevLanguageType = useRef(null); // 'dub' or 'leg'
 
     // Handler customizado para mudar messageId e guardar a preferência
@@ -787,12 +788,26 @@ export default function PlayerPage() {
                                 <button 
                                     className="nav-btn-modern" 
                                     onClick={() => {
-                                        if (!telegramMessageId) {
-                                            window.alert('O vídeo ainda não foi carregado ou você precisa selecionar um idioma.');
-                                            return;
+                                        let targetMsgId = telegramMessageId;
+                                        
+                                        if (!targetMsgId) {
+                                            const opts = languageOptions && languageOptions[currentQuality];
+                                            if (!opts) {
+                                                window.alert('Nenhuma opção de vídeo encontrada.');
+                                                return;
+                                            }
+                                            
+                                            if (opts.dub && !opts.leg) {
+                                                targetMsgId = opts.dub;
+                                            } else if (!opts.dub && opts.leg) {
+                                                targetMsgId = opts.leg;
+                                            } else if (opts.dub && opts.leg) {
+                                                setDownloadSelector(true);
+                                                return;
+                                            }
                                         }
                                         const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
-                                        window.location.href = `/api/stream/telegram/${telegramMessageId}?download=true&title=${cleanTitle}`;
+                                        window.location.href = `/api/stream/telegram/${targetMsgId}?download=true&title=${cleanTitle}`;
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -912,6 +927,45 @@ export default function PlayerPage() {
                                 Não
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de Seleção de Download */}
+            {downloadSelector && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid #1a2f24',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        width: '90%',
+                        maxWidth: '400px',
+                        textAlign: 'center'
+                    }}>
+                        <h3 style={{ color: '#fff', marginBottom: '1.5rem' }}>Qual versão deseja baixar?</h3>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button onClick={() => {
+                                setDownloadSelector(false);
+                                const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].dub}?download=true&title=${cleanTitle}`;
+                            }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
+                            
+                            <button onClick={() => {
+                                setDownloadSelector(false);
+                                const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].leg}?download=true&title=${cleanTitle}`;
+                            }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
+                        </div>
+                        <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
                     </div>
                 </div>
             )}
