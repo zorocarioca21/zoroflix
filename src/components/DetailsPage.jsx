@@ -163,7 +163,7 @@ export default function DetailsPage() {
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();
           const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
-          if (isCurrent) setCertification(br?.rating || 'L');
+          if (isCurrent) setCertification(br?.rating || '?');
 
           // Buscar episódios concluídos
           try {
@@ -182,7 +182,7 @@ export default function DetailsPage() {
           const certData = await certResp.json();
           const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
           const cert = br?.release_dates?.find(d => d.certification)?.certification;
-          if (isCurrent) setCertification(cert || 'L');
+          if (isCurrent) setCertification(cert || '?');
         }
       } catch (error) {
         console.error(error);

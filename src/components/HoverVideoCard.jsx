@@ -21,10 +21,10 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
         let cert = '';
         if (type === 'movie') {
           const br = data.release_dates?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.release_dates?.find(d => d.certification)?.certification || 'L';
+          cert = br?.release_dates?.find(d => d.certification)?.certification || '?';
         } else {
           const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
-          cert = br?.rating || 'L';
+          cert = br?.rating || '?';
         }
         setCertification(cert);
       })
