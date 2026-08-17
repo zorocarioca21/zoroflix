@@ -49,41 +49,64 @@ export default function ManualUploadPage() {
 
         setManualUpload(prev => ({ ...prev, status: 'uploading', progress: 0, error: null }));
 
-        const formData = new FormData();
-        formData.append('title', manualUpload.title);
-        formData.append('video', manualUpload.file);
+        const file = manualUpload.file;
+        const chunkSize = 50 * 1024 * 1024; // 50MB
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const originalExt = file.name.split('.').pop() || 'mp4';
 
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/sync/manual-upload', true);
+        try {
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, file.size);
+                const chunk = file.slice(start, end);
 
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                setManualUpload(prev => ({ ...prev, progress: percent }));
+                const formData = new FormData();
+                formData.append('chunk', chunk, 'chunk.bin');
+                formData.append('fileName', fileName);
+                formData.append('chunkIndex', i);
+
+                const response = await fetch('/api/sync/manual-upload/chunk', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao enviar a parte ${i + 1} do vídeo`);
+                }
+
+                const progress = Math.round(((i + 1) / totalChunks) * 100);
+                setManualUpload(prev => ({ ...prev, progress }));
             }
-        };
 
-        xhr.onload = () => {
-            if (xhr.status === 200) {
-                setManualUpload({ title: '', file: null, progress: 100, status: 'success', error: null });
-                const input = document.getElementById('manual-file-input-new');
-                if (input) input.value = '';
-                
-                setTimeout(() => {
-                    setManualUpload(prev => ({ ...prev, status: 'idle', progress: 0 }));
-                }, 4000);
-            } else {
-                let errorMsg = xhr.responseText;
-                try { errorMsg = JSON.parse(xhr.responseText).error; } catch(e){}
-                setManualUpload(prev => ({ ...prev, status: 'error', error: "Erro no upload: " + errorMsg }));
+            const finalizeRes = await fetch('/api/sync/manual-upload/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName,
+                    title: manualUpload.title,
+                    originalExt,
+                    totalSize: file.size
+                })
+            });
+
+            if (!finalizeRes.ok) {
+                const errData = await finalizeRes.json();
+                throw new Error(errData.error || 'Erro ao finalizar upload');
             }
-        };
 
-        xhr.onerror = () => {
-            setManualUpload(prev => ({ ...prev, status: 'error', error: "Erro de conexão durante o upload." }));
-        };
+            setManualUpload({ title: '', file: null, progress: 100, status: 'success', error: null });
+            const input = document.getElementById('manual-file-input-new');
+            if (input) input.value = '';
+            
+            setTimeout(() => {
+                setManualUpload(prev => ({ ...prev, status: 'idle', progress: 0 }));
+            }, 4000);
 
-        xhr.send(formData);
+        } catch (error) {
+            console.error("Erro no chunked upload:", error);
+            setManualUpload(prev => ({ ...prev, status: 'error', error: "Erro no upload: " + error.message }));
+        }
     };
 
     return (

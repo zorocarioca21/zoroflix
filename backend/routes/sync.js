@@ -24,25 +24,55 @@ export default function syncRoutes(db, io) {
     // Inicia automaticamente o worker assim que o servidor ligar
     startWorker();
 
-    // Configuração do Multer para Upload Manual
+    // Configuração do Multer para Upload Manual (Chunks)
     const upload = multer({ 
         dest: path.join(os.tmpdir(), 'manual_uploads'), 
-        limits: { fileSize: 20 * 1024 * 1024 * 1024 } // 20GB limit
+        limits: { fileSize: 150 * 1024 * 1024 } // 150MB limit per chunk just in case
     });
 
-    // Rota de Upload Manual
-    router.post('/manual-upload', upload.single('video'), async (req, res) => {
+    // Rota para receber um pedaço do arquivo
+    router.post('/manual-upload/chunk', upload.single('chunk'), async (req, res) => {
         try {
-            if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+            const { fileName, chunkIndex } = req.body;
+            if (!req.file || !fileName) return res.status(400).json({ error: 'Faltam dados do chunk.' });
             
-            const title = req.body.title || 'Upload Manual Sem Título';
-            const originalExt = req.file.originalname.split('.').pop() || 'mp4';
+            const tempDir = path.join(os.tmpdir(), 'manual_uploads_chunks');
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+            
+            const filePath = path.join(tempDir, fileName);
+            const chunkData = fs.readFileSync(req.file.path);
+            
+            // Faz o append do chunk (Frontend deve mandar um por vez)
+            fs.appendFileSync(filePath, chunkData);
+            
+            // Limpa o temp do multer
+            try { fs.unlinkSync(req.file.path); } catch(e){}
+            
+            res.json({ success: true, message: `Chunk ${chunkIndex} recebido.` });
+        } catch (err) {
+            console.error("Erro no chunk:", err);
+            res.status(500).json({ error: 'Erro ao processar chunk.' });
+        }
+    });
+
+    // Rota para finalizar e mover para a fila
+    router.post('/manual-upload/finalize', async (req, res) => {
+        try {
+            const { fileName, title, originalExt, totalSize } = req.body;
+            if (!fileName || !title) return res.status(400).json({ error: 'Faltam dados.' });
+            
+            const tempDir = path.join(os.tmpdir(), 'manual_uploads_chunks');
+            const sourceFilePath = path.join(tempDir, fileName);
+            
+            if (!fs.existsSync(sourceFilePath)) return res.status(400).json({ error: 'Arquivo temporário não encontrado.' });
+            
             const fakeUrl = `local://manual-upload.${originalExt}`;
+            const actualSize = totalSize || fs.statSync(sourceFilePath).size;
             
             // 1. Insere no DB para pegar o ID
             const result = await db.run(
                 "INSERT INTO sync_queue (title, url, status, file_size) VALUES (?, ?, 'pending_upload', ?)",
-                [title, fakeUrl, req.file.size]
+                [title, fakeUrl, actualSize]
             );
             const dbId = result.lastID;
             
@@ -50,21 +80,13 @@ export default function syncRoutes(db, io) {
             const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
             const finalTmpPath = path.join(os.tmpdir(), `${safeTitle}_${dbId}.${originalExt}`);
             
-            // Cria diretório de destino do multer se não existir
-            if (!fs.existsSync(path.dirname(req.file.path))) {
-                fs.mkdirSync(path.dirname(req.file.path), { recursive: true });
-            }
-            
             // Move o arquivo pro destino final
-            fs.renameSync(req.file.path, finalTmpPath);
+            fs.renameSync(sourceFilePath, finalTmpPath);
             
             res.json({ success: true, message: 'Upload manual enviado para a fila!', id: dbId });
         } catch (err) {
-            console.error("Erro no manual-upload:", err);
-            if (req.file && fs.existsSync(req.file.path)) {
-                try { fs.unlinkSync(req.file.path); } catch(e){}
-            }
-            res.status(500).json({ error: 'Erro interno no upload.' });
+            console.error("Erro ao finalizar upload:", err);
+            res.status(500).json({ error: 'Erro interno ao finalizar upload.' });
         }
     });
 
