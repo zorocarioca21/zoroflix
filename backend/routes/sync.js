@@ -69,9 +69,9 @@ export default function syncRoutes(db, io) {
             const fakeUrl = `local://manual-upload.${originalExt}`;
             const actualSize = totalSize || fs.statSync(sourceFilePath).size;
             
-            // 1. Insere no DB para pegar o ID
+            // 1. Insere no DB para pegar o ID com prioridade máxima (999) para furar a fila
             const result = await db.run(
-                "INSERT INTO sync_queue (title, url, status, file_size) VALUES (?, ?, 'pending_upload', ?)",
+                "INSERT INTO sync_queue (title, url, status, file_size, priority) VALUES (?, ?, 'pending_upload', ?, 999)",
                 [title, fakeUrl, actualSize]
             );
             const dbId = result.lastID;
