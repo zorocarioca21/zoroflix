@@ -211,6 +211,8 @@ export default function PlayerPage() {
             originalSeriesName = (seriesDetail.original_title || seriesDetail.original_name).trim();
         }
 
+        let baseSeriesName = seriesName.includes(':') ? seriesName.split(':')[0].trim() : '';
+
         if (!seriesName) return;
         
         const searchKey = `${id}-${season}-${episode}-${seriesName}`;
@@ -307,7 +309,7 @@ export default function PlayerPage() {
         };
 
         const findEpisode = async () => {
-            const checkTitleMatch = (itemTitle, targetSeriesName, originalName) => {
+            const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseName) => {
                 // Limpeza de possíveis sujeiras do M3U que vieram no título
                 let cleanItemTitle = itemTitle;
                 if (cleanItemTitle.includes('tvg-logo=') || cleanItemTitle.includes('group-title=')) {
@@ -355,6 +357,9 @@ export default function PlayerPage() {
                     if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return true;
                 }
                 
+                let baseClean = baseName ? baseName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim().replace(/[-:]$/g, '').trim() : null;
+                if (baseClean && extractedName.toLowerCase().startsWith(baseClean.toLowerCase())) return true;
+                
                 return false;
             };
 
@@ -372,11 +377,17 @@ export default function PlayerPage() {
                         res = await fetch(`/api/sync/queue?search=${encodeURIComponent(origSearch)}&limit=20`, { headers });
                         data = await res.json();
                     }
+                    
+                    if ((!data?.items || data.items.length === 0) && baseSeriesName) {
+                        const baseSearch = `${baseSeriesName} S${s} E${e}`;
+                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSearch)}&limit=20`, { headers });
+                        data = await res.json();
+                    }
 
                     if (data?.items?.length > 0) {
                         const validSpecificItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName)) return false;
+                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
                             return true;
                         });
 
@@ -396,6 +407,11 @@ export default function PlayerPage() {
                         res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=500`, { headers });
                         data2 = await res2.json();
                     }
+                    
+                    if ((!data2?.items || data2.items.length === 0) && baseSeriesName) {
+                        res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=500`, { headers });
+                        data2 = await res2.json();
+                    }
 
                     if (data2?.items?.length > 0) {
                         const patterns = [
@@ -406,7 +422,7 @@ export default function PlayerPage() {
 
                         const validItems = data2.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName)) return false;
+                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
 
                             const upperTitle = i.title.toUpperCase();
                             const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
@@ -438,11 +454,16 @@ export default function PlayerPage() {
                         res = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=50`, { headers });
                         data = await res.json();
                     }
+                    
+                    if ((!data?.items || data.items.length === 0) && baseSeriesName) {
+                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=50`, { headers });
+                        data = await res.json();
+                    }
 
                     if (data?.items?.length > 0) {
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName)) return false;
+                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
                             return true;
                         });
 
