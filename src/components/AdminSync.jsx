@@ -296,7 +296,6 @@ export default function AdminSync() {
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
-    const [manualUpload, setManualUpload] = useState({ title: '', file: null, progress: 0, status: 'idle' });
     const [modalOpen, setModalOpen] = useState(false);
     
     const dialog = useDialog();
@@ -391,52 +390,6 @@ export default function AdminSync() {
         } catch (e) {
             dialog.alert('Erro de conexão ao iniciar scan remoto', { variant: 'error', title: 'Erro de Conexão' });
         }
-    };
-
-    const handleManualUpload = async () => {
-        if (!manualUpload.title || !manualUpload.file) {
-            dialog.alert("Preencha o título e selecione um arquivo de vídeo.", { variant: 'warning', title: 'Campos Obrigatórios' });
-            return;
-        }
-
-        setManualUpload(prev => ({ ...prev, status: 'uploading', progress: 0 }));
-
-        const formData = new FormData();
-        formData.append('title', manualUpload.title);
-        formData.append('video', manualUpload.file);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/sync/manual-upload', true);
-
-        xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                setManualUpload(prev => ({ ...prev, progress: percent }));
-            }
-        };
-
-        xhr.onload = () => {
-            if (xhr.status === 200) {
-                dialog.alert("Upload enviado com sucesso para a esteira do bot!", { variant: 'success', title: 'Upload Concluído' });
-                setManualUpload({ title: '', file: null, progress: 0, status: 'idle' });
-                if (document.getElementById('manual-file-input')) {
-                    document.getElementById('manual-file-input').value = "";
-                }
-                fetchQueue();
-            } else {
-                let errorMsg = xhr.responseText;
-                try { errorMsg = JSON.parse(xhr.responseText).error; } catch(e){}
-                dialog.alert("Erro no upload: " + errorMsg, { variant: 'error', title: 'Falha no Upload' });
-                setManualUpload(prev => ({ ...prev, status: 'error' }));
-            }
-        };
-
-        xhr.onerror = () => {
-            dialog.alert("Erro de conexão durante o upload.", { variant: 'error', title: 'Erro de Conexão' });
-            setManualUpload(prev => ({ ...prev, status: 'error' }));
-        };
-
-        xhr.send(formData);
     };
 
     const toggleWorker = async (pause) => {
@@ -774,57 +727,6 @@ export default function AdminSync() {
                         </button>
                     </div>
                 </div>
-            </div>
-
-            {/* Upload Manual Panel */}
-            <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #333' }}>
-                <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <HardDriveDownload size={20} /> Upload Manual de Filmes/Séries
-                </h3>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1, minWidth: '250px' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>Título do Filme/Episódio</label>
-                        <input 
-                            type="text" 
-                            placeholder="Ex: Matrix (1999)"
-                            value={manualUpload.title}
-                            onChange={(e) => setManualUpload({...manualUpload, title: e.target.value})}
-                            disabled={manualUpload.status === 'uploading'}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff' }}
-                        />
-                    </div>
-                    <div style={{ flex: 1, minWidth: '250px' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>Arquivo (MP4, MKV)</label>
-                        <input 
-                            type="file" 
-                            id="manual-file-input"
-                            accept="video/*,.mkv"
-                            onChange={(e) => setManualUpload({...manualUpload, file: e.target.files[0]})}
-                            disabled={manualUpload.status === 'uploading'}
-                            style={{ width: '100%', padding: '0.55rem', borderRadius: '4px', border: '1px solid #444', background: '#222', color: '#fff' }}
-                        />
-                    </div>
-                    <button 
-                        onClick={handleManualUpload}
-                        disabled={manualUpload.status === 'uploading'}
-                        style={{ padding: '0.75rem 2rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: manualUpload.status === 'uploading' ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
-                    >
-                        {manualUpload.status === 'uploading' ? 'Enviando...' : 'Fazer Upload'}
-                    </button>
-                </div>
-
-                {manualUpload.status === 'uploading' && (
-                    <div style={{ marginTop: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <span style={{ color: '#888' }}>Enviando arquivo para a VPS...</span>
-                            <span style={{ color: '#00ff88', fontWeight: 'bold' }}>{manualUpload.progress}%</span>
-                        </div>
-                        <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
-                            <div style={{ width: `${manualUpload.progress}%`, backgroundColor: '#00ff88', height: '100%', transition: 'width 0.1s' }} />
-                        </div>
-                        <small style={{ color: '#666', marginTop: '0.5rem', display: 'block' }}>Aguarde o envio concluir, não feche a página.</small>
-                    </div>
-                )}
             </div>
 
             {/* Pipeline Cards: Download e Upload */}

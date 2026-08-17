@@ -3,6 +3,7 @@ import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircl
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
+import ManualUploadPage from './ManualUploadPage';
 
 export default function AdminPanel() {
     const { user } = useAuth();
@@ -382,6 +383,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'sync' ? 'active' : ''} onClick={() => setActiveTab('sync')}>
                         <HardDriveUpload size={18} /> Sync IPTV
+                    </button>
+                    <button className={activeTab === 'manual-upload' ? 'active' : ''} onClick={() => setActiveTab('manual-upload')}>
+                        <Film size={18} /> Upload Manual
                     </button>
                 </div>
             </div>
@@ -875,6 +879,13 @@ export default function AdminPanel() {
                 {activeTab === 'sync' && (
                     <div className="admin-sync-wrapper" style={{ margin: '-1rem' }}>
                         <AdminSync />
+                    </div>
+                )}
+
+                {/* ABA UPLOAD MANUAL */}
+                {activeTab === 'manual-upload' && (
+                    <div className="admin-manual-upload-wrapper" style={{ margin: '0' }}>
+                        <ManualUploadPage />
                     </div>
                 )}
             </div>
