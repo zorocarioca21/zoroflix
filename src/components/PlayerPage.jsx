@@ -784,7 +784,7 @@ export default function PlayerPage() {
                                     </button>
                                 </>
                             )}
-                            {(state?.isVip || user?.isVip || user?.role === 'admin') && (
+                            {(state?.isVip || user?.role === 'vip' || user?.role === 'admin') && (
                                 <button 
                                     className="nav-btn-modern" 
                                     onClick={() => {
@@ -812,7 +812,7 @@ export default function PlayerPage() {
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
                                     <Download size={20} />
-                                    Baixar VIP
+                                    Baixar
                                 </button>
                             )}
                         </div>
