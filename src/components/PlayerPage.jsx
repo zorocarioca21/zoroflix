@@ -784,7 +784,7 @@ export default function PlayerPage() {
                                     </button>
                                 </>
                             )}
-                            {(state?.isVip || user?.role === 'vip' || user?.role === 'admin') && (
+                            {(state?.isVip || user?.role === 'vip' || user?.role === 'admin') && (telegramMessageId || languageOptions) && (
                                 <button 
                                     className="nav-btn-modern" 
                                     onClick={() => {
