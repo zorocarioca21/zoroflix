@@ -66,7 +66,7 @@ export default function syncRoutes(db, io) {
             
             if (!fs.existsSync(sourceFilePath)) return res.status(400).json({ error: 'Arquivo temporário não encontrado.' });
             
-            const fakeUrl = `local://manual-upload.${originalExt}`;
+            const fakeUrl = `local://manual-upload-${Date.now()}.${originalExt}`;
             const actualSize = totalSize || fs.statSync(sourceFilePath).size;
             
             // 1. Insere no DB para pegar o ID com prioridade máxima (999) para furar a fila

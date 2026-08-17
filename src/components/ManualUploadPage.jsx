@@ -27,7 +27,7 @@ export default function ManualUploadPage() {
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const droppedFile = e.dataTransfer.files[0];
-            if (droppedFile.type.startsWith('video/') || droppedFile.name.endsWith('.mkv') || droppedFile.name.endsWith('.ts')) {
+            if (droppedFile.type.startsWith('video/') || droppedFile.name.endsWith('.mkv')) {
                 setManualUpload(prev => ({ ...prev, file: droppedFile, status: 'idle', error: null }));
             } else {
                 setManualUpload(prev => ({ ...prev, error: 'Por favor, selecione um arquivo de vídeo válido.' }));
@@ -162,7 +162,7 @@ export default function ManualUploadPage() {
                                 <button type="button" className="browse-btn" onClick={() => document.getElementById('manual-file-input-new').click()}>
                                     Procurar Arquivo
                                 </button>
-                                <p className="file-hint">Formatos suportados: MP4, MKV, TS</p>
+                                <p className="file-hint">Formatos suportados: MP4, MKV</p>
                             </div>
                         ) : (
                             <div className="selected-file-card">
@@ -181,7 +181,7 @@ export default function ManualUploadPage() {
                         <input 
                             type="file" 
                             id="manual-file-input-new"
-                            accept="video/*,.mkv,.ts"
+                            accept="video/*,.mkv"
                             onChange={handleFileChange}
                             disabled={manualUpload.status === 'uploading'}
                             style={{ display: 'none' }}
