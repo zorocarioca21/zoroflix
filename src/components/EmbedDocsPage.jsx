@@ -6,32 +6,10 @@ export default function EmbedDocsPage() {
     const baseUrl = window.location.origin;
 
     return (
-        <div style={{ position: 'relative', minHeight: '100vh', color: '#e5e7eb', fontFamily: 'Inter, sans-serif', display: 'flex', overflow: 'hidden' }}>
-            {/* Vídeo de fundo */}
-            <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline
-                style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 0,
-                    opacity: 0.15
-                }}
-            >
-                <source src="https://tbcdn.talentbrew.com/company/391/v3_0/video/hero-video-0423.mp4" type="video/mp4" />
-            </video>
+        <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', color: '#e5e7eb', fontFamily: 'Inter, sans-serif', display: 'flex' }}>
             
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(11, 15, 25, 0.7)', zIndex: 0 }}></div>
-
             {/* Sidebar */}
-            <aside style={{ position: 'relative', zIndex: 1, width: '240px', backgroundColor: 'rgba(19, 25, 43, 0.6)', backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(31, 41, 55, 0.5)', padding: '1.5rem 0', minHeight: '100vh' }}>
+            <aside style={{ width: '240px', backgroundColor: '#13192b', borderRight: '1px solid #1f2937', padding: '1.5rem 0', minHeight: '100vh' }}>
                 <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
                     <div style={{ fontSize: '1.1rem', fontWeight: '900', letterSpacing: '-0.5px' }}>
                         CINEGEEK<span style={{ color: '#00e676' }}>API</span>
@@ -58,7 +36,7 @@ export default function EmbedDocsPage() {
             </aside>
 
             {/* Main Content */}
-            <main style={{ position: 'relative', zIndex: 1, padding: '2rem', flex: 1, maxWidth: '800px', fontSize: '0.95rem' }}>
+            <main style={{ padding: '2rem', flex: 1, maxWidth: '800px', fontSize: '0.95rem' }}>
                 <Link to="/api" style={{ color: '#00e676', textDecoration: 'none', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
                     ← Voltar para a Home
                 </Link>

@@ -12,76 +12,98 @@ export default function ApiLandingPage() {
             .catch(e => console.error(e));
     }, []);
 
+    const totalVideos = stats.movies + stats.episodes;
+
     return (
         <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
             {/* Navbar */}
-            <nav style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 3rem', backgroundColor: '#13192b', borderBottom: '1px solid #1f2937' }}>
+            <nav style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 3rem', backgroundColor: '#13131a', borderBottom: '1px solid #1a2f24' }}>
                 <div style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '-0.5px' }}>
-                    CINEGEEK<span style={{ color: '#00e676' }}>API</span>
+                    CINEGEEK<span style={{ color: '#00ff88' }}>API</span>
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontSize: '0.9rem' }}>
-                    <Link to="/api" style={{ color: '#fff', textDecoration: 'none', fontWeight: '600' }}>Início</Link>
-                    <Link to="/api/docs" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: '500' }}>Documentação</Link>
-                    <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" style={{ backgroundColor: '#00e676', padding: '0.4rem 1rem', borderRadius: '0.5rem', color: '#000', textDecoration: 'none', fontWeight: 'bold' }}>Adquira sua Key</a>
+                    <Link to="/" style={{ color: '#fff', textDecoration: 'none', fontWeight: '600' }}>Início</Link>
+                    <Link to="/docs" style={{ color: '#9ca3af', textDecoration: 'none', fontWeight: '500' }}>Documentação</Link>
+                    <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" style={{ backgroundColor: '#00ff88', padding: '0.4rem 1rem', borderRadius: '0.5rem', color: '#000', textDecoration: 'none', fontWeight: 'bold' }}>Adquira sua Key</a>
                 </div>
             </nav>
 
             {/* Hero Section */}
-            <div style={{ position: 'relative', overflow: 'hidden', padding: '4rem 2rem', textAlign: 'center' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'url(https://image.tmdb.org/t/p/original/9y0T18n3iR1T4p1lO57HkEDP3fH.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.15, zIndex: 0 }}></div>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, transparent, #0b0f19)', zIndex: 1 }}></div>
+            <div style={{ position: 'relative', overflow: 'hidden', padding: '6rem 2rem', textAlign: 'center', minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Vídeo de fundo */}
+                <video 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 0,
+                        opacity: 0.3
+                    }}
+                >
+                    <source src="https://tbcdn.talentbrew.com/company/391/v3_0/video/hero-video-0423.mp4" type="video/mp4" />
+                </video>
                 
-                <div style={{ position: 'relative', zIndex: 2, maxWidth: '800px', margin: '0 auto' }}>
-                    <Play size={48} color="#00e676" style={{ margin: '0 auto 1rem' }} />
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: '900', marginBottom: '1rem', lineHeight: '1.2' }}>
-                        Explore uma API com <span style={{ color: '#00e676' }}>{(stats.movies + stats.series + stats.animes + stats.doramas).toLocaleString('pt-BR')}</span> vídeos gratuitos!
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, rgba(11, 15, 25, 0.4), #0b0f19)', zIndex: 1 }}></div>
+                
+                <div style={{ position: 'relative', zIndex: 2, maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+                    <Play size={64} color="#00ff88" style={{ margin: '0 auto 1.5rem', filter: 'drop-shadow(0 0 15px rgba(0,255,136,0.5))' }} />
+                    <h1 style={{ fontSize: '3.5rem', fontWeight: '900', marginBottom: '1.5rem', lineHeight: '1.2' }}>
+                        Explore uma API com <span style={{ color: '#00ff88' }}>{totalVideos.toLocaleString('pt-BR')}</span> vídeos gratuitos!
                     </h1>
-                    <p style={{ fontSize: '1.1rem', color: '#9ca3af', marginBottom: '2rem' }}>
+                    <p style={{ fontSize: '1.2rem', color: '#d1d1d6', marginBottom: '2.5rem', maxWidth: '600px', margin: '0 auto 2.5rem' }}>
                         Incorpore o maior acervo da internet no seu próprio site. Player rápido, sem travamentos e com a melhor qualidade de imagem.
                     </p>
-                    <Link to="/api/docs" style={{ backgroundColor: '#fff', color: '#000', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', fontSize: '1rem', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Code size={18} /> Ver Documentação
+                    <Link to="/docs" style={{ backgroundColor: '#00ff88', color: '#000', padding: '1rem 2rem', borderRadius: '30px', fontSize: '1.1rem', fontWeight: 'bold', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,255,136,0.3)' }}>
+                        <Code size={20} /> Ver Documentação
                     </Link>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', padding: '2rem', position: 'relative', zIndex: 3, marginTop: '-3rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.5rem', padding: '2rem', position: 'relative', zIndex: 3, marginTop: '-4rem' }}>
                 {[
-                    { label: 'FILMES', value: stats.movies },
-                    { label: 'SÉRIES', value: stats.series },
-                    { label: 'ANIMES', value: stats.animes },
-                    { label: 'DORAMAS', value: stats.doramas },
-                    { label: 'EPISÓDIOS', value: stats.episodes }
-                ].map(s => (
-                    <div key={s.label} style={{ backgroundColor: '#13192b', padding: '1rem 1.5rem', borderRadius: '1rem', border: '1px solid #1f2937', textAlign: 'center', minWidth: '120px' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#fff', marginBottom: '0.25rem' }}>{s.value.toLocaleString('pt-BR')}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#00e676', letterSpacing: '1px', fontWeight: 'bold' }}>{s.label}</div>
+                    { label: 'FILMES', count: stats.movies },
+                    { label: 'SÉRIES', count: stats.series },
+                    { label: 'ANIMES', count: stats.animes },
+                    { label: 'DORAMAS', count: stats.doramas },
+                    { label: 'EPISÓDIOS', count: stats.episodes }
+                ].map((stat, i) => (
+                    <div key={i} style={{ backgroundColor: '#13131a', border: '1px solid #1a2f24', padding: '1.5rem 2rem', borderRadius: '1rem', minWidth: '160px', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: '2rem', fontWeight: '900', color: '#fff', marginBottom: '0.5rem' }}>{stat.count.toLocaleString('pt-BR')}</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#00ff88', letterSpacing: '1px' }}>{stat.label}</div>
                     </div>
                 ))}
             </div>
 
             {/* Features */}
             <div style={{ maxWidth: '1200px', margin: '3rem auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', padding: '0 2rem' }}>
-                <div style={{ backgroundColor: '#13192b', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1f2937' }}>
-                    <Zap color="#00e676" size={28} style={{ marginBottom: '1rem' }} />
+                <div style={{ backgroundColor: '#13131a', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1a2f24' }}>
+                    <Zap color="#00ff88" size={28} style={{ marginBottom: '1rem' }} />
                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Alta Velocidade</h3>
-                    <p style={{ color: '#9ca3af', lineHeight: '1.5', fontSize: '0.95rem' }}>Nossos servidores garantem uma entrega de vídeo sem buffering, utilizando nossa infraestrutura privada e descentralizada para armazenamento de alta performance.</p>
+                    <p style={{ color: '#9ca3af', fontSize: '0.95rem', lineHeight: '1.5' }}>Nossos servidores são otimizados para streaming HLS de alta performance, sem buffering.</p>
                 </div>
-                <div style={{ backgroundColor: '#13192b', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1f2937' }}>
-                    <Code color="#00e676" size={28} style={{ marginBottom: '1rem' }} />
+                <div style={{ backgroundColor: '#13131a', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1a2f24' }}>
+                    <Code color="#00ff88" size={28} style={{ marginBottom: '1rem' }} />
                     <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Fácil Integração</h3>
-                    <p style={{ color: '#9ca3af', lineHeight: '1.5', fontSize: '0.95rem' }}>Basta um simples Iframe com o ID do TMDB. Suportamos Filmes e Séries nativamente com a mesma estrutura de URL da concorrência.</p>
+                    <p style={{ color: '#9ca3af', fontSize: '0.95rem', lineHeight: '1.5' }}>Basta um simples Iframe com o ID do TMDB e o player faz o resto automaticamente.</p>
                 </div>
-                <div style={{ backgroundColor: '#13192b', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1f2937' }}>
-                    <CheckCircle color="#00e676" size={28} style={{ marginBottom: '1rem' }} />
-                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Planos Premium</h3>
-                    <p style={{ color: '#9ca3af', lineHeight: '1.5', fontSize: '0.95rem' }}>O player padrão possui anúncios (Pop-under). Adquira uma API Key Premium e ofereça uma experiência 100% limpa para seus usuários.</p>
+                <div style={{ backgroundColor: '#13131a', padding: '1.5rem', borderRadius: '1rem', border: '1px solid #1a2f24' }}>
+                    <CheckCircle color="#00ff88" size={28} style={{ marginBottom: '1rem' }} />
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Uptime de 99.9%</h3>
+                    <p style={{ color: '#9ca3af', fontSize: '0.95rem', lineHeight: '1.5' }}>Infraestrutura redundante garante que seus usuários nunca fiquem sem conteúdo.</p>
                 </div>
             </div>
-            
-            <footer style={{ textAlign: 'center', padding: '3rem', borderTop: '1px solid #1f2937', color: '#6b7280' }}>
-                <p>&copy; 2026 CineGeek API. Todos os direitos reservados.</p>
+
+            <footer style={{ textAlign: 'center', padding: '3rem 2rem', color: '#6b7280', fontSize: '0.9rem', borderTop: '1px solid #1a2f24', marginTop: '4rem' }}>
+                © {new Date().getFullYear()} CineGeek API. Todos os direitos reservados.
             </footer>
         </div>
     );
