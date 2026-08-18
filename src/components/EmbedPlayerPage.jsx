@@ -6,7 +6,9 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function EmbedPlayerPage() {
-    const { type, id: rawId, season, episode } = useParams(); // type = 'filme' | 'serie'
+    const { type: paramType, id: rawId, season, episode } = useParams(); 
+    const type = paramType || (season && episode ? 'serie' : 'filme');
+
     const [tmdbId, setTmdbId] = useState(rawId);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null);
@@ -137,31 +139,22 @@ export default function EmbedPlayerPage() {
 
     if (checkingKey || loading) {
         return (
-            <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', zIndex: 9999 }}>
                 <h2>Carregando Player...</h2>
             </div>
         );
     }
 
-    if (error) {
-        return (
-            <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444' }}>
-                <h2>Conteúdo não encontrado.</h2>
-            </div>
-        );
-    }
-
-    // Se não achou no Telegram, bloqueia a exibição (Sem Superflix Fallback)
     if (!isValidEmbed) {
         return (
-            <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif' }}>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif', zIndex: 9999 }}>
                 <h2>O vídeo ainda não está disponível ou não foi encontrado.</h2>
             </div>
         );
     }
 
     return (
-        <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
             <CustomVideoPlayer 
                 telegramMessageId={telegramMessageId}
                 title={type === 'serie' ? `${title} T${season}E${episode}` : title}

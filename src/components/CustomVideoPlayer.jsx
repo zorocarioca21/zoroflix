@@ -124,19 +124,20 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
     // HLS.js Integration for Live Streams (.m3u8) & Telegram MP4
     useEffect(() => {
-        if (videoRef.current) {
-            // Limpa players anteriores
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
-            if (mpegtsRef.current) {
-                mpegtsRef.current.destroy();
-                mpegtsRef.current = null;
-            }
+        if (!videoRef.current) return;
+        
+        // Limpa players anteriores
+        if (hlsRef.current) {
+            hlsRef.current.destroy();
+            hlsRef.current = null;
+        }
+        if (mpegtsRef.current) {
+            mpegtsRef.current.destroy();
+            mpegtsRef.current = null;
+        }
 
-            if (srcUrl) {
-                if (srcUrl.includes('.m3u8')) {
+        if (srcUrl) {
+            if (srcUrl.includes('.m3u8')) {
                 // HLS NATTY
                 if (Hls.isSupported()) {
                     const hls = new Hls();
@@ -200,11 +201,10 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 }
             }
         } else if (messageId) {
-                // Telegram Video Injection via JS (Evita bug do Safari com a tag <source>)
-                videoRef.current.src = `/api/stream/telegram/${messageId}`;
-                videoRef.current.load();
-                videoRef.current.play().catch(() => {});
-            }
+            // Telegram Video Injection via JS (Evita bug do Safari com a tag <source>)
+            videoRef.current.src = `/api/stream/telegram/${messageId}`;
+            videoRef.current.load();
+            videoRef.current.play().catch(() => {});
         }
 
         return () => {
