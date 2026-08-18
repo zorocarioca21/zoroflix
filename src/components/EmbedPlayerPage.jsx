@@ -94,7 +94,7 @@ export default function EmbedPlayerPage() {
                     searchQuery = `${searchName} S${s} E${e}`;
                 }
 
-                const res = await fetch(`/api/sync/queue?search=${encodeURIComponent(searchQuery)}&limit=20`, {
+                const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchQuery)}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await res.json();
@@ -123,7 +123,6 @@ export default function EmbedPlayerPage() {
                     setLanguageOptions(foundLangOpts);
                     setIsValidEmbed(true);
                 } else {
-                    // Fallback para iframe Superflix se não acharmos no nosso DB!
                     setIsValidEmbed(false);
                 }
             } catch (err) {
@@ -152,19 +151,12 @@ export default function EmbedPlayerPage() {
         );
     }
 
-    // Fallback: Se não achou no Telegram, usa o iframe do Superflix
+    // Se não achou no Telegram, bloqueia a exibição (Sem Superflix Fallback)
     if (!isValidEmbed) {
-        let fallbackUrl = type === 'filme' 
-            ? `https://superflixapi.top/filme/${rawId}`
-            : `https://superflixapi.top/serie/${rawId}/${season}/${episode}`;
-        
         return (
-            <iframe 
-                src={fallbackUrl} 
-                allowFullScreen 
-                style={{ width: '100vw', height: '100vh', border: 'none' }}
-                title="Player de Terceiros"
-            />
+            <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif' }}>
+                <h2>O vídeo ainda não está disponível ou não foi encontrado.</h2>
+            </div>
         );
     }
 

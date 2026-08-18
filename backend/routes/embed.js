@@ -78,8 +78,30 @@ export default function embedRoutes(db) {
 
             return res.json({ valid: true });
 
-        } catch (error) {
-            console.error("Erro ao validar API Key:", error);
+        } catch (err) {
+            console.error("Erro na verificação da key:", err);
+            res.status(500).json({ error: "Erro interno no servidor." });
+        }
+    });
+
+    // Rota pública para o iframe buscar o telegram_message_id no banco
+    router.get('/search', async (req, res) => {
+        try {
+            const { q } = req.query;
+            if (!q) return res.json({ items: [] });
+
+            const query = `
+                SELECT id, title, telegram_message_id, status 
+                FROM sync_queue 
+                WHERE status = 'completed' AND title LIKE ?
+                LIMIT 20
+            `;
+            const searchParam = `%${q}%`;
+            const items = await db.all(query, [searchParam]);
+            
+            res.json({ items });
+        } catch (err) {
+            console.error("Erro na busca pública do embed:", err);
             res.status(500).json({ error: "Erro interno" });
         }
     });
