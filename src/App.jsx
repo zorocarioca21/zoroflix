@@ -195,7 +195,7 @@ function AppContent() {
     if (!document.getElementById(scriptId)) {
         const script = document.createElement('script');
         script.id = scriptId;
-        script.src = "https://pl29672002.effectivecpmnetwork.com/8d/85/2f/8d852f7cb5b1fbe6a38a6e9cd915610d.js";
+        script.src = "https://pl30899843.effectivecpmnetwork.com/73/a5/ac/73a5acda96698e988451362de947fb63.js";
         script.async = true;
         document.head.appendChild(script);
     }

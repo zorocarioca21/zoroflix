@@ -146,7 +146,7 @@ export default function PlayerPage() {
         if (!configs.ads_enabled || !configs.ads_popunder) return;
         if (user?.role && user.role !== 'free') return;
         const script = document.createElement('script');
-        script.src = "https://pl29672000.effectivecpmnetwork.com/d7/32/c1/d732c1442b56faa1946720b33505fca5.js";
+        script.src = "https://pl30899842.effectivecpmnetwork.com/d9/5e/5e/d95e5e5709de2783f6993047886330c8.js";
         script.async = true;
         document.body.appendChild(script);
         return () => { try { document.body.removeChild(script); } catch (e) { } };
