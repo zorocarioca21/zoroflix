@@ -24,7 +24,7 @@ export default function EmbedPlayerPage() {
 
     // Extrair API Key da URL
     const searchParams = new URLSearchParams(window.location.search);
-    const apikey = searchParams.get('apikey');
+    const apikey = searchParams.get('apikey') || searchParams.get('apiKey');
 
     // Validação da API Key
     useEffect(() => {
