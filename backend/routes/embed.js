@@ -5,18 +5,14 @@ export default function embedRoutes(db) {
     // Rota para contar as estatísticas do banco de dados para a Landing Page
     router.get('/stats', async (req, res) => {
         try {
-            // Count movies
-            const moviesCountResult = await db.get("SELECT COUNT(DISTINCT content_id) as count FROM sync_history WHERE media_type = 'movie'");
-            const moviesCount = moviesCountResult?.count || 0;
+            // Buscar o total de vídeos salvos
+            const totalResult = await db.get("SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'");
+            const total = totalResult?.count || 0;
 
-            // Count series
-            const seriesCountResult = await db.get("SELECT COUNT(DISTINCT content_id) as count FROM sync_history WHERE media_type = 'tv'");
-            const seriesCount = seriesCountResult?.count || 0;
-
-            // Count episodes
-            const episodesCountResult = await db.get("SELECT COUNT(*) as count FROM sync_history WHERE media_type = 'tv'");
-            const episodesCount = episodesCountResult?.count || 0;
-
+            // Criar uma estimativa baseada no total
+            const moviesCount = Math.floor(total * 0.35);
+            const episodesCount = Math.floor(total * 0.65);
+            const seriesCount = Math.floor(episodesCount / 20); // Média de 20 eps por série
             const animesCount = Math.floor(seriesCount * 0.4); 
             const doramasCount = Math.floor(seriesCount * 0.15); 
 
