@@ -19,6 +19,9 @@ import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
 import AntiDevTools from './components/AntiDevTools'
 import StoragePage from './components/StoragePage'
+import EmbedPlayerPage from './components/EmbedPlayerPage'
+import ApiLandingPage from './components/ApiLandingPage'
+import EmbedDocsPage from './components/EmbedDocsPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -412,6 +415,12 @@ function AppContent() {
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
         <Route path="/storage" element={<StoragePage />} />
+        
+        {/* Rotas Embed API */}
+        <Route path="/embed/:type/:id" element={<EmbedPlayerPage />} />
+        <Route path="/embed/serie/:id/:season/:episode" element={<EmbedPlayerPage />} />
+        <Route path="/api" element={<ApiLandingPage />} />
+        <Route path="/api/docs" element={<EmbedDocsPage />} />
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}

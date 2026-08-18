@@ -184,6 +184,10 @@ export async function initDB() {
     try {
         await db.exec(`ALTER TABLE comments ADD COLUMN status TEXT DEFAULT 'visible'`);
     } catch(e) {}
+    try {
+        await db.exec(`ALTER TABLE api_keys ADD COLUMN allowed_domains TEXT`);
+        await db.exec(`ALTER TABLE api_keys ADD COLUMN usage_count INTEGER DEFAULT 0`);
+    } catch(e) {}
 
     // Tabela de sessões ao vivo (live_sessions)
     await db.exec(`
@@ -205,6 +209,8 @@ export async function initDB() {
             name TEXT NOT NULL,
             key TEXT UNIQUE NOT NULL,
             permissions TEXT DEFAULT 'full',
+            allowed_domains TEXT,
+            usage_count INTEGER DEFAULT 0,
             active INTEGER DEFAULT 1,
             last_used DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP

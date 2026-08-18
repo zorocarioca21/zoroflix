@@ -424,10 +424,13 @@ export default function adminRoutes(db) {
         }
     });
 
-    // Criar nova API Key
+    // Criar API Key
     router.post('/api-keys', async (req, res) => {
-        const { name } = req.body;
+        const { name, permissions, allowed_domains } = req.body;
         if (!name) return res.status(400).json({ error: 'Campo "name" é obrigatório.' });
+
+        const perms = permissions || 'full';
+        const domains = allowed_domains || null;
 
         // Gera uma key aleatória segura
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -438,9 +441,9 @@ export default function adminRoutes(db) {
 
         try {
             const result = await db.run(
-                "INSERT INTO api_keys (name, key) VALUES (?, ?)", [name, key]
+                "INSERT INTO api_keys (name, key, permissions, allowed_domains) VALUES (?, ?, ?, ?)", [name, key, perms, domains]
             );
-            res.json({ success: true, id: result.lastID, name, key });
+            res.json({ success: true, id: result.lastID, name, key, permissions: perms, allowed_domains: domains });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao criar API Key.' });
         }

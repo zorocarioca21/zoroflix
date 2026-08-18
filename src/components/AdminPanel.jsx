@@ -18,6 +18,8 @@ export default function AdminPanel() {
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
     const [newKeyName, setNewKeyName] = useState('');
+    const [newKeyPermissions, setNewKeyPermissions] = useState('full');
+    const [newKeyDomains, setNewKeyDomains] = useState('');
     const [newKeyResult, setNewKeyResult] = useState(null);
     const [tempStats, setTempStats] = useState({ size: 0, count: 0 });
 
@@ -243,12 +245,14 @@ export default function AdminPanel() {
             const resp = await fetch('/api/admin/api-keys', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newKeyName })
+                body: JSON.stringify({ name: newKeyName, permissions: newKeyPermissions, allowed_domains: newKeyDomains })
             });
             const data = await resp.json();
             if (data.success) {
                 setNewKeyResult(data.key);
                 setNewKeyName('');
+                setNewKeyDomains('');
+                setNewKeyPermissions('full');
                 fetchApiKeys();
             }
         } catch (err) { console.error(err); }
@@ -637,17 +641,36 @@ export default function AdminPanel() {
 
                         {/* Criar nova key */}
                         <div className="apikey-create-row">
-                            <input
-                                type="text"
-                                className="apikey-input"
-                                placeholder="Nome da chave (ex: App Android, Bot Discord...)"
-                                value={newKeyName}
-                                onChange={e => setNewKeyName(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && createApiKey()}
-                            />
-                            <button className="apikey-create-btn" onClick={createApiKey}>
-                                <Plus size={16} /> Criar Key
-                            </button>
+                            <div style={{display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap'}}>
+                                <input
+                                    type="text"
+                                    className="apikey-input"
+                                    style={{ flex: '1', minWidth: '200px' }}
+                                    placeholder="Nome da chave (ex: App Android...)"
+                                    value={newKeyName}
+                                    onChange={e => setNewKeyName(e.target.value)}
+                                />
+                                <select 
+                                    className="apikey-input" 
+                                    style={{ width: 'auto', background: '#1c1c24' }}
+                                    value={newKeyPermissions}
+                                    onChange={e => setNewKeyPermissions(e.target.value)}
+                                >
+                                    <option value="full">Admin (Acesso Total)</option>
+                                    <option value="embed">Embed Premium (Sem Ads)</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    className="apikey-input"
+                                    style={{ flex: '1', minWidth: '150px' }}
+                                    placeholder="Domínios (ex: meulink.com)"
+                                    value={newKeyDomains}
+                                    onChange={e => setNewKeyDomains(e.target.value)}
+                                />
+                                <button className="apikey-create-btn" onClick={createApiKey} style={{ width: 'auto' }}>
+                                    <Plus size={16} /> Criar Key
+                                </button>
+                            </div>
                         </div>
 
                         {/* Key recém-criada */}
@@ -669,9 +692,10 @@ export default function AdminPanel() {
                                     <tr>
                                         <th>Nome</th>
                                         <th>Key</th>
+                                        <th>Permissão</th>
+                                        <th>Views</th>
                                         <th>Status</th>
                                         <th>Último Uso</th>
-                                        <th>Criada Em</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -687,13 +711,19 @@ export default function AdminPanel() {
                                                     <button className="btn-copy-mini" onClick={() => copyToClipboard(k.key)} title="Copiar"><Copy size={12} /></button>
                                                 </div>
                                             </td>
+                                            <td style={{fontSize:'0.8rem'}}>
+                                                <span style={{color: k.permissions === 'embed' ? '#00ccff' : '#00ff88', fontWeight: 'bold'}}>
+                                                    {k.permissions === 'embed' ? 'Embed Premium' : 'Admin'}
+                                                </span>
+                                                {k.allowed_domains && <div style={{color:'#888', marginTop:'4px'}}>{k.allowed_domains}</div>}
+                                            </td>
+                                            <td style={{fontSize:'0.9rem', fontWeight: 'bold'}}>{k.usage_count || 0}</td>
                                             <td>
                                                 <span className={`apikey-status ${k.active ? 'active' : 'inactive'}`}>
                                                     {k.active ? 'Ativa' : 'Inativa'}
                                                 </span>
                                             </td>
                                             <td style={{fontSize:'0.8rem', color:'#888'}}>{k.last_used ? new Date(k.last_used).toLocaleString() : 'Nunca'}</td>
-                                            <td style={{fontSize:'0.8rem', color:'#888'}}>{new Date(k.created_at).toLocaleDateString()}</td>
                                             <td>
                                                 <div className="action-row-mini">
                                                     <button onClick={() => toggleApiKey(k.id)} title={k.active ? 'Desativar' : 'Ativar'}>
