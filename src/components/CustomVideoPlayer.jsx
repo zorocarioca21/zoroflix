@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast } from 'lucide-react';
 
 export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
@@ -29,11 +29,68 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const [showQualityMenu, setShowQualityMenu] = useState(false);
     const [zoomMode, setZoomMode] = useState('contain'); // Novo estado de Zoom
+    const [isCastAvailable, setIsCastAvailable] = useState(false);
+    const [isAirPlayAvailable, setIsAirPlayAvailable] = useState(false);
     const prevMessageId = useRef(messageId);
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
 
     const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
+
+    // Cast & AirPlay Availability Check
+    useEffect(() => {
+        if (window.WebKitPlaybackTargetAvailabilityEvent || isIOS) {
+            setIsAirPlayAvailable(true);
+        }
+
+        const checkCast = () => {
+            if (window.isCastApiAvailable && window.cast && window.chrome) {
+                setIsCastAvailable(true);
+            }
+        };
+        checkCast();
+        const castInterval = setInterval(checkCast, 1000);
+        return () => clearInterval(castInterval);
+    }, [isIOS]);
+
+    const handleCastClick = () => {
+        // AirPlay Priority (Safari/iOS)
+        if (videoRef.current && videoRef.current.webkitShowPlaybackTargetPicker) {
+            videoRef.current.webkitShowPlaybackTargetPicker();
+            return;
+        }
+
+        // Chromecast Priority (Chrome/Android)
+        if (isCastAvailable && window.cast && window.cast.framework) {
+            const castContext = window.cast.framework.CastContext.getInstance();
+            castContext.requestSession().then(
+                () => {
+                    const session = castContext.getCurrentSession();
+                    if (session) {
+                        const castUrl = srcUrl || (messageId ? `${window.location.origin}/api/stream/telegram/${messageId}` : '');
+                        if (!castUrl) return;
+
+                        const mediaInfo = new window.chrome.cast.media.MediaInfo(castUrl, 'video/mp4');
+                        mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
+                        mediaInfo.metadata.title = 'CineGeek Player';
+
+                        const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
+                        if (videoRef.current && videoRef.current.currentTime > 0) {
+                            request.currentTime = videoRef.current.currentTime;
+                        }
+
+                        session.loadMedia(request).then(
+                            () => { console.log('Cast loaded'); if (videoRef.current) videoRef.current.pause(); },
+                            (error) => console.log('Cast load error:', error)
+                        );
+                    }
+                },
+                (error) => console.log('Cast session error:', error)
+            );
+        } else {
+            alert('A transmissão (Chromecast/AirPlay) não pôde ser iniciada. Verifique se o seu dispositivo e a TV estão na mesma rede WiFi e se o navegador é compatível (Chrome/Safari).');
+        }
+    };
 
     // Seamlessly handle messageId changes (language swap or next episode)
     useEffect(() => {
@@ -707,6 +764,11 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
 
                         {/* PiP & Fullscreen Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {(isCastAvailable || isAirPlayAvailable) && (
+                                <button onClick={handleCastClick} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Transmitir para TV">
+                                    <Cast size={22} />
+                                </button>
+                            )}
                             <button onClick={toggleZoom} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title={zoomMode === 'contain' ? "Zoom (Cortar Bordas)" : (zoomMode === 'cover' ? "Esticar (Preencher Tela)" : "Ajustar à Tela (Padrão)")}>
                                 <Crop size={22} color={zoomMode === 'contain' ? '#fff' : (zoomMode === 'cover' ? '#00ff88' : '#00ccff')} />
                             </button>
