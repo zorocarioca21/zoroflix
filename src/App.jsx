@@ -548,7 +548,7 @@ function Home({ onOpenDetails }) {
                         fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px',
                         padding: '2px 5px', letterSpacing: '0.05em'
                       }}>
-                        S{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
+                        T{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}
                       </span>
                     )}
                   </CustomPosterCard>

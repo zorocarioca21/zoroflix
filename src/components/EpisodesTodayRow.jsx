@@ -106,8 +106,8 @@ export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay,
               onClick={() => onPlay(item.tmdb_id, 'tv', item.title)}
               badges={
                 <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '4px', zIndex: 10 }}>
-                  <span style={{ background: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                    T{item.season}E{item.number}
+                  <span style={{ background: 'rgba(0,0,0,0.8)', color: '#00e676', fontSize: '11px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    T{String(item.season).padStart(2,'0')}E{String(item.number).padStart(2,'0')}
                   </span>
                 </div>
               }
