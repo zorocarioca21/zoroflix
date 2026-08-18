@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CustomVideoPlayer from './CustomVideoPlayer';
+import AntiDevTools from './AntiDevTools';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -34,19 +35,10 @@ export default function EmbedPlayerPage() {
                 return;
             }
             try {
-                const res = await fetch('/api/embed/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ apikey, domain: document.referrer || window.location.origin })
-                });
-                const data = await res.json();
-                if (data.valid) {
-                    setIsVipKey(true);
-                } else {
-                    console.warn("Embed Key Inválida:", data.reason);
-                }
+                const res = await fetch(`/api/embed/validate-key?key=${apikey}`);
+                if (res.ok) setIsVipKey(true);
             } catch (err) {
-                console.error("Erro validando key", err);
+                console.error("Erro validando key:", err);
             }
             setCheckingKey(false);
         };
@@ -99,62 +91,61 @@ export default function EmbedPlayerPage() {
                 const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchQuery)}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
-                const data = await res.json();
-                
-                let foundMsgId = null;
-                let foundLangOpts = null;
 
-                if (data?.items?.length > 0) {
-                    // Tenta achar um match finalizado
-                    const validItems = data.items.filter(i => i.status === 'completed' && i.telegram_message_id);
-                    if (validItems.length > 0) {
-                        // Agrupa linguagens de forma similar ao app principal (simplificado aqui)
-                        foundLangOpts = { Normal: { dub: null, leg: null } };
-                        validItems.forEach(item => {
-                            const tags = item.title.toLowerCase();
-                            if (tags.includes('leg')) foundLangOpts.Normal.leg = item.telegram_message_id;
-                            else foundLangOpts.Normal.dub = item.telegram_message_id;
-                        });
-                        
-                        foundMsgId = foundLangOpts.Normal.dub || foundLangOpts.Normal.leg || validItems[0].telegram_message_id;
+                if (res.ok) {
+                    const queueData = await res.json();
+                    if (queueData && queueData.message_id) {
+                        setTelegramMessageId(queueData.message_id);
+                        setIsValidEmbed(true);
+                    } else {
+                        setError(true);
                     }
-                }
-
-                if (foundMsgId) {
-                    setTelegramMessageId(foundMsgId);
-                    setLanguageOptions(foundLangOpts);
-                    setIsValidEmbed(true);
                 } else {
-                    setIsValidEmbed(false);
+                    setError(true);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Erro carregando embed:", err);
                 setError(true);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         fetchInfo();
     }, [rawId, type, season, episode]);
 
-    if (checkingKey || loading) {
+    // Bloqueia teclado para inspecionar caso não confie no AntiDevTools global
+    useEffect(() => {
+        const preventKeys = (e) => {
+            if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || (e.ctrlKey && e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
+        };
+        document.addEventListener('keydown', preventKeys);
+        return () => document.removeEventListener('keydown', preventKeys);
+    }, []);
+
+    if (loading) {
         return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', zIndex: 9999 }}>
-                <h2>Carregando Player...</h2>
+            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', zIndex: 9999 }}>
+                <div className="loader"></div>
             </div>
         );
     }
 
-    if (!isValidEmbed) {
+    if (error || !isValidEmbed) {
         return (
-            <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif', zIndex: 9999 }}>
+            <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif', zIndex: 9999 }}>
+                <AntiDevTools />
                 <h2>O vídeo ainda não está disponível ou não foi encontrado.</h2>
             </div>
         );
     }
 
     return (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
+        <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
+            <AntiDevTools />
             <CustomVideoPlayer 
                 messageId={telegramMessageId}
                 title={type === 'serie' ? `${title} T${season}E${episode}` : title}
