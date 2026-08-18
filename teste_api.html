@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste da API CineGeek</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #00ff88;
+        }
+        .iframe-container {
+            width: 80%;
+            max-width: 1000px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border: 3px solid #00ff88;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        p {
+            margin-top: 20px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Simulação de Site de um Cliente</h1>
+    <p>O Iframe abaixo está consumindo a sua API oficial!</p>
+
+    <div class="iframe-container">
+        <!-- Aqui é onde o cliente coloca o seu link -->
+        <iframe src="https://cinegeek.shop/embed/serie/108978/4/1" allowfullscreen></iframe>
+    </div>
+
+</body>
+</html>

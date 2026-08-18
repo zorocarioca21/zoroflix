@@ -193,6 +193,7 @@ function AppContent() {
     if (loading || !configsReady) return;
     if (!globalConfigs.ads_enabled || !globalConfigs.ads_socialbar) return;
     if (user?.role && user.role !== 'free') return; // Hide social bar for VIPs
+    if (location.pathname.startsWith('/embed')) return; // Esconde do Embed da API
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
     if (isMobile) return; // Do not show social bar on mobile
@@ -426,7 +427,7 @@ function AppContent() {
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}
-      <WhatsappPopup />
+      {!location.pathname.startsWith('/embed') && <WhatsappPopup />}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <TvGuideModal isOpen={isTvGuideOpen} onClose={() => setIsTvGuideOpen(false)} />
     </div>
