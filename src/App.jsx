@@ -428,7 +428,7 @@ function AppContent() {
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}
-      {!location.pathname.startsWith('/embed') && <WhatsappPopup />}
+      {!location.pathname.startsWith('/embed') && (!user || user.role !== 'admin') && <WhatsappPopup />}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <TvGuideModal isOpen={isTvGuideOpen} onClose={() => setIsTvGuideOpen(false)} />
     </div>
