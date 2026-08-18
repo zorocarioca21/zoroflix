@@ -23,36 +23,13 @@ export default function AdBanner({ adId }) {
     // Evita carregar múltiplas vezes se o componente remontar rapidamente
     if (adContainerRef.current && adContainerRef.current.innerHTML === '') {
       const iframe = document.createElement('iframe');
+      iframe.src = "/ad_728x90.html";
       iframe.width = "728";
       iframe.height = "90";
       iframe.style.border = "none";
       iframe.scrolling = "no";
       
       adContainerRef.current.appendChild(iframe);
-
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background: transparent; }</style>
-            <script type="text/javascript">
-                atOptions = {
-                    'key' : '40b3a4f1f3aea0d9793da7323cabebd8',
-                    'format' : 'iframe',
-                    'height' : 90,
-                    'width' : 728,
-                    'params' : {}
-                };
-            </script>
-        </head>
-        <body>
-            <script type="text/javascript" src="https://pl29672001.effectivecpmnetwork.com/40b3a4f1f3aea0d9793da7323cabebd8/invoke.js"></script>
-        </body>
-        </html>
-      `;
-      iframe.contentWindow.document.open();
-      iframe.contentWindow.document.write(html);
-      iframe.contentWindow.document.close();
     }
   }, [user, loading, configs, ready]);
 
