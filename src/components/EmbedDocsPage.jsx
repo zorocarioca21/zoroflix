@@ -9,16 +9,16 @@ export default function EmbedDocsPage() {
         <div style={{ backgroundColor: '#0b0f19', minHeight: '100vh', color: '#e5e7eb', fontFamily: 'Inter, sans-serif', display: 'flex' }}>
             
             {/* Sidebar */}
-            <aside style={{ width: '280px', backgroundColor: '#13192b', borderRight: '1px solid #1f2937', padding: '2rem 0', position: 'fixed', height: '100vh', overflowY: 'auto' }}>
+            <aside style={{ width: '280px', backgroundColor: '#13192b', borderRight: '1px solid #1f2937', padding: '2rem 0', minHeight: '100vh' }}>
                 <div style={{ padding: '0 2rem', marginBottom: '2rem' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '900', letterSpacing: '-0.5px' }}>
-                        CINEGEEK<span style={{ color: '#ef4444' }}>API</span>
+                    <div style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '-0.5px' }}>
+                        CINEGEEK<span style={{ color: '#00e676' }}>API</span>
                     </div>
                 </div>
                 
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <div style={{ padding: '0 2rem', fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', marginTop: '1rem', marginBottom: '0.5rem' }}>Introdução</div>
-                    <a href="#inicio" style={{ padding: '0.5rem 2rem', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#1f2937', borderRight: '3px solid #ef4444' }}>
+                    <a href="#inicio" style={{ padding: '0.5rem 2rem', color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#1f2937', borderRight: '3px solid #00e676' }}>
                         <BookOpen size={18} /> Começando
                     </a>
                     <a href="#premium" style={{ padding: '0.5rem 2rem', color: '#9ca3af', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -36,8 +36,8 @@ export default function EmbedDocsPage() {
             </aside>
 
             {/* Main Content */}
-            <main style={{ marginLeft: '280px', padding: '3rem', flex: 1, maxWidth: '900px' }}>
-                <Link to="/api" style={{ color: '#ef4444', textDecoration: 'none', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+            <main style={{ padding: '3rem', flex: 1, maxWidth: '900px' }}>
+                <Link to="/api" style={{ color: '#00e676', textDecoration: 'none', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
                     ← Voltar para a Home
                 </Link>
 
@@ -46,7 +46,7 @@ export default function EmbedDocsPage() {
                     Bem-vindo à documentação oficial da CineGeek API. Nossa API permite incorporar filmes e séries no seu site usando o Iframe com base no ID do TMDB (The Movie Database).
                 </p>
 
-                <div style={{ backgroundColor: '#1e293b', borderLeft: '4px solid #ef4444', padding: '1rem 1.5rem', borderRadius: '0 0.5rem 0.5rem 0', marginBottom: '3rem' }}>
+                <div style={{ backgroundColor: '#1e293b', borderLeft: '4px solid #00e676', padding: '1rem 1.5rem', borderRadius: '0 0.5rem 0.5rem 0', marginBottom: '3rem' }}>
                     <strong>Aviso:</strong> O uso do nosso player é 100% gratuito, porém ele contém anúncios na modalidade Free. Para remover os anúncios e ter um player totalmente limpo (White Label), você precisa adquirir uma API Key Premium.
                 </div>
 
@@ -121,7 +121,7 @@ export default function EmbedDocsPage() {
                         <li>Se outra pessoa copiar o seu Iframe e colocar em outro site, nosso sistema irá bloquear o uso Premium e os anúncios voltarão a aparecer normalmente para o site pirata, protegendo a sua cota/chave.</li>
                     </ul>
                     <div style={{ marginTop: '1.5rem' }}>
-                        <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" style={{ backgroundColor: '#ef4444', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', color: '#fff', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>Falar com Comercial</a>
+                        <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" style={{ backgroundColor: '#00e676', padding: '0.75rem 1.5rem', borderRadius: '0.5rem', color: '#000', textDecoration: 'none', fontWeight: 'bold', display: 'inline-block' }}>Falar com Comercial</a>
                     </div>
                 </div>
 
