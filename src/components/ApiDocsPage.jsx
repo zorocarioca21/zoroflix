@@ -186,6 +186,48 @@ console.log(data);`}</code></pre>
 
                 {/* Integração e Autenticação */}
                 <div className="api-docs-section">
+                    <h2><BookOpen size={22} /> API Embed (Iframe)</h2>
+                    <p style={{color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6'}}>
+                        Você também pode usar a nossa estrutura para incorporar vídeos diretamente no navegador usando iframes com os IDs do TMDB.
+                    </p>
+
+                    <div className="api-endpoint-card">
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/embed/filme/{"{tmdb_id}"}</code>
+                        </div>
+                        <h3>Incorporar Filme</h3>
+                        <p>Retorna um player de vídeo pronto com o filme correspondente.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo Iframe HTML</div>
+                            <pre><code>{`<iframe src="${baseUrl}/embed/filme/550" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/embed/serie/{"{tmdb_id}"}/{"{temporada}"}/{"{episodio}"}</code>
+                        </div>
+                        <h3>Incorporar Episódio (Série)</h3>
+                        <p>Retorna um player de vídeo para a temporada e episódio específicos.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo Iframe HTML</div>
+                            <pre><code>{`<iframe src="${baseUrl}/embed/serie/1399/1/1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <h3>Planos Premium (API Key)</h3>
+                        <p style={{color: '#aaa', lineHeight: '1.6'}}>
+                            Para remover os anúncios do player (Pop-unders) para seus clientes VIP, basta adicionar o parâmetro <code>apikey=SUA_CHAVE</code> na URL do iframe. <br/>
+                            Exemplo: <code>{baseUrl}/embed/filme/550?apikey=SUA_CHAVE</code>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Integração e Autenticação API Mobile */}
+                <div className="api-docs-section">
                     <h2><Shield size={22} /> Integração Híbrida: Autenticação e Analytics</h2>
                     <p style={{color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6'}}>
                         Para garantir o correto funcionamento da criptografia de senhas e a sincronização do seu App Móvel com as estatísticas em tempo real do site, <strong>NÃO</strong> use consultas SQL brutas (<code>/execute</code>) para login ou para registrar acessos. Utilize as rotas oficiais abaixo:
