@@ -145,12 +145,14 @@ export default function PlayerPage() {
         if (loading || !ready) return;
         if (!configs.ads_enabled || !configs.ads_popunder) return;
         if (user?.role && user.role !== 'free') return;
+        if (!telegramMessageId) return; // Só carrega se estiver no player nativo
+
         const script = document.createElement('script');
         script.src = "https://pl30899842.effectivecpmnetwork.com/d9/5e/5e/d95e5e5709de2783f6993047886330c8.js";
         script.async = true;
         document.body.appendChild(script);
         return () => { try { document.body.removeChild(script); } catch (e) { } };
-    }, [user, loading, configs, ready]);
+    }, [user, loading, configs, ready, telegramMessageId]);
 
     useEffect(() => {
         if (season) {

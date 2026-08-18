@@ -190,6 +190,9 @@ function AppContent() {
     if (loading || !configsReady) return;
     if (!globalConfigs.ads_enabled || !globalConfigs.ads_socialbar) return;
     if (user?.role && user.role !== 'free') return; // Hide social bar for VIPs
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (isMobile) return; // Do not show social bar on mobile
     
     const scriptId = 'adsterra-social-bar';
     if (!document.getElementById(scriptId)) {
