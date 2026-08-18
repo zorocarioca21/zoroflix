@@ -76,11 +76,13 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       onClick={onClick}
     >
       <div className="card-media-wrapper">
-        <div className="card-badges-top" style={{ position: 'absolute', zIndex: 3, top: '10px', left: '10px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-          <div style={{ backgroundColor: '#0066ff', color: '#fff', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', letterSpacing: '0.5px' }}>
+        <div className="card-badges-top" style={{ position: 'absolute', zIndex: 3 }}>
+          <AgeBadge rating={certification} />
+        </div>
+        <div style={{ position: 'absolute', zIndex: 3, bottom: '10px', left: '10px' }}>
+          <div style={{ backgroundColor: '#00e676', color: '#000', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', letterSpacing: '0.5px' }}>
             {mediaLabel}
           </div>
-          <AgeBadge rating={certification} />
         </div>
         <div style={{ position: 'absolute', zIndex: 3, top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
            {badges}
