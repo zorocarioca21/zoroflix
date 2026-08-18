@@ -22,11 +22,30 @@ export default function AdBanner({ adId }) {
     if (user?.role && user.role !== 'free') return;
     // Evita carregar múltiplas vezes se o componente remontar rapidamente
     if (adContainerRef.current && adContainerRef.current.innerHTML === '') {
+      const conf = document.createElement('script');
+      conf.innerHTML = `window.atOptions = {
+        'key' : '40b3a4f1f3aea0d9793da7323cabebd8',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };`;
+      adContainerRef.current.appendChild(conf);
+
+      // Salva a função original
+      const oldWrite = document.write;
+      document.write = function(content) {
+        if (adContainerRef.current) {
+            adContainerRef.current.innerHTML += content;
+        }
+      };
+
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = 'https://pl29672001.effectivecpmnetwork.com/40b3a4f1f3aea0d9793da7323cabebd8/invoke.js';
-      script.async = true;
-      script.setAttribute('data-cfasync', 'false');
+      script.async = false; // Tem que ser síncrono para o document.write ser capturado corretamente
+      script.onload = () => { document.write = oldWrite; };
+      script.onerror = () => { document.write = oldWrite; };
       
       adContainerRef.current.appendChild(script);
     }

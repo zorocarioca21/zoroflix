@@ -197,7 +197,7 @@ function AppContent() {
         script.id = scriptId;
         script.src = "https://pl29672002.effectivecpmnetwork.com/8d/85/2f/8d852f7cb5b1fbe6a38a6e9cd915610d.js";
         script.async = true;
-        document.body.appendChild(script);
+        document.head.appendChild(script);
     }
   }, [user, loading, globalConfigs, configsReady]);
 
