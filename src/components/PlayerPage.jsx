@@ -358,7 +358,9 @@ export default function PlayerPage() {
                 }
                 
                 let baseClean = baseName ? baseName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim().replace(/[-:]$/g, '').trim() : null;
-                if (baseClean && extractedName.toLowerCase().startsWith(baseClean.toLowerCase())) return true;
+                if (baseClean && extractedName.toLowerCase().startsWith(baseClean.toLowerCase())) {
+                    if (season) return true;
+                }
                 
                 return false;
             };
