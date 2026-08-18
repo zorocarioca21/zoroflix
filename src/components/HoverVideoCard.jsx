@@ -8,6 +8,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
   const [videoKey, setVideoKey] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [certification, setCertification] = useState('');
+  const [mediaLabel, setMediaLabel] = useState(type === 'movie' ? 'FILME' : 'SÉRIE');
   const [transformOrigin, setTransformOrigin] = useState('center center');
   const cardRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -25,6 +26,10 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
         } else {
           const br = data.content_ratings?.results?.find(r => r.iso_3166_1 === 'BR');
           cert = br?.rating || '?';
+          
+          if (data.original_language === 'ja' && data.genres?.some(g => g.id === 16)) {
+            setMediaLabel('ANIME');
+          }
         }
         setCertification(cert);
       })
@@ -71,7 +76,10 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       onClick={onClick}
     >
       <div className="card-media-wrapper">
-        <div className="card-badges-top" style={{ position: 'absolute', zIndex: 3 }}>
+        <div className="card-badges-top" style={{ position: 'absolute', zIndex: 3, top: '10px', left: '10px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+          <div style={{ backgroundColor: '#0066ff', color: '#fff', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', letterSpacing: '0.5px' }}>
+            {mediaLabel}
+          </div>
           <AgeBadge rating={certification} />
         </div>
         <div style={{ position: 'absolute', zIndex: 3, top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>

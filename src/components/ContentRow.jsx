@@ -20,6 +20,11 @@ export default function ContentRow({ title, endpoint, type, onPlay, limit = 10, 
       .then((data) => {
         if (data.results) {
           let validItems = data.results.filter(item => item.poster_path);
+          
+          if (type === 'tv' && !title.toLowerCase().includes('anime')) {
+            validItems = validItems.filter(item => !(item.genre_ids?.includes(16) && item.original_language === 'ja'));
+          }
+
           if (limit) {
             validItems = validItems.slice(0, limit);
           }

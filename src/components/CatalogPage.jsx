@@ -94,6 +94,10 @@ export default function CatalogPage({ type, title, initialGenreId = '', initialL
       .then(data => {
         let results = data.results || [];
         
+        if (type === 'tv' && !title.toLowerCase().includes('anime')) {
+          results = results.filter(item => !(item.genre_ids?.includes(16) && item.original_language === 'ja'));
+        }
+        
         // FILTRAGEM ESTRITA DE CONTEXTO NA BUSCA
         if (query) {
           if (initialGenreId) {
