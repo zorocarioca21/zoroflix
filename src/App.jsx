@@ -420,6 +420,7 @@ function AppContent() {
         <Route path="/storage" element={<StoragePage />} />
         
         {/* Rotas Embed API */}
+        <Route path="/docs" element={<EmbedDocsPage />} />
         <Route path="/embed/:type/:id" element={<EmbedPlayerPage />} />
         <Route path="/embed/serie/:id/:season/:episode" element={<EmbedPlayerPage />} />
         <Route path="/api" element={<ApiLandingPage />} />
