@@ -93,9 +93,30 @@ export default function EmbedPlayerPage() {
                 });
 
                 if (res.ok) {
-                    const queueData = await res.json();
-                    if (queueData && queueData.message_id) {
-                        setTelegramMessageId(queueData.message_id);
+                    const data = await res.json();
+                    
+                    let foundMsgId = null;
+                    let foundLangOpts = null;
+
+                    if (data?.items?.length > 0) {
+                        // Tenta achar um match finalizado
+                        const validItems = data.items.filter(i => i.status === 'completed' && i.telegram_message_id);
+                        if (validItems.length > 0) {
+                            // Agrupa linguagens de forma similar ao app principal (simplificado aqui)
+                            foundLangOpts = { Normal: { dub: null, leg: null } };
+                            validItems.forEach(item => {
+                                const tags = item.title.toLowerCase();
+                                if (tags.includes('leg')) foundLangOpts.Normal.leg = item.telegram_message_id;
+                                else foundLangOpts.Normal.dub = item.telegram_message_id;
+                            });
+                            
+                            foundMsgId = foundLangOpts.Normal.dub || foundLangOpts.Normal.leg || validItems[0].telegram_message_id;
+                        }
+                    }
+
+                    if (foundMsgId) {
+                        setTelegramMessageId(foundMsgId);
+                        setLanguageOptions(foundLangOpts);
                         setIsValidEmbed(true);
                     } else {
                         setError(true);
