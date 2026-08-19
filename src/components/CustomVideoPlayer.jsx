@@ -38,13 +38,16 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
     const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
 
     // Cast & AirPlay Availability Check
+    // Cast & AirPlay Availability Check
     useEffect(() => {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
         if (window.WebKitPlaybackTargetAvailabilityEvent || isIOS) {
             setIsAirPlayAvailable(true);
         }
 
         const checkCast = () => {
-            if (window.isCastApiAvailable && window.cast && window.chrome) {
+            if ((window.isCastApiAvailable && window.cast && window.chrome) || isMobile) {
                 setIsCastAvailable(true);
             }
         };
