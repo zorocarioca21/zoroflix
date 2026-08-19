@@ -81,14 +81,9 @@ export default function EmbedPlayerPage() {
                 
                 // 2. Busca no nosso banco via Sync Queue (usando a mesma lógica do PlayerPage)
                 // Para simplificar no Embed, fazemos uma query direta via /api/sync/queue
-                let searchQuery = searchName;
-                if (type === 'serie' && season && episode) {
-                    const s = String(season).padStart(2, '0');
-                    const e = String(episode).padStart(2, '0');
-                    searchQuery = `${searchName} S${s} E${e}`;
-                }
-
-                const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchQuery)}`, {
+                // 2. Busca no nosso banco via Embed Route
+                // Enviamos apenas o nome para buscar até 500 resultados e filtrar no frontend
+                const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchName)}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
 
@@ -99,8 +94,35 @@ export default function EmbedPlayerPage() {
                     let foundLangOpts = null;
 
                     if (data?.items?.length > 0) {
-                        // Tenta achar um match finalizado
-                        const validItems = data.items.filter(i => i.status === 'completed' && i.telegram_message_id);
+                        // Filtra itens finalizados
+                        let validItems = data.items.filter(i => i.status === 'completed' && i.telegram_message_id);
+
+                        // Se for série, aplica o mesmo filtro robusto do player principal
+                        if (type === 'serie' && season && episode) {
+                            const s = String(season).padStart(2, '0');
+                            const e = String(episode).padStart(2, '0');
+                            const patterns = [
+                                `S${s}E${e}`, `S${s} E${e}`,
+                                `S${season}E${episode}`, `S${season} E${episode}`,
+                                `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`, `EPISODIO ${episode}`
+                            ];
+
+                            validItems = validItems.filter(i => {
+                                const upperTitle = i.title.toUpperCase();
+                                
+                                const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                                if (!hasEp) return false;
+
+                                const seasonMatch = upperTitle.match(/S(\d{1,2})/);
+                                if (seasonMatch && parseInt(seasonMatch[1]) !== parseInt(season)) return false;
+
+                                const seasonWordMatch = upperTitle.match(/TEMPORADA\s*(\d{1,2})/);
+                                if (seasonWordMatch && parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
+
+                                return true;
+                            });
+                        }
+
                         if (validItems.length > 0) {
                             // Agrupa linguagens de forma similar ao app principal (simplificado aqui)
                             foundLangOpts = { Normal: { dub: null, leg: null } };
