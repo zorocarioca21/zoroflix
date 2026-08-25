@@ -457,16 +457,16 @@ export default function PlayerPage() {
                         }
                     }
                 } else {
-                    let res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=50`, { headers });
+                    let res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=500`, { headers });
                     let data = await res.json();
                     
                     if ((!data?.items || data.items.length === 0) && originalSeriesName) {
-                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=50`, { headers });
+                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=500`, { headers });
                         data = await res.json();
                     }
                     
                     if ((!data?.items || data.items.length === 0) && baseSeriesName) {
-                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=50`, { headers });
+                        res = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=500`, { headers });
                         data = await res.json();
                     }
 
