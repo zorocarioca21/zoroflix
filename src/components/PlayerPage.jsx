@@ -352,8 +352,40 @@ export default function PlayerPage() {
                 
                 // Fuzzy match ignorando pontuações
                 const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (normalize(extractedName) === normalize(targetClean)) return true;
-                if (originalClean && normalize(extractedName) === normalize(originalClean)) return true;
+                const normExtracted = normalize(extractedName);
+                const normTarget = normalize(targetClean);
+                const normOriginal = originalClean ? normalize(originalClean) : null;
+                
+                if (normExtracted === normTarget) return true;
+                if (normOriginal && normExtracted === normOriginal) return true;
+                
+                // Similaridade de 80%
+                const calculateSimilarity = (s1, s2) => {
+                    let longer = s1.length > s2.length ? s1 : s2;
+                    let shorter = s1.length > s2.length ? s2 : s1;
+                    if (longer.length === 0) return 1.0;
+                    const costs = [];
+                    for (let i = 0; i <= longer.length; i++) {
+                        let lastValue = i;
+                        for (let j = 0; j <= shorter.length; j++) {
+                            if (i === 0) {
+                                costs[j] = j;
+                            } else if (j > 0) {
+                                let newValue = costs[j - 1];
+                                if (longer.charAt(i - 1) !== shorter.charAt(j - 1)) {
+                                    newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                                }
+                                costs[j - 1] = lastValue;
+                                lastValue = newValue;
+                            }
+                        }
+                        if (i > 0) costs[shorter.length] = lastValue;
+                    }
+                    return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
+                };
+                
+                if (calculateSimilarity(normExtracted, normTarget) >= 0.8) return true;
+                if (normOriginal && calculateSimilarity(normExtracted, normOriginal) >= 0.8) return true;
                 
                 if (extractedName.toLowerCase().startsWith(targetClean.toLowerCase())) {
                     const remaining = extractedName.substring(targetClean.length).trim();
