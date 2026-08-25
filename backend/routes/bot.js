@@ -13,7 +13,7 @@ export default function botRoutes(db) {
         }
 
         try {
-            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND status = 'active'", [apikey]);
+            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND active = 1", [apikey]);
             if (!keyData) {
                 return res.status(401).json({ error: "Invalid or inactive API Key" });
             }
