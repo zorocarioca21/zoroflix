@@ -42,3 +42,10 @@ backend/storage.sqlite
 backend/scripts/*.session
 database/
 dist/
+
+# Scratch and Temporary files
+*.m3u
+test_*.js
+test_*.cjs
+query.*
+git_log_*.txt
