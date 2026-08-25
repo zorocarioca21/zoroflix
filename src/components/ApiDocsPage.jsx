@@ -248,7 +248,7 @@ console.log(data);`}</code></pre>
   "title": "Homem-Aranha (2002)",
   "type": "filme",
   "telegram_message_id": 123456,
-  "direct_download_url": "${baseUrl}/api/stream/telegram/123456?download=true",
+  "direct_download_url": "${baseUrl}/api/stream/telegram/123456?download=true&title=Homem-Aranha%20(2002)",
   "site_url": "${baseUrl}/filme/homem-aranha"
 }`}</code></pre>
                         </div>

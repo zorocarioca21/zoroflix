@@ -160,7 +160,7 @@ export default function botRoutes(db) {
                     title: fullTitle,
                     type: type,
                     telegram_message_id: foundMsgId,
-                    direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true`,
+                    direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true&title=${encodeURIComponent(fullTitle)}`,
                     site_url: siteUrl
                 });
             } else {
