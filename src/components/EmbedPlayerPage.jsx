@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import AntiDevTools from './AntiDevTools';
 import AntiAdBlock from './AntiAdBlock';
+import { checkTitleMatch, getBestMatches } from '../utils/titleMatch';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -72,6 +73,10 @@ export default function EmbedPlayerPage() {
                 const tmdbData = await tmdbRes.json();
                 
                 let searchName = tmdbData.name || tmdbData.title;
+                let originalName = tmdbData.original_name || tmdbData.original_title;
+                let releaseYear = tmdbData.release_date ? tmdbData.release_date.split('-')[0] : (tmdbData.first_air_date ? tmdbData.first_air_date.split('-')[0] : null);
+                let baseName = searchName ? searchName.split(':')[0] : null;
+
                 if (!searchName) {
                     setError(true);
                     setLoading(false);
@@ -80,10 +85,6 @@ export default function EmbedPlayerPage() {
                 
                 setTitle(searchName);
                 
-                // 2. Busca no nosso banco via Sync Queue (usando a mesma lógica do PlayerPage)
-                // Para simplificar no Embed, fazemos uma query direta via /api/sync/queue
-                // 2. Busca no nosso banco via Embed Route
-                // Enviamos apenas o nome para buscar até 500 resultados e filtrar no frontend
                 const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchName)}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -95,46 +96,41 @@ export default function EmbedPlayerPage() {
                     let foundLangOpts = null;
 
                     if (data?.items?.length > 0) {
-                        // Filtra itens finalizados
-                        let validItems = data.items.filter(i => i.status === 'completed' && i.telegram_message_id);
-
-                        // Se for série, aplica o mesmo filtro robusto do player principal
-                        if (type === 'serie' && season && episode) {
-                            const s = String(season).padStart(2, '0');
-                            const e = String(episode).padStart(2, '0');
-                            const patterns = [
-                                `S${s}E${e}`, `S${s} E${e}`,
-                                `S${season}E${episode}`, `S${season} E${episode}`,
-                                `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`, `EPISODIO ${episode}`
-                            ];
-
-                            validItems = validItems.filter(i => {
+                        const validItems = data.items.filter(i => {
+                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season)) return false;
+                            
+                            if (type === 'serie' && season && episode) {
+                                const s = String(season).padStart(2, '0');
+                                const e = String(episode).padStart(2, '0');
+                                const patterns = [
+                                    `S${s}E${e}`, `S${s} E${e}`,
+                                    `S${season}E${episode}`, `S${season} E${episode}`,
+                                    `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
+                                ];
                                 const upperTitle = i.title.toUpperCase();
-                                
                                 const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                                 if (!hasEp) return false;
-
-                                const seasonMatch = upperTitle.match(/S(\d{1,2})/);
-                                if (seasonMatch && parseInt(seasonMatch[1]) !== parseInt(season)) return false;
-
-                                const seasonWordMatch = upperTitle.match(/TEMPORADA\s*(\d{1,2})/);
-                                if (seasonWordMatch && parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
-
-                                return true;
-                            });
-                        }
-
+                            }
+                            return true;
+                        });
 
                         if (validItems.length > 0) {
-                            // Agrupa linguagens de forma similar ao app principal (simplificado aqui)
-                            foundLangOpts = { Normal: { dub: null, leg: null } };
-                            validItems.forEach(item => {
-                                const tags = item.title.toLowerCase();
-                                if (tags.includes('leg')) foundLangOpts.Normal.leg = item.telegram_message_id;
-                                else foundLangOpts.Normal.dub = item.telegram_message_id;
-                            });
-                            
-                            foundMsgId = foundLangOpts.Normal.dub || foundLangOpts.Normal.leg || validItems[0].telegram_message_id;
+                            const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
+                            if (matches) {
+                                foundLangOpts = matches;
+                                // Selecionar melhor qualidade
+                                const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+                                let selectedQuality = Object.keys(matches)[0];
+                                for (let q of qualityOrder) {
+                                    if (matches[q]) {
+                                        selectedQuality = q;
+                                        break;
+                                    }
+                                }
+                                setCurrentQuality(selectedQuality);
+                                foundMsgId = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                            }
                         }
                     }
 

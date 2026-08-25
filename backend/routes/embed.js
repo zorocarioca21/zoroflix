@@ -94,7 +94,7 @@ export default function embedRoutes(db) {
                 SELECT id, title, telegram_message_id, status 
                 FROM sync_queue 
                 WHERE status = 'completed' AND title LIKE ?
-                LIMIT 500
+                LIMIT -1
             `;
             const searchParam = `%${q}%`;
             const items = await db.all(query, [searchParam]);
