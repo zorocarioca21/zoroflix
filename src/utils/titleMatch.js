@@ -86,7 +86,7 @@ export const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseN
     const simTarget = calculateSimilarity(normExtracted, normTarget);
     const simOrig = normOriginal ? calculateSimilarity(normExtracted, normOriginal) : 0;
     
-    const threshold = isYearMatch ? 0.6 : 0.8;
+    const threshold = isYearMatch ? 0.8 : 0.95;
     if (simTarget >= threshold) return logResult(true, simTarget, isYearMatch);
     if (simOrig >= threshold) return logResult(true, simOrig, isYearMatch);
     
