@@ -100,7 +100,7 @@ export default function botRoutes(db) {
             let tmdbId = bestMatch.id;
             let slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
             
-            const siteUrl = `https://www.cinegeek.shop/${type}/${tmdbId}-${slug}`;
+            const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
             // 2. Query local database
             const query = `

@@ -249,7 +249,7 @@ console.log(data);`}</code></pre>
   "type": "filme",
   "telegram_message_id": 123456,
   "direct_download_url": "${baseUrl}/api/stream/telegram/123456?download=true",
-  "site_url": "${baseUrl}/filme/557-homem-aranha"
+  "site_url": "${baseUrl}/filme/homem-aranha"
 }`}</code></pre>
                         </div>
                         <div className="api-code-block small" style={{marginTop: '10px'}}>
@@ -260,7 +260,7 @@ console.log(data);`}</code></pre>
   "type": "filme",
   "telegram_message_id": null,
   "direct_download_url": null,
-  "site_url": "${baseUrl}/filme/24428-os-vingadores-the-avengers"
+  "site_url": "${baseUrl}/filme/os-vingadores-the-avengers"
 }`}</code></pre>
                         </div>
                     </div>
