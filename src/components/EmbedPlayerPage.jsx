@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CustomVideoPlayer from './CustomVideoPlayer';
 import AntiDevTools from './AntiDevTools';
+import AntiAdBlock from './AntiAdBlock';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -189,6 +190,7 @@ export default function EmbedPlayerPage() {
     return (
         <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
             <AntiDevTools />
+            {!isVipKey && <AntiAdBlock />}
             <CustomVideoPlayer 
                 messageId={telegramMessageId}
                 title={type === 'serie' ? `${title} T${season}E${episode}` : title}
@@ -196,8 +198,12 @@ export default function EmbedPlayerPage() {
                 mediaType={type === 'filme' ? 'movie' : 'tv'}
                 season={season}
                 episode={episode}
+                languageOptions={languageOptions ? languageOptions[currentQuality] : null}
+                onLanguageChange={(id, type) => setTelegramMessageId(id)}
+                videoQualities={languageOptions}
+                currentQuality={currentQuality}
+                onQualityChange={(newQuality) => setCurrentQuality(newQuality)}
                 onNextEpisode={() => {
-                    // Se a série tem próximo ep, nós redirecionamos a rota embed para lá
                     if (type === 'serie') {
                         const nextEp = parseInt(episode) + 1;
                         window.location.href = `/embed/serie/${rawId}/${season}/${nextEp}${apikey ? `?apikey=${apikey}` : ''}`;

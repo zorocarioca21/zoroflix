@@ -7,19 +7,30 @@ export default function AntiAdBlock() {
     const checkAdBlock = async () => {
       let isBlocked = false;
 
-      // 1. Checagem de Rede (Pega AdGuard DNS e outros bloqueadores de rede)
+      // 1. Checagem de Sandbox (iframe restrito)
       try {
-        const testRequest = new Request('https://pl29672000.effectivecpmnetwork.com/favicon.ico', {
-          method: 'HEAD',
-          mode: 'no-cors'
-        });
-        await fetch(testRequest);
-      } catch (error) {
-        // Se falhar o fetch para um domínio de anúncio conhecido, é AdBlock de rede
-        isBlocked = true;
+        // Tentar acessar o localStorage falha se estiver em iframe sandbox restrito
+        localStorage.getItem('test_sandbox');
+      } catch (e) {
+        if (e.name === 'SecurityError') {
+          isBlocked = true; // Bloqueado por Sandbox
+        }
       }
 
-      // 2. Checagem Visual (Pega extensões como uBlock, AdBlock Plus)
+      // 2. Checagem de Rede (Pega AdGuard DNS e outros bloqueadores de rede)
+      if (!isBlocked) {
+        try {
+          const testRequest = new Request('https://pl29672000.effectivecpmnetwork.com/favicon.ico', {
+            method: 'HEAD',
+            mode: 'no-cors'
+          });
+          await fetch(testRequest);
+        } catch (error) {
+          isBlocked = true;
+        }
+      }
+
+      // 3. Checagem Visual (Pega extensões como uBlock, AdBlock Plus)
       if (!isBlocked) {
         const dummy = document.createElement('div');
         dummy.id = 'ad-detection-box';
