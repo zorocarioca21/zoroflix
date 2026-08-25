@@ -122,6 +122,7 @@ export default function EmbedPlayerPage() {
 
                                 return true;
                             });
+                        }
                         if (type === 'filme') {
                             validItems = validItems.filter(i => {
                                 let extractedName = i.title.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
