@@ -460,16 +460,16 @@ export default function PlayerPage() {
                         }
                     }
 
-                    let res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=500`, { headers });
+                    let res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=-1`, { headers });
                     let data2 = await res2.json();
                     
                     if ((!data2?.items || data2.items.length === 0) && originalSeriesName) {
-                        res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=500`, { headers });
+                        res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(originalSeriesName)}&limit=-1`, { headers });
                         data2 = await res2.json();
                     }
                     
                     if ((!data2?.items || data2.items.length === 0) && baseSeriesName) {
-                        res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=500`, { headers });
+                        res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(baseSeriesName)}&limit=-1`, { headers });
                         data2 = await res2.json();
                     }
 
