@@ -28,11 +28,12 @@ export default function PlayerPage() {
     const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
     const [isWatched, setIsWatched] = useState(false);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
-    const [languageOptions, setLanguageOptions] = useState(null); // Agora armazenará TODAS as qualidades: { Normal: { dub, leg }, FHD: { dub, leg } }
-    const [currentQuality, setCurrentQuality] = useState('Normal'); // Qualidade selecionada atualmente
+    const [languageOptions, setLanguageOptions] = useState(null); 
+    const [currentQuality, setCurrentQuality] = useState('Normal'); 
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const [downloadSelector, setDownloadSelector] = useState(false);
-    const prevLanguageType = useRef(null); // 'dub' or 'leg'
+    const [debugMatches, setDebugMatches] = useState(null);
+    const prevLanguageType = useRef(null); 
 
     // Handler customizado para mudar messageId e guardar a preferência
     const handleSetMessageId = (id, type) => {
@@ -312,8 +313,7 @@ export default function PlayerPage() {
         };
 
         const findEpisode = async () => {
-            const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseName, targetYear) => {
-                // Limpeza de possíveis sujeiras do M3U que vieram no título
+            const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseName, targetYear, logs = null) => {
                 let cleanItemTitle = itemTitle;
                 if (cleanItemTitle.includes('tvg-logo=') || cleanItemTitle.includes('group-title=')) {
                     const idx = cleanItemTitle.indexOf('",');
@@ -349,19 +349,24 @@ export default function PlayerPage() {
                 
                 let originalClean = originalName ? originalName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim().replace(/[-:]$/g, '').trim() : null;
                 
-                if (extractedName.toLowerCase() === targetClean.toLowerCase()) return true;
-                if (originalClean && extractedName.toLowerCase() === originalClean.toLowerCase()) return true;
+                const logResult = (isMatch, similarity, isYearMatch) => {
+                    if (logs) {
+                        logs.push({ title: itemTitle, extracted: extractedName, target: targetClean, similarity, isMatch, isYearMatch });
+                    }
+                    return isMatch;
+                };
+
+                if (extractedName.toLowerCase() === targetClean.toLowerCase()) return logResult(true, 1, false);
+                if (originalClean && extractedName.toLowerCase() === originalClean.toLowerCase()) return logResult(true, 1, false);
                 
-                // Fuzzy match ignorando pontuações
                 const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
                 const normExtracted = normalize(extractedName);
                 const normTarget = normalize(targetClean);
                 const normOriginal = originalClean ? normalize(originalClean) : null;
                 
-                if (normExtracted === normTarget) return true;
-                if (normOriginal && normExtracted === normOriginal) return true;
+                if (normExtracted === normTarget) return logResult(true, 1, false);
+                if (normOriginal && normExtracted === normOriginal) return logResult(true, 1, false);
                 
-                // Se o ano bater exato, flexibiliza o limite de similaridade
                 let isYearMatch = false;
                 if (itemYear && targetYear) {
                     if (itemYear === parseInt(targetYear)) {
@@ -369,7 +374,6 @@ export default function PlayerPage() {
                     }
                 }
 
-                // Similaridade
                 const calculateSimilarity = (s1, s2) => {
                     let longer = s1.length > s2.length ? s1 : s2;
                     let shorter = s1.length > s2.length ? s2 : s1;
@@ -394,26 +398,29 @@ export default function PlayerPage() {
                     return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
                 };
                 
+                const simTarget = calculateSimilarity(normExtracted, normTarget);
+                const simOrig = normOriginal ? calculateSimilarity(normExtracted, normOriginal) : 0;
+                
                 const threshold = isYearMatch ? 0.6 : 0.8;
-                if (calculateSimilarity(normExtracted, normTarget) >= threshold) return true;
-                if (normOriginal && calculateSimilarity(normExtracted, normOriginal) >= threshold) return true;
+                if (simTarget >= threshold) return logResult(true, simTarget, isYearMatch);
+                if (simOrig >= threshold) return logResult(true, simOrig, isYearMatch);
                 
                 if (extractedName.toLowerCase().startsWith(targetClean.toLowerCase())) {
                     const remaining = extractedName.substring(targetClean.length).trim();
-                    if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return true;
+                    if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return logResult(true, simTarget, isYearMatch);
                 }
                 
                 if (originalClean && extractedName.toLowerCase().startsWith(originalClean.toLowerCase())) {
                     const remaining = extractedName.substring(originalClean.length).trim();
-                    if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return true;
+                    if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return logResult(true, simOrig, isYearMatch);
                 }
                 
                 let baseClean = baseName ? baseName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim().replace(/[-:]$/g, '').trim() : null;
                 if (baseClean && extractedName.toLowerCase().startsWith(baseClean.toLowerCase())) {
-                    if (season) return true;
+                    if (season) return logResult(true, simTarget, isYearMatch);
                 }
                 
-                return false;
+                return logResult(false, Math.max(simTarget, simOrig), isYearMatch);
             };
 
             try {
@@ -515,11 +522,17 @@ export default function PlayerPage() {
 
                     if (data?.items?.length > 0) {
                         const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
+                        const debugLogs = [];
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName, releaseYear)) return false;
+                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName, releaseYear, debugLogs)) return false;
                             return true;
                         });
+
+                        if (user && user.role === 'admin') {
+                            debugLogs.sort((a, b) => b.similarity - a.similarity);
+                            setDebugMatches(debugLogs.slice(0, 10));
+                        }
 
                         if (validItems.length > 0) {
                             const matches = getBestMatches(validItems, releaseYear);
@@ -1070,6 +1083,54 @@ export default function PlayerPage() {
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
                     </div>
+                </div>
+            )}
+            {/* Debug UI Modal */}
+            {debugMatches && debugMatches.length > 0 && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '20px', left: '20px',
+                    background: 'rgba(0,0,0,0.9)',
+                    border: '1px solid #333',
+                    borderRadius: '10px',
+                    padding: '1.5rem',
+                    width: '400px',
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                    zIndex: 9999,
+                    color: '#fff',
+                    fontFamily: 'monospace',
+                    fontSize: '0.85rem'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <h4 style={{ margin: 0, color: '#00ff88' }}>🔍 Debug: Top 10 Similares</h4>
+                        <button onClick={() => setDebugMatches(null)} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                    </div>
+                    <div style={{ marginBottom: '10px', color: '#aaa' }}>
+                        Alvo (Target): <span style={{ color: '#fff' }}>{debugMatches[0].target}</span>
+                    </div>
+                    {debugMatches.map((match, i) => (
+                        <div key={i} style={{
+                            padding: '8px',
+                            background: match.isMatch ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                            borderLeft: match.isMatch ? '3px solid #00ff88' : '3px solid #555',
+                            marginBottom: '5px',
+                            borderRadius: '4px'
+                        }}>
+                            <div style={{ fontWeight: 'bold', color: match.isMatch ? '#00ff88' : '#ddd', wordBreak: 'break-all' }}>
+                                {match.title}
+                            </div>
+                            <div style={{ color: '#aaa', marginTop: '4px' }}>
+                                Extracted: {match.extracted}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                <span style={{ color: match.similarity >= 0.8 ? '#00ff88' : '#ffaa00' }}>
+                                    Sim: {(match.similarity * 100).toFixed(1)}%
+                                </span>
+                                {match.isYearMatch && <span style={{ color: '#00ff88', fontSize: '0.7rem', padding: '2px 4px', background: 'rgba(0,255,136,0.2)', borderRadius: '4px' }}>Ano OK</span>}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
