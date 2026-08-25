@@ -778,15 +778,19 @@ export default function PlayerPage() {
                                                 return;
                                             }
                                         }
-                                        
                                         let finalTitle = title.split(' - ')[0].trim();
                                         if (type === 'serie' && season && episode) {
                                             finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                         }
                                         finalTitle += ' - www.cinegeek.shop';
-                                        const cleanTitle = encodeURIComponent(finalTitle);
+                                        
+                                        const payload = JSON.stringify({ id: targetMsgId, title: finalTitle });
+                                        const textoInvertido = payload.split('').reverse().join('');
+                                        const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                        let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
+                                        token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                        window.location.href = `/api/stream/telegram/${targetMsgId}?download=true&title=${cleanTitle}`;
+                                        window.location.href = `/api/stream/d/${token}`;
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -939,8 +943,14 @@ export default function PlayerPage() {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
-                                const cleanTitle = encodeURIComponent(finalTitle);
-                                window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].dub}?download=true&title=${cleanTitle}`;
+                                
+                                const payload = JSON.stringify({ id: languageOptions[currentQuality].dub, title: finalTitle });
+                                const textoInvertido = payload.split('').reverse().join('');
+                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
+                                token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+                                window.location.href = `/api/stream/d/${token}`;
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
@@ -950,8 +960,14 @@ export default function PlayerPage() {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
-                                const cleanTitle = encodeURIComponent(finalTitle);
-                                window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].leg}?download=true&title=${cleanTitle}`;
+                                
+                                const payload = JSON.stringify({ id: languageOptions[currentQuality].leg, title: finalTitle });
+                                const textoInvertido = payload.split('').reverse().join('');
+                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
+                                token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+                                window.location.href = `/api/stream/d/${token}`;
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>

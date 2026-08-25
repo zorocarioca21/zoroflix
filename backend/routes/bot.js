@@ -164,12 +164,18 @@ export default function botRoutes(db) {
             const downloadFileName = fullTitle + ' - www.cinegeek.shop';
 
             if (foundMsgId) {
+                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName });
+                const textoInvertido = payload.split('').reverse().join('');
+                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
+                token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
                 return res.json({
                     found: true,
                     title: fullTitle,
                     type: type,
                     telegram_message_id: foundMsgId,
-                    direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true&title=${encodeURIComponent(downloadFileName)}`,
+                    direct_download_url: `https://www.cinegeek.shop/api/stream/d/${token}`,
                     site_url: siteUrl
                 });
             } else {
