@@ -13,7 +13,7 @@ export default function EpisodesTodayRow({ title = "Episódios de Hoje", onPlay,
   const rowRef = useRef(null);
 
   useEffect(() => {
-    fetch('https://superflixapi.pro/calendario.php')
+    fetch('https://superflixapi.sbs/calendario.php')
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {

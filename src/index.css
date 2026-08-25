@@ -601,6 +601,14 @@ body.hide-body-texture::after {
   user-select: none;
 }
 
+.row-poster-card {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #101a14;
+  aspect-ratio: 2/3;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
 /* Evita corte nos cards da ponta (esquerda e direita) */
 .row-posters > .hover-video-card:first-child,
 .row-posters > .row-poster-card:first-child,
