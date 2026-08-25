@@ -27,6 +27,7 @@ import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import storageRoutes from './backend/routes/storage.js';
 import embedRoutes from './backend/routes/embed.js';
+import botRoutes from './backend/routes/bot.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
@@ -62,6 +63,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     app.use('/api/analytics', analyticsRoutes(db));
     app.use('/api/storage', storageRoutes(storageDb));
     app.use('/api/embed', embedRoutes(db));
+    app.use('/api/bot', botRoutes(db));
 
     // ==========================================
     // ZORO STORAGE CDN PROXY (LINK DIRETO)

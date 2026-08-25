@@ -226,6 +226,45 @@ console.log(data);`}</code></pre>
                     </div>
                 </div>
 
+                {/* Integração com Bots */}
+                <div className="api-docs-section">
+                    <h2><Terminal size={22} /> Integração com Bots (WhatsApp / Telegram)</h2>
+                    <p style={{color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6'}}>
+                        Use esta rota para conectar seus bots (Baileys, Telegraf, etc). Você envia o nome do filme e nossa API busca no banco de dados e no TMDB para retornar o arquivo exato ou o link direto. Requer <code>apikey</code> na URL.
+                    </p>
+
+                    <div className="api-endpoint-card">
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/api/bot/search?q={"{nome}"}&apikey={"{sua_chave}"}</code>
+                        </div>
+                        <h3>Buscar Filme / Série</h3>
+                        <p>Retorna se o filme existe, o ID do Telegram (para encaminhamento nativo) e o Link Direto de Download (para WhatsApp).</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo de Resposta (Encontrado)</div>
+                            <pre><code>{`{
+  "found": true,
+  "title": "Homem-Aranha (2002)",
+  "type": "filme",
+  "telegram_message_id": 123456,
+  "direct_download_url": "${baseUrl}/api/stream/telegram/123456?download=true",
+  "site_url": "${baseUrl}/filme/557-homem-aranha"
+}`}</code></pre>
+                        </div>
+                        <div className="api-code-block small" style={{marginTop: '10px'}}>
+                            <div className="code-block-header">Exemplo de Resposta (Não Encontrado)</div>
+                            <pre><code>{`{
+  "found": false,
+  "title": "Vingadores (2012)",
+  "type": "filme",
+  "telegram_message_id": null,
+  "direct_download_url": null,
+  "site_url": "${baseUrl}/filme/24428-os-vingadores-the-avengers"
+}`}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Integração e Autenticação API Mobile */}
                 <div className="api-docs-section">
                     <h2><Shield size={22} /> Integração Híbrida: Autenticação e Analytics</h2>
