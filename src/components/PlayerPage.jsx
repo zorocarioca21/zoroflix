@@ -332,7 +332,7 @@ export default function PlayerPage() {
                 if (match && match.index > 0) {
                     extractedName = cleanItemTitle.substring(0, match.index).trim();
                 } else {
-                    const tagsRegex = /\b(DUBLADO|LEGENDADO|LEG|FHD|4K|1080P|720P|2160P|TS|CAMRIP)\b/i;
+                    const tagsRegex = /\b(DUBLADO|LEGENDADO|LEG|FHD|4K|1080P|720P|2160P|CAMRIP)\b/i;
                     const tagMatch = extractedName.match(tagsRegex);
                     if (tagMatch && tagMatch.index > 0) {
                         extractedName = extractedName.substring(0, tagMatch.index).trim();
