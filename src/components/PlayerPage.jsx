@@ -780,7 +780,7 @@ export default function PlayerPage() {
                                             }
                                         }
                                         let finalTitle = title.split(' - ')[0].trim();
-                                        if (apiType === 'serie' && season && episode) {
+                                        if (season && episode) {
                                             finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                         }
                                         finalTitle += ' - www.cinegeek.shop';
@@ -940,7 +940,7 @@ export default function PlayerPage() {
                             <button onClick={() => {
                                 setDownloadSelector(false);
                                 let finalTitle = title.split(' - ')[0].trim();
-                                if (apiType === 'serie' && season && episode) {
+                                if (season && episode) {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
@@ -957,7 +957,7 @@ export default function PlayerPage() {
                             <button onClick={() => {
                                 setDownloadSelector(false);
                                 let finalTitle = title.split(' - ')[0].trim();
-                                if (apiType === 'serie' && season && episode) {
+                                if (season && episode) {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
