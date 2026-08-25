@@ -203,7 +203,8 @@ export default function PlayerPage() {
 
         let seriesName = '';
         if (state.title) {
-            seriesName = state.title.split(' - ')[0].trim();
+            // Apenas corta no traço se for série (para remover o nome do episódio). Filmes podem ter traço no nome oficial.
+            seriesName = season ? state.title.split(' - ')[0].trim() : state.title.trim();
         } else if (seriesDetail && (seriesDetail.title || seriesDetail.name)) {
             seriesName = (seriesDetail.title || seriesDetail.name).trim();
         }
