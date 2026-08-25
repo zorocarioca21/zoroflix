@@ -312,7 +312,7 @@ export default function PlayerPage() {
         };
 
         const findEpisode = async () => {
-            const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseName) => {
+            const checkTitleMatch = (itemTitle, targetSeriesName, originalName, baseName, targetYear) => {
                 // Limpeza de possíveis sujeiras do M3U que vieram no título
                 let cleanItemTitle = itemTitle;
                 if (cleanItemTitle.includes('tvg-logo=') || cleanItemTitle.includes('group-title=')) {
@@ -338,6 +338,8 @@ export default function PlayerPage() {
                         extractedName = extractedName.substring(0, tagMatch.index).trim();
                     }
                 }
+                const itemYearMatch = cleanItemTitle.match(/[\(\[](\d{4})[\)\]]/);
+                const itemYear = itemYearMatch ? parseInt(itemYearMatch[1]) : null;
                 
                 extractedName = extractedName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
                 extractedName = extractedName.replace(/[-:]$/g, '').trim();
@@ -359,7 +361,15 @@ export default function PlayerPage() {
                 if (normExtracted === normTarget) return true;
                 if (normOriginal && normExtracted === normOriginal) return true;
                 
-                // Similaridade de 80%
+                // Se o ano bater exato, flexibiliza o limite de similaridade
+                let isYearMatch = false;
+                if (itemYear && targetYear) {
+                    if (itemYear === parseInt(targetYear)) {
+                        isYearMatch = true;
+                    }
+                }
+
+                // Similaridade
                 const calculateSimilarity = (s1, s2) => {
                     let longer = s1.length > s2.length ? s1 : s2;
                     let shorter = s1.length > s2.length ? s2 : s1;
@@ -384,8 +394,9 @@ export default function PlayerPage() {
                     return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
                 };
                 
-                if (calculateSimilarity(normExtracted, normTarget) >= 0.8) return true;
-                if (normOriginal && calculateSimilarity(normExtracted, normOriginal) >= 0.8) return true;
+                const threshold = isYearMatch ? 0.6 : 0.8;
+                if (calculateSimilarity(normExtracted, normTarget) >= threshold) return true;
+                if (normOriginal && calculateSimilarity(normExtracted, normOriginal) >= threshold) return true;
                 
                 if (extractedName.toLowerCase().startsWith(targetClean.toLowerCase())) {
                     const remaining = extractedName.substring(targetClean.length).trim();
@@ -503,14 +514,14 @@ export default function PlayerPage() {
                     }
 
                     if (data?.items?.length > 0) {
+                        const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
+                            if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName, releaseYear)) return false;
                             return true;
                         });
 
                         if (validItems.length > 0) {
-                            const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
                             const matches = getBestMatches(validItems, releaseYear);
                             if (matches) {
                                 handleMatches(matches);
