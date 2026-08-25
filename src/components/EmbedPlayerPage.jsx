@@ -23,7 +23,7 @@ export default function EmbedPlayerPage() {
     const [isVipKey, setIsVipKey] = useState(false);
     const [checkingKey, setCheckingKey] = useState(true);
 
-    const [showDebug, setShowDebug] = useState(true);
+    const [showDebug, setShowDebug] = useState(false);
     const [debugMatches, setDebugMatches] = useState([]);
 
     const navigate = useNavigate();
