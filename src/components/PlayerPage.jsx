@@ -325,14 +325,14 @@ export default function PlayerPage() {
                     }
                 }
 
-                const seasonEpRegex = /\s*(S\d{1,2}\s*E\d{1,2}|S\d{1,2}E\d{1,2}|EPISÓDIO\s*\d+|EP\s*\d+|E\d{1,2}|TEMPORADA\s*\d+)/i;
+                const seasonEpRegex = /\b(S\d{1,2}\s*E\d{1,2}|S\d{1,2}E\d{1,2}|EPISÓDIO\s*\d+|EP\s*\d+|E\d{1,2}|TEMPORADA\s*\d+)\b/i;
                 const match = cleanItemTitle.match(seasonEpRegex);
                 
                 let extractedName = cleanItemTitle;
                 if (match && match.index > 0) {
                     extractedName = cleanItemTitle.substring(0, match.index).trim();
                 } else {
-                    const tagsRegex = /\s*(DUBLADO|LEGENDADO|LEG|FHD|4K|1080P|720P|2160P|TS|CAMRIP)/i;
+                    const tagsRegex = /\b(DUBLADO|LEGENDADO|LEG|FHD|4K|1080P|720P|2160P|TS|CAMRIP)\b/i;
                     const tagMatch = extractedName.match(tagsRegex);
                     if (tagMatch && tagMatch.index > 0) {
                         extractedName = extractedName.substring(0, tagMatch.index).trim();
