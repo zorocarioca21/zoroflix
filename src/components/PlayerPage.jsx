@@ -33,6 +33,7 @@ export default function PlayerPage() {
     const [currentQuality, setCurrentQuality] = useState('Normal'); 
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const [downloadSelector, setDownloadSelector] = useState(false);
+    const [confirmDownloadUrl, setConfirmDownloadUrl] = useState(null);
     const [debugMatches, setDebugMatches] = useState(null);
     const prevLanguageType = useRef(null); 
 
@@ -790,7 +791,7 @@ export default function PlayerPage() {
                                         let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                         token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                        window.location.href = `/api/stream/d/${token}`;
+                                        setConfirmDownloadUrl(`/api/stream/d/${token}`);
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -950,7 +951,7 @@ export default function PlayerPage() {
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                window.location.href = `/api/stream/d/${token}`;
+                                setConfirmDownloadUrl(`/api/stream/d/${token}`);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
@@ -967,10 +968,46 @@ export default function PlayerPage() {
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                window.location.href = `/api/stream/d/${token}`;
+                                setConfirmDownloadUrl(`/api/stream/d/${token}`);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal de Confirmação de Download */}
+            {confirmDownloadUrl && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 99999
+                }}>
+                    <div style={{
+                        background: '#1a1a1a',
+                        padding: '2rem',
+                        borderRadius: '15px',
+                        border: '1px solid #333',
+                        textAlign: 'center',
+                        maxWidth: '400px',
+                        width: '90%'
+                    }}>
+                        <h3 style={{ margin: '0 0 1rem 0', color: '#fff' }}>Pronto para Baixar</h3>
+                        <p style={{ color: '#aaa', marginBottom: '2rem' }}>Deseja iniciar o download deste arquivo agora?</p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button onClick={() => {
+                                window.location.href = confirmDownloadUrl;
+                                setConfirmDownloadUrl(null);
+                                setDownloadSelector(false); // Fecha o selector de idioma caso estivesse aberto
+                            }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Baixar Arquivo</button>
+                            
+                            <button onClick={() => setConfirmDownloadUrl(null)} style={{ background: 'transparent', color: '#888', border: '1px solid #333', padding: '0.8rem 1.5rem', borderRadius: '10px', cursor: 'pointer' }}>Cancelar</button>
+                        </div>
                     </div>
                 </div>
             )}
