@@ -107,15 +107,26 @@ export default function EmbedPlayerPage() {
                             let hasEp = true;
 
                             if (type === 'serie' && season && episode) {
-                                const s = String(season).padStart(2, '0');
-                                const e = String(episode).padStart(2, '0');
-                                const patterns = [
-                                    `S${s}E${e}`, `S${s} E${e}`,
-                                    `S${season}E${episode}`, `S${season} E${episode}`,
-                                    `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
-                                ];
-                                const upperTitle = i.title.toUpperCase();
-                                hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                                const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
+                                const sMatch = i.title.match(seasonRegex);
+                                if (sMatch) {
+                                    const fileSeason = parseInt(sMatch[1]);
+                                    if (fileSeason !== parseInt(season)) {
+                                        hasEp = false;
+                                    }
+                                }
+
+                                if (hasEp) {
+                                    const s = String(season).padStart(2, '0');
+                                    const e = String(episode).padStart(2, '0');
+                                    const patterns = [
+                                        `S${s}E${e}`, `S${s} E${e}`,
+                                        `S${season}E${episode}`, `S${season} E${episode}`,
+                                        `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
+                                    ];
+                                    const upperTitle = i.title.toUpperCase();
+                                    hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                                }
                             }
 
                             const isValid = isTitleMatch && hasEp;

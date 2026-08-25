@@ -339,14 +339,16 @@ export default function PlayerPage() {
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
 
                             const upperTitle = i.title.toUpperCase();
+                            
+                            const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
+                            const sMatch = i.title.match(seasonRegex);
+                            if (sMatch) {
+                                const fileSeason = parseInt(sMatch[1]);
+                                if (fileSeason !== parseInt(season)) return false;
+                            }
+
                             const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                             if (!hasEp) return false;
-
-                            const seasonMatch = upperTitle.match(/S(\d{1,2})/);
-                            if (seasonMatch && parseInt(seasonMatch[1]) !== parseInt(season)) return false;
-
-                            const seasonWordMatch = upperTitle.match(/TEMPORADA\s*(\d{1,2})/);
-                            if (seasonWordMatch && parseInt(seasonWordMatch[1]) !== parseInt(season)) return false;
 
                             return true;
                         });

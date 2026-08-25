@@ -120,6 +120,13 @@ export default function botRoutes(db) {
                     if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season)) return false;
                     
                     if (type === 'serie' && season && episode) {
+                        const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
+                        const sMatch = i.title.match(seasonRegex);
+                        if (sMatch) {
+                            const fileSeason = parseInt(sMatch[1]);
+                            if (fileSeason !== parseInt(season)) return false;
+                        }
+
                         const s = String(season).padStart(2, '0');
                         const e = String(episode).padStart(2, '0');
                         const patterns = [
