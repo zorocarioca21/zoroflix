@@ -152,7 +152,9 @@ export default function botRoutes(db) {
                 }
             }
 
-            const fullTitle = searchName + (releaseYear ? ` (${releaseYear})` : '') + (season && episode ? ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : '');
+            let fullTitle = searchName + (releaseYear ? ` (${releaseYear})` : '') + (season && episode ? ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : '');
+            
+            const downloadFileName = fullTitle + ' - www.cinegeek.shop';
 
             if (foundMsgId) {
                 return res.json({
@@ -160,7 +162,7 @@ export default function botRoutes(db) {
                     title: fullTitle,
                     type: type,
                     telegram_message_id: foundMsgId,
-                    direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true&title=${encodeURIComponent(fullTitle)}`,
+                    direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true&title=${encodeURIComponent(downloadFileName)}`,
                     site_url: siteUrl
                 });
             } else {

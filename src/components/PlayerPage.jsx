@@ -776,7 +776,14 @@ export default function PlayerPage() {
                                                 return;
                                             }
                                         }
-                                        const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                        
+                                        let finalTitle = title.split(' - ')[0].trim();
+                                        if (type === 'serie' && season && episode) {
+                                            finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                        }
+                                        finalTitle += ' - www.cinegeek.shop';
+                                        const cleanTitle = encodeURIComponent(finalTitle);
+
                                         window.location.href = `/api/stream/telegram/${targetMsgId}?download=true&title=${cleanTitle}`;
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
@@ -925,13 +932,23 @@ export default function PlayerPage() {
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <button onClick={() => {
                                 setDownloadSelector(false);
-                                const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                let finalTitle = title.split(' - ')[0].trim();
+                                if (type === 'serie' && season && episode) {
+                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                finalTitle += ' - www.cinegeek.shop';
+                                const cleanTitle = encodeURIComponent(finalTitle);
                                 window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].dub}?download=true&title=${cleanTitle}`;
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
                                 setDownloadSelector(false);
-                                const cleanTitle = encodeURIComponent(title.split(' - ')[0].trim());
+                                let finalTitle = title.split(' - ')[0].trim();
+                                if (type === 'serie' && season && episode) {
+                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                finalTitle += ' - www.cinegeek.shop';
+                                const cleanTitle = encodeURIComponent(finalTitle);
                                 window.location.href = `/api/stream/telegram/${languageOptions[currentQuality].leg}?download=true&title=${cleanTitle}`;
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
