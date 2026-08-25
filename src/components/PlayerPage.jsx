@@ -349,6 +349,11 @@ export default function PlayerPage() {
                 if (extractedName.toLowerCase() === targetClean.toLowerCase()) return true;
                 if (originalClean && extractedName.toLowerCase() === originalClean.toLowerCase()) return true;
                 
+                // Fuzzy match ignorando pontuações
+                const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (normalize(extractedName) === normalize(targetClean)) return true;
+                if (originalClean && normalize(extractedName) === normalize(originalClean)) return true;
+                
                 if (extractedName.toLowerCase().startsWith(targetClean.toLowerCase())) {
                     const remaining = extractedName.substring(targetClean.length).trim();
                     if (remaining === '' || remaining === ':' || remaining === '-' || remaining.startsWith('-')) return true;
