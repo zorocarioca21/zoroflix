@@ -29,10 +29,40 @@ export default function botRoutes(db) {
 
     router.get('/search', verifyKey, async (req, res) => {
         try {
-            const { q } = req.query;
+            let { q } = req.query;
             if (!q) {
                 return res.status(400).json({ error: "Query parameter 'q' is required" });
             }
+
+            let season = null;
+            let episode = null;
+
+            // Extractor for patterns like S01E05, T01E05, S1 E5, Temporada 1 Episodio 5
+            const seasonEpRegex = /\b(?:S|T|TEMPORADA\s*)(\d{1,2})(?:[\sEXP-]+|(?:\s*EPIS[OÓ]DIO\s*))(\d{1,3})\b/i;
+            const match = q.match(seasonEpRegex);
+            
+            const altMatch = q.match(/\b(\d{1,2})[xX](\d{1,3})\b/); // 1x05
+            const epOnlyRegex = /\b(?:EP|EPIS[OÓ]DIO)\s*(\d{1,3})\b/i; // Ep 05
+
+            if (match) {
+                season = parseInt(match[1]);
+                episode = parseInt(match[2]);
+                q = q.replace(match[0], '').trim();
+            } else if (altMatch) {
+                season = parseInt(altMatch[1]);
+                episode = parseInt(altMatch[2]);
+                q = q.replace(altMatch[0], '').trim();
+            } else {
+                const epMatch = q.match(epOnlyRegex);
+                if (epMatch) {
+                    season = 1;
+                    episode = parseInt(epMatch[1]);
+                    q = q.replace(epMatch[0], '').trim();
+                }
+            }
+
+            // Cleanup any trailing hyphens or colons
+            q = q.replace(/[-:]$/, '').trim();
 
             const API_KEY = process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY;
             const BASE_URL = 'https://api.themoviedb.org/3';
@@ -87,10 +117,21 @@ export default function botRoutes(db) {
                 const validItems = items.filter(i => {
                     if (i.status !== 'completed' || !i.telegram_message_id) return false;
                     
-                    // Note: season is null for this general search, we are just looking if the media exists.
-                    // For series, this will return true if at least one episode matches the base name.
-                    if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, null)) return false;
+                    if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season)) return false;
                     
+                    if (type === 'serie' && season && episode) {
+                        const s = String(season).padStart(2, '0');
+                        const e = String(episode).padStart(2, '0');
+                        const patterns = [
+                            `S${s}E${e}`, `S${s} E${e}`,
+                            `S${season}E${episode}`, `S${season} E${episode}`,
+                            `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
+                        ];
+                        const upperTitle = i.title.toUpperCase();
+                        const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                        if (!hasEp) return false;
+                    }
+
                     return true;
                 });
 
@@ -111,10 +152,12 @@ export default function botRoutes(db) {
                 }
             }
 
+            const fullTitle = searchName + (releaseYear ? ` (${releaseYear})` : '') + (season && episode ? ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : '');
+
             if (foundMsgId) {
                 return res.json({
                     found: true,
-                    title: searchName + (releaseYear ? ` (${releaseYear})` : ''),
+                    title: fullTitle,
                     type: type,
                     telegram_message_id: foundMsgId,
                     direct_download_url: `https://www.cinegeek.shop/api/stream/telegram/${foundMsgId}?download=true`,
@@ -123,7 +166,7 @@ export default function botRoutes(db) {
             } else {
                 return res.json({
                     found: false,
-                    title: searchName + (releaseYear ? ` (${releaseYear})` : ''),
+                    title: fullTitle,
                     type: type,
                     telegram_message_id: null,
                     direct_download_url: null,
