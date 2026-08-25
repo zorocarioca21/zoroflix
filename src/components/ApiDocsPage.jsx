@@ -239,7 +239,8 @@ console.log(data);`}</code></pre>
                             <code className="api-path">/api/bot/search?q={"{nome}"}&apikey={"{sua_chave}"}</code>
                         </div>
                         <h3>Buscar Filme / Série</h3>
-                        <p>Retorna se o filme existe, o ID do Telegram (para encaminhamento nativo) e o Link Direto de Download (para WhatsApp).</p>
+                        <p>Retorna se o filme/série existe, o ID do Telegram (para encaminhamento nativo) e o Link Direto de Download (para WhatsApp). <br/>
+                        <strong>Busca de Episódio Específico:</strong> Você pode pesquisar o nome da série junto com a temporada e episódio para obter o arquivo exato (Ex: <code>?q=Demon Slayer S02E03</code>, <code>T02E03</code>, <code>2x03</code>, ou <code>Ep 5</code>). A API filtrará a série e retornará o arquivo correspondente.</p>
                         <div className="api-code-block small">
                             <div className="code-block-header">Exemplo de Resposta (Encontrado)</div>
                             <pre><code>{`{
