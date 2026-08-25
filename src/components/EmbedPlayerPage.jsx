@@ -123,25 +123,7 @@ export default function EmbedPlayerPage() {
                                 return true;
                             });
                         }
-                        if (type === 'filme') {
-                            validItems = validItems.filter(i => {
-                                let extractedName = i.title.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
-                                extractedName = extractedName.replace(/[-:]$/g, '').trim();
-                                const tagsRegex = /\s*(DUBLADO|LEGENDADO|LEG|FHD|4K|1080P|720P|2160P|TS|CAMRIP)/i;
-                                const tagMatch = extractedName.match(tagsRegex);
-                                if (tagMatch && tagMatch.index > 0) {
-                                    extractedName = extractedName.substring(0, tagMatch.index).trim();
-                                }
-                                
-                                let targetClean = searchName.replace(/[\(\[]\d{4}[\)\]]/g, '').trim().replace(/[-:]$/g, '').trim();
-                                
-                                const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                if (normalize(extractedName) === normalize(targetClean)) return true;
-                                if (normalize(extractedName).startsWith(normalize(targetClean))) return true;
-                                
-                                return false;
-                            });
-                        }
+
 
                         if (validItems.length > 0) {
                             // Agrupa linguagens de forma similar ao app principal (simplificado aqui)
