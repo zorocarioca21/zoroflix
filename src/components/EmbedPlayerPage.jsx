@@ -23,6 +23,9 @@ export default function EmbedPlayerPage() {
     const [isVipKey, setIsVipKey] = useState(false);
     const [checkingKey, setCheckingKey] = useState(true);
 
+    const [showDebug, setShowDebug] = useState(true);
+    const [debugMatches, setDebugMatches] = useState([]);
+
     const navigate = useNavigate();
 
     // Extrair API Key da URL
@@ -94,12 +97,15 @@ export default function EmbedPlayerPage() {
                     
                     let foundMsgId = null;
                     let foundLangOpts = null;
+                    const evaluatedItems = [];
 
                     if (data?.items?.length > 0) {
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season)) return false;
                             
+                            const isTitleMatch = checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
+                            let hasEp = true;
+
                             if (type === 'serie' && season && episode) {
                                 const s = String(season).padStart(2, '0');
                                 const e = String(episode).padStart(2, '0');
@@ -109,11 +115,21 @@ export default function EmbedPlayerPage() {
                                     `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
                                 ];
                                 const upperTitle = i.title.toUpperCase();
-                                const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
-                                if (!hasEp) return false;
+                                hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                             }
-                            return true;
+
+                            const isValid = isTitleMatch && hasEp;
+                            
+                            evaluatedItems.push({
+                                title: i.title,
+                                isMatch: isValid,
+                                reason: !isTitleMatch ? 'Title Match Failed' : (!hasEp ? 'Episode Match Failed' : 'Matched')
+                            });
+
+                            return isValid;
                         });
+
+                        setDebugMatches(evaluatedItems);
 
                         if (validItems.length > 0) {
                             const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
@@ -199,7 +215,12 @@ export default function EmbedPlayerPage() {
                 onLanguageChange={(id, type) => setTelegramMessageId(id)}
                 videoQualities={languageOptions}
                 currentQuality={currentQuality}
-                onQualityChange={(newQuality) => setCurrentQuality(newQuality)}
+                onQualityChange={(q, isDub) => {
+                    setCurrentQuality(q);
+                    if (languageOptions && languageOptions[q]) {
+                        setTelegramMessageId(isDub ? languageOptions[q].dub || languageOptions[q].leg : languageOptions[q].leg || languageOptions[q].dub);
+                    }
+                }}
                 onNextEpisode={() => {
                     if (type === 'serie') {
                         const nextEp = parseInt(episode) + 1;
@@ -207,6 +228,49 @@ export default function EmbedPlayerPage() {
                     }
                 }}
             />
+
+            {/* Painel de Debug temporário */}
+            {showDebug && debugMatches.length > 0 && (
+                <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    width: '400px',
+                    maxHeight: '80vh',
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    color: '#fff',
+                    border: '1px solid #444',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    overflowY: 'auto',
+                    zIndex: 999999,
+                    fontFamily: 'monospace',
+                    fontSize: '12px'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', borderBottom: '1px solid #555', paddingBottom: '5px' }}>
+                        <h3 style={{ margin: 0, color: '#00e5ff' }}>🛠️ Debug: Busca de Título</h3>
+                        <button onClick={() => setShowDebug(false)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                        <strong>TMDB Buscado:</strong> {title}<br/>
+                        <strong>Resultados Analisados:</strong> {debugMatches.length}
+                    </div>
+                    {debugMatches.map((item, idx) => (
+                        <div key={idx} style={{ 
+                            marginBottom: '8px', 
+                            padding: '6px', 
+                            background: item.isMatch ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                            borderLeft: `4px solid ${item.isMatch ? '#00e5ff' : '#666'}`,
+                            borderRadius: '4px'
+                        }}>
+                            <div style={{ fontWeight: 'bold', color: item.isMatch ? '#00e5ff' : '#ccc' }}>{item.title}</div>
+                            <div style={{ fontSize: '11px', color: item.isMatch ? '#aaa' : '#ff4444' }}>
+                                Status: {item.reason}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
