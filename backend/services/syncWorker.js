@@ -694,6 +694,17 @@ function startAutoM3uSync() {
             if (result.changes > 0) {
                 console.log(`[Priority Cron] Promovidos ${result.changes} filmes recentes para prioridade 500.`);
             }
+
+            // Remove prioridade de itens que já foram concluídos (synced/completed)
+            const cleanResult = await dbInstance.run(
+                `UPDATE sync_queue 
+                 SET priority = 0 
+                 WHERE status IN ('synced', 'completed') 
+                 AND priority > 0`
+            );
+            if (cleanResult.changes > 0) {
+                console.log(`[Priority Cron] Removida prioridade de ${cleanResult.changes} itens concluídos.`);
+            }
         } catch (err) {
             console.error("[Priority Cron] Erro ao atualizar prioridades:", err);
         }
