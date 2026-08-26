@@ -1,56 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv } from 'lucide-react';
+import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv, Trash2, ListOrdered, Play } from 'lucide-react';
 import './ManualUploadPage.css';
 
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
 export default function ManualUploadPage() {
-    const [manualUpload, setManualUpload] = useState({ 
-        type: 'filme', // 'filme' | 'serie'
-        
-        // Filme fields
-        movieTitle: '', 
-        movieYear: '', 
-        
-        // Serie fields
-        serieTitle: '',
-        season: '',
-        episode: '',
-
-        // Shared fields
-        quality: 'FHD',
-        language: 'Dublado',
-
-        // System state
-        title: '', 
-        file: null, 
-        progress: 0, 
-        status: 'idle', 
-        error: null 
-    });
-
+    const [uploadQueue, setUploadQueue] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    // Auto-generate title based on inputs
+    // Update generated titles whenever queue items change
     useEffect(() => {
-        let generated = '';
-        if (manualUpload.type === 'filme') {
-            const yearStr = manualUpload.movieYear ? ` (${manualUpload.movieYear})` : '';
-            if (manualUpload.movieTitle) {
-                generated = `${manualUpload.movieTitle.trim()}${yearStr} ${manualUpload.quality} ${manualUpload.language}`;
+        setUploadQueue(prevQueue => prevQueue.map(item => {
+            let generated = '';
+            if (item.type === 'filme') {
+                const yearStr = item.movieYear ? ` (${item.movieYear})` : '';
+                if (item.movieTitle) {
+                    generated = `${item.movieTitle.trim()}${yearStr} ${item.quality} ${item.language}`;
+                }
+            } else {
+                if (item.serieTitle) {
+                    const s = item.season ? item.season.toString().padStart(2, '0') : '01';
+                    const e = item.episode ? item.episode.toString().padStart(2, '0') : '01';
+                    generated = `${item.serieTitle.trim()} S${s} E${e} ${item.quality} ${item.language}`;
+                }
             }
-        } else {
-            if (manualUpload.serieTitle) {
-                const s = manualUpload.season ? manualUpload.season.toString().padStart(2, '0') : '01';
-                const e = manualUpload.episode ? manualUpload.episode.toString().padStart(2, '0') : '01';
-                generated = `${manualUpload.serieTitle.trim()} S${s} E${e} ${manualUpload.quality} ${manualUpload.language}`;
-            }
-        }
-        setManualUpload(prev => ({ ...prev, title: generated }));
-    }, [manualUpload.type, manualUpload.movieTitle, manualUpload.movieYear, manualUpload.serieTitle, manualUpload.season, manualUpload.episode, manualUpload.quality, manualUpload.language]);
+            return { ...item, generatedTitle: generated };
+        }));
+    }, [JSON.stringify(uploadQueue.map(i => ({t: i.type, mt: i.movieTitle, my: i.movieYear, st: i.serieTitle, s: i.season, e: i.episode, q: i.quality, l: i.language})))]);
 
+    const addFilesToQueue = (files) => {
+        const newItems = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.endsWith('.mkv')).map(file => {
+            // Tenta adivinhar um nome de arquivo
+            let rawName = file.name.replace(/\.(mp4|mkv|avi|mov)$/i, '');
+            // Verifica se tem algo parecido com S01E01
+            const epMatch = rawName.match(/[Ss](\d+)[Ee](\d+)/);
+            let defaultType = epMatch ? 'serie' : 'filme';
+            let defaultTitle = rawName;
+            let defaultSeason = '';
+            let defaultEpisode = '';
+            
+            if (epMatch) {
+                defaultSeason = parseInt(epMatch[1], 10).toString();
+                defaultEpisode = parseInt(epMatch[2], 10).toString();
+                // Tenta pegar o título antes de S01E01
+                const splitName = rawName.split(/[Ss]\d+[Ee]\d+/)[0].replace(/[\.\_]/g, ' ').trim();
+                defaultTitle = splitName || rawName;
+            } else {
+                defaultTitle = rawName.replace(/[\.\_]/g, ' ').trim();
+            }
+
+            return {
+                id: generateId(),
+                file,
+                type: defaultType,
+                movieTitle: defaultType === 'filme' ? defaultTitle : '',
+                movieYear: '',
+                serieTitle: defaultType === 'serie' ? defaultTitle : '',
+                season: defaultSeason,
+                episode: defaultEpisode,
+                quality: 'FHD',
+                language: 'Dublado',
+                status: 'idle', // idle, uploading, success, error
+                progress: 0,
+                error: null,
+                generatedTitle: ''
+            };
+        });
+
+        if (newItems.length > 0) {
+            setUploadQueue(prev => [...prev, ...newItems]);
+        } else {
+            alert('Nenhum vídeo válido encontrado. Formatos aceitos: MP4, MKV');
+        }
+    };
 
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setManualUpload(prev => ({ ...prev, file: e.target.files[0], status: 'idle', error: null }));
+        if (e.target.files && e.target.files.length > 0) {
+            addFilesToQueue(e.target.files);
+            // Reset input so you can select the same file again if needed
+            e.target.value = '';
         }
     };
 
@@ -67,299 +96,288 @@ export default function ManualUploadPage() {
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const droppedFile = e.dataTransfer.files[0];
-            if (droppedFile.type.startsWith('video/') || droppedFile.name.endsWith('.mkv')) {
-                setManualUpload(prev => ({ ...prev, file: droppedFile, status: 'idle', error: null }));
-            } else {
-                setManualUpload(prev => ({ ...prev, error: 'Por favor, selecione um arquivo de vídeo válido.' }));
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            addFilesToQueue(e.dataTransfer.files);
+        }
+    };
+
+    const removeItem = (id) => {
+        setUploadQueue(prev => prev.filter(item => item.id !== id));
+    };
+
+    const updateItem = (id, field, value) => {
+        setUploadQueue(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const processQueue = async () => {
+        if (isProcessing) return;
+        
+        // Verifica se todos os itens 'idle' têm título gerado
+        const idles = uploadQueue.filter(item => item.status === 'idle' || item.status === 'error');
+        if (idles.length === 0) return;
+
+        for (const item of idles) {
+            if (!item.generatedTitle) {
+                alert(`O arquivo "${item.file.name}" está com as informações incompletas. Preencha os títulos antes de iniciar.`);
+                return;
             }
         }
-    };
 
-    const clearFile = () => {
-        setManualUpload(prev => ({ ...prev, file: null, status: 'idle', error: null }));
-        const input = document.getElementById('manual-file-input-new');
-        if (input) input.value = '';
-    };
+        setIsProcessing(true);
 
-    const handleManualUpload = async () => {
-        if (!manualUpload.title || !manualUpload.file) {
-            setManualUpload(prev => ({ ...prev, error: "Preencha os campos e selecione um arquivo de vídeo." }));
-            return;
-        }
+        for (let i = 0; i < uploadQueue.length; i++) {
+            const item = uploadQueue[i];
+            
+            // Só processa se estiver idle ou deu erro antes (tenta novamente)
+            if (item.status === 'success' || item.status === 'uploading') continue;
 
-        setManualUpload(prev => ({ ...prev, status: 'uploading', progress: 0, error: null }));
+            updateItem(item.id, 'status', 'uploading');
+            updateItem(item.id, 'progress', 0);
+            updateItem(item.id, 'error', null);
 
-        const file = manualUpload.file;
-        const chunkSize = 50 * 1024 * 1024; // 50MB
-        const totalChunks = Math.ceil(file.size / chunkSize);
-        const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const originalExt = file.name.split('.').pop() || 'mp4';
+            const file = item.file;
+            const chunkSize = 50 * 1024 * 1024; // 50MB
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const originalExt = file.name.split('.').pop() || 'mp4';
 
-        try {
-            for (let i = 0; i < totalChunks; i++) {
-                const start = i * chunkSize;
-                const end = Math.min(start + chunkSize, file.size);
-                const chunk = file.slice(start, end);
+            try {
+                for (let c = 0; c < totalChunks; c++) {
+                    const start = c * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunk = file.slice(start, end);
 
-                const formData = new FormData();
-                formData.append('chunk', chunk, 'chunk.bin');
-                formData.append('fileName', fileName);
-                formData.append('chunkIndex', i);
+                    const formData = new FormData();
+                    formData.append('chunk', chunk, 'chunk.bin');
+                    formData.append('fileName', fileName);
+                    formData.append('chunkIndex', c);
 
-                const response = await fetch('/api/sync/manual-upload/chunk', {
-                    method: 'POST',
-                    body: formData
-                });
+                    const response = await fetch('/api/sync/manual-upload/chunk', {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (!response.ok) {
-                    throw new Error(`Erro ao enviar a parte ${i + 1} do vídeo`);
+                    if (!response.ok) {
+                        throw new Error(`Falha no chunk ${c + 1}`);
+                    }
+
+                    const progress = Math.round(((c + 1) / totalChunks) * 100);
+                    updateItem(item.id, 'progress', progress);
                 }
 
-                const progress = Math.round(((i + 1) / totalChunks) * 100);
-                setManualUpload(prev => ({ ...prev, progress }));
+                const finalizeRes = await fetch('/api/sync/manual-upload/finalize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileName,
+                        title: item.generatedTitle,
+                        originalExt,
+                        totalSize: file.size
+                    })
+                });
+
+                if (!finalizeRes.ok) {
+                    const errData = await finalizeRes.json();
+                    throw new Error(errData.error || 'Erro ao finalizar no servidor');
+                }
+
+                updateItem(item.id, 'status', 'success');
+                updateItem(item.id, 'progress', 100);
+
+            } catch (error) {
+                console.error("Erro no upload do item", item.id, error);
+                updateItem(item.id, 'status', 'error');
+                updateItem(item.id, 'error', error.message);
+                // Interromper a fila em caso de erro? Opcional. 
+                // setIsProcessing(false);
+                // return;
             }
-
-            const finalizeRes = await fetch('/api/sync/manual-upload/finalize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName,
-                    title: manualUpload.title, // Envia o título gerado automaticamente
-                    originalExt,
-                    totalSize: file.size
-                })
-            });
-
-            if (!finalizeRes.ok) {
-                const errData = await finalizeRes.json();
-                throw new Error(errData.error || 'Erro ao finalizar upload');
-            }
-
-            setManualUpload(prev => ({ ...prev, movieTitle: '', serieTitle: '', file: null, progress: 100, status: 'success', error: null }));
-            const input = document.getElementById('manual-file-input-new');
-            if (input) input.value = '';
-            
-            setTimeout(() => {
-                setManualUpload(prev => ({ ...prev, status: 'idle', progress: 0 }));
-            }, 4000);
-
-        } catch (error) {
-            console.error("Erro no chunked upload:", error);
-            setManualUpload(prev => ({ ...prev, status: 'error', error: "Erro no upload: " + error.message }));
         }
+
+        setIsProcessing(false);
     };
+
+    const hasPending = uploadQueue.some(i => i.status === 'idle' || i.status === 'error');
+    const allCompleted = uploadQueue.length > 0 && uploadQueue.every(i => i.status === 'success');
 
     return (
         <div className="manual-upload-container">
             <div className="manual-upload-header">
                 <h1>
                     <HardDriveDownload size={32} className="header-icon" />
-                    Upload Manual de Mídia
+                    Upload em Lote (Batch)
                 </h1>
-                <p>Envie arquivos com nomenclatura padronizada direto para a esteira do bot.</p>
+                <p>Arraste vários episódios ou filmes de uma vez. Configure as informações individualmente e envie para a fila de prioridade (9999).</p>
             </div>
 
-            <div className="manual-upload-card">
-                
-                {manualUpload.error && (
-                    <div className="upload-alert error">
-                        {manualUpload.error}
+            <div className="manual-upload-card" style={{ padding: '2rem' }}>
+                <div 
+                    className={`drag-drop-zone batch-zone ${isDragging ? 'dragging' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    <div className="drop-content">
+                        <UploadCloud size={48} className="drop-icon" />
+                        <h3>Arraste e solte seus vídeos aqui</h3>
+                        <span>ou selecione múltiplos arquivos</span>
+                        <button type="button" className="browse-btn" onClick={() => document.getElementById('manual-file-input-batch').click()}>
+                            Procurar Arquivos
+                        </button>
+                        <p className="file-hint">Formatos suportados: MP4, MKV</p>
                     </div>
-                )}
-
-                {manualUpload.status === 'success' && (
-                    <div className="upload-alert success">
-                        <CheckCircle2 size={20} />
-                        Upload enviado com sucesso! O bot irá processar o arquivo em breve.
-                    </div>
-                )}
-
-                {/* TIPO DE MÍDIA TOGGLE */}
-                <div className="type-toggle-container">
-                    <button 
-                        className={`type-toggle-btn ${manualUpload.type === 'filme' ? 'active' : ''}`}
-                        onClick={() => setManualUpload(prev => ({...prev, type: 'filme'}))}
-                        disabled={manualUpload.status === 'uploading'}
-                    >
-                        <Clapperboard size={20} /> Filme
-                    </button>
-                    <button 
-                        className={`type-toggle-btn ${manualUpload.type === 'serie' ? 'active' : ''}`}
-                        onClick={() => setManualUpload(prev => ({...prev, type: 'serie'}))}
-                        disabled={manualUpload.status === 'uploading'}
-                    >
-                        <Tv size={20} /> Série / Anime
-                    </button>
+                    <input 
+                        type="file" 
+                        id="manual-file-input-batch"
+                        accept="video/*,.mkv"
+                        multiple
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                    />
                 </div>
+            </div>
 
-                <div className="form-grid">
-                    {manualUpload.type === 'filme' ? (
-                        <>
-                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                <label>Título do Filme</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Ex: Homem-Aranha: De volta ao lar"
-                                    value={manualUpload.movieTitle}
-                                    onChange={(e) => setManualUpload({...manualUpload, movieTitle: e.target.value})}
-                                    disabled={manualUpload.status === 'uploading'}
-                                    className="title-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Ano</label>
-                                <input 
-                                    type="number" 
-                                    placeholder="Ex: 2026"
-                                    value={manualUpload.movieYear}
-                                    onChange={(e) => setManualUpload({...manualUpload, movieYear: e.target.value})}
-                                    disabled={manualUpload.status === 'uploading'}
-                                    className="title-input"
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="form-group" style={{ gridColumn: 'span 3' }}>
-                                <label>Título da Série / Anime</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Ex: Chicago Fire"
-                                    value={manualUpload.serieTitle}
-                                    onChange={(e) => setManualUpload({...manualUpload, serieTitle: e.target.value})}
-                                    disabled={manualUpload.status === 'uploading'}
-                                    className="title-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Temporada</label>
-                                <input 
-                                    type="number" 
-                                    placeholder="S (Ex: 1)"
-                                    value={manualUpload.season}
-                                    onChange={(e) => setManualUpload({...manualUpload, season: e.target.value})}
-                                    disabled={manualUpload.status === 'uploading'}
-                                    className="title-input"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Episódio</label>
-                                <input 
-                                    type="number" 
-                                    placeholder="E (Ex: 5)"
-                                    value={manualUpload.episode}
-                                    onChange={(e) => setManualUpload({...manualUpload, episode: e.target.value})}
-                                    disabled={manualUpload.status === 'uploading'}
-                                    className="title-input"
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    <div className="form-group">
-                        <label>Qualidade</label>
-                        <select 
-                            className="title-input" 
-                            value={manualUpload.quality}
-                            onChange={(e) => setManualUpload({...manualUpload, quality: e.target.value})}
-                            disabled={manualUpload.status === 'uploading'}
-                        >
-                            <option value="SD">SD</option>
-                            <option value="HD">HD</option>
-                            <option value="FHD">FHD</option>
-                            <option value="4K">4K</option>
-                        </select>
+            {uploadQueue.length > 0 && (
+                <div className="queue-container">
+                    <div className="queue-header-stats">
+                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
+                            <ListOrdered size={24} color="#00ff88" /> Fila de Upload ({uploadQueue.length} arquivo{uploadQueue.length > 1 ? 's' : ''})
+                        </h2>
+                        {allCompleted && <span style={{ color: '#00ff88', fontWeight: 'bold' }}>Todos os uploads concluídos! 🎉</span>}
                     </div>
 
-                    <div className="form-group">
-                        <label>Idioma</label>
-                        <select 
-                            className="title-input" 
-                            value={manualUpload.language}
-                            onChange={(e) => setManualUpload({...manualUpload, language: e.target.value})}
-                            disabled={manualUpload.status === 'uploading'}
-                        >
-                            <option value="Dublado">Dublado</option>
-                            <option value="Legendado">Legendado</option>
-                            <option value="Nacional">Nacional</option>
-                            <option value="Dual Áudio">Dual Áudio</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="generated-title-preview">
-                    <span>Título Gerado:</span>
-                    <strong>{manualUpload.title || 'Preencha os campos para gerar o título...'}</strong>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '2rem' }}>
-                    <label>Arquivo de Vídeo</label>
-                    <div 
-                        className={`drag-drop-zone ${isDragging ? 'dragging' : ''} ${manualUpload.file ? 'has-file' : ''}`}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                    >
-                        {!manualUpload.file ? (
-                            <div className="drop-content">
-                                <UploadCloud size={48} className="drop-icon" />
-                                <h3>Arraste e solte o vídeo aqui</h3>
-                                <span>ou</span>
-                                <button type="button" className="browse-btn" onClick={() => document.getElementById('manual-file-input-new').click()}>
-                                    Procurar Arquivo
-                                </button>
-                                <p className="file-hint">Formatos suportados: MP4, MKV</p>
-                            </div>
-                        ) : (
-                            <div className="selected-file-card">
-                                <Film size={36} className="file-icon" />
-                                <div className="file-info">
-                                    <span className="file-name">{manualUpload.file.name}</span>
-                                    <span className="file-size">{(manualUpload.file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                    <div className="queue-list">
+                        {uploadQueue.map((item, index) => (
+                            <div key={item.id} className={`queue-card ${item.status}`}>
+                                <div className="queue-card-header">
+                                    <div className="queue-file-info">
+                                        <div className="file-badge">#{index + 1}</div>
+                                        <Film size={20} color={item.status === 'success' ? '#00ff88' : '#00ccff'} />
+                                        <span className="file-name" title={item.file.name}>{item.file.name}</span>
+                                        <span className="file-size">{(item.file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                                    </div>
+                                    
+                                    {item.status !== 'uploading' && item.status !== 'success' && (
+                                        <button className="remove-item-btn" onClick={() => removeItem(item.id)} title="Remover da fila">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
+                                    {item.status === 'success' && <CheckCircle2 size={24} color="#00ff88" />}
                                 </div>
-                                {manualUpload.status !== 'uploading' && (
-                                    <button type="button" className="clear-file-btn" onClick={clearFile} title="Remover arquivo">
-                                        <X size={20} />
-                                    </button>
+
+                                {/* Form settings - only editable if not successful */}
+                                {item.status !== 'success' && (
+                                    <div className="queue-card-body">
+                                        <div className="type-toggle-container small">
+                                            <button 
+                                                className={`type-toggle-btn ${item.type === 'filme' ? 'active' : ''}`}
+                                                onClick={() => updateItem(item.id, 'type', 'filme')}
+                                                disabled={item.status === 'uploading'}
+                                            >
+                                                <Clapperboard size={16} /> Filme
+                                            </button>
+                                            <button 
+                                                className={`type-toggle-btn ${item.type === 'serie' ? 'active' : ''}`}
+                                                onClick={() => updateItem(item.id, 'type', 'serie')}
+                                                disabled={item.status === 'uploading'}
+                                            >
+                                                <Tv size={16} /> Série / Anime
+                                            </button>
+                                        </div>
+
+                                        <div className="form-grid compact">
+                                            {item.type === 'filme' ? (
+                                                <>
+                                                    <div className="form-group span-2">
+                                                        <label>Título do Filme</label>
+                                                        <input type="text" className="title-input" value={item.movieTitle} onChange={(e) => updateItem(item.id, 'movieTitle', e.target.value)} disabled={item.status === 'uploading'} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label>Ano</label>
+                                                        <input type="number" className="title-input" value={item.movieYear} onChange={(e) => updateItem(item.id, 'movieYear', e.target.value)} disabled={item.status === 'uploading'} />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="form-group span-3">
+                                                        <label>Título da Série</label>
+                                                        <input type="text" className="title-input" value={item.serieTitle} onChange={(e) => updateItem(item.id, 'serieTitle', e.target.value)} disabled={item.status === 'uploading'} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label>Temporada</label>
+                                                        <input type="number" className="title-input" placeholder="Ex: 1" value={item.season} onChange={(e) => updateItem(item.id, 'season', e.target.value)} disabled={item.status === 'uploading'} />
+                                                    </div>
+                                                    <div className="form-group">
+                                                        <label>Episódio</label>
+                                                        <input type="number" className="title-input" placeholder="Ex: 5" value={item.episode} onChange={(e) => updateItem(item.id, 'episode', e.target.value)} disabled={item.status === 'uploading'} />
+                                                    </div>
+                                                </>
+                                            )}
+                                            
+                                            <div className="form-group">
+                                                <label>Qualidade</label>
+                                                <select className="title-input" value={item.quality} onChange={(e) => updateItem(item.id, 'quality', e.target.value)} disabled={item.status === 'uploading'}>
+                                                    <option value="SD">SD</option>
+                                                    <option value="HD">HD</option>
+                                                    <option value="FHD">FHD</option>
+                                                    <option value="4K">4K</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Idioma</label>
+                                                <select className="title-input" value={item.language} onChange={(e) => updateItem(item.id, 'language', e.target.value)} disabled={item.status === 'uploading'}>
+                                                    <option value="Dublado">Dublado</option>
+                                                    <option value="Legendado">Legendado</option>
+                                                    <option value="Nacional">Nacional</option>
+                                                    <option value="Dual Áudio">Dual Áudio</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
+
+                                {/* Card Footer: Preview & Progress */}
+                                <div className="queue-card-footer">
+                                    <div className="preview-row">
+                                        <span className="label">Título no Telegram:</span>
+                                        <span className="generated">{item.generatedTitle || 'Falta preencher informações...'}</span>
+                                    </div>
+                                    
+                                    {item.error && (
+                                        <div className="error-text">❌ Erro: {item.error}</div>
+                                    )}
+
+                                    {(item.status === 'uploading' || item.status === 'success') && (
+                                        <div className="mini-progress-container">
+                                            <div className="mini-progress-bg">
+                                                <div className="mini-progress-fill" style={{ width: `${item.progress}%`, background: item.status === 'success' ? '#00ff88' : 'linear-gradient(90deg, #00ccff, #00ff88)' }} />
+                                            </div>
+                                            <span className="mini-progress-text">{item.status === 'success' ? 'Concluído' : `${item.progress}%`}</span>
+                                        </div>
+                                    )}
+                                </div>
+
                             </div>
-                        )}
-                        <input 
-                            type="file" 
-                            id="manual-file-input-new"
-                            accept="video/*,.mkv"
-                            onChange={handleFileChange}
-                            disabled={manualUpload.status === 'uploading'}
-                            style={{ display: 'none' }}
-                        />
+                        ))}
+                    </div>
+
+                    <div className="global-actions">
+                        <button 
+                            className={`global-submit-btn ${isProcessing ? 'processing' : ''}`}
+                            onClick={processQueue}
+                            disabled={isProcessing || !hasPending}
+                        >
+                            {isProcessing ? (
+                                <>Enviando fila... Aguarde.</>
+                            ) : hasPending ? (
+                                <><Play fill="currentColor" size={20} /> Processar Fila Inteira Seguro (9999)</>
+                            ) : (
+                                <><CheckCircle2 size={20} /> Fila Concluída</>
+                            )}
+                        </button>
                     </div>
                 </div>
-
-                <div className="upload-actions">
-                    <button 
-                        onClick={handleManualUpload}
-                        disabled={manualUpload.status === 'uploading' || !manualUpload.file || !manualUpload.title}
-                        className={`submit-btn ${manualUpload.status === 'uploading' ? 'uploading' : ''}`}
-                    >
-                        {manualUpload.status === 'uploading' ? 'Enviando...' : 'Iniciar Upload Seguro (9999)'}
-                    </button>
-                </div>
-
-                {manualUpload.status === 'uploading' && (
-                    <div className="progress-container">
-                        <div className="progress-header">
-                            <span>Enviando arquivo para o servidor...</span>
-                            <span className="progress-percent">{manualUpload.progress}%</span>
-                        </div>
-                        <div className="progress-bar-bg">
-                            <div className="progress-bar-fill" style={{ width: `${manualUpload.progress}%` }} />
-                        </div>
-                        <small className="progress-hint">Por favor, aguarde e não feche esta página até a conclusão.</small>
-                    </div>
-                )}
-            </div>
+            )}
         </div>
     );
 }

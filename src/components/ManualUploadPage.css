@@ -345,6 +345,195 @@
     text-align: center;
 }
 
+/* --- BATCH UPLOAD STYLES --- */
+.batch-zone {
+    padding: 1.5rem;
+}
+
+.queue-container {
+    margin-top: 3rem;
+}
+
+.queue-header-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.queue-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.queue-card.uploading {
+    border-color: rgba(0, 204, 255, 0.5);
+    box-shadow: 0 0 15px rgba(0, 204, 255, 0.1);
+}
+
+.queue-card.success {
+    border-color: rgba(0, 255, 136, 0.5);
+    background: rgba(0, 255, 136, 0.02);
+}
+
+.queue-card.error {
+    border-color: rgba(255, 68, 68, 0.5);
+    background: rgba(255, 68, 68, 0.05);
+}
+
+.queue-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.queue-file-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #fff;
+    font-weight: bold;
+}
+
+.remove-item-btn {
+    background: transparent;
+    color: #888;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.remove-item-btn:hover {
+    color: #ff4444;
+}
+
+.queue-card-body {
+    padding: 1.5rem;
+}
+
+.type-toggle-container.small {
+    margin-bottom: 1.5rem;
+    padding: 0.25rem;
+}
+.type-toggle-container.small .type-toggle-btn {
+    padding: 0.6rem;
+    font-size: 0.95rem;
+}
+
+.form-grid.compact {
+    gap: 1rem;
+    margin-bottom: 0;
+}
+.form-grid.compact .title-input {
+    padding: 0.75rem 1rem;
+}
+
+.form-group.span-2 { grid-column: span 2; }
+.form-group.span-3 { grid-column: span 3; }
+
+.queue-card-footer {
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.preview-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.preview-row .label { color: #888; font-size: 0.9rem; }
+.preview-row .generated { color: #00ff88; font-weight: bold; }
+
+.error-text {
+    color: #ff4444;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.mini-progress-container {
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.mini-progress-bg {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.mini-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+.mini-progress-text {
+    font-size: 0.85rem;
+    color: #fff;
+    min-width: 40px;
+    text-align: right;
+}
+
+.global-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.global-submit-btn {
+    background: #00ff88;
+    color: #000;
+    border: none;
+    padding: 1.25rem 3rem;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px rgba(0, 255, 136, 0.2);
+}
+
+.global-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 255, 136, 0.3);
+}
+
+.global-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.global-submit-btn.processing {
+    background: #00ccff;
+    box-shadow: 0 4px 20px rgba(0, 204, 255, 0.2);
+}
+
 @media (max-width: 768px) {
     .manual-upload-container {
         padding: 1rem;
