@@ -228,25 +228,25 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
                 </div>
                 
                 <div onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                    <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', backgroundColor: '#1a1a1a' }}>
+                    <table className="glass-table">
                         <thead>
-                            <tr style={{ backgroundColor: '#222' }}>
-                                <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
-                                <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
-                                <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
-                                <th style={{ padding: '1rem', textAlign: 'left' }}>Tamanho</th>
-                                <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
+                            <tr>
+                                <th style={{ width: '80px' }}>ID</th>
+                                <th>Título</th>
+                                <th style={{ width: '150px' }}>Status</th>
+                                <th style={{ width: '120px' }}>Tamanho</th>
+                                <th style={{ width: '120px', textAlign: 'center' }}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map(item => (
-                                <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                    <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}><Star size={14} style={{ marginRight: '0.2rem' }} /> [PRIORIDADE]</span>}
+                                <tr key={item.id} className="glass-row">
+                                    <td style={{ color: '#888', fontSize: '0.9rem' }}>#{item.id}</td>
+                                    <td style={{ fontWeight: '500' }}>
+                                        {item.priority > 0 && <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>}
                                         {item.title}
                                     </td>
-                                    <td style={{ padding: '1rem' }}>
+                                    <td>
                                         <span style={{ 
                                             padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem',
                                             backgroundColor: item.status === 'completed' ? '#00ff8822' : 
@@ -259,8 +259,8 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
                                             {item.status.toUpperCase()}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1rem', color: '#888' }}>{formatBytes(item.file_size)}</td>
-                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                    <td style={{ color: '#888' }}>{formatBytes(item.file_size)}</td>
+                                    <td style={{ textAlign: 'center' }}>
                                         {(item.status === 'pending' || item.status === 'error') && (
                                             <button 
                                                 onClick={async () => { await prioritizeItem(item); fetchData(1); fetchQueueParent(); }}
@@ -280,7 +280,7 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
                                     </td>
                                 </tr>
                             ))}
-                            {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem' }}>Carregando...</td></tr>}
+                            {loading && <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>Carregando...</td></tr>}
                         </tbody>
                     </table>
                 </div>
