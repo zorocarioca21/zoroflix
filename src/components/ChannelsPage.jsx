@@ -99,7 +99,7 @@ export default function ChannelsPage() {
     isFirstMount.current = false;
 
     setLoading(true);
-    const superflixUrl = 'https://superflixapi.fit/lista?category=canais&format=json';
+    const superflixUrl = 'https://superflixapi.sbs/lista?category=canais&format=json';
     const vipUrl = '/api/canais/vip';
     
     Promise.allSettled([
