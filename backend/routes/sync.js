@@ -238,7 +238,7 @@ export default function syncRoutes(db, io) {
                     if (ext !== 'mp4' && ext !== 'mkv') continue; // Filtro de extensão
                     
                     const res = await db.run(
-                        "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 1 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                        "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                         [movie.title, movie.url, movie.url, movie.title]
                     );
                     if (res.changes > 0) insertedCount++;
@@ -296,7 +296,7 @@ export default function syncRoutes(db, io) {
                     for (const movie of movies) {
                         // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
                         const result = await db.run(
-                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 1 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]
                         );
                         if (result.changes > 0) insertedCount++;
@@ -500,7 +500,7 @@ export default function syncRoutes(db, io) {
                 }
             }
 
-            const result = await db.run(`UPDATE sync_queue SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
+            const result = await db.run(`UPDATE sync_queue SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro prioritize-batch:", err);
@@ -523,7 +523,7 @@ export default function syncRoutes(db, io) {
     router.post('/queue/:id/prioritize', async (req, res) => {
         try {
             // Aumenta a prioridade para o topo (se já não for maior)
-            await db.run("UPDATE sync_queue SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            await db.run("UPDATE sync_queue SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
             res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao priorizar item' });
@@ -551,7 +551,7 @@ export default function syncRoutes(db, io) {
             // Tenta dar match parcial na fila de pendentes e com priority = 0
             const result = await db.run(`
                 UPDATE sync_queue 
-                SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
+                SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
                 WHERE status = 'pending' AND priority = 0 
                 AND title LIKE '%' || ? || '%'
             `, [title]);

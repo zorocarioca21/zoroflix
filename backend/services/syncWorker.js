@@ -711,7 +711,7 @@ function startAutoM3uSync() {
                     let insertedCount = 0;
                     for (const movie of movies) {
                         const result = await dbInstance.run(
-                            "INSERT INTO sync_queue (title, url, status) SELECT ?, ?, 'pending' WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]
                         );
                         if (result.changes > 0) insertedCount++;

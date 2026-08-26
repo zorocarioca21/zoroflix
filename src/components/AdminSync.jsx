@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity } from 'lucide-react';
 
 // ==========================================
 // CUSTOM DIALOG SYSTEM - Substitui alert/confirm/prompt nativos
@@ -243,7 +243,7 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
                                 <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
                                     <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold' }}>⭐ [PRIORIDADE]</span>}
+                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}><Star size={14} style={{ marginRight: '0.2rem' }} /> [PRIORIDADE]</span>}
                                         {item.title}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
@@ -632,99 +632,137 @@ export default function AdminSync() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px' }}>
-                    <h3>Estatísticas da Fila</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                        <div><span style={{ color: '#888' }}>⏱ Pendentes:</span> {queue.pending}</div>
-                        <div><span style={{ color: '#ffff00' }}>⭐ Priorizados:</span> {queue.prioritized_count || 0}</div>
-                        <div><span style={{ color: '#00ff88' }}>✔ Concluídos:</span> {queue.completed}</div>
-                        <div><span style={{ color: '#ff4444' }}>❌ Erros:</span> {queue.error_count || 0}</div>
-                        <div><span style={{ color: '#ffaa00' }}>⏭ Ignorados:</span> {queue.skipped || 0}</div>
-                        <div><span style={{ color: '#00ccff' }}>💾 Economia DB:</span> {formatBytes(queue.total_size_saved)}</div>
-                        <div><span style={{ color: '#ff00ff' }}>🚀 Envios Hoje:</span> {queue.completed_today || 0}</div>
-                        <div><span style={{ color: '#ffff00' }}>🆕 Novos Hoje:</span> {queue.added_today || 0}</div>
+                <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', border: '1px solid rgba(0, 255, 136, 0.2)', padding: '1.5rem', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
+                    <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00ff88', fontSize: '1.2rem' }}>
+                        <Activity size={20} /> Estatísticas da Fila
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #888' }}>
+                            <div style={{ color: '#888', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Clock size={16} /> Pendentes</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.pending}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ffff00' }}>
+                            <div style={{ color: '#ffff00', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Star size={16} /> Priorizados</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.prioritized_count || 0}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ff88' }}>
+                            <div style={{ color: '#00ff88', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><CheckCircle size={16} /> Concluídos</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.completed}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ff4444' }}>
+                            <div style={{ color: '#ff4444', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><XCircle size={16} /> Erros</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.error_count || 0}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ffaa00' }}>
+                            <div style={{ color: '#ffaa00', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><SkipForward size={16} /> Ignorados</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.skipped || 0}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ccff' }}>
+                            <div style={{ color: '#00ccff', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Database size={16} /> Economia DB</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{formatBytes(queue.total_size_saved)}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ff00ff' }}>
+                            <div style={{ color: '#ff00ff', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Rocket size={16} /> Envios Hoje</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.completed_today || 0}</div>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ff88' }}>
+                            <div style={{ color: '#00ff88', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Sparkles size={16} /> Novos Hoje</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.added_today || 0}</div>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
                         <button 
                             onClick={startScan}
-                            style={{ flex: 1, padding: '0.5rem', background: '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            style={{ flex: '1 1 calc(50% - 0.4rem)', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
                         >
-                            Escanear iptv_list.m3u (Local)
+                            <Search size={18} /> Escanear iptv_list.m3u (Local)
                         </button>
                         <button 
                             onClick={startRemoteScan}
-                            style={{ flex: 1, padding: '0.5rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            style={{ flex: '1 1 calc(50% - 0.4rem)', padding: '0.8rem', background: 'rgba(0,255,136,0.1)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(0,255,136,0.2)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(0,255,136,0.1)'; }}
                         >
-                            Atualizar Catálogo (Auto)
+                            <RefreshCcw size={18} /> Atualizar Catálogo (Auto)
                         </button>
                         <button 
                             onClick={retryErrors}
-                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                         >
                             <RefreshCcw size={16} /> Tentar Erros
                         </button>
                         <button 
                             onClick={handleExport}
-                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00ccff', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,204,255,0.05)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                         >
                             <Download size={16} /> Exportar BD
                         </button>
                         <button 
                             onClick={clearPending}
-                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#ff4444', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,68,68,0.05)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                         >
                             <Eraser size={16} /> Limpar Todos Pendentes
                         </button>
                         <button 
                             onClick={cleanupDuplicates}
-                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00e676', border: '1px solid #00e676', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,255,136,0.05)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                         >
-                            <Eraser size={16} /> Limpar Fila Pendentes (Duplicados)
+                            <Eraser size={16} /> Limpar Pendentes Duplicados
                         </button>
                         <button 
                             onClick={cleanM3UTitles}
-                            style={{ padding: '0.5rem 1rem', background: '#333', color: '#00bfff', border: '1px solid #00bfff', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,204,255,0.05)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
                         >
-                            <Eraser size={16} /> Corrigir Títulos Sujos (M3U)
+                            <Eraser size={16} /> Corrigir Títulos Sujos
                         </button>
                         <button 
                             onClick={cleanupTelegramDuplicates}
                             disabled={isCleaningTG}
-                            style={{ padding: '0.5rem 1rem', background: isCleaningTG ? '#555' : '#333', color: '#ff4444', border: '1px solid #ff4444', borderRadius: '4px', cursor: isCleaningTG ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isCleaningTG ? 0.6 : 1 }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,68,68,0.05)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '8px', cursor: isCleaningTG ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isCleaningTG ? 0.6 : 1, transition: 'all 0.2s' }}
                         >
                             <Trash2 size={16} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados do TG'}
                         </button>
                         <button 
                             onClick={remapTelegram}
                             disabled={isRemapping}
-                            style={{ padding: '0.5rem 1rem', background: isRemapping ? '#555' : '#333', color: '#ffaa00', border: '1px solid #ffaa00', borderRadius: '4px', cursor: isRemapping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isRemapping ? 0.6 : 1 }}
+                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,170,0,0.05)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '8px', cursor: isRemapping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isRemapping ? 0.6 : 1, transition: 'all 0.2s' }}
                         >
                             <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
                         </button>
                     </div>
                 </div>
 
-                <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px' }}>
-                    <h3>Controle do Worker</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                        <span>Status: <strong style={{ color: state.isRunning && !state.isPaused ? '#00ff88' : '#ff4444' }}>
+                <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                    <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#fff' }}>
+                        <Server size={20} color="#00ff88" /> Controle do Worker
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>
+                        <span style={{ color: '#888' }}>Status:</span> 
+                        <strong style={{ 
+                            color: state.isRunning && !state.isPaused ? '#00ff88' : '#ff4444', 
+                            padding: '0.3rem 0.8rem', 
+                            background: state.isRunning && !state.isPaused ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', 
+                            borderRadius: '12px' 
+                        }}>
                             {state.isRunning ? (state.isPaused ? 'PAUSADO' : 'RODANDO') : 'PARADO'}
-                        </strong></span>
+                        </strong>
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                         <button 
                             onClick={() => toggleWorker(false)}
                             disabled={state.isRunning && !state.isPaused}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: (state.isRunning && !state.isPaused) ? 0.5 : 1 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', opacity: (state.isRunning && !state.isPaused) ? 0.5 : 1, flex: 1, justifyContent: 'center' }}
                         >
-                            <Play size={16} /> Iniciar / Retomar
+                            <Play size={18} /> Iniciar / Retomar
                         </button>
                         <button 
                             onClick={() => toggleWorker(true)}
                             disabled={!state.isRunning || state.isPaused}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: '#ff4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', opacity: (!state.isRunning || state.isPaused) ? 0.5 : 1 }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem', background: '#ff4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', opacity: (!state.isRunning || state.isPaused) ? 0.5 : 1, flex: 1, justifyContent: 'center' }}
                         >
-                            <Pause size={16} /> Pausar
+                            <Pause size={18} /> Pausar
                         </button>
                     </div>
                 </div>
@@ -733,77 +771,79 @@ export default function AdminSync() {
             {/* Pipeline Cards: Download e Upload */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {state.downloadTask ? (
-                    <div style={{ backgroundColor: '#1a1a2e', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
-                        <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
+                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
                             <HardDriveDownload size={20} /> Baixando da IPTV
                         </h3>
-                        <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.downloadTask.title}</div>
-                            <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
-                                <div style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, backgroundColor: typeof state.downloadTask.progress === 'number' ? '#00ccff' : '#ffaa00', height: '100%', transition: 'width 0.3s' }} />
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.downloadTask.title}</div>
+                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, backgroundColor: typeof state.downloadTask.progress === 'number' ? '#00ff88' : '#ffaa00', height: '100%', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(0,255,136,0.5)' }} />
                             </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
+                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
                                 {typeof state.downloadTask.progress === 'number' ? `${state.downloadTask.progress.toFixed(2)}%` : 'Aguardando Liberação de Espaço...'}
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666' }}>Aguardando fila de Download...</span>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><HardDriveDownload size={18} /> Aguardando fila de Download...</span>
                     </div>
                 )}
 
                 {/* Upload via Docker (Menores que 2GB) */}
                 {state.uploadTaskDocker ? (
-                    <div style={{ backgroundColor: '#2e1a2e', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
-                        <h3 style={{ color: '#ff00ff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
+                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
                             <Send size={20} /> Enviando pro Telegram (Motor Turbo)
                         </h3>
-                        <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTaskDocker.title || 'Desconhecido'}</div>
-                            <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.uploadTaskDocker.title || 'Desconhecido'}</div>
+                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <div style={{ 
                                     width: (typeof state.uploadTaskDocker.progress === 'number' && !isNaN(state.uploadTaskDocker.progress)) ? `${state.uploadTaskDocker.progress}%` : '100%', 
-                                    backgroundColor: (typeof state.uploadTaskDocker.progress === 'number' && !isNaN(state.uploadTaskDocker.progress)) ? '#ff00ff' : '#00ff88', 
+                                    backgroundColor: '#00ff88', 
                                     height: '100%', 
-                                    transition: 'width 0.3s' 
+                                    transition: 'width 0.3s',
+                                    boxShadow: '0 0 10px rgba(0,255,136,0.5)'
                                 }} />
                             </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
+                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
                                 {String(state.uploadTaskDocker.progress || 0).includes('TURBO') ? state.uploadTaskDocker.progress : (Number(state.uploadTaskDocker.progress) || 0).toFixed(2) + '%'}
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666' }}>Aguardando fila de Upload (Pequenos)...</span>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (Pequenos)...</span>
                     </div>
                 )}
 
                 {/* Upload via Python (Qualquer tamanho, geralmente os Gigantes) */}
                 {state.uploadTaskPython ? (
-                    <div style={{ backgroundColor: '#1e2030', padding: '1.5rem', borderRadius: '8px', border: '1px solid #333' }}>
-                        <h3 style={{ color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
+                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
                             <Send size={20} /> Enviando pro Telegram (Python)
                         </h3>
-                        <div style={{ marginTop: '1rem' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>#{state.uploadTaskPython.title || 'Desconhecido'}</div>
-                            <div style={{ width: '100%', backgroundColor: '#222', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.uploadTaskPython.title || 'Desconhecido'}</div>
+                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <div style={{ 
                                     width: (typeof state.uploadTaskPython.progress === 'number' && !isNaN(state.uploadTaskPython.progress)) ? `${state.uploadTaskPython.progress}%` : '100%', 
-                                    backgroundColor: '#ffaa00', 
+                                    backgroundColor: '#00ff88', 
                                     height: '100%', 
-                                    transition: 'width 0.3s' 
+                                    transition: 'width 0.3s',
+                                    boxShadow: '0 0 10px rgba(0,255,136,0.5)'
                                 }} />
                             </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.8rem', marginTop: '0.2rem', color: '#888' }}>
+                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
                                 {(Number(state.uploadTaskPython.progress) || 0).toFixed(2) + '%'}
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div style={{ backgroundColor: '#1a1a1a', padding: '1.5rem', borderRadius: '8px', border: '1px dashed #333', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666' }}>Aguardando fila de Upload (Grandes)...</span>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (Grandes)...</span>
                     </div>
                 )}
             </div>
@@ -832,18 +872,18 @@ export default function AdminSync() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'all' ? '#00ccff' : '#333', color: filter === 'all' ? '#000' : '#fff' }}>Todos</button>
-                    <button onClick={() => { setFilter('prioritized'); filterRef.current='prioritized'; fetchQueue('prioritized', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'prioritized' ? '#ffff00' : '#333', color: filter === 'prioritized' ? '#000' : '#fff' }}>⭐ Priorizados</button>
-                    <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'pending' ? '#ffff00' : '#333', color: filter === 'pending' ? '#000' : '#fff' }}>Pendentes</button>
-                    <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'completed' ? '#00ff88' : '#333', color: filter === 'completed' ? '#000' : '#fff' }}>Concluídos</button>
-                    <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'error' ? '#ff4444' : '#333', color: filter === 'error' ? '#fff' : '#fff' }}>Erros</button>
-                    <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'skipped' ? '#ffaa00' : '#333', color: filter === 'skipped' ? '#000' : '#fff' }}>Ignorados</button>
-                    <button onClick={() => { setFilter('new_today'); filterRef.current='new_today'; fetchQueue('new_today', searchQuery, sortSize); }} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: filter === 'new_today' ? '#00ccff' : '#333', color: filter === 'new_today' ? '#000' : '#fff' }}>🆕 Novos Hoje</button>
+                    <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'all' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'all' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'all' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ListFilter size={16} /> Todos</button>
+                    <button onClick={() => { setFilter('prioritized'); filterRef.current='prioritized'; fetchQueue('prioritized', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'prioritized' ? '#ffff00' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'prioritized' ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'prioritized' ? '#ffff00' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Star size={16} /> Priorizados</button>
+                    <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'pending' ? '#888' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'pending' ? 'rgba(136,136,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'pending' ? '#fff' : '#aaa', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Clock size={16} /> Pendentes</button>
+                    <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'completed' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'completed' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'completed' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} /> Concluídos</button>
+                    <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'error' ? '#ff4444' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'error' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'error' ? '#ff4444' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><XCircle size={16} /> Erros</button>
+                    <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'skipped' ? '#ffaa00' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'skipped' ? 'rgba(255,170,0,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'skipped' ? '#ffaa00' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><SkipForward size={16} /> Ignorados</button>
+                    <button onClick={() => { setFilter('new_today'); filterRef.current='new_today'; fetchQueue('new_today', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'new_today' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'new_today' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'new_today' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Sparkles size={16} /> Novos Hoje</button>
                     
-                    <button onClick={prioritizeFiltered} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ff00ff', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.3rem', marginLeft: '0.5rem', fontWeight: 'bold' }}>
+                    <button onClick={prioritizeFiltered} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(0, 255, 136, 0.5)', cursor: 'pointer', background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
                         <ChevronsUp size={16} /> Priorizar Busca
                     </button>
-                    <button onClick={clearPriorities} style={{ padding: '0.4rem 1rem', borderRadius: '4px', border: '1px solid #ff4444', cursor: 'pointer', background: '#333', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold' }}>
+                    <button onClick={clearPriorities} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 68, 68, 0.5)', cursor: 'pointer', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
                         <Eraser size={16} /> Limpar Prioridades
                     </button>
                 </div>
@@ -887,7 +927,7 @@ export default function AdminSync() {
                                 <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
                                     <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold' }}>⭐ [PRIORIDADE]</span>}
+                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}><Star size={14} style={{ marginRight: '0.2rem' }} /> [PRIORIDADE]</span>}
                                         {item.title}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
