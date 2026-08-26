@@ -69,9 +69,9 @@ export default function syncRoutes(db, io) {
             const fakeUrl = `local://manual-upload-${Date.now()}.${originalExt}`;
             const actualSize = totalSize || fs.statSync(sourceFilePath).size;
             
-            // 1. Insere no DB para pegar o ID com prioridade máxima (999) para furar a fila
+            // 1. Insere no DB para pegar o ID com prioridade máxima (9999) para furar a fila absolutamente
             const result = await db.run(
-                "INSERT INTO sync_queue (title, url, status, file_size, priority) VALUES (?, ?, 'pending_upload', ?, 999)",
+                "INSERT INTO sync_queue (title, url, status, file_size, priority) VALUES (?, ?, 'pending_upload', ?, 9999)",
                 [title, fakeUrl, actualSize]
             );
             const dbId = result.lastID;
@@ -372,6 +372,7 @@ export default function syncRoutes(db, io) {
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);
             const skipped = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'skipped'`);
             const error = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'error'`);
+            const prioritized_count = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE priority > 0 AND status IN ('pending', 'pending_upload', 'downloading', 'uploading')`);
             
             // Novos Dashboards
             const totalSizeRow = await db.get(`SELECT SUM(file_size) as total_size FROM sync_queue WHERE status = 'completed'`);
@@ -385,6 +386,7 @@ export default function syncRoutes(db, io) {
                 completed: completed.count,
                 skipped: skipped.count,
                 error_count: error.count,
+                prioritized_count: prioritized_count.count,
                 total_size_saved: totalSizeRow.total_size || 0,
                 completed_today: completedTodayRow.count || 0,
                 added_today: addedTodayRow.count || 0,
@@ -498,7 +500,7 @@ export default function syncRoutes(db, io) {
                 }
             }
 
-            const result = await db.run(`UPDATE sync_queue SET priority = 1, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
+            const result = await db.run(`UPDATE sync_queue SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro prioritize-batch:", err);
@@ -520,8 +522,8 @@ export default function syncRoutes(db, io) {
     // Rota para Priorizar ("Furar Fila") um item
     router.post('/queue/:id/prioritize', async (req, res) => {
         try {
-            // Aumenta a prioridade para o topo
-            await db.run("UPDATE sync_queue SET priority = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            // Aumenta a prioridade para o topo (se já não for maior)
+            await db.run("UPDATE sync_queue SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
             res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao priorizar item' });
@@ -549,7 +551,7 @@ export default function syncRoutes(db, io) {
             // Tenta dar match parcial na fila de pendentes e com priority = 0
             const result = await db.run(`
                 UPDATE sync_queue 
-                SET priority = 1, updated_at = CURRENT_TIMESTAMP 
+                SET priority = CASE WHEN priority < 1 THEN 1 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
                 WHERE status = 'pending' AND priority = 0 
                 AND title LIKE '%' || ? || '%'
             `, [title]);

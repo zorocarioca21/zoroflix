@@ -292,7 +292,7 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
     const [socket, setSocket] = useState(null);
-    const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, total_size_saved: 0, completed_today: 0 });
+    const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, prioritized_count: 0, total_size_saved: 0, completed_today: 0, added_today: 0 });
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
@@ -636,6 +636,7 @@ export default function AdminSync() {
                     <h3>Estatísticas da Fila</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                         <div><span style={{ color: '#888' }}>⏱ Pendentes:</span> {queue.pending}</div>
+                        <div><span style={{ color: '#ffff00' }}>⭐ Priorizados:</span> {queue.prioritized_count || 0}</div>
                         <div><span style={{ color: '#00ff88' }}>✔ Concluídos:</span> {queue.completed}</div>
                         <div><span style={{ color: '#ff4444' }}>❌ Erros:</span> {queue.error_count || 0}</div>
                         <div><span style={{ color: '#ffaa00' }}>⏭ Ignorados:</span> {queue.skipped || 0}</div>
