@@ -259,6 +259,41 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Bulk Prioritize
+    router.post('/queue/bulk-prioritize', async (req, res) => {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs inválidos.' });
+        }
+        
+        try {
+            const placeholders = ids.map(() => '?').join(',');
+            const result = await db.run(`UPDATE sync_queue SET priority = 50 WHERE id IN (${placeholders})`, ids);
+            res.json({ success: true, updated: result.changes });
+        } catch (err) {
+            console.error("Erro bulk-prioritize:", err);
+            res.status(500).json({ error: 'Erro ao priorizar em lote.' });
+        }
+    });
+
+    // Bulk Delete
+    router.post('/queue/bulk-delete', async (req, res) => {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs inválidos.' });
+        }
+        
+        try {
+            const placeholders = ids.map(() => '?').join(',');
+            // Optionally only delete if status is not uploading
+            const result = await db.run(`DELETE FROM sync_queue WHERE id IN (${placeholders}) AND status != 'uploading'`, ids);
+            res.json({ success: true, deleted: result.changes });
+        } catch (err) {
+            console.error("Erro bulk-delete:", err);
+            res.status(500).json({ error: 'Erro ao deletar em lote.' });
+        }
+    });
+
     // Nova Rota para puxar M3U remotamente
     router.post('/fetch-remote-m3u', async (req, res) => {
         const { m3uUrl } = req.body;

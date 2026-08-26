@@ -297,6 +297,7 @@ export default function AdminSync() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
     const [modalOpen, setModalOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
     
     const dialog = useDialog();
     
@@ -354,7 +355,14 @@ export default function AdminSync() {
         setSocket(newSocket);
         fetchQueue();
 
-        return () => newSocket.close();
+        const autoRefreshInterval = setInterval(() => {
+            fetchQueue(filterRef.current, searchRef.current, sortRef.current);
+        }, 10000);
+
+        return () => {
+            newSocket.close();
+            clearInterval(autoRefreshInterval);
+        };
     }, []);
 
     const startScan = async () => {
@@ -623,11 +631,86 @@ export default function AdminSync() {
     };
 
     return (
-        <div style={{ padding: '2rem', color: '#fff' }}>
+        <div style={{ padding: '2rem', color: '#fff', position: 'relative' }}>
+            <style>{`
+                @keyframes pulseGreen {
+                    0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+                    70% { box-shadow: 0 0 0 6px rgba(0, 255, 136, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+                }
+                .live-indicator {
+                    width: 10px;
+                    height: 10px;
+                    background-color: #00ff88;
+                    border-radius: 50%;
+                    animation: pulseGreen 2s infinite;
+                    display: inline-block;
+                }
+                .glass-table {
+                    width: 100%;
+                    min-width: 700px;
+                    border-collapse: separate;
+                    border-spacing: 0 8px;
+                }
+                .glass-table th {
+                    background: rgba(0, 0, 0, 0.4);
+                    color: #888;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    font-size: 0.85rem;
+                    padding: 1rem;
+                    text-align: left;
+                    border-top: 1px solid rgba(255,255,255,0.05);
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                }
+                .glass-table th:first-child { border-left: 1px solid rgba(255,255,255,0.05); border-radius: 8px 0 0 8px; }
+                .glass-table th:last-child { border-right: 1px solid rgba(255,255,255,0.05); border-radius: 0 8px 8px 0; }
+                
+                .glass-row {
+                    background: rgba(255, 255, 255, 0.03);
+                    transition: all 0.2s;
+                }
+                .glass-row:hover {
+                    background: rgba(0, 255, 136, 0.05);
+                    transform: scale(1.005);
+                }
+                .glass-row td {
+                    padding: 1rem;
+                    border-top: 1px solid rgba(255,255,255,0.03);
+                    border-bottom: 1px solid rgba(255,255,255,0.03);
+                }
+                .glass-row td:first-child { border-left: 1px solid rgba(255,255,255,0.03); border-radius: 8px 0 0 8px; }
+                .glass-row td:last-child { border-right: 1px solid rgba(255,255,255,0.03); border-radius: 0 8px 8px 0; }
+                
+                .priority-badge {
+                    background: linear-gradient(90deg, rgba(255, 255, 0, 0.2), rgba(255, 255, 0, 0.05));
+                    color: #ffff00;
+                    border: 1px solid rgba(255, 255, 0, 0.3);
+                    padding: 0.2rem 0.6rem;
+                    border-radius: 12px;
+                    font-size: 0.75rem;
+                    font-weight: bold;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.3rem;
+                    margin-right: 0.8rem;
+                    box-shadow: 0 0 10px rgba(255, 255, 0, 0.1);
+                }
+                
+                .custom-checkbox {
+                    width: 18px;
+                    height: 18px;
+                    accent-color: #00ff88;
+                    cursor: pointer;
+                }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <HardDriveDownload size={32} color="#00ff88" />
                     CineGeek Sync
+                    <span style={{ fontSize: '0.9rem', color: '#888', display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.4rem 0.8rem', borderRadius: '20px' }}>
+                        <div className="live-indicator"></div> Ao Vivo
+                    </span>
                 </h1>
             </div>
 
@@ -895,14 +978,25 @@ export default function AdminSync() {
             </div>
             
             <div style={{ overflowX: 'auto', borderRadius: '8px' }}>
-                <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', backgroundColor: '#1a1a1a', overflow: 'hidden' }}>
+                <table className="glass-table">
                     <thead>
-                        <tr style={{ backgroundColor: '#222' }}>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>ID</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Título</th>
-                            <th style={{ padding: '1rem', textAlign: 'left' }}>Status</th>
+                        <tr>
+                            <th style={{ width: '40px', textAlign: 'center' }}>
+                                <input 
+                                    type="checkbox" 
+                                    className="custom-checkbox"
+                                    checked={queue.items?.length > 0 && selectedIds.length === queue.items.length}
+                                    onChange={(e) => {
+                                        if (e.target.checked) setSelectedIds(queue.items.map(i => i.id));
+                                        else setSelectedIds([]);
+                                    }}
+                                />
+                            </th>
+                            <th style={{ width: '80px' }}>ID</th>
+                            <th>Título</th>
+                            <th style={{ width: '150px' }}>Status</th>
                             <th 
-                                style={{ padding: '1rem', textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}
+                                style={{ width: '120px', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => {
                                     const nextSort = sortSize === '' ? 'desc' : (sortSize === 'desc' ? 'asc' : '');
                                     setSortSize(nextSort);
@@ -912,22 +1006,31 @@ export default function AdminSync() {
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     Tamanho <ArrowDownUp size={14} color={sortSize !== '' ? '#00ff88' : '#888'} />
-                                    {sortSize === 'asc' && <span style={{ fontSize: '0.8rem', color: '#00ff88' }}>Maior-Menor</span>}
-                                    {sortSize === 'desc' && <span style={{ fontSize: '0.8rem', color: '#00ff88' }}>Menor-Maior</span>}
                                 </div>
                             </th>
-                            <th style={{ padding: '1rem', textAlign: 'center' }}>Ações</th>
+                            <th style={{ width: '220px', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {queue.error ? (
-                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#ff4444' }}>{queue.error}</td></tr>
+                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '1rem', color: '#ff4444' }}>{queue.error}</td></tr>
                         ) : queue.items && queue.items.length > 0 ? (
                             queue.items.map(item => (
-                                <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                    <td style={{ padding: '1rem', color: '#888' }}>#{item.id}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        {item.priority > 0 && <span style={{ color: '#ffff00', marginRight: '0.5rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}><Star size={14} style={{ marginRight: '0.2rem' }} /> [PRIORIDADE]</span>}
+                                <tr key={item.id} className="glass-row">
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            className="custom-checkbox"
+                                            checked={selectedIds.includes(item.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelectedIds([...selectedIds, item.id]);
+                                                else setSelectedIds(selectedIds.filter(id => id !== item.id));
+                                            }}
+                                        />
+                                    </td>
+                                    <td style={{ color: '#888', fontSize: '0.9rem' }}>#{item.id}</td>
+                                    <td style={{ fontWeight: '500' }}>
+                                        {item.priority > 0 && <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>}
                                         {item.title}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
@@ -1004,11 +1107,59 @@ export default function AdminSync() {
                                 </tr>
                             ))
                         ) : (
-                            <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1rem', color: '#888' }}>Nenhuma atividade recente na fila</td></tr>
+                            <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Nenhuma atividade recente na fila</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Bulk Actions Floating Toolbar */}
+            {selectedIds.length > 0 && (
+                <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: 'rgba(20, 20, 30, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0, 255, 136, 0.3)', padding: '1rem 2rem', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '2rem', boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 136, 0.1)', zIndex: 1000, animation: 'dialogSlideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                        <span style={{ background: '#00ff88', color: '#000', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>{selectedIds.length}</span>
+                        <span>Selecionados</span>
+                    </div>
+                    <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.1)' }}></div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                            onClick={async () => {
+                                const ok = await dialog.confirm(`Priorizar ${selectedIds.length} filmes selecionados?`, { variant: 'warning', title: 'Priorizar em Lote', confirmText: 'Priorizar' });
+                                if(!ok) return;
+                                await fetch('/api/sync/queue/bulk-prioritize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds }) });
+                                setSelectedIds([]);
+                                fetchQueue();
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 255, 0, 0.1)', color: '#ffff00', border: '1px solid rgba(255, 255, 0, 0.3)', padding: '0.6rem 1.2rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 0, 0.2)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 0, 0.1)'; }}
+                        >
+                            <Star size={16} /> Priorizar
+                        </button>
+                        <button 
+                            onClick={async () => {
+                                const ok = await dialog.confirm(`Excluir permanentemente ${selectedIds.length} filmes da fila?`, { variant: 'danger', title: 'Excluir em Lote', confirmText: 'Excluir' });
+                                if(!ok) return;
+                                await fetch('/api/sync/queue/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds }) });
+                                setSelectedIds([]);
+                                fetchQueue();
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '0.6rem 1.2rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.2)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 68, 68, 0.1)'; }}
+                        >
+                            <Trash2 size={16} /> Excluir
+                        </button>
+                        <button 
+                            onClick={() => setSelectedIds([])}
+                            style={{ background: 'transparent', color: '#888', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Cancelar Seleção"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {queue.total > 10 && (
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>

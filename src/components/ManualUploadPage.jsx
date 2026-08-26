@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv, Trash2, ListOrdered, Play } from 'lucide-react';
+import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv, Trash2, ListOrdered, Play, RefreshCw } from 'lucide-react';
 import './ManualUploadPage.css';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -199,6 +199,13 @@ export default function ManualUploadPage() {
 
     const hasPending = uploadQueue.some(i => i.status === 'idle' || i.status === 'error');
     const allCompleted = uploadQueue.length > 0 && uploadQueue.every(i => i.status === 'success');
+    const completedCount = uploadQueue.filter(i => i.status === 'success').length;
+    const globalProgress = uploadQueue.length > 0 ? Math.round((completedCount / uploadQueue.length) * 100) : 0;
+
+    const retryItem = (id) => {
+        updateItem(id, 'status', 'idle');
+        updateItem(id, 'error', null);
+    };
 
     return (
         <div className="manual-upload-container">
@@ -240,10 +247,24 @@ export default function ManualUploadPage() {
             {uploadQueue.length > 0 && (
                 <div className="queue-container">
                     <div className="queue-header-stats">
-                        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
-                            <ListOrdered size={24} color="#00ff88" /> Fila de Upload ({uploadQueue.length} arquivo{uploadQueue.length > 1 ? 's' : ''})
-                        </h2>
+                        <div>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
+                                <ListOrdered size={24} color="#00ff88" /> Fila de Upload ({uploadQueue.length} arquivo{uploadQueue.length > 1 ? 's' : ''})
+                            </h2>
+                            {uploadQueue.length > 0 && (
+                                <div style={{ marginTop: '0.5rem', color: '#888', fontSize: '0.9rem' }}>
+                                    Enviados {completedCount} de {uploadQueue.length} ({globalProgress}%)
+                                </div>
+                            )}
+                        </div>
                         {allCompleted && <span style={{ color: '#00ff88', fontWeight: 'bold' }}>Todos os uploads concluídos! 🎉</span>}
+                        {isProcessing && !allCompleted && (
+                            <div className="mini-progress-container" style={{ width: '200px' }}>
+                                <div className="mini-progress-bg">
+                                    <div className="mini-progress-fill" style={{ width: `${globalProgress}%` }} />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="queue-list">
@@ -344,7 +365,15 @@ export default function ManualUploadPage() {
                                     </div>
                                     
                                     {item.error && (
-                                        <div className="error-text">❌ Erro: {item.error}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                                            <div className="error-text">❌ Erro: {item.error}</div>
+                                            <button 
+                                                onClick={() => retryItem(item.id)}
+                                                style={{ background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '0.4rem 1rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                                            >
+                                                <RefreshCw size={14} /> Tentar Novamente
+                                            </button>
+                                        </div>
                                     )}
 
                                     {(item.status === 'uploading' || item.status === 'success') && (
