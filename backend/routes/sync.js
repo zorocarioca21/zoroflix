@@ -167,16 +167,21 @@ export default function syncRoutes(db, io) {
     const cleanM3UTitle = (title) => {
         if (!title) return '';
         let cleaned = title.trim();
-        if (cleaned.includes('tvg-logo=') || cleaned.includes('group-title=')) {
-            const idx = cleaned.indexOf('",');
-            if (idx !== -1) {
-                cleaned = cleaned.substring(idx + 2).trim();
-            } else {
-                const parts = cleaned.split(',');
-                cleaned = parts[parts.length - 1].trim();
-            }
+        // Remove todos os atributos key="value" para ignorar vírgulas dentro das aspas
+        cleaned = cleaned.replace(/([a-zA-Z0-9_-]+)="[^"]*"/g, '');
+        
+        // Pega tudo após a última vírgula restante (ou a primeira, já que removemos os atributos)
+        const match = cleaned.match(/,(.*)/);
+        if (match) {
+            cleaned = match[1].trim();
+        } else {
+            // Fallback caso não haja vírgula
+            const parts = cleaned.split(',');
+            cleaned = parts[parts.length - 1].trim();
         }
-        return cleaned;
+        
+        // Remove a tag caso tenha sobrado
+        return cleaned.replace('#EXTINF:-1', '').trim();
     };
 
     // Nova Rota para Corrigir Títulos Sujos no DB (Painel Admin)
@@ -219,10 +224,8 @@ export default function syncRoutes(db, io) {
             for await (const line of rl) {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('#EXTINF')) {
-                    const match = trimmed.match(/,(.+)/);
-                    if (match) {
-                        currentTitle = cleanM3UTitle(match[1]);
-                    }
+                    // Passamos a linha inteira para o cleanM3UTitle agora
+                    currentTitle = cleanM3UTitle(trimmed);
                 } else if (trimmed.startsWith('http') && currentTitle) {
                     movies.push({ title: currentTitle, url: trimmed });
                     currentTitle = null;
@@ -280,10 +283,8 @@ export default function syncRoutes(db, io) {
             rl.on('line', (line) => {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('#EXTINF')) {
-                    const match = trimmed.match(/,(.+)/);
-                    if (match) {
-                        currentTitle = cleanM3UTitle(match[1]);
-                    }
+                    // Passamos a linha inteira para o cleanM3UTitle agora
+                    currentTitle = cleanM3UTitle(trimmed);
                 } else if (trimmed.startsWith('http') && currentTitle) {
                     movies.push({ title: currentTitle, url: trimmed });
                     currentTitle = null;

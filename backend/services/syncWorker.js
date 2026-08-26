@@ -680,6 +680,25 @@ function startAutoCleanup() {
 // ROTINA DE ATUALIZAÇÃO AUTOMÁTICA DA M3U
 // ==========================================
 function startAutoM3uSync() {
+    // Cron job de Prioridade: Roda a cada 1 minuto (60000ms) para promover os itens de "hoje"
+    setInterval(async () => {
+        try {
+            // Promove itens adicionados hoje (que não são uploads manuais = 9999 e que têm priority < 500)
+            const result = await dbInstance.run(
+                `UPDATE sync_queue 
+                 SET priority = 500 
+                 WHERE DATE(created_at, '-3 hours') = DATE('now', '-3 hours') 
+                 AND priority < 500 
+                 AND priority != 9999`
+            );
+            if (result.changes > 0) {
+                console.log(`[Priority Cron] Promovidos ${result.changes} filmes recentes para prioridade 500.`);
+            }
+        } catch (err) {
+            console.error("[Priority Cron] Erro ao atualizar prioridades:", err);
+        }
+    }, 60000);
+
     // 3600000 = 1 hora
     setInterval(() => {
         if (isPaused) return;
@@ -698,7 +717,9 @@ function startAutoM3uSync() {
             rl.on('line', (line) => {
                 const trimmed = line.trim();
                 if (trimmed.startsWith('#EXTINF')) {
-                    const match = trimmed.match(/,(.+)/);
+                    // Remove key="value" attrs to avoid commas inside quotes
+                    const stripped = trimmed.replace(/([a-zA-Z0-9_-]+)="[^"]*"/g, '');
+                    const match = stripped.match(/,(.*)/);
                     if (match) currentTitle = match[1].trim();
                 } else if (trimmed.startsWith('http') && currentTitle) {
                     movies.push({ title: currentTitle, url: trimmed });

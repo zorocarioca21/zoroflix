@@ -52,7 +52,9 @@ function parseM3U(content) {
     const url = lines[i + 1]?.trim();
     if (!url) continue;
 
-    const name = info.split(',').pop().trim();
+    const strippedInfo = info.replace(/([a-zA-Z0-9_-]+)="[^"]*"/g, '');
+    const match = strippedInfo.match(/,(.*)/);
+    const name = match ? match[1].trim() : info.replace('#EXTINF:-1', '').trim();
     const logo = info.match(/tvg-logo="([^"]+)"/)?.[1] || '';
     const group = info.match(/group-title="([^"]+)"/)?.[1] || '';
 

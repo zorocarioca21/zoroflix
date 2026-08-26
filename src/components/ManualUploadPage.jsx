@@ -1,10 +1,52 @@
-import React, { useState } from 'react';
-import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv } from 'lucide-react';
 import './ManualUploadPage.css';
 
 export default function ManualUploadPage() {
-    const [manualUpload, setManualUpload] = useState({ title: '', file: null, progress: 0, status: 'idle', error: null });
+    const [manualUpload, setManualUpload] = useState({ 
+        type: 'filme', // 'filme' | 'serie'
+        
+        // Filme fields
+        movieTitle: '', 
+        movieYear: '', 
+        
+        // Serie fields
+        serieTitle: '',
+        season: '',
+        episode: '',
+
+        // Shared fields
+        quality: 'FHD',
+        language: 'Dublado',
+
+        // System state
+        title: '', 
+        file: null, 
+        progress: 0, 
+        status: 'idle', 
+        error: null 
+    });
+
     const [isDragging, setIsDragging] = useState(false);
+
+    // Auto-generate title based on inputs
+    useEffect(() => {
+        let generated = '';
+        if (manualUpload.type === 'filme') {
+            const yearStr = manualUpload.movieYear ? ` (${manualUpload.movieYear})` : '';
+            if (manualUpload.movieTitle) {
+                generated = `${manualUpload.movieTitle.trim()}${yearStr} ${manualUpload.quality} ${manualUpload.language}`;
+            }
+        } else {
+            if (manualUpload.serieTitle) {
+                const s = manualUpload.season ? manualUpload.season.toString().padStart(2, '0') : '01';
+                const e = manualUpload.episode ? manualUpload.episode.toString().padStart(2, '0') : '01';
+                generated = `${manualUpload.serieTitle.trim()} S${s} E${e} ${manualUpload.quality} ${manualUpload.language}`;
+            }
+        }
+        setManualUpload(prev => ({ ...prev, title: generated }));
+    }, [manualUpload.type, manualUpload.movieTitle, manualUpload.movieYear, manualUpload.serieTitle, manualUpload.season, manualUpload.episode, manualUpload.quality, manualUpload.language]);
+
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -43,7 +85,7 @@ export default function ManualUploadPage() {
 
     const handleManualUpload = async () => {
         if (!manualUpload.title || !manualUpload.file) {
-            setManualUpload(prev => ({ ...prev, error: "Preencha o título e selecione um arquivo de vídeo." }));
+            setManualUpload(prev => ({ ...prev, error: "Preencha os campos e selecione um arquivo de vídeo." }));
             return;
         }
 
@@ -84,7 +126,7 @@ export default function ManualUploadPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     fileName,
-                    title: manualUpload.title,
+                    title: manualUpload.title, // Envia o título gerado automaticamente
                     originalExt,
                     totalSize: file.size
                 })
@@ -95,7 +137,7 @@ export default function ManualUploadPage() {
                 throw new Error(errData.error || 'Erro ao finalizar upload');
             }
 
-            setManualUpload({ title: '', file: null, progress: 100, status: 'success', error: null });
+            setManualUpload(prev => ({ ...prev, movieTitle: '', serieTitle: '', file: null, progress: 100, status: 'success', error: null }));
             const input = document.getElementById('manual-file-input-new');
             if (input) input.value = '';
             
@@ -116,7 +158,7 @@ export default function ManualUploadPage() {
                     <HardDriveDownload size={32} className="header-icon" />
                     Upload Manual de Mídia
                 </h1>
-                <p>Envie arquivos de filmes ou episódios diretamente para a esteira do bot do Telegram.</p>
+                <p>Envie arquivos com nomenclatura padronizada direto para a esteira do bot.</p>
             </div>
 
             <div className="manual-upload-card">
@@ -134,19 +176,125 @@ export default function ManualUploadPage() {
                     </div>
                 )}
 
-                <div className="form-group">
-                    <label>Título do Filme ou Episódio</label>
-                    <input 
-                        type="text" 
-                        placeholder="Ex: Matrix (1999) ou A Casa do Dragão S02E01"
-                        value={manualUpload.title}
-                        onChange={(e) => setManualUpload({...manualUpload, title: e.target.value})}
+                {/* TIPO DE MÍDIA TOGGLE */}
+                <div className="type-toggle-container">
+                    <button 
+                        className={`type-toggle-btn ${manualUpload.type === 'filme' ? 'active' : ''}`}
+                        onClick={() => setManualUpload(prev => ({...prev, type: 'filme'}))}
                         disabled={manualUpload.status === 'uploading'}
-                        className="title-input"
-                    />
+                    >
+                        <Clapperboard size={20} /> Filme
+                    </button>
+                    <button 
+                        className={`type-toggle-btn ${manualUpload.type === 'serie' ? 'active' : ''}`}
+                        onClick={() => setManualUpload(prev => ({...prev, type: 'serie'}))}
+                        disabled={manualUpload.status === 'uploading'}
+                    >
+                        <Tv size={20} /> Série / Anime
+                    </button>
                 </div>
 
-                <div className="form-group">
+                <div className="form-grid">
+                    {manualUpload.type === 'filme' ? (
+                        <>
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label>Título do Filme</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Ex: Homem-Aranha: De volta ao lar"
+                                    value={manualUpload.movieTitle}
+                                    onChange={(e) => setManualUpload({...manualUpload, movieTitle: e.target.value})}
+                                    disabled={manualUpload.status === 'uploading'}
+                                    className="title-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Ano</label>
+                                <input 
+                                    type="number" 
+                                    placeholder="Ex: 2026"
+                                    value={manualUpload.movieYear}
+                                    onChange={(e) => setManualUpload({...manualUpload, movieYear: e.target.value})}
+                                    disabled={manualUpload.status === 'uploading'}
+                                    className="title-input"
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                                <label>Título da Série / Anime</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Ex: Chicago Fire"
+                                    value={manualUpload.serieTitle}
+                                    onChange={(e) => setManualUpload({...manualUpload, serieTitle: e.target.value})}
+                                    disabled={manualUpload.status === 'uploading'}
+                                    className="title-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Temporada</label>
+                                <input 
+                                    type="number" 
+                                    placeholder="S (Ex: 1)"
+                                    value={manualUpload.season}
+                                    onChange={(e) => setManualUpload({...manualUpload, season: e.target.value})}
+                                    disabled={manualUpload.status === 'uploading'}
+                                    className="title-input"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Episódio</label>
+                                <input 
+                                    type="number" 
+                                    placeholder="E (Ex: 5)"
+                                    value={manualUpload.episode}
+                                    onChange={(e) => setManualUpload({...manualUpload, episode: e.target.value})}
+                                    disabled={manualUpload.status === 'uploading'}
+                                    className="title-input"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="form-group">
+                        <label>Qualidade</label>
+                        <select 
+                            className="title-input" 
+                            value={manualUpload.quality}
+                            onChange={(e) => setManualUpload({...manualUpload, quality: e.target.value})}
+                            disabled={manualUpload.status === 'uploading'}
+                        >
+                            <option value="SD">SD</option>
+                            <option value="HD">HD</option>
+                            <option value="FHD">FHD</option>
+                            <option value="4K">4K</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Idioma</label>
+                        <select 
+                            className="title-input" 
+                            value={manualUpload.language}
+                            onChange={(e) => setManualUpload({...manualUpload, language: e.target.value})}
+                            disabled={manualUpload.status === 'uploading'}
+                        >
+                            <option value="Dublado">Dublado</option>
+                            <option value="Legendado">Legendado</option>
+                            <option value="Nacional">Nacional</option>
+                            <option value="Dual Áudio">Dual Áudio</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="generated-title-preview">
+                    <span>Título Gerado:</span>
+                    <strong>{manualUpload.title || 'Preencha os campos para gerar o título...'}</strong>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '2rem' }}>
                     <label>Arquivo de Vídeo</label>
                     <div 
                         className={`drag-drop-zone ${isDragging ? 'dragging' : ''} ${manualUpload.file ? 'has-file' : ''}`}
@@ -195,7 +343,7 @@ export default function ManualUploadPage() {
                         disabled={manualUpload.status === 'uploading' || !manualUpload.file || !manualUpload.title}
                         className={`submit-btn ${manualUpload.status === 'uploading' ? 'uploading' : ''}`}
                     >
-                        {manualUpload.status === 'uploading' ? 'Enviando...' : 'Iniciar Upload'}
+                        {manualUpload.status === 'uploading' ? 'Enviando...' : 'Iniciar Upload Seguro (9999)'}
                     </button>
                 </div>
 
