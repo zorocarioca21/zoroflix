@@ -406,6 +406,60 @@ const resp = await fetch('\${baseUrl}/api/profile/upload-avatar', {
                     ))}
                 </div>
 
+                {/* Integração App Nativo */}
+                <div className="api-docs-section">
+                    <h2><BookOpen size={22} /> Integração para App (Player Nativo)</h2>
+                    <p>Ao invés de carregar um Iframe pesado no aplicativo móvel, o App pode solicitar o link puro do vídeo (.mp4/.mkv) e usar um Player Nativo (ExoPlayer/AVPlayer) para máxima performance, economia de bateria e suporte a PiP (Picture-in-Picture).</p>
+                    
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/api/stream/:messageId</code>
+                        </div>
+                        <h3>1. Obter Link Direto do Vídeo</h3>
+                        <p>O aplicativo deve obter o `messageId` (ID do Telegram do filme/episódio) e chamar esta rota. Ela retornará diretamente o stream de vídeo binário que pode ser jogado no player nativo.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo de Uso no App (Kotlin/Swift)</div>
+                            <pre><code>{`// Basta alimentar o player de vídeo nativo com esta URL:
+String playerUrl = "${baseUrl}/api/stream/84512";
+exoPlayer.setMediaItem(MediaItem.fromUri(playerUrl));
+exoPlayer.prepare();`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/mobile/execute</code>
+                        </div>
+                        <h3>2. Sincronizar Progresso (Continuar Assistindo)</h3>
+                        <p>Para o App manter sincronia com o site, ele deve salvar o tempo assistido (em segundos) na tabela <code>watch_history</code>. Utilize o endpoint de Acesso SQL Direto para isso.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON) para Salvar Tempo (Ex: 145 segundos)</div>
+                            <pre><code>{`{
+  "sql": "INSERT OR REPLACE INTO watch_history (user_id, content_id, media_type, title, season, episode, resume_time, watched_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+  "params": [1, "12345", "filme", "Homem-Aranha", null, null, 145]
+}`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/mobile/query</code>
+                        </div>
+                        <h3>3. Puxar Progresso ao Abrir Filme</h3>
+                        <p>Antes de reproduzir, o App deve consultar a tabela <code>watch_history</code> para saber de onde continuar (<code>resume_time</code>).</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Body (JSON) para Resgatar Tempo</div>
+                            <pre><code>{`{
+  "sql": "SELECT resume_time FROM watch_history WHERE user_id = ? AND content_id = ?",
+  "params": [1, "12345"]
+}`}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Errors */}
                 <div className="api-docs-section">
                     <h2><Shield size={22} /> Códigos de Erro</h2>
@@ -434,7 +488,7 @@ const resp = await fetch('\${baseUrl}/api/profile/upload-avatar', {
                     <h2><Shield size={22} /> Tabelas Protegidas</h2>
                     <p style={{color: '#aaa'}}>As seguintes tabelas <strong>não podem ser deletadas</strong> pela API (via /drop-table), mas podem ser lidas e escritas normalmente:</p>
                     <div className="protected-tables-grid">
-                        {['users', 'comments', 'reactions', 'reports', 'favorites', 'configs', 'page_views', 'live_sessions', 'api_keys'].map(t => (
+                        {['users', 'comments', 'reactions', 'reports', 'favorites', 'configs', 'page_views', 'live_sessions', 'api_keys', 'watch_history', 'watched_episodes'].map(t => (
                             <span key={t} className="protected-table-tag">{t}</span>
                         ))}
                     </div>
