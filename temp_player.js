@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles } from 'lucide-react';
@@ -37,7 +37,7 @@ export default function PlayerPage() {
     const [debugMatches, setDebugMatches] = useState(null);
     const prevLanguageType = useRef(null); 
 
-    // Handler customizado para mudar messageId e guardar a preferência
+    // Handler customizado para mudar messageId e guardar a prefer├¬ncia
     const handleSetMessageId = (id, type) => {
         setTelegramMessageId(id);
         prevLanguageType.current = type;
@@ -49,7 +49,7 @@ export default function PlayerPage() {
         return !!(user && (user.role === 'admin' || user.role === 'vip'));
     });
 
-    // Resolvendo as informações do Canal (Nome e Logo_url)
+    // Resolvendo as informa├º├Áes do Canal (Nome e Logo_url)
     useEffect(() => {
         if (!canalId) return;
 
@@ -63,7 +63,7 @@ export default function PlayerPage() {
         }
 
         // Busca na lista oficial de canais do SuperFlix
-        const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+        const url = 'https://superflixapi.fit/lista?category=canais&format=json';
         fetchWithProxy(url)
             .then(res => {
                 if (res && res.data) {
@@ -94,14 +94,14 @@ export default function PlayerPage() {
         if (canalId) return;
         if (!rawId || loading) return;
 
-        // Se o ID foi passado no state (novo padrão com slug)
+        // Se o ID foi passado no state (novo padr├úo com slug)
         if (location.state?.id) {
             setId(location.state.id);
             return;
         }
 
-        // Caso seja acesso direto pelo link (ex: usuário enviou link no whatsapp)
-        // Busca o ID no TMDB pelo título no slug
+        // Caso seja acesso direto pelo link (ex: usu├írio enviou link no whatsapp)
+        // Busca o ID no TMDB pelo t├¡tulo no slug
         const isMovie = location.pathname.includes('/filme/');
         const type = isMovie ? 'movie' : 'tv';
         const query = rawId.replace(/-/g, ' ');
@@ -148,7 +148,7 @@ export default function PlayerPage() {
         if (loading || !ready) return;
         if (!configs.ads_enabled || !configs.ads_popunder) return;
         if (user?.role && user.role !== 'free') return;
-        if (!telegramMessageId) return; // Só carrega se estiver no player nativo
+        if (!telegramMessageId) return; // S├│ carrega se estiver no player nativo
 
         const script = document.createElement('script');
         script.src = "https://pl30899842.effectivecpmnetwork.com/d9/5e/5e/d95e5e5709de2783f6993047886330c8.js";
@@ -196,7 +196,7 @@ export default function PlayerPage() {
 
     const lastSearched = useRef('');
 
-    // Checa se existe no Telegram (Para Player Nativo VIP/Admin ou se Forçado p/ Todos)
+    // Checa se existe no Telegram (Para Player Nativo VIP/Admin ou se For├ºado p/ Todos)
     useEffect(() => {
         if (canalId) return;
         if (!id) return; // Evita buscar com id null (causando double-fetch)
@@ -206,7 +206,7 @@ export default function PlayerPage() {
 
         let seriesName = '';
         if (state.title) {
-            // Apenas corta no traço se for série (para remover o nome do episódio). Filmes podem ter traço no nome oficial.
+            // Apenas corta no tra├ºo se for s├®rie (para remover o nome do epis├│dio). Filmes podem ter tra├ºo no nome oficial.
             seriesName = season ? state.title.split(' - ')[0].trim() : state.title.trim();
         } else if (seriesDetail && (seriesDetail.title || seriesDetail.name)) {
             seriesName = (seriesDetail.title || seriesDetail.name).trim();
@@ -251,20 +251,20 @@ export default function PlayerPage() {
             setCurrentQuality(selectedQuality);
             const currentOpts = matches[selectedQuality];
             
-            // Se veio do 'Próximo Episódio' e tem o idioma preferido disponível, pula a tela de escolha
+            // Se veio do 'Pr├│ximo Epis├│dio' e tem o idioma preferido dispon├¡vel, pula a tela de escolha
             if (autoLang && currentOpts[autoLang]) {
                 handleSetMessageId(currentOpts[autoLang], autoLang);
                 setShowLanguageSelector(false);
             } 
-            // Se veio do 'Próximo Episódio' mas o idioma preferido não existe, toca o que tiver
+            // Se veio do 'Pr├│ximo Epis├│dio' mas o idioma preferido n├úo existe, toca o que tiver
             else if (autoLang && (currentOpts.dub || currentOpts.leg)) {
                 const fallback = currentOpts.dub ? 'dub' : 'leg';
                 handleSetMessageId(currentOpts[fallback], fallback);
                 setShowLanguageSelector(false);
             } 
-            // Caso padrão: Primeira vez abrindo o filme/série (Sempre mostra a tela se não for Next Episode)
+            // Caso padr├úo: Primeira vez abrindo o filme/s├®rie (Sempre mostra a tela se n├úo for Next Episode)
             else {
-                // Se já tinha um messageId tocando (troca via menu interno do player)
+                // Se j├í tinha um messageId tocando (troca via menu interno do player)
                 if (telegramMessageId && prefLang && currentOpts[prefLang]) {
                     handleSetMessageId(currentOpts[prefLang], prefLang);
                     setShowLanguageSelector(false);
@@ -332,7 +332,7 @@ export default function PlayerPage() {
                         const patterns = [
                             `S${s}E${e}`, `S${s} E${e}`,
                             `S${season}E${episode}`, `S${season} E${episode}`,
-                            `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
+                            `Epis├│dio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
                         ];
 
                         const validItems = data2.items.filter(i => {
@@ -444,7 +444,7 @@ export default function PlayerPage() {
             }
 
             if (!targetTitle || targetTitle === 'Carregando...') {
-                targetTitle = canalId ? `Canal ${canalId}` : (season ? `Série #${id}` : `Filme #${id}`);
+                targetTitle = canalId ? `Canal ${canalId}` : (season ? `S├®rie #${id}` : `Filme #${id}`);
             }
 
             try {
@@ -561,15 +561,15 @@ export default function PlayerPage() {
         if (state.isVip) {
             playerUrl = state.embed_url;
         } else {
-            playerUrl = (state.embed_url || `https://superflixapi.sbs/canal/${canalId}`) + '#noEpList';
+            playerUrl = (state.embed_url || `https://superflixapi.fit/canal/${canalId}`) + '#noEpList';
         }
     } else {
         const isMovie = location.pathname.includes('/filme/');
         const apiType = isMovie ? 'filme' : 'serie';
         if (season && episode) {
-            playerUrl = `https://superflixapi.sbs/${apiType}/${id}/${season}/${episode}#noEpList`;
+            playerUrl = `https://superflixapi.fit/${apiType}/${id}/${season}/${episode}#noEpList`;
         } else {
-            playerUrl = `https://superflixapi.sbs/${apiType}/${id}#noEpList`;
+            playerUrl = `https://superflixapi.fit/${apiType}/${id}#noEpList`;
         }
     }
 
@@ -595,7 +595,7 @@ export default function PlayerPage() {
         navigate(`/serie/${rawId}/${nextSeasonNum}/1/player`, {
             state: {
                 id,
-                title: `${state.title?.split(' - ')[0]} - Temporada ${nextSeasonNum}, Episódio 1`,
+                title: `${state.title?.split(' - ')[0]} - Temporada ${nextSeasonNum}, Epis├│dio 1`,
                 poster_path: state.poster_path,
                 autoPlayLanguage: autoLang
             }
@@ -606,7 +606,7 @@ export default function PlayerPage() {
         const prevEp = parseInt(episode) - 1;
         if (prevEp >= 1) {
             const exists = episodes.find(e => e.episode_number === prevEp);
-            navigate(`/serie/${rawId}/${season}/${prevEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists?.name || `Episódio ${prevEp}`}`, poster_path: state.poster_path } });
+            navigate(`/serie/${rawId}/${season}/${prevEp}/player`, { state: { id, title: `${state.title?.split(' - ')[0]} - ${exists?.name || `Epis├│dio ${prevEp}`}`, poster_path: state.poster_path } });
         }
     };
 
@@ -733,7 +733,7 @@ export default function PlayerPage() {
                         <h1 className="player-title">{title}</h1>
                         {!canalId && season && episode && (
                             <h2 className="player-subtitle" style={{ color: '#d1d1d6', fontSize: '1.2rem', marginTop: '0.5rem', fontWeight: '500' }}>
-                                Temporada {season} • Episódio {episode}
+                                Temporada {season} ÔÇó Epis├│dio {episode}
                             </h2>
                         )}
                     </div>
@@ -742,8 +742,8 @@ export default function PlayerPage() {
                             {season && (
                                 <>
                                     <button className="nav-btn-modern" onClick={handlePrev} disabled={parseInt(episode) <= 1}><ChevronLeft size={20} /> Anterior</button>
-                                    <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20} /> Episódios</button>
-                                    <button className="nav-btn-modern" onClick={handleNext}>Próximo <ChevronRight size={20} /></button>
+                                    <button className="nav-btn-modern" onClick={() => setShowList(!showList)}><List size={20} /> Epis├│dios</button>
+                                    <button className="nav-btn-modern" onClick={handleNext}>Pr├│ximo <ChevronRight size={20} /></button>
                                     <button
                                         className={`nav-btn-modern toggle-watched-status-btn ${isWatched ? 'watched-active' : ''}`}
                                         onClick={handleToggleWatched}
@@ -766,7 +766,7 @@ export default function PlayerPage() {
                                         if (!targetMsgId) {
                                             const opts = languageOptions && languageOptions[currentQuality];
                                             if (!opts) {
-                                                window.alert('Nenhuma opção de vídeo encontrada.');
+                                                window.alert('Nenhuma op├º├úo de v├¡deo encontrada.');
                                                 return;
                                             }
                                             
@@ -787,7 +787,7 @@ export default function PlayerPage() {
                                         
                                         const payload = JSON.stringify({ id: targetMsgId, title: finalTitle });
                                         const textoInvertido = payload.split('').reverse().join('');
-                                        const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                        const textoSubstituido = textoInvertido.replace(/a/g, '┬º').replace(/b/g, '┬Â').replace(/c/g, '┬®');
                                         let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                         token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -857,8 +857,8 @@ export default function PlayerPage() {
                             lineHeight: '1.6',
                             marginBottom: '2rem'
                         }}>
-                            Você assistiu ao último episódio da <strong style={{ color: '#fff' }}>Temporada {season}</strong>. <br />
-                            Deseja começar a assistir ao <strong style={{ color: '#fff' }}>Episódio 1 da Temporada {parseInt(season) + 1}</strong>?
+                            Voc├¬ assistiu ao ├║ltimo epis├│dio da <strong style={{ color: '#fff' }}>Temporada {season}</strong>. <br />
+                            Deseja come├ºar a assistir ao <strong style={{ color: '#fff' }}>Epis├│dio 1 da Temporada {parseInt(season) + 1}</strong>?
                         </p>
 
                         <div style={{
@@ -908,13 +908,13 @@ export default function PlayerPage() {
                                 onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
                                 onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                             >
-                                Não
+                                N├úo
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-            {/* Modal de Seleção de Download */}
+            {/* Modal de Sele├º├úo de Download */}
             {downloadSelector && (
                 <div style={{
                     position: 'fixed',
@@ -935,7 +935,7 @@ export default function PlayerPage() {
                         maxWidth: '400px',
                         textAlign: 'center'
                     }}>
-                        <h3 style={{ color: '#fff', marginBottom: '1.5rem' }}>Qual versão deseja baixar?</h3>
+                        <h3 style={{ color: '#fff', marginBottom: '1.5rem' }}>Qual vers├úo deseja baixar?</h3>
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <button onClick={() => {
                                 setDownloadSelector(false);
@@ -947,7 +947,7 @@ export default function PlayerPage() {
                                 
                                 const payload = JSON.stringify({ id: languageOptions[currentQuality].dub, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
-                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                const textoSubstituido = textoInvertido.replace(/a/g, '┬º').replace(/b/g, '┬Â').replace(/c/g, '┬®');
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -964,7 +964,7 @@ export default function PlayerPage() {
                                 
                                 const payload = JSON.stringify({ id: languageOptions[currentQuality].leg, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
-                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                                const textoSubstituido = textoInvertido.replace(/a/g, '┬º').replace(/b/g, '┬Â').replace(/c/g, '┬®');
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
@@ -976,7 +976,7 @@ export default function PlayerPage() {
                 </div>
             )}
             
-            {/* Modal de Confirmação de Download */}
+            {/* Modal de Confirma├º├úo de Download */}
             {confirmDownloadUrl && (
                 <div style={{
                     position: 'fixed',
@@ -1029,7 +1029,7 @@ export default function PlayerPage() {
                     fontSize: '0.85rem'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <h4 style={{ margin: 0, color: '#00ff88' }}>🔍 Debug: Top 10 Similares</h4>
+                        <h4 style={{ margin: 0, color: '#00ff88' }}>­ƒöì Debug: Top 10 Similares</h4>
                         <button onClick={() => setDebugMatches(null)} style={{ background: 'transparent', color: '#ff4444', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
                     </div>
                     <div style={{ marginBottom: '10px', color: '#aaa' }}>
