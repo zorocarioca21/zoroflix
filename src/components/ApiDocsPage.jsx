@@ -414,13 +414,36 @@ const resp = await fetch('\${baseUrl}/api/profile/upload-avatar', {
                     <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
                         <div className="api-endpoint-header">
                             <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/api/embed/search?q=:titulo</code>
+                        </div>
+                        <h3>1. Encontrar o messageId (Mapeamento)</h3>
+                        <p>O <code>messageId</code> não é salvo nas tabelas de TMDB, ele fica na tabela de sincronização com o Telegram (<code>sync_queue</code>). Para o App achar o ID de um filme ou episódio, basta buscar pelo nome exato gerado (ex: "Homem-Aranha (2021) FHD Dublado" ou "The Boys S01 E01 HD").</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo de Requisição Pública</div>
+                            <pre><code>{`// GET /api/embed/search?q=Homem-Aranha
+{
+  "items": [
+    {
+      "id": 12,
+      "title": "Homem-Aranha (2021) FHD Dublado",
+      "telegram_message_id": 84512,
+      "status": "completed"
+    }
+  ]
+}`}</code></pre>
+                        </div>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
                             <code className="api-path">/api/stream/:messageId</code>
                         </div>
-                        <h3>1. Obter Link Direto do Vídeo</h3>
-                        <p>O aplicativo deve obter o `messageId` (ID do Telegram do filme/episódio) e chamar esta rota. Ela retornará diretamente o stream de vídeo binário que pode ser jogado no player nativo.</p>
+                        <h3>2. Obter Link Direto do Vídeo</h3>
+                        <p>Com o <code>telegram_message_id</code> em mãos, chame esta rota. Ela retornará o stream binário direto.</p>
                         <div className="api-code-block small">
                             <div className="code-block-header">Exemplo de Uso no App (Kotlin/Swift)</div>
-                            <pre><code>{`// Basta alimentar o player de vídeo nativo com esta URL:
+                            <pre><code>{`// Alimente o player nativo:
 String playerUrl = "${baseUrl}/api/stream/84512";
 exoPlayer.setMediaItem(MediaItem.fromUri(playerUrl));
 exoPlayer.prepare();`}</code></pre>
@@ -432,7 +455,7 @@ exoPlayer.prepare();`}</code></pre>
                             <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
                             <code className="api-path">/api/mobile/execute</code>
                         </div>
-                        <h3>2. Sincronizar Progresso (Continuar Assistindo)</h3>
+                        <h3>3. Sincronizar Progresso (Continuar Assistindo)</h3>
                         <p>Para o App manter sincronia com o site, ele deve salvar o tempo assistido (em segundos) na tabela <code>watch_history</code>. Utilize o endpoint de Acesso SQL Direto para isso.</p>
                         <div className="api-code-block small">
                             <div className="code-block-header">Body (JSON) para Salvar Tempo (Ex: 145 segundos)</div>
@@ -448,7 +471,7 @@ exoPlayer.prepare();`}</code></pre>
                             <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
                             <code className="api-path">/api/mobile/query</code>
                         </div>
-                        <h3>3. Puxar Progresso ao Abrir Filme</h3>
+                        <h3>4. Puxar Progresso ao Abrir Filme</h3>
                         <p>Antes de reproduzir, o App deve consultar a tabela <code>watch_history</code> para saber de onde continuar (<code>resume_time</code>).</p>
                         <div className="api-code-block small">
                             <div className="code-block-header">Body (JSON) para Resgatar Tempo</div>
