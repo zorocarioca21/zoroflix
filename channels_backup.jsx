@@ -88,6 +88,16 @@ export default function ChannelsPage() {
     }
     isFirstMount.current = false;
 
+    setLoading(true);
+    const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+    
+    fetchWithProxy(url)
+      .then(data => {
+        if (data && data.data) {
+          setChannels(data.data);
+          sessionStorage.setItem(`${storageKey}-items`, JSON.stringify(data.data));
+        }
+        setLoading(false);
       })
       .catch((err) => {
         console.error("Erro ao carregar canais:", err);
