@@ -65,10 +65,19 @@ export default function streamRoutes(db) {
 
             if (range) {
                 const parts = range.replace(/bytes=/, "").split("-");
-                start = parseInt(parts[0], 10);
-                end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+                const partialStart = parts[0];
+                const partialEnd = parts[1];
                 
-                if (start >= fileSize || end >= fileSize) {
+                if (partialStart === "") {
+                    // bytes=-500 (últimos 500 bytes)
+                    start = fileSize - parseInt(partialEnd, 10);
+                    end = fileSize - 1;
+                } else {
+                    start = parseInt(partialStart, 10);
+                    end = partialEnd ? parseInt(partialEnd, 10) : fileSize - 1;
+                }
+                
+                if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
                     res.status(416).set('Content-Range', `bytes */${fileSize}`).send();
                     return;
                 }
