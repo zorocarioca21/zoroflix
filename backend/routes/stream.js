@@ -172,9 +172,11 @@ export default function streamRoutes(db) {
         }
     }
 
-    // GET /api/stream/telegram/:message_id
+    // GET /api/stream/telegram/:message_id (com ou sem extensão, ex: 84512.mp4)
     router.get('/telegram/:message_id', async (req, res) => {
-        const messageId = parseInt(req.params.message_id);
+        // Remove a extensão do message_id se existir (ex: 84512.mp4 -> 84512)
+        const rawId = req.params.message_id.split('.')[0];
+        const messageId = parseInt(rawId, 10);
         await handleStreamRequest(req, res, messageId);
     });
 
