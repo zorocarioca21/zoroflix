@@ -1,6 +1,6 @@
 import React from 'react';
+import { ArrowLeft, Key, Code, Database, Shield, BookOpen, Terminal, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Shield, Database, Code, Terminal, ArrowLeft, Smartphone } from 'lucide-react';
 
 export default function ApiDocsPage() {
     const baseUrl = window.location.origin;
@@ -223,6 +223,52 @@ console.log(data);`}</code></pre>
                             Para remover os anúncios do player (Pop-unders) para seus clientes VIP, basta adicionar o parâmetro <code>apikey=SUA_CHAVE</code> na URL do iframe. <br/>
                             Exemplo: <code>{baseUrl}/embed/filme/550?apikey=SUA_CHAVE</code>
                         </p>
+                    </div>
+                </div>
+
+                {/* Integração App Mobile (Nativo) */}
+                <div className="api-docs-section">
+                    <h2><Smartphone size={22} /> Integração App Mobile (Player Nativo)</h2>
+                    <p style={{color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6'}}>
+                        Instruções para desenvolvedores criarem aplicativos nativos (Android/iOS) consumindo nossos vídeos e sincronizando o histórico de onde o usuário parou (Continue Assistindo).
+                    </p>
+
+                    <div className="api-endpoint-card">
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/api/stream/{"{telegram_message_id}"}</code>
+                        </div>
+                        <h3>Rodar o Vídeo no Player Nativo (ExoPlayer, AVPlayer, etc)</h3>
+                        <p>
+                            Muitos desenvolvedores acham que precisam se conectar diretamente ao Telegram. <strong>Não é necessário!</strong>
+                            <br/><br/>
+                            O link <code style={{color: '#2196f3'}}>{baseUrl}/api/stream/84512</code> <strong>JÁ É</strong> um stream de vídeo HTTP nativo (com suporte a Range Requests). Basta pegar o <code>telegram_message_id</code> fornecido pela busca (ex: 84512) e inserir esse link diretamente na propriedade "source" do seu Player Nativo.
+                            <br/><br/>
+                            <em>Dica:</em> Se você realmente quiser ignorar nosso servidor e fazer o app baixar direto dos servidores do Telegram, você precisará embutir um cliente MTProto (como o TDLib) no seu App e usar o ID (ex: 84512) para requisitar o arquivo pelo protocolo nativo deles.
+                        </p>
+                    </div>
+
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#2196f3' }}>POST</span>
+                            <code className="api-path">/api/recents</code>
+                        </div>
+                        <h3>Salvar Progresso (Continue Assistindo)</h3>
+                        <p>Para o App ficar sincronizado com o Site, sempre que o usuário pausar o vídeo ou a cada X segundos, envie o tempo atual (em segundos) para salvar no banco de dados.</p>
+                        <div className="api-code-block small">
+                            <div className="code-block-header">Exemplo Request (JSON)</div>
+                            <pre><code>{`{
+  "tmdb_id": "550",
+  "type": "filme",
+  "title": "Clube da Luta",
+  "poster_path": "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+  "progress_time": 3500, // Segundos assistidos
+  "duration": 7200,      // Duração total
+  // Se for série, adicione:
+  "season": 1,
+  "episode": 3
+}`}</code></pre>
+                        </div>
                     </div>
                 </div>
 
