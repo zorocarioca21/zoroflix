@@ -22,6 +22,7 @@ import StoragePage from './components/StoragePage'
 import EmbedPlayerPage from './components/EmbedPlayerPage'
 import ApiLandingPage from './components/ApiLandingPage'
 import EmbedDocsPage from './components/EmbedDocsPage'
+import AppUpdatePage from './components/AppUpdatePage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -418,6 +419,7 @@ function AppContent() {
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
         <Route path="/storage" element={<StoragePage />} />
+        <Route path="/app-update" element={<AppUpdatePage />} />
         
         {/* Rotas Embed API */}
         <Route path="/docs" element={<EmbedDocsPage />} />

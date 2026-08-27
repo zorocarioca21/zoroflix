@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
 import ManualUploadPage from './ManualUploadPage';
+import AppUpdatePage from './AppUpdatePage';
 
 export default function AdminPanel() {
     const { user } = useAuth();
@@ -390,6 +391,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'manual-upload' ? 'active' : ''} onClick={() => setActiveTab('manual-upload')}>
                         <Film size={18} /> Upload Manual
+                    </button>
+                    <button className={activeTab === 'app-update' ? 'active' : ''} onClick={() => setActiveTab('app-update')}>
+                        <Smartphone size={18} /> Atualizar App
                     </button>
                 </div>
             </div>
@@ -916,6 +920,13 @@ export default function AdminPanel() {
                 {activeTab === 'manual-upload' && (
                     <div className="admin-manual-upload-wrapper" style={{ margin: '0' }}>
                         <ManualUploadPage />
+                    </div>
+                )}
+
+                {/* ABA ATUALIZAÇÃO APP */}
+                {activeTab === 'app-update' && (
+                    <div className="admin-app-update-wrapper" style={{ margin: '0' }}>
+                        <AppUpdatePage />
                     </div>
                 )}
             </div>

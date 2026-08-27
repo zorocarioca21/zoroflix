@@ -295,6 +295,19 @@ export async function initDB() {
         // Ignora se a coluna já existir
     }
 
+    // Tabela de Atualizações do App (OTA)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS app_updates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version_name TEXT NOT NULL,
+            version_code INTEGER NOT NULL,
+            release_notes TEXT,
+            force_update INTEGER DEFAULT 0,
+            apk_filename TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Tabela de Recuperação de Senha
     await db.exec(`
         CREATE TABLE IF NOT EXISTS password_resets (

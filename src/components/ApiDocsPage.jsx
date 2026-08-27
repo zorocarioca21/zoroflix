@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Shield, Database, Code, Terminal, ArrowLeft } from 'lucide-react';
+import { BookOpen, Shield, Database, Code, Terminal, ArrowLeft, Smartphone } from 'lucide-react';
 
 export default function ApiDocsPage() {
     const baseUrl = window.location.origin;
@@ -478,6 +478,32 @@ exoPlayer.prepare();`}</code></pre>
                             <pre><code>{`{
   "sql": "SELECT resume_time FROM watch_history WHERE user_id = ? AND content_id = ?",
   "params": [1, "12345"]
+}`}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Atualização OTA */}
+                <div className="api-docs-section">
+                    <h2><Smartphone size={22} /> Atualizações OTA (Over-The-Air)</h2>
+                    <p>Ao invés de depender de lojas de aplicativos, o próprio app pode se atualizar baixando o <code>.apk</code> mais recente servido pela API.</p>
+                    
+                    <div className="api-endpoint-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="api-endpoint-header">
+                            <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
+                            <code className="api-path">/api/app-updates/latest</code>
+                        </div>
+                        <h3>Checar Nova Versão Disponível</h3>
+                        <p>O aplicativo deve bater nesta rota sempre que abrir (Tela de Splash). Se o <code>version_code</code> retornado for maior que o instalado, mostre um pop-up pedindo para o usuário baixar a nova versão usando o <code>download_url</code>.</p>
+                        <div className="api-code-block small response">
+                            <div className="code-block-header">Exemplo de Resposta (JSON)</div>
+                            <pre><code>{`{
+  "available": true,
+  "version_name": "1.0.5",
+  "version_code": 5,
+  "release_notes": "Correções e melhorias de performance.",
+  "force_update": false,
+  "download_url": "${baseUrl}/downloads/app/cinegeek-v1.0.5.apk"
 }`}</code></pre>
                         </div>
                     </div>
