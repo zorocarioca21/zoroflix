@@ -30,9 +30,9 @@ export default function ManualUploadPage() {
     }, [JSON.stringify(uploadQueue.map(i => ({t: i.type, mt: i.movieTitle, my: i.movieYear, st: i.serieTitle, s: i.season, e: i.episode, q: i.quality, l: i.language})))]);
 
     const addFilesToQueue = (files) => {
-        const newItems = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.endsWith('.mkv')).map(file => {
+        const newItems = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.endsWith('.mkv') || file.name.endsWith('.ts')).map(file => {
             // Tenta adivinhar um nome de arquivo
-            let rawName = file.name.replace(/\.(mp4|mkv|avi|mov)$/i, '');
+            let rawName = file.name.replace(/\.(mp4|mkv|avi|mov|ts)$/i, '');
             // Verifica se tem algo parecido com S01E01
             const epMatch = rawName.match(/[Ss](\d+)[Ee](\d+)/);
             let defaultType = epMatch ? 'serie' : 'filme';
@@ -71,7 +71,7 @@ export default function ManualUploadPage() {
         if (newItems.length > 0) {
             setUploadQueue(prev => [...prev, ...newItems]);
         } else {
-            alert('Nenhum vídeo válido encontrado. Formatos aceitos: MP4, MKV');
+            alert('Nenhum vídeo válido encontrado. Formatos aceitos: MP4, MKV, TS');
         }
     };
 
@@ -231,12 +231,12 @@ export default function ManualUploadPage() {
                         <button type="button" className="browse-btn" onClick={() => document.getElementById('manual-file-input-batch').click()}>
                             Procurar Arquivos
                         </button>
-                        <p className="file-hint">Formatos suportados: MP4, MKV</p>
+                        <p className="file-hint">Formatos suportados: MP4, MKV, TS</p>
                     </div>
                     <input 
                         type="file" 
                         id="manual-file-input-batch"
-                        accept="video/*,.mkv"
+                        accept="video/mp4,video/x-matroska,video/mp2t,.ts,.mkv"
                         multiple
                         onChange={handleFileChange}
                         style={{ display: 'none' }}

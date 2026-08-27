@@ -1,6 +1,8 @@
 import express from 'express';
 import { initSyncWorker, startWorker, setPauseState } from '../services/syncWorker.js';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
+import util from 'util';
+const execPromise = util.promisify(exec);
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -66,8 +68,32 @@ export default function syncRoutes(db, io) {
             
             if (!fs.existsSync(sourceFilePath)) return res.status(400).json({ error: 'Arquivo temporário não encontrado.' });
             
-            const fakeUrl = `local://manual-upload-${Date.now()}.${originalExt}`;
-            const actualSize = totalSize || fs.statSync(sourceFilePath).size;
+            let finalExt = originalExt;
+            let actualSize = totalSize || fs.statSync(sourceFilePath).size;
+            
+            // Se for .ts, vamos converter rapidamente para .mp4
+            if (originalExt && originalExt.toLowerCase() === 'ts') {
+                const convertedPath = path.join(tempDir, `converted_${Date.now()}.mp4`);
+                try {
+                    // Executa a conversão rápida sem re-encode (-c copy)
+                    await execPromise(`ffmpeg -i "${sourceFilePath}" -c copy "${convertedPath}"`);
+                    
+                    // Se deu certo, atualiza o tamanho, extensão e deleta o arquivo .ts original
+                    if (fs.existsSync(convertedPath)) {
+                        actualSize = fs.statSync(convertedPath).size;
+                        finalExt = 'mp4';
+                        fs.unlinkSync(sourceFilePath);
+                        // Substituímos o arquivo fonte pelo convertido
+                        fs.renameSync(convertedPath, sourceFilePath);
+                    }
+                } catch (err) {
+                    console.error("Erro ao converter TS para MP4:", err);
+                    // Se falhar a conversão, podemos retornar erro ou continuar (vamos retornar erro)
+                    return res.status(500).json({ error: 'Erro ao converter o arquivo .ts para .mp4 via ffmpeg.' });
+                }
+            }
+            
+            const fakeUrl = `local://manual-upload-${Date.now()}.${finalExt}`;
             
             // 1. Insere no DB para pegar o ID com prioridade máxima (9999) para furar a fila absolutamente
             const result = await db.run(
@@ -78,7 +104,7 @@ export default function syncRoutes(db, io) {
             
             // 2. Renomeia e move para o tmp com o formato esperado pelo worker
             const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const finalTmpPath = path.join(os.tmpdir(), `${safeTitle}_${dbId}.${originalExt}`);
+            const finalTmpPath = path.join(os.tmpdir(), `${safeTitle}_${dbId}.${finalExt}`);
             
             // Move o arquivo pro destino final
             fs.renameSync(sourceFilePath, finalTmpPath);
