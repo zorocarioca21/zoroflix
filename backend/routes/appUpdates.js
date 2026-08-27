@@ -80,6 +80,21 @@ export default function appUpdatesRoutes(db) {
             const isForceUpdate = force_update === 'true' || force_update === true ? 1 : 0;
             const apkFilename = req.file.filename;
 
+            // Delete old APK files to save space
+            try {
+                const oldUpdates = await db.all(`SELECT apk_filename FROM app_updates`);
+                for (const old of oldUpdates) {
+                    if (old.apk_filename && old.apk_filename !== apkFilename) {
+                        const oldPath = path.join(uploadDir, old.apk_filename);
+                        if (fs.existsSync(oldPath)) {
+                            fs.unlinkSync(oldPath);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao deletar APKs antigos:', err);
+            }
+
             await db.run(
                 `INSERT INTO app_updates (version_name, version_code, release_notes, force_update, apk_filename) VALUES (?, ?, ?, ?, ?)`,
                 [version_name, parseInt(version_code, 10), release_notes || '', isForceUpdate, apkFilename]
