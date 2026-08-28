@@ -175,6 +175,12 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                         videoRef.current.play().catch(() => {});
                     });
                 }
+            } else if (srcUrl.includes('.mp4')) {
+                // Native MP4 Support (Telegram encrypted streams)
+                videoRef.current.src = srcUrl;
+                videoRef.current.addEventListener('loadedmetadata', () => {
+                    videoRef.current.play().catch(() => {});
+                });
             } else {
                 // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
