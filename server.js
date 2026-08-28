@@ -194,7 +194,70 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
             console.error('[Proxy] Erro de execução:', err.message);
             if (!res.headersSent) res.status(502).send('Bad Gateway');
         }
-    });// Serve a pasta de uploads de fotos
+    });
+
+    // === PROXY fMP4 PARA BLOB (Anti-Pirataria estilo Superflix) ===
+    // Converte o stream MP4 do Telegram para MP4 Fragmentado (fMP4).
+    // O fMP4 é consumível pelo MediaSource API do navegador, gerando um blob: URL.
+    // Autenticação via header X-Stream-Key (invisível no DOM).
+    app.get('/api/stream/fmp4', async (req, res) => {
+        let targetUrl = req.query.url;
+        if (!targetUrl) return res.status(400).send('URL ausente');
+
+        // Verifica chave de streaming via header customizado
+        const _key = 'santoryu151515';
+        const streamKey = req.headers['x-stream-key'];
+        if (streamKey !== _key) {
+            return res.status(403).send('Acesso negado.');
+        }
+
+        // Converte URL relativa para absoluta local pro FFmpeg
+        if (targetUrl.startsWith('/')) {
+            targetUrl = `http://127.0.0.1:${PORT}${targetUrl}`;
+        }
+
+        try {
+            res.writeHead(200, {
+                'Content-Type': 'video/mp4',
+                'Cache-Control': 'no-cache'
+            });
+
+            // FFmpeg remux para MP4 Fragmentado — o formato que o MediaSource aceita.
+            // empty_moov: moov atom vazio no início (não precisa ler o final do arquivo)
+            // frag_keyframe: cria um fragmento a cada keyframe
+            // default_base_moof: compatibilidade com MSE
+            const ffmpegArgs = [
+                '-hide_banner',
+                '-loglevel', 'error',
+                '-headers', `Cookie: stk=${_key}\r\nReferer: https://cinegeek.shop\r\n`,
+                '-i', targetUrl,
+                '-c', 'copy',
+                '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+                '-f', 'mp4',
+                'pipe:1'
+            ];
+
+            const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+            ffmpeg.stdout.pipe(res);
+
+            ffmpeg.stderr.on('data', (data) => {
+                console.error(`[fMP4 Proxy] ${data.toString().trim()}`);
+            });
+
+            req.on('close', () => {
+                ffmpeg.kill('SIGKILL');
+            });
+
+            ffmpeg.on('close', () => {
+                if (!res.writableEnded) res.end();
+            });
+        } catch (err) {
+            console.error('[fMP4 Proxy] Erro:', err.message);
+            if (!res.headersSent) res.status(502).send('Erro no servidor');
+        }
+    });
+
+    // Serve a pasta de uploads de fotos
     app.use('/uploads', express.static(UPLOADS_PATH));
 
     // Sistema global de cache na memória para a API Proxy
