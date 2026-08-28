@@ -659,7 +659,6 @@ export default function PlayerPage() {
                             messageId={telegramMessageId}
                             srcUrl={streamUrl}
                             isVip={state?.isVip}
-                            isAdmin={user?.role === 'admin'}
                             isLoadingEpisode={isCheckingTelegram}
                             languageOptions={languageOptions ? languageOptions[currentQuality] : null}
                             onLanguageChange={(id, type, stream) => handleSetMessageId(id, type, stream)}
