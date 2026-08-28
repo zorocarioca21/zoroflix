@@ -800,11 +800,7 @@ export default function PlayerPage() {
                                             }
                                         }
 
-                                        let finalTitle = title.split(' - ')[0].trim();
-                                        if (season && episode) {
-                                            finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-                                        }
-                                        finalTitle += ' - www.cinegeek.shop';
+
                                         
                                         const payload = JSON.stringify({ id: targetMsgId, title: finalTitle });
                                         const textoInvertido = payload.split('').reverse().join('');
@@ -975,11 +971,7 @@ export default function PlayerPage() {
                                     }
                                 }
 
-                                let finalTitle = title.split(' - ')[0].trim();
-                                if (season && episode) {
-                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-                                }
-                                finalTitle += ' - www.cinegeek.shop';
+
                                 
                                 const payload = JSON.stringify({ id: dubObj?.id || dubObj, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
@@ -1007,11 +999,7 @@ export default function PlayerPage() {
                                     }
                                 }
 
-                                let finalTitle = title.split(' - ')[0].trim();
-                                if (season && episode) {
-                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
-                                }
-                                finalTitle += ' - www.cinegeek.shop';
+
                                 
                                 const payload = JSON.stringify({ id: legObj?.id || legObj, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
