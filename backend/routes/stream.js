@@ -110,21 +110,29 @@ export default function streamRoutes(db) {
             const skipBytes = start - alignedOffset;
             const fetchLimit = limit + skipBytes;
 
+            // Anti-Flood para Celulares (Safari/Chrome Mobile):
+            // Navegadores de celular disparam 3 a 5 requisições Range falsas e fecham na mesma hora 
+            // só para testar o arquivo. Esperamos 100ms; se o celular fechar antes, nem chamamos o Telegram.
+            let isCancelled = false;
+            let resClosed = false;
+            req.on('close', () => {
+                isCancelled = true;
+                resClosed = true;
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            if (isCancelled) {
+                console.log(`[Stream] Download abortado precocemente. Celular testou e fechou a conexão.`);
+                return;
+            }
+
             // Faz o download da stream
             const iterator = tgClient.iterDownload({
                 file: message.media,
                 offset: bigInt(alignedOffset), 
                 requestSize: chunkSize, 
                 limit: fetchLimit
-            });
-
-            // Evento se o cliente fechar a conexão
-            let isCancelled = false;
-            let resClosed = false;
-            req.on('close', () => {
-                console.log(`[Stream] Conexão fechada pelo cliente (cancelado)`);
-                isCancelled = true;
-                resClosed = true;
             });
 
             let chunkCount = 0;
