@@ -193,6 +193,12 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     mpegtsRef.current.attachMediaElement(videoRef.current);
                     mpegtsRef.current.load();
                     mpegtsRef.current.play().catch(() => {});
+                } else {
+                    // Fallback para iOS (iPhone) usando o próprio link seguro!
+                    // Como a API faz o stream perfeito, o iPhone vai rodar liso.
+                    videoRef.current.src = srcUrl;
+                    videoRef.current.load();
+                    videoRef.current.play().catch(() => {});
                 }
             } else {
                 // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
