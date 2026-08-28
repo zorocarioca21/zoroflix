@@ -271,9 +271,9 @@ export default function streamRoutes(db) {
                 const cleanClientIp = clientIp.replace(/^.*:/, '');
                 const cleanTokenIp = data.ip.replace(/^.*:/, '');
                 
-                // if (cleanClientIp !== cleanTokenIp) {
-                //     return res.status(403).send("Acesso negado. Este link de streaming pertence a outro usuário ou seu IP mudou.");
-                // }
+                if (cleanClientIp !== cleanTokenIp) {
+                    return res.status(403).send("Acesso negado. Este link de streaming pertence a outro usuário ou seu IP mudou.");
+                }
             }
             
             await handleStreamRequest(req, res, messageId, data.title);
