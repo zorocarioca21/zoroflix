@@ -27,7 +27,7 @@ export async function getTelegramClient() {
         client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
         });
-        client.setLogLevel("none");
+        client.setLogLevel("warn");
         await client.connect();
         
         try {
