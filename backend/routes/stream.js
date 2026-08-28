@@ -105,8 +105,7 @@ export default function streamRoutes(db) {
             const limit = end - start + 1;
             console.log(`[Stream] Iniciando download. Start: ${start}, End: ${end}, Limit: ${limit}`);
 
-            // Aumentando o tamanho do chunk para 1MB para melhorar o tempo de seek (avanço do vídeo)
-            const chunkSize = 1024 * 1024;
+            const chunkSize = 512 * 1024;
             const alignedOffset = Math.floor(start / chunkSize) * chunkSize;
             const skipBytes = start - alignedOffset;
             const fetchLimit = limit + skipBytes;
@@ -121,9 +120,11 @@ export default function streamRoutes(db) {
 
             // Evento se o cliente fechar a conexão
             let isCancelled = false;
+            let resClosed = false;
             req.on('close', () => {
                 console.log(`[Stream] Conexão fechada pelo cliente (cancelado)`);
                 isCancelled = true;
+                resClosed = true;
             });
 
             let chunkCount = 0;
@@ -150,10 +151,25 @@ export default function streamRoutes(db) {
                 if (chunkCount === 1) console.log(`[Stream] Primeiro chunk recebido! Tamanho original: ${chunk.length}, Enviado: ${chunkToSend.length}`);
                 
                 // Grava o pedaço no buffer HTTP
+                if (resClosed) break; // Garante que não vamos escrever numa stream fechada
+                
                 const canWrite = res.write(chunkToSend);
                 if (!canWrite) {
-                    // Aguarda o drain se o buffer estiver cheio
-                    await new Promise(resolve => res.once('drain', resolve));
+                    // Aguarda o drain se o buffer estiver cheio, mas também escuta close/error 
+                    // para evitar travamento eterno (memory/connection leak)!
+                    await new Promise(resolve => {
+                        const cleanup = () => {
+                            res.removeListener('drain', onResolve);
+                            res.removeListener('close', onResolve);
+                            res.removeListener('error', onResolve);
+                            resolve();
+                        };
+                        const onResolve = () => cleanup();
+                        
+                        res.once('drain', onResolve);
+                        res.once('close', onResolve);
+                        res.once('error', onResolve);
+                    });
                 }
                 
                 if (bytesSent >= limit) break;
