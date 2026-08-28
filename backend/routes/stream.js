@@ -214,13 +214,43 @@ export default function streamRoutes(db) {
             const messageId = parseInt(data.id);
             if (!messageId) return res.status(400).send("Token inválido");
 
-            // Força modo de download na nova rota
+            // Força modo de download na rota /d/
             req.query.download = 'true';
             
             await handleStreamRequest(req, res, messageId, data.title);
         } catch (err) {
             console.error("Erro ao decodificar token ofuscado:", err);
             return res.status(400).send("Link de download inválido ou corrompido.");
+        }
+    });
+
+    // GET /api/stream/s/:token (Secure Stream com Validade)
+    router.get('/s/:token', async (req, res) => {
+        try {
+            // Permite extensão no token (ex: token123.mp4 -> token123)
+            let token = req.params.token.split('.')[0];
+            
+            // Restaura Base64 URL-safe para Base64 normal
+            token = token.replace(/-/g, '+').replace(/_/g, '/');
+            while (token.length % 4) token += '=';
+            
+            const textoDecodificado = Buffer.from(token, 'base64').toString('utf-8');
+            const textoSubstituido = textoDecodificado.replace(/§/g, 'a').replace(/¶/g, 'b').replace(/©/g, 'c');
+            const textoOriginal = textoSubstituido.split('').reverse().join('');
+            const data = JSON.parse(textoOriginal);
+            
+            const messageId = parseInt(data.id);
+            if (!messageId) return res.status(400).send("Token de stream inválido");
+
+            // Checa a validade (se 'exp' existir no payload)
+            if (data.exp && Date.now() > data.exp) {
+                return res.status(403).send("Este link expirou. Por favor, solicite um novo link.");
+            }
+            
+            await handleStreamRequest(req, res, messageId, data.title);
+        } catch (err) {
+            console.error("Erro ao decodificar token de stream:", err);
+            return res.status(403).send("Acesso negado. Token corrompido ou inválido.");
         }
     });
 

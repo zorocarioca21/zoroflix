@@ -242,7 +242,7 @@ console.log(data);`}</code></pre>
                         <p>
                             Muitos desenvolvedores acham que precisam se conectar diretamente ao Telegram. <strong>Não é necessário!</strong>
                             <br/><br/>
-                            O link <code style={{color: '#2196f3'}}>{baseUrl}/api/stream/84512</code> <strong>JÁ É</strong> um stream de vídeo HTTP nativo (com suporte a Range Requests). Basta pegar o <code>telegram_message_id</code> fornecido pela busca (ex: 84512) e inserir esse link diretamente na propriedade "source" do seu Player Nativo.
+                            O link <code style={{color: '#2196f3'}}>{baseUrl}/api/stream/84512</code> <strong>funcionava antigamente</strong>, mas para aumentar a segurança, recomendamos que você utilize a propriedade <code>stream_url</code> que a nossa API já retorna prontinha para você, encriptada e com prazo de validade! Basta jogar o <code>stream_url</code> diretamente na propriedade "source" do seu Player Nativo.
                             <br/><br/>
                             <em>Dica:</em> Se você realmente quiser ignorar nosso servidor e fazer o app baixar direto dos servidores do Telegram, você precisará embutir um cliente MTProto (como o TDLib) no seu App e usar o ID (ex: 84512) para requisitar o arquivo pelo protocolo nativo deles.
                         </p>
@@ -293,7 +293,8 @@ console.log(data);`}</code></pre>
   "found": true,
   "title": "Homem-Aranha (2002)",
   "type": "filme",
-  "telegram_message_id": 123456,
+  "telegram_message_id": 84512,
+  "stream_url": "${baseUrl}/api/stream/s/eyJ...XYZ.mp4",
   "direct_download_url": "${baseUrl}/api/stream/d/fXhvc...Y3ci",
   "site_url": "${baseUrl}/filme/homem-aranha"
 }`}</code></pre>
@@ -489,9 +490,11 @@ const resp = await fetch('\${baseUrl}/api/profile/upload-avatar', {
                         <p>Com o <code>telegram_message_id</code> em mãos, chame esta rota. Ela retornará o stream binário direto.</p>
                         <div className="api-code-block small">
                             <div className="code-block-header">Exemplo de Uso no App (Kotlin/Swift)</div>
-                            <pre><code>{`// Alimente o player nativo:
-String playerUrl = "${baseUrl}/api/stream/84512";
-exoPlayer.setMediaItem(MediaItem.fromUri(playerUrl));
+                            <pre><code>{`// 3. Pegar a URL blindada que já vem pronta na resposta da API
+String playerUrl = movieData.getString("stream_url");
+
+// 4. Passar para o ExoPlayer
+MediaItem mediaItem = MediaItem.fromUri(playerUrl);
 exoPlayer.prepare();`}</code></pre>
                         </div>
                     </div>

@@ -164,7 +164,10 @@ export default function botRoutes(db) {
             const downloadFileName = fullTitle + ' - www.cinegeek.shop';
 
             if (foundMsgId) {
-                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName });
+                // Adicionamos uma data de validade de 4 horas (14400000 ms) para o token do stream
+                const expiration = Date.now() + 14400000;
+                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName, exp: expiration });
+                
                 const textoInvertido = payload.split('').reverse().join('');
                 const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                 let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
@@ -175,6 +178,7 @@ export default function botRoutes(db) {
                     title: fullTitle,
                     type: type,
                     telegram_message_id: foundMsgId,
+                    stream_url: `https://www.cinegeek.shop/api/stream/s/${token}.mp4`,
                     direct_download_url: `https://www.cinegeek.shop/api/stream/d/${token}`,
                     site_url: siteUrl
                 });
@@ -184,6 +188,7 @@ export default function botRoutes(db) {
                     title: fullTitle,
                     type: type,
                     telegram_message_id: null,
+                    stream_url: null,
                     direct_download_url: null,
                     site_url: siteUrl
                 });
