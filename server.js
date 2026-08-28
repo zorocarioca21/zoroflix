@@ -140,8 +140,13 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
 
     // Proxy reverso para Streaming de IPTV usando FFmpeg pipe direto com correção de timestamps
     app.get('/api/stream/proxy', async (req, res) => {
-        const targetUrl = req.query.url;
+        let targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
+        
+        // Converte URL relativa para absoluta local pro FFmpeg conseguir baixar
+        if (targetUrl.startsWith('/')) {
+            targetUrl = `http://127.0.0.1:${PORT}${targetUrl}`;
+        }
         
         try {
             res.writeHead(200, {
