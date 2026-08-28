@@ -172,23 +172,6 @@ export default function streamRoutes(db) {
         }
     }
 
-    // GET /api/stream/telegram/:message_id (com ou sem extensão, ex: 84512.mp4)
-    router.get('/telegram/:message_id', async (req, res) => {
-        // Remove a extensão do message_id se existir (ex: 84512.mp4 -> 84512)
-        const rawId = req.params.message_id.split('.')[0];
-        const messageId = parseInt(rawId, 10);
-        await handleStreamRequest(req, res, messageId);
-    });
-
-    // ALIAS: GET /api/stream/:message_id
-    // Criado para suportar quem acessa a URL sem o /telegram/ e evitar erro 404 no ExoPlayer
-    router.get('/:message_id([0-9]+\\.?[a-z0-9]*)', async (req, res) => {
-        const rawId = req.params.message_id.split('.')[0];
-        const messageId = parseInt(rawId, 10);
-        if (isNaN(messageId)) return res.status(404).send("Not found");
-        await handleStreamRequest(req, res, messageId);
-    });
-
     // GET /api/stream/d/:token
     router.get('/d/:token', async (req, res) => {
         try {
