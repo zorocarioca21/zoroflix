@@ -102,7 +102,7 @@ export default function EmbedPlayerPage() {
 
                     if (data?.items?.length > 0) {
                         const validItems = data.items.filter(i => {
-                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
                             
                             const isTitleMatch = checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
                             let hasEp = true;

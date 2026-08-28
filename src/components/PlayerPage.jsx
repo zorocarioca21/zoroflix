@@ -304,7 +304,7 @@ export default function PlayerPage() {
 
                     if (data?.items?.length > 0) {
                         const validSpecificItems = data.items.filter(i => {
-                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
                             return true;
                         });
@@ -339,7 +339,7 @@ export default function PlayerPage() {
                         ];
 
                         const validItems = data2.items.filter(i => {
-                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
 
                             const upperTitle = i.title.toUpperCase();
@@ -384,7 +384,7 @@ export default function PlayerPage() {
                         const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
                         const debugLogs = [];
                         const validItems = data.items.filter(i => {
-                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                            if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName, releaseYear, debugLogs)) return false;
                             return true;
                         });
