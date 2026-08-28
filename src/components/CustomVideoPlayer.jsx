@@ -140,6 +140,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
         }
 
         if (srcUrl) {
+            // === CHAVE SECRETA INVISÍVEL ===
+            // Seta o cookie 'stk' ANTES de carregar o vídeo.
+            // O cookie viaja junto com toda requisição ao /api/stream automaticamente,
+            // mas NUNCA aparece na URL do src visível no DevTools!
+            // A chave é montada em partes para dificultar busca no código-fonte.
+            const _p1 = 'santo', _p2 = 'ryu15', _p3 = '1515';
+            document.cookie = `stk=${_p1}${_p2}${_p3}; path=/api/stream; SameSite=Lax`;
+
             if (srcUrl.includes('.m3u8')) {
                 // HLS NATTY
                 if (Hls.isSupported()) {

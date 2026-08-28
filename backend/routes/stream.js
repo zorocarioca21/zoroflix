@@ -235,23 +235,14 @@ export default function streamRoutes(db) {
                 return res.status(403).send("Este link expirou. Por favor, solicite um novo link.");
             }
 
-            // Proteção avançada contra acesso direto (Hotlink/Script/Navegador direto)
+            // === CHAVE SECRETA DE STREAMING (Cookie Invisível) ===
+            // O player seta um cookie 'stk' antes de carregar o vídeo.
+            // Se o cookie não existir ou estiver errado, bloqueia tudo.
+            // Isso é invisível na URL — o ladrão copia o src e não tem a chave!
             if (!data.app) {
-                const fetchSite = req.headers['sec-fetch-site']; // 'same-origin', 'same-site', 'cross-site', 'none'
-                const referer = req.headers.referer || req.headers.origin;
-
-                if (fetchSite) {
-                    // Sec-Fetch-Site é suportado por todos os navegadores modernos.
-                    // 'none': Usuário colou o link na barra de endereços ou usou um gerenciador de downloads.
-                    // 'cross-site': Alguém tentou colocar a URL direto numa tag <video> em outro site.
-                    if (fetchSite === 'cross-site' || fetchSite === 'none') {
-                        return res.status(403).send("Acesso negado. Hotlink e reprodução direta bloqueados.");
-                    }
-                } else {
-                    // Fallback para navegadores muito antigos ou scripts obscuros
-                    if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
-                        return res.status(403).send("Acesso negado. Link protegido contra download direto.");
-                    }
+                const streamKey = req.cookies && req.cookies.stk;
+                if (streamKey !== 'santoryu151515') {
+                    return res.status(403).send("Acesso negado. Autenticação de streaming ausente.");
                 }
             }
             
