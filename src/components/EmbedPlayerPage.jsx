@@ -9,7 +9,7 @@ const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function EmbedPlayerPage() {
-    const { type: paramType, id: rawId, season, episode } = useParams(); 
+    const { type: paramType, id: rawId, season, episode } = useParams();
     const type = paramType || (season && episode ? 'serie' : 'filme');
 
     const [tmdbId, setTmdbId] = useState(rawId);
@@ -75,7 +75,7 @@ export default function EmbedPlayerPage() {
                 const mediaType = type === 'filme' ? 'movie' : 'tv';
                 const tmdbRes = await fetch(`${BASE_URL}/${mediaType}/${rawId}?api_key=${API_KEY}&language=pt-BR`);
                 const tmdbData = await tmdbRes.json();
-                
+
                 let searchName = tmdbData.name || tmdbData.title;
                 let originalName = tmdbData.original_name || tmdbData.original_title;
                 let releaseYear = tmdbData.release_date ? tmdbData.release_date.split('-')[0] : (tmdbData.first_air_date ? tmdbData.first_air_date.split('-')[0] : null);
@@ -86,16 +86,16 @@ export default function EmbedPlayerPage() {
                     setLoading(false);
                     return;
                 }
-                
+
                 setTitle(searchName);
-                
+
                 const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchName)}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
 
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     let foundMsgId = null;
                     let foundLangOpts = null;
                     const evaluatedItems = [];
@@ -103,7 +103,7 @@ export default function EmbedPlayerPage() {
                     if (data?.items?.length > 0) {
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
-                            
+
                             const isTitleMatch = checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
                             let hasEp = true;
 
@@ -131,7 +131,7 @@ export default function EmbedPlayerPage() {
                             }
 
                             const isValid = isTitleMatch && hasEp;
-                            
+
                             evaluatedItems.push({
                                 title: i.title,
                                 isMatch: isValid,
@@ -144,10 +144,10 @@ export default function EmbedPlayerPage() {
                         setDebugMatches(evaluatedItems);
 
                         const matches = getBestMatches(evaluatedItems, type === 'filme' ? releaseYear : null);
-                    
+
                         if (matches) {
                             setLanguageOptions(matches);
-                            const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+                            const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
                             let selectedQuality = Object.keys(matches)[0];
                             for (let q of qualityOrder) {
                                 if (matches[q]) {
@@ -156,9 +156,9 @@ export default function EmbedPlayerPage() {
                                 }
                             }
                             setCurrentQuality(selectedQuality);
-                            
+
                             const defaultOpt = matches[selectedQuality].dub || matches[selectedQuality].leg;
-                            
+
                             if (defaultOpt) {
                                 setTelegramMessageId(defaultOpt.id || defaultOpt);
                                 if (defaultOpt.stream_url) {
@@ -221,7 +221,7 @@ export default function EmbedPlayerPage() {
         <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
             <AntiDevTools />
             {!isVipKey && <AntiAdBlock />}
-            <CustomVideoPlayer 
+            <CustomVideoPlayer
                 messageId={telegramMessageId}
                 srcUrl={streamUrl}
                 title={type === 'serie' ? `${title} T${season}E${episode}` : title}
@@ -277,13 +277,13 @@ export default function EmbedPlayerPage() {
                         <button onClick={() => setShowDebug(false)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', fontWeight: 'bold' }}>X</button>
                     </div>
                     <div style={{ marginBottom: '10px' }}>
-                        <strong>TMDB Buscado:</strong> {title}<br/>
+                        <strong>TMDB Buscado:</strong> {title}<br />
                         <strong>Resultados Analisados:</strong> {debugMatches.length}
                     </div>
                     {debugMatches.map((item, idx) => (
-                        <div key={idx} style={{ 
-                            marginBottom: '8px', 
-                            padding: '6px', 
+                        <div key={idx} style={{
+                            marginBottom: '8px',
+                            padding: '6px',
                             background: item.isMatch ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                             borderLeft: `4px solid ${item.isMatch ? '#00e5ff' : '#666'}`,
                             borderRadius: '4px'

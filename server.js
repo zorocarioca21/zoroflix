@@ -158,6 +158,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
                 '-reconnect_at_eof', '1',
                 '-reconnect_streamed', '1',
                 '-reconnect_delay_max', '2',
+                '-headers', 'Referer: https://cinegeek.shop\r\n',
                 '-user_agent', 'VLC/3.0.9 LibVLC/3.0.9',
                 '-i', targetUrl,
                 '-c', 'copy',

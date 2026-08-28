@@ -465,7 +465,7 @@ export default function syncRoutes(db, io) {
                     const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                     let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
                     token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-                    streamUrl = `https://www.cinegeek.shop/api/stream/s/${token}.mp4`;
+                    streamUrl = `/api/stream/s/${token}.mp4`;
                 }
                 const secureItem = { ...item, stream_url: streamUrl };
                 if (!isAdmin) {
