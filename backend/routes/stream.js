@@ -48,7 +48,7 @@ export default function streamRoutes(db) {
             }
 
             const document = message.media.document;
-            console.log(`[Stream] Documento encontrado! Tamanho: ${document.size}`);
+            console.log(`[Stream] Documento encontrado! Tamanho: ${document.size} (Via Worker Pool)`);
             const fileSize = document.size.toJSNumber ? document.size.toJSNumber() : Number(document.size);
 
             // Suporte a Range Headers (Essencial para o player de vídeo pular partes)

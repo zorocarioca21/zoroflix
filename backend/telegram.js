@@ -4,44 +4,79 @@ import 'dotenv/config';
 
 const apiId = parseInt(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH;
-const sessionStr = process.env.TELEGRAM_SESSION;
 
-let client = null;
-let clientConnecting = false;
-let clientConnected = false;
+// Coleta TODAS as variáveis de ambiente que começam com TELEGRAM_SESSION (incluindo a original sem número)
+const sessionStrings = Object.keys(process.env)
+    .filter(key => key.startsWith('TELEGRAM_SESSION'))
+    .map(key => process.env[key])
+    .filter(val => val && val.trim() !== ''); // Remove nulos ou vazios
 
-// Inicializa o cliente do Telegram como Singleton
+if (sessionStrings.length === 0) {
+    console.error("Nenhuma variável TELEGRAM_SESSION encontrada no .env!");
+}
+
+let clients = [];
+let clientsConnecting = false;
+let clientsConnected = false;
+let currentClientIndex = 0;
+
+// Inicializa o cliente do Telegram como Pool
 export async function getTelegramClient() {
-    if (clientConnected) return client;
-    if (clientConnecting) {
-        // Aguarda conectar
-        while (!clientConnected) {
-            await new Promise(r => setTimeout(r, 500));
-        }
+    if (clientsConnected && clients.length > 0) {
+        // Round-Robin
+        const client = clients[currentClientIndex];
+        currentClientIndex = (currentClientIndex + 1) % clients.length;
         return client;
     }
+    
+    if (clientsConnecting) {
+        // Aguarda conectar
+        while (!clientsConnected) {
+            await new Promise(r => setTimeout(r, 500));
+        }
+        if (clients.length > 0) {
+            const client = clients[currentClientIndex];
+            currentClientIndex = (currentClientIndex + 1) % clients.length;
+            return client;
+        }
+        return null; // Falha
+    }
 
-    clientConnecting = true;
+    clientsConnecting = true;
     try {
-        const stringSession = new StringSession(sessionStr);
-        client = new TelegramClient(stringSession, apiId, apiHash, {
-            connectionRetries: 5,
-        });
-        client.setLogLevel("warn");
-        await client.connect();
+        console.log(`[GramJS] Iniciando conexões para ${sessionStrings.length} sessão(ões)...`);
         
-        try {
-            await client.getDialogs({});
-        } catch (e) {
-            console.log("Aviso: Falha ao carregar dialogos", e);
+        for (let i = 0; i < sessionStrings.length; i++) {
+            const sessionStr = sessionStrings[i];
+            const stringSession = new StringSession(sessionStr);
+            const client = new TelegramClient(stringSession, apiId, apiHash, {
+                connectionRetries: 5,
+            });
+            client.setLogLevel("warn");
+            await client.connect();
+            
+            try {
+                // Força ping
+                await client.getDialogs({});
+                clients.push(client);
+                console.log(`[GramJS] Cliente ${i + 1}/${sessionStrings.length} conectado com sucesso!`);
+            } catch (e) {
+                console.log(`[GramJS] Aviso: Falha ao carregar dialogos para cliente ${i + 1}`, e);
+            }
         }
 
-        clientConnected = true;
-        console.log("Cliente GramJS conectado e exportado!");
+        clientsConnected = true;
+        console.log(`[GramJS] Pool de clientes exportado! Total de contas ativas: ${clients.length}`);
     } catch (e) {
-        console.error("Erro ao conectar GramJS:", e);
+        console.error("Erro ao conectar GramJS Pool:", e);
     } finally {
-        clientConnecting = false;
+        clientsConnecting = false;
     }
-    return client;
+    
+    if (clients.length > 0) {
+        const client = clients[currentClientIndex];
+        currentClientIndex = (currentClientIndex + 1) % clients.length;
+        return client;
+    }
+    return null;
 }
