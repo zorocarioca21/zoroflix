@@ -29,7 +29,12 @@ const stringSession = new StringSession("");
     console.log("Você está conectado agora.");
     const savedSession = client.session.save();
     console.log("\n==================================\n");
-    console.log("Sua String de Sessão (Guarde-a no .env em TELEGRAM_SESSION):");
+    console.log("✅ Sua String de Sessão foi gerada!");
+    console.log("\nGuarde-a no arquivo .env da sua VPS.");
+    console.log("Você pode usar nomes como:");
+    console.log("TELEGRAM_SESSION=\"string_aqui\"");
+    console.log("TELEGRAM_SESSION_2=\"string_aqui\"");
+    console.log("\nAqui está sua string:\n");
     console.log(savedSession);
     console.log("\n==================================\n");
 
