@@ -105,7 +105,8 @@ export default function streamRoutes(db) {
             const limit = end - start + 1;
             console.log(`[Stream] Iniciando download. Start: ${start}, End: ${end}, Limit: ${limit}`);
 
-            const chunkSize = 512 * 1024;
+            // Aumentando o tamanho do chunk para 1MB para melhorar o tempo de seek (avanço do vídeo)
+            const chunkSize = 1024 * 1024;
             const alignedOffset = Math.floor(start / chunkSize) * chunkSize;
             const skipBytes = start - alignedOffset;
             const fetchLimit = limit + skipBytes;
