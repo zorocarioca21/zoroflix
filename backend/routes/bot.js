@@ -7,7 +7,7 @@ const router = express.Router();
 export default function botRoutes(db) {
     // API Key Verification Middleware (reused from embed logic)
     const verifyKey = async (req, res, next) => {
-        const apikey = req.query.apikey || req.query.apiKey;
+        const apikey = req.query.apikey || req.query.apiKey || req.query.api_key;
         if (!apikey) {
             return res.status(401).json({ error: "Missing API Key" });
         }
@@ -166,7 +166,12 @@ export default function botRoutes(db) {
             if (foundMsgId) {
                 // Adicionamos uma data de validade de 4 horas (14400000 ms) para o token do stream
                 const expiration = Date.now() + 14400000;
-                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName, exp: expiration, app: true });
+                
+                const payloadData = { id: foundMsgId, title: downloadFileName, exp: expiration };
+                if (req.query.app === 'true') {
+                    payloadData.app = true;
+                }
+                const payload = JSON.stringify(payloadData);
                 
                 const textoInvertido = payload.split('').reverse().join('');
                 const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
