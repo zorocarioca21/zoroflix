@@ -29,6 +29,7 @@ export default function PlayerPage() {
     const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
     const [isWatched, setIsWatched] = useState(false);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
+    const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null); 
     const [currentQuality, setCurrentQuality] = useState('Normal'); 
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
@@ -38,10 +39,10 @@ export default function PlayerPage() {
     const prevLanguageType = useRef(null); 
 
     // Handler customizado para mudar messageId e guardar a preferência
-    const handleSetMessageId = (id, type) => {
+    const handleSetMessageId = (id, lang, stream) => {
         setTelegramMessageId(id);
-        prevLanguageType.current = type;
-        localStorage.setItem('cinegeek_preferred_language', type);
+        if (stream) setStreamUrl(stream);
+        localStorage.setItem('cinegeek_preferred_language', lang);
     };
 
     const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
@@ -232,6 +233,8 @@ export default function PlayerPage() {
         const handleMatches = (matches) => {
             if (!matches) {
                 setTelegramMessageId(null);
+                setStreamUrl(null);
+                setShowLanguageSelector(false);
                 return;
             }
             setLanguageOptions(matches);
@@ -253,20 +256,20 @@ export default function PlayerPage() {
             
             // Se veio do 'Próximo Episódio' e tem o idioma preferido disponível, pula a tela de escolha
             if (autoLang && currentOpts[autoLang]) {
-                handleSetMessageId(currentOpts[autoLang], autoLang);
+                handleSetMessageId(currentOpts[autoLang].id || currentOpts[autoLang], autoLang, currentOpts[autoLang].stream_url);
                 setShowLanguageSelector(false);
             } 
             // Se veio do 'Próximo Episódio' mas o idioma preferido não existe, toca o que tiver
             else if (autoLang && (currentOpts.dub || currentOpts.leg)) {
                 const fallback = currentOpts.dub ? 'dub' : 'leg';
-                handleSetMessageId(currentOpts[fallback], fallback);
+                handleSetMessageId(currentOpts[fallback].id || currentOpts[fallback], fallback, currentOpts[fallback].stream_url);
                 setShowLanguageSelector(false);
             } 
             // Caso padrão: Primeira vez abrindo o filme/série (Sempre mostra a tela se não for Next Episode)
             else {
                 // Se já tinha um messageId tocando (troca via menu interno do player)
                 if (telegramMessageId && prefLang && currentOpts[prefLang]) {
-                    handleSetMessageId(currentOpts[prefLang], prefLang);
+                    handleSetMessageId(currentOpts[prefLang].id || currentOpts[prefLang], prefLang, currentOpts[prefLang].stream_url);
                     setShowLanguageSelector(false);
                 } else {
                     // Novo acesso: mostra a tela de escolha
@@ -636,7 +639,7 @@ export default function PlayerPage() {
                                 {languageOptions && languageOptions[currentQuality]?.dub && (
                                     <button
                                         className="lang-btn"
-                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].dub, 'dub'); setShowLanguageSelector(false); }}
+                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].dub.id || languageOptions[currentQuality].dub, 'dub', languageOptions[currentQuality].dub.stream_url); setShowLanguageSelector(false); }}
                                     >
                                         <Mic size={24} /> Dublado
                                     </button>
@@ -644,7 +647,7 @@ export default function PlayerPage() {
                                 {languageOptions && languageOptions[currentQuality]?.leg && (
                                     <button
                                         className="lang-btn"
-                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].leg, 'leg'); setShowLanguageSelector(false); }}
+                                        onClick={() => { handleSetMessageId(languageOptions[currentQuality].leg.id || languageOptions[currentQuality].leg, 'leg', languageOptions[currentQuality].leg.stream_url); setShowLanguageSelector(false); }}
                                     >
                                         <Subtitles size={24} /> Legendado
                                     </button>
@@ -654,11 +657,11 @@ export default function PlayerPage() {
                     ) : (telegramMessageId || state?.isVip) ? (
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
-                            srcUrl={state?.isVip ? playerUrl : null}
+                            srcUrl={streamUrl}
                             isVip={state?.isVip}
                             isLoadingEpisode={isCheckingTelegram}
                             languageOptions={languageOptions ? languageOptions[currentQuality] : null}
-                            onLanguageChange={(id, type) => handleSetMessageId(id, type)}
+                            onLanguageChange={(id, type, stream) => handleSetMessageId(id, type, stream)}
                             videoQualities={languageOptions}
                             currentQuality={currentQuality}
                             onQualityChange={(newQuality) => setCurrentQuality(newQuality)}
@@ -771,9 +774,9 @@ export default function PlayerPage() {
                                             }
                                             
                                             if (opts.dub && !opts.leg) {
-                                                targetMsgId = opts.dub;
+                                                targetMsgId = opts.dub.id || opts.dub;
                                             } else if (!opts.dub && opts.leg) {
-                                                targetMsgId = opts.leg;
+                                                targetMsgId = opts.leg.id || opts.leg;
                                             } else if (opts.dub && opts.leg) {
                                                 setDownloadSelector(true);
                                                 return;

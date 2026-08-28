@@ -13,6 +13,7 @@ import https from 'https';
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import 'dotenv/config';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -441,8 +442,40 @@ export default function syncRoutes(db, io) {
             const completedTodayRow = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed' AND DATE(updated_at, '-3 hours') = DATE('now', '-3 hours')`);
             const addedTodayRow = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE DATE(created_at, '-3 hours') = DATE('now', '-3 hours')`);
 
+            // Verifica se quem está chamando é admin
+            let isAdmin = false;
+            try {
+                const authHeader = req.headers.authorization;
+                if (authHeader && authHeader.startsWith('Bearer ')) {
+                    const tokenStr = authHeader.split(' ')[1];
+                    const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET);
+                    if (decoded && decoded.role === 'admin') {
+                        isAdmin = true;
+                    }
+                }
+            } catch (e) { }
+
+            // Injeta o stream_url criptografado em cada item da fila
+            const processedRows = rows.map(item => {
+                let streamUrl = null;
+                if (item.telegram_message_id && item.status === 'completed') {
+                    const expiration = Date.now() + 14400000;
+                    const payload = JSON.stringify({ id: item.telegram_message_id, title: item.title, exp: expiration });
+                    const textoInvertido = payload.split('').reverse().join('');
+                    const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                    let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
+                    token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    streamUrl = `https://www.cinegeek.shop/api/stream/s/${token}.mp4`;
+                }
+                const secureItem = { ...item, stream_url: streamUrl };
+                if (!isAdmin) {
+                    delete secureItem.telegram_message_id; // Oculta o ID real para usuários não-admins
+                }
+                return secureItem;
+            });
+
             res.json({
-                items: rows,
+                items: processedRows,
                 total: total.count,
                 pending: pending.count,
                 completed: completed.count,

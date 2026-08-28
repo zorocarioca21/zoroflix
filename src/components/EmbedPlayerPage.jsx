@@ -14,6 +14,7 @@ export default function EmbedPlayerPage() {
 
     const [tmdbId, setTmdbId] = useState(rawId);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
+    const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null);
     const [currentQuality, setCurrentQuality] = useState('Normal');
     const [title, setTitle] = useState('');
@@ -142,29 +143,34 @@ export default function EmbedPlayerPage() {
 
                         setDebugMatches(evaluatedItems);
 
-                        if (validItems.length > 0) {
-                            const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
-                            if (matches) {
-                                foundLangOpts = matches;
-                                // Selecionar melhor qualidade
-                                const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
-                                let selectedQuality = Object.keys(matches)[0];
-                                for (let q of qualityOrder) {
-                                    if (matches[q]) {
-                                        selectedQuality = q;
-                                        break;
-                                    }
+                        const matches = getBestMatches(evaluatedItems, type === 'filme' ? releaseYear : null);
+                    
+                        if (matches) {
+                            setLanguageOptions(matches);
+                            const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+                            let selectedQuality = Object.keys(matches)[0];
+                            for (let q of qualityOrder) {
+                                if (matches[q]) {
+                                    selectedQuality = q;
+                                    break;
                                 }
-                                setCurrentQuality(selectedQuality);
-                                foundMsgId = matches[selectedQuality].dub || matches[selectedQuality].leg;
                             }
+                            setCurrentQuality(selectedQuality);
+                            
+                            const defaultOpt = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                            
+                            if (defaultOpt) {
+                                setTelegramMessageId(defaultOpt.id || defaultOpt);
+                                if (defaultOpt.stream_url) {
+                                    setStreamUrl(defaultOpt.stream_url);
+                                }
+                                setIsValidEmbed(true);
+                            } else {
+                                setError(true);
+                            }
+                        } else {
+                            setError(true);
                         }
-                    }
-
-                    if (foundMsgId) {
-                        setTelegramMessageId(foundMsgId);
-                        setLanguageOptions(foundLangOpts);
-                        setIsValidEmbed(true);
                     } else {
                         setError(true);
                     }
@@ -217,19 +223,27 @@ export default function EmbedPlayerPage() {
             {!isVipKey && <AntiAdBlock />}
             <CustomVideoPlayer 
                 messageId={telegramMessageId}
+                srcUrl={streamUrl}
                 title={type === 'serie' ? `${title} T${season}E${episode}` : title}
                 contentId={rawId}
                 mediaType={type === 'filme' ? 'movie' : 'tv'}
                 season={season}
                 episode={episode}
                 languageOptions={languageOptions ? languageOptions[currentQuality] : null}
-                onLanguageChange={(id, type) => setTelegramMessageId(id)}
+                onLanguageChange={(id, type, stream) => {
+                    setTelegramMessageId(id);
+                    if (stream) setStreamUrl(stream);
+                }}
                 videoQualities={languageOptions}
                 currentQuality={currentQuality}
                 onQualityChange={(q, isDub) => {
                     setCurrentQuality(q);
                     if (languageOptions && languageOptions[q]) {
-                        setTelegramMessageId(isDub ? languageOptions[q].dub || languageOptions[q].leg : languageOptions[q].leg || languageOptions[q].dub);
+                        const opt = isDub ? languageOptions[q].dub || languageOptions[q].leg : languageOptions[q].leg || languageOptions[q].dub;
+                        if (opt) {
+                            setTelegramMessageId(opt.id || opt);
+                            if (opt.stream_url) setStreamUrl(opt.stream_url);
+                        }
                     }
                 }}
                 onNextEpisode={() => {

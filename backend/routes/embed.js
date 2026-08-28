@@ -99,7 +99,24 @@ export default function embedRoutes(db) {
             const searchParam = `%${q}%`;
             const items = await db.all(query, [searchParam]);
             
-            res.json({ items });
+            // Injeta stream_url e remove o ID real para proteger contra extração via F12
+            const secureItems = items.map(item => {
+                let streamUrl = null;
+                if (item.telegram_message_id) {
+                    const expiration = Date.now() + 14400000;
+                    const payload = JSON.stringify({ id: item.telegram_message_id, title: item.title, exp: expiration });
+                    const textoInvertido = payload.split('').reverse().join('');
+                    const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+                    let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
+                    token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    streamUrl = `https://www.cinegeek.shop/api/stream/s/${token}.mp4`;
+                }
+                const secureItem = { ...item, stream_url: streamUrl };
+                delete secureItem.telegram_message_id; // Remove o ID real do payload público
+                return secureItem;
+            });
+            
+            res.json({ items: secureItems });
         } catch (err) {
             console.error("Erro na busca pública do embed:", err);
             res.status(500).json({ error: "Erro interno" });
