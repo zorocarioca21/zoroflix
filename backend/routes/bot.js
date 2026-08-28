@@ -166,7 +166,7 @@ export default function botRoutes(db) {
             if (foundMsgId) {
                 // Adicionamos uma data de validade de 4 horas (14400000 ms) para o token do stream
                 const expiration = Date.now() + 14400000;
-                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName, exp: expiration });
+                const payload = JSON.stringify({ id: foundMsgId, title: downloadFileName, exp: expiration, app: true });
                 
                 const textoInvertido = payload.split('').reverse().join('');
                 const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');

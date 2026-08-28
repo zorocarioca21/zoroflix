@@ -128,6 +128,7 @@ export const getBestMatches = (items, releaseYear = null) => {
         let version = 'Normal';
         if (titleUpper.includes('FHD') || titleUpper.includes('1080P') || titleUpper.includes('1080')) version = 'FHD';
         else if (titleUpper.includes('4K') || titleUpper.includes('2160P')) version = '4K';
+        else if (titleUpper.includes('HD') || titleUpper.includes('720P') || titleUpper.includes('720')) version = 'HD';
         else if (titleUpper.includes('TS') || titleUpper.includes('CAMRIP') || titleUpper.includes('CAM RIP')) version = 'TS';
 
         if (!versions[version]) versions[version] = { dub: null, leg: null };

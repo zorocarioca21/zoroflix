@@ -234,6 +234,14 @@ export default function streamRoutes(db) {
             if (data.exp && Date.now() > data.exp) {
                 return res.status(403).send("Este link expirou. Por favor, solicite um novo link.");
             }
+
+            // Proteção contra acesso direto (Hotlink/Script/Navegador direto)
+            if (!data.app) {
+                const referer = req.headers.referer || req.headers.origin;
+                if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
+                    return res.status(403).send("Acesso negado. Link protegido contra download direto.");
+                }
+            }
             
             await handleStreamRequest(req, res, messageId, data.title);
         } catch (err) {
