@@ -236,15 +236,16 @@ console.log(data);`}</code></pre>
                     <div className="api-endpoint-card">
                         <div className="api-endpoint-header">
                             <span className="api-method" style={{ background: '#4caf50' }}>GET</span>
-                            <code className="api-path">/api/stream/{"{telegram_message_id}"}</code>
+                            <code className="api-path">/api/stream/s/{"{token}"}.mp4</code>
                         </div>
                         <h3>Rodar o Vídeo no Player Nativo (ExoPlayer, AVPlayer, etc)</h3>
                         <p>
-                            Muitos desenvolvedores acham que precisam se conectar diretamente ao Telegram. <strong>Não é necessário!</strong>
+                            Para assistir aos vídeos, <strong>não</strong> é necessário se conectar diretamente ao Telegram.
                             <br/><br/>
-                            O link <code style={{color: '#2196f3'}}>{baseUrl}/api/stream/84512</code> <strong>funcionava antigamente</strong>, mas para aumentar a segurança, recomendamos que você utilize a propriedade <code>stream_url</code> que a nossa API já retorna prontinha para você, encriptada e com prazo de validade! Basta jogar o <code>stream_url</code> diretamente na propriedade "source" do seu Player Nativo.
+                            A nossa API (ex: <code>/api/bot/search</code>) já retorna uma propriedade chamada <code>stream_url</code> pronta para uso. Basta colocar esse <code>stream_url</code> diretamente na propriedade "source" do seu Player Nativo de vídeo.
                             <br/><br/>
-                            <em>Dica:</em> Se você realmente quiser ignorar nosso servidor e fazer o app baixar direto dos servidores do Telegram, você precisará embutir um cliente MTProto (como o TDLib) no seu App e usar o ID (ex: 84512) para requisitar o arquivo pelo protocolo nativo deles.
+                            <strong>Sobre a Segurança (IP Lock):</strong><br/>
+                            Para evitar pirataria, os links da versão Web são travados no IP do usuário final. Porém, quando você utiliza as rotas da API oficial para Bots e Apps, o token retornado é marcado com uma permissão especial (<code>app: true</code>) que desativa a checagem de IP, permitindo que seus usuários móveis assistam aos vídeos sem bloqueios, não importando a rede em que estejam!
                         </p>
                     </div>
 
