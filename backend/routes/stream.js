@@ -214,6 +214,11 @@ export default function streamRoutes(db) {
             const messageId = parseInt(data.id);
             if (!messageId) return res.status(400).send("Token inválido");
 
+            // Checa a validade (se 'exp' existir no payload)
+            if (data.exp && Date.now() > data.exp) {
+                return res.status(403).send("Este link expirou. Por favor, solicite um novo link de download.");
+            }
+
             // Força modo de download na rota /d/
             req.query.download = 'true';
             
