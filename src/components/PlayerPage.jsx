@@ -786,10 +786,16 @@ export default function PlayerPage() {
                                             }
                                         }
 
+                                        let finalTitle = title.split(' - ')[0].trim();
+                                        if (season && episode) {
+                                            finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                        }
+                                        finalTitle += ' - www.cinegeek.shop';
+
                                         if (targetStreamUrl) {
                                             const sToken = targetStreamUrl.split('/s/')[1]?.split('.mp4')[0];
                                             if (sToken) {
-                                                setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                                setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
                                                 return;
                                             }
                                         }
@@ -806,7 +812,7 @@ export default function PlayerPage() {
                                         let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                         token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                        setConfirmDownloadUrl(`/api/stream/d/${token}`);
+                                        setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -954,11 +960,17 @@ export default function PlayerPage() {
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <button onClick={() => {
                                 setDownloadSelector(false);
+                                let finalTitle = title.split(' - ')[0].trim();
+                                if (season && episode) {
+                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                finalTitle += ' - www.cinegeek.shop';
+
                                 const dubObj = languageOptions[currentQuality].dub;
                                 if (dubObj && dubObj.stream_url) {
                                     const sToken = dubObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
                                     if (sToken) {
-                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
                                         return;
                                     }
                                 }
@@ -975,16 +987,22 @@ export default function PlayerPage() {
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                setConfirmDownloadUrl(`/api/stream/d/${token}`);
+                                setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
                                 setDownloadSelector(false);
+                                let finalTitle = title.split(' - ')[0].trim();
+                                if (season && episode) {
+                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                finalTitle += ' - www.cinegeek.shop';
+
                                 const legObj = languageOptions[currentQuality].leg;
                                 if (legObj && legObj.stream_url) {
                                     const sToken = legObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
                                     if (sToken) {
-                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
                                         return;
                                     }
                                 }
@@ -1001,7 +1019,7 @@ export default function PlayerPage() {
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
                                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                                setConfirmDownloadUrl(`/api/stream/d/${token}`);
+                                setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>

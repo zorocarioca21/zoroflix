@@ -230,7 +230,8 @@ export default function streamRoutes(db) {
             // Força modo de download na rota /d/
             req.query.download = 'true';
             
-            await handleStreamRequest(req, res, messageId, data.title);
+            const finalTitle = req.query.title || data.title;
+            await handleStreamRequest(req, res, messageId, finalTitle);
         } catch (err) {
             console.error("Erro ao decodificar token ofuscado:", err);
             return res.status(400).send("Link de download inválido ou corrompido.");
