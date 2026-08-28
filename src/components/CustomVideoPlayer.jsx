@@ -184,119 +184,13 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     });
                 }
             } else if (srcUrl.includes('.mp4')) {
-                // === PROTEÇÃO BLOB (estilo Superflix) ===
-                // Usa MediaSource API para reproduzir via blob: URL.
-                // O JavaScript busca o vídeo via fetch() com header secreto,
-                // alimenta o MediaSource com chunks, e o <video src> mostra apenas:
-                // blob:https://cinegeek.shop/xxxx-xxxx — INÚTIL para o ladrão!
-                
-                const useMSE = typeof MediaSource !== 'undefined' && (
-                    MediaSource.isTypeSupported('video/mp4; codecs="avc1.64001f,mp4a.40.2"') ||
-                    MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"')
-                );
-                
-                if (useMSE) {
-                    const ms = new MediaSource();
-                    const blobUrl = URL.createObjectURL(ms);
-                    videoRef.current.src = blobUrl;
-                    
-                    const abortCtrl = new AbortController();
-                    // Guardar referências pra cleanup
-                    videoRef.current._blobCleanup = () => {
-                        abortCtrl.abort();
-                        URL.revokeObjectURL(blobUrl);
-                    };
-                    
-                    ms.addEventListener('sourceopen', async () => {
-                        // Detecta codec suportado
-                        let mime = 'video/mp4; codecs="avc1.64001f,mp4a.40.2"';
-                        if (!MediaSource.isTypeSupported(mime)) {
-                            mime = 'video/mp4; codecs="avc1.42E01E,mp4a.40.2"';
-                        }
-                        
-                        const sb = ms.addSourceBuffer(mime);
-                        
-                        try {
-                            const _p1 = 'santo', _p2 = 'ryu15', _p3 = '1515';
-                            const resp = await fetch(`/api/stream/fmp4?url=${encodeURIComponent(srcUrl)}`, {
-                                headers: { 'X-Stream-Key': `${_p1}${_p2}${_p3}` },
-                                signal: abortCtrl.signal
-                            });
-                            
-                            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                            
-                            const reader = resp.body.getReader();
-                            let started = false;
-                            
-                            while (true) {
-                                const { done, value } = await reader.read();
-                                if (done) {
-                                    // Stream acabou — sinaliza o fim pro MSE calcular a duração total
-                                    if (sb.updating) {
-                                        await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                    }
-                                    if (ms.readyState === 'open') ms.endOfStream();
-                                    break;
-                                }
-                                
-                                // Espera o SourceBuffer ficar livre
-                                if (sb.updating) {
-                                    await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                }
-                                
-                                // Appenda o chunk de vídeo
-                                try {
-                                    sb.appendBuffer(value);
-                                    await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                } catch (e) {
-                                    if (e.name === 'QuotaExceededError') {
-                                        // Buffer cheio — remove dados antigos pra liberar memória
-                                        const removeEnd = Math.max(0, (videoRef.current?.currentTime || 0) - 30);
-                                        if (removeEnd > 0 && sb.buffered.length > 0 && sb.buffered.start(0) < removeEnd) {
-                                            sb.remove(sb.buffered.start(0), removeEnd);
-                                            await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                            // Tenta appendar de novo
-                                            sb.appendBuffer(value);
-                                            await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                        }
-                                    } else {
-                                        throw e;
-                                    }
-                                }
-                                
-                                // Auto-play após receber os primeiros dados
-                                if (!started && sb.buffered.length > 0) {
-                                    videoRef.current.play().catch(() => {});
-                                    started = true;
-                                }
-                                
-                                // Limpa buffer antigo periodicamente pra não estourar a RAM
-                                if (sb.buffered.length > 0 && (videoRef.current?.currentTime || 0) > 120) {
-                                    const removeEnd = (videoRef.current?.currentTime || 0) - 60;
-                                    if (removeEnd > 0 && sb.buffered.start(0) < removeEnd && !sb.updating) {
-                                        sb.remove(sb.buffered.start(0), removeEnd);
-                                        await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-                                    }
-                                }
-                            }
-                        } catch (err) {
-                            if (err.name !== 'AbortError') {
-                                console.error('[Blob Player] Erro no MSE:', err);
-                                // Fallback: tenta reprodução nativa se MSE falhar
-                                if (videoRef.current) {
-                                    videoRef.current.src = srcUrl;
-                                    videoRef.current.play().catch(() => {});
-                                }
-                            }
-                        }
-                    });
-                } else {
-                    // Fallback para iOS/Safari antigo — usa player nativo
-                    videoRef.current.src = srcUrl;
-                    videoRef.current.addEventListener('loadedmetadata', () => {
-                        videoRef.current.play().catch(() => {});
-                    });
-                }
+                // Como a API (stream.js) agora lida perfeitamente com Range requests (e arrumamos o Referer),
+                // o player nativo do navegador consegue pular pro final do arquivo, ler o moov atom,
+                // descobrir a duração (Duration) e permitir avançar/voltar no tempo sem depender de proxy!
+                videoRef.current.src = srcUrl;
+                videoRef.current.addEventListener('loadedmetadata', () => {
+                    videoRef.current.play().catch(() => {});
+                });
             } else {
                 // MPEG-TS (Stream direto do provedor de IPTV/Live) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
@@ -340,11 +234,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             if (mpegtsRef.current) {
                 mpegtsRef.current.destroy();
                 mpegtsRef.current = null;
-            }
-            // Cleanup do blob player
-            if (videoRef.current?._blobCleanup) {
-                videoRef.current._blobCleanup();
-                videoRef.current._blobCleanup = null;
             }
         };
     }, [srcUrl, messageId]);
@@ -603,7 +492,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
     };
 
     const formatTime = (timeInSeconds) => {
-        if (isNaN(timeInSeconds) || !isFinite(timeInSeconds)) return "--:--";
+        if (isNaN(timeInSeconds)) return "00:00";
         const h = Math.floor(timeInSeconds / 3600);
         const m = Math.floor((timeInSeconds % 3600) / 60);
         const s = Math.floor(timeInSeconds % 60);
