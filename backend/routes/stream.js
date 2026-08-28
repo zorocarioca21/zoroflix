@@ -163,6 +163,7 @@ export default function streamRoutes(db) {
                 
                 const canWrite = res.write(chunkToSend);
                 if (!canWrite) {
+                    console.log(`[Stream] Buffer cheio, aguardando drain... (Chunks enviados: ${chunkCount})`);
                     // Aguarda o drain se o buffer estiver cheio, mas também escuta close/error 
                     // para evitar travamento eterno (memory/connection leak)!
                     await new Promise(resolve => {
@@ -172,12 +173,17 @@ export default function streamRoutes(db) {
                             res.removeListener('error', onResolve);
                             resolve();
                         };
-                        const onResolve = () => cleanup();
+                        const onResolve = () => {
+                            console.log(`[Stream] Drain/Close/Error resolvido (Chunks: ${chunkCount})`);
+                            cleanup();
+                        };
                         
                         res.once('drain', onResolve);
                         res.once('close', onResolve);
                         res.once('error', onResolve);
                     });
+                } else {
+                    console.log(`[Stream] Escrita no buffer bem-sucedida direto. (Chunks: ${chunkCount})`);
                 }
                 
                 if (bytesSent >= limit) break;
