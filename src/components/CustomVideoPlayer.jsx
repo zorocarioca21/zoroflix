@@ -176,32 +176,15 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                     });
                 }
             } else if (srcUrl.includes('.mp4')) {
-                // MP4 do Telegram costuma ter o moov atom no final, quebrando o player nativo.
-                // Voltamos a usar o mpegts.js que consegue ler como stream bruto, mas marcamos isLive: false
-                if (mpegts.getFeatureList().mseLivePlayback) {
-                    const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
-                    mpegtsRef.current = mpegts.createPlayer({
-                        type: 'mse',
-                        isLive: false, // Alterado para false para consertar o Infinity no tempo
-                        url: proxyUrl,
-                        hasAudio: true,
-                        hasVideo: true
-                    }, {
-                        enableStashBuffer: true,
-                        stashInitialSize: 128
-                    });
-                    mpegtsRef.current.attachMediaElement(videoRef.current);
-                    mpegtsRef.current.load();
-                    mpegtsRef.current.play().catch(() => {});
-                } else {
-                    // Fallback para iOS (iPhone) usando o próprio link seguro!
-                    // Como a API faz o stream perfeito, o iPhone vai rodar liso.
-                    videoRef.current.src = srcUrl;
-                    videoRef.current.load();
+                // Como a API (stream.js) agora lida perfeitamente com Range requests (e arrumamos o Referer),
+                // o player nativo do navegador consegue pular pro final do arquivo, ler o moov atom,
+                // descobrir a duração (Duration) e permitir avançar/voltar no tempo sem depender de proxy!
+                videoRef.current.src = srcUrl;
+                videoRef.current.addEventListener('loadedmetadata', () => {
                     videoRef.current.play().catch(() => {});
-                }
+                });
             } else {
-                // MPEG-TS (Stream direto do provedor) via mpegts.js e Proxy do Backend
+                // MPEG-TS (Stream direto do provedor de IPTV/Live) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
                     const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
                     mpegtsRef.current = mpegts.createPlayer({
