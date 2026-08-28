@@ -235,9 +235,16 @@ export default function streamRoutes(db) {
                 return res.status(403).send("Este link expirou. Por favor, solicite um novo link.");
             }
 
-            // Proteção contra acesso direto (Hotlink/Script/Navegador direto)
+            // Proteção avançada contra acesso direto (Hotlink/Script/Navegador direto)
             if (!data.app) {
                 const referer = req.headers.referer || req.headers.origin;
+                const fetchDest = req.headers['sec-fetch-dest'];
+
+                // Bloqueia se o usuário colar na barra de endereços ou abrir em nova guia (Sec-Fetch-Dest = document)
+                if (fetchDest === 'document') {
+                    return res.status(403).send("Acesso negado. A reprodução direta foi bloqueada por segurança.");
+                }
+
                 if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
                     return res.status(403).send("Acesso negado. Link protegido contra download direto.");
                 }

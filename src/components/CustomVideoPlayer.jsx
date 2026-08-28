@@ -505,6 +505,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                 playsInline
                 webkit-playsinline="true"
                 preload="auto"
+                controlsList="nodownload"
+                onContextMenu={(e) => e.preventDefault()}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
