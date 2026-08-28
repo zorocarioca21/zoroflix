@@ -237,24 +237,20 @@ export default function streamRoutes(db) {
 
             // Proteção avançada contra acesso direto (Hotlink/Script/Navegador direto)
             if (!data.app) {
+                const fetchSite = req.headers['sec-fetch-site']; // 'same-origin', 'same-site', 'cross-site', 'none'
                 const referer = req.headers.referer || req.headers.origin;
-                const fetchDest = req.headers['sec-fetch-dest'];
-                const fetchSite = req.headers['sec-fetch-site'];
 
-                // Bloqueia se o usuário colar na barra de endereços ou abrir em nova guia
-                if (fetchDest === 'document') {
-                    return res.status(403).send("Acesso negado. A reprodução direta foi bloqueada por segurança.");
-                }
-
-                // Navegadores cortam o Referer em requests de 'Range' para o vídeo.
-                // Se o destino for explicitamente 'video', nós confiamos para não quebrar o player.
-                if (fetchDest !== 'video' && fetchDest !== 'audio') {
-                    // Para qualquer outro caso (scripts, ferramentas, navegadores sem sec-fetch-dest), exigimos o Referer válido
+                if (fetchSite) {
+                    // Sec-Fetch-Site é suportado por todos os navegadores modernos.
+                    // 'none': Usuário colou o link na barra de endereços ou usou um gerenciador de downloads.
+                    // 'cross-site': Alguém tentou colocar a URL direto numa tag <video> em outro site.
+                    if (fetchSite === 'cross-site' || fetchSite === 'none') {
+                        return res.status(403).send("Acesso negado. Hotlink e reprodução direta bloqueados.");
+                    }
+                } else {
+                    // Fallback para navegadores muito antigos ou scripts obscuros
                     if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
-                        // Se for request do mesmo site, podemos dar um passe livre
-                        if (fetchSite !== 'same-origin') {
-                            return res.status(403).send("Acesso negado. Link protegido contra download direto.");
-                        }
+                        return res.status(403).send("Acesso negado. Link protegido contra download direto.");
                     }
                 }
             }
