@@ -764,6 +764,7 @@ export default function PlayerPage() {
                                 <button 
                                     className="nav-btn-modern" 
                                     onClick={() => {
+                                        let targetStreamUrl = null;
                                         let targetMsgId = telegramMessageId;
                                         
                                         if (!targetMsgId) {
@@ -774,14 +775,25 @@ export default function PlayerPage() {
                                             }
                                             
                                             if (opts.dub && !opts.leg) {
+                                                targetStreamUrl = opts.dub.stream_url;
                                                 targetMsgId = opts.dub.id || opts.dub;
                                             } else if (!opts.dub && opts.leg) {
+                                                targetStreamUrl = opts.leg.stream_url;
                                                 targetMsgId = opts.leg.id || opts.leg;
                                             } else if (opts.dub && opts.leg) {
                                                 setDownloadSelector(true);
                                                 return;
                                             }
                                         }
+
+                                        if (targetStreamUrl) {
+                                            const sToken = targetStreamUrl.split('/s/')[1]?.split('.mp4')[0];
+                                            if (sToken) {
+                                                setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                                return;
+                                            }
+                                        }
+
                                         let finalTitle = title.split(' - ')[0].trim();
                                         if (season && episode) {
                                             finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
@@ -942,13 +954,22 @@ export default function PlayerPage() {
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <button onClick={() => {
                                 setDownloadSelector(false);
+                                const dubObj = languageOptions[currentQuality].dub;
+                                if (dubObj && dubObj.stream_url) {
+                                    const sToken = dubObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
+                                    if (sToken) {
+                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                        return;
+                                    }
+                                }
+
                                 let finalTitle = title.split(' - ')[0].trim();
                                 if (season && episode) {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
                                 
-                                const payload = JSON.stringify({ id: languageOptions[currentQuality].dub, title: finalTitle });
+                                const payload = JSON.stringify({ id: dubObj?.id || dubObj, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
                                 const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
@@ -959,13 +980,22 @@ export default function PlayerPage() {
                             
                             <button onClick={() => {
                                 setDownloadSelector(false);
+                                const legObj = languageOptions[currentQuality].leg;
+                                if (legObj && legObj.stream_url) {
+                                    const sToken = legObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
+                                    if (sToken) {
+                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}`);
+                                        return;
+                                    }
+                                }
+
                                 let finalTitle = title.split(' - ')[0].trim();
                                 if (season && episode) {
                                     finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
                                 finalTitle += ' - www.cinegeek.shop';
                                 
-                                const payload = JSON.stringify({ id: languageOptions[currentQuality].leg, title: finalTitle });
+                                const payload = JSON.stringify({ id: legObj?.id || legObj, title: finalTitle });
                                 const textoInvertido = payload.split('').reverse().join('');
                                 const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                                 let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
