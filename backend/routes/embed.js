@@ -103,8 +103,9 @@ export default function embedRoutes(db) {
             const secureItems = items.map(item => {
                 let streamUrl = null;
                 if (item.telegram_message_id) {
+                    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
                     const expiration = Date.now() + 14400000;
-                    const payload = JSON.stringify({ id: item.telegram_message_id, title: item.title, exp: expiration });
+                    const payload = JSON.stringify({ id: item.telegram_message_id, title: item.title, exp: expiration, ip: clientIp });
                     const textoInvertido = payload.split('').reverse().join('');
                     const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                     let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');

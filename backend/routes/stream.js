@@ -260,14 +260,19 @@ export default function streamRoutes(db) {
                 return res.status(403).send("Este link expirou. Por favor, solicite um novo link.");
             }
 
-            // === CHAVE SECRETA DE STREAMING (Cookie Invisível) ===
-            // O player seta um cookie 'stk' antes de carregar o vídeo.
-            // Se o cookie não existir ou estiver errado, bloqueia tudo.
-            // Isso é invisível na URL — o ladrão copia o src e não tem a chave!
-            if (!data.app) {
-                const streamKey = req.cookies && req.cookies.stk;
-                if (streamKey !== 'santoryu151515') {
-                    return res.status(403).send("Acesso negado. Autenticação de streaming ausente.");
+            // === CHAVE SECRETA DE STREAMING (IP Binding) ===
+            // Como navegadores de celular (especialmente Safari no iPhone) frequentemente removem 
+            // os cookies ao tentar avançar um vídeo, o método do cookie causava carregamento infinito.
+            // Solução: O IP do usuário foi salvo no próprio token pelo backend. 
+            // Agora garantimos que o IP batendo na rota de stream é o mesmo dono do link!
+            if (!data.app && data.ip) {
+                const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+                // Compara os IPs (ignora diferença de ipv4 mapeado como ipv6 '::ffff:')
+                const cleanClientIp = clientIp.replace(/^.*:/, '');
+                const cleanTokenIp = data.ip.replace(/^.*:/, '');
+                
+                if (cleanClientIp !== cleanTokenIp) {
+                    return res.status(403).send("Acesso negado. Este link de streaming pertence a outro usuário ou seu IP mudou.");
                 }
             }
             
