@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -34,6 +34,72 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
     const prevMessageId = useRef(messageId);
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
+
+    // Debug State for Admins
+    const [debugLogs, setDebugLogs] = useState([]);
+    const [showDebug, setShowDebug] = useState(isAdmin);
+    const seekStartTimeRef = useRef(0);
+
+    const addDebugLog = (msg) => {
+        if (!isAdmin) return;
+        const time = new Date().toLocaleTimeString('pt-BR', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit', fractionalSecondDigits: 3 });
+        setDebugLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 50));
+    };
+
+    // Video Event Listeners for Debugging
+    useEffect(() => {
+        if (!isAdmin || !videoRef.current) return;
+        const vid = videoRef.current;
+
+        const onSeeking = () => {
+            seekStartTimeRef.current = performance.now();
+            addDebugLog(`SEEKING para ${vid.currentTime.toFixed(2)}s`);
+        };
+        const onSeeked = () => {
+            const timeTaken = (performance.now() - seekStartTimeRef.current).toFixed(0);
+            addDebugLog(`SEEKED concluído em ${timeTaken}ms`);
+        };
+        const onWaiting = () => {
+            addDebugLog(`WAITING (Buffering iniciado no tempo ${vid.currentTime.toFixed(2)}s)`);
+            seekStartTimeRef.current = performance.now();
+        };
+        const onPlaying = () => {
+            if (seekStartTimeRef.current > 0) {
+                const timeTaken = (performance.now() - seekStartTimeRef.current).toFixed(0);
+                addDebugLog(`PLAYING (Playback retomado. Buffer levou ${timeTaken}ms)`);
+                seekStartTimeRef.current = 0;
+            } else {
+                addDebugLog(`PLAYING (Playback iniciado)`);
+            }
+        };
+        const onStalled = () => addDebugLog('STALLED (Sem dados da rede)');
+        const onSuspend = () => addDebugLog('SUSPEND (Download suspenso pelo navegador)');
+        const onCanPlay = () => addDebugLog('CAN PLAY (Dados suficientes para iniciar)');
+        const onCanPlayThrough = () => addDebugLog('CAN PLAY THROUGH (Pode tocar até o fim sem pausas estimadas)');
+        const onError = () => addDebugLog(`ERROR (${vid.error?.code}: ${vid.error?.message})`);
+        
+        vid.addEventListener('seeking', onSeeking);
+        vid.addEventListener('seeked', onSeeked);
+        vid.addEventListener('waiting', onWaiting);
+        vid.addEventListener('playing', onPlaying);
+        vid.addEventListener('stalled', onStalled);
+        vid.addEventListener('suspend', onSuspend);
+        vid.addEventListener('canplay', onCanPlay);
+        vid.addEventListener('canplaythrough', onCanPlayThrough);
+        vid.addEventListener('error', onError);
+
+        return () => {
+            vid.removeEventListener('seeking', onSeeking);
+            vid.removeEventListener('seeked', onSeeked);
+            vid.removeEventListener('waiting', onWaiting);
+            vid.removeEventListener('playing', onPlaying);
+            vid.removeEventListener('stalled', onStalled);
+            vid.removeEventListener('suspend', onSuspend);
+            vid.removeEventListener('canplay', onCanPlay);
+            vid.removeEventListener('canplaythrough', onCanPlayThrough);
+            vid.removeEventListener('error', onError);
+        };
+    }, [isAdmin]);
 
     const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
 
@@ -661,6 +727,33 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
             )}
 
             {/* Controls Bar */}
+            {isAdmin && showDebug && (
+                <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    left: '10px',
+                    zIndex: 50,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    color: '#00ff00',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    width: '350px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    pointerEvents: 'none',
+                    border: '1px solid #333'
+                }}>
+                    <div style={{ borderBottom: '1px solid #444', marginBottom: '5px', paddingBottom: '3px', fontWeight: 'bold' }}>
+                        DEBUG DO PLAYER (ADMIN)
+                    </div>
+                    {debugLogs.length === 0 ? 'Aguardando eventos...' : debugLogs.map((log, i) => (
+                        <div key={i}>{log}</div>
+                    ))}
+                </div>
+            )}
+
         {/* Player Controls Overlay */}
         <div className="player-controls-overlay" style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0, padding: '2rem 1rem 1rem 1rem',
@@ -788,6 +881,11 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, contentId,
                             {(isCastAvailable || isAirPlayAvailable) && (
                                 <button onClick={handleCastClick} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title="Transmitir para TV">
                                     <Cast size={22} />
+                                </button>
+                            )}
+                            {isAdmin && (
+                                <button className="control-btn tool-btn" onClick={(e) => { e.stopPropagation(); setShowDebug(!showDebug); }} title="Debug Admin" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                                    <AlertTriangle size={20} />
                                 </button>
                             )}
                             <button onClick={toggleZoom} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }} title={zoomMode === 'contain' ? "Zoom (Cortar Bordas)" : (zoomMode === 'cover' ? "Esticar (Preencher Tela)" : "Ajustar à Tela (Padrão)")}>
