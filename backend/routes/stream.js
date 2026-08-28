@@ -239,14 +239,23 @@ export default function streamRoutes(db) {
             if (!data.app) {
                 const referer = req.headers.referer || req.headers.origin;
                 const fetchDest = req.headers['sec-fetch-dest'];
+                const fetchSite = req.headers['sec-fetch-site'];
 
-                // Bloqueia se o usuário colar na barra de endereços ou abrir em nova guia (Sec-Fetch-Dest = document)
+                // Bloqueia se o usuário colar na barra de endereços ou abrir em nova guia
                 if (fetchDest === 'document') {
                     return res.status(403).send("Acesso negado. A reprodução direta foi bloqueada por segurança.");
                 }
 
-                if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
-                    return res.status(403).send("Acesso negado. Link protegido contra download direto.");
+                // Navegadores cortam o Referer em requests de 'Range' para o vídeo.
+                // Se o destino for explicitamente 'video', nós confiamos para não quebrar o player.
+                if (fetchDest !== 'video' && fetchDest !== 'audio') {
+                    // Para qualquer outro caso (scripts, ferramentas, navegadores sem sec-fetch-dest), exigimos o Referer válido
+                    if (!referer || (!referer.includes('cinegeek.shop') && !referer.includes('localhost'))) {
+                        // Se for request do mesmo site, podemos dar um passe livre
+                        if (fetchSite !== 'same-origin') {
+                            return res.status(403).send("Acesso negado. Link protegido contra download direto.");
+                        }
+                    }
                 }
             }
             
