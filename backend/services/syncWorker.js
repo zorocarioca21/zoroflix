@@ -13,9 +13,9 @@ import https from 'https';
 const QUALITY_TAG_REGEX = /\s*[\[\(]?\s*(4K|UHD|2160p|FHD|1080p|FULLHD|FULL HD|HD|720p|SD|480p|360p)\s*[\]\)]?\s*/gi;
 
 function getQualityTag(height) {
-    if (height >= 2000) return '[4K]';
-    if (height >= 1000) return '[FHD]';
-    if (height >= 700) return '[HD]';
+    if (height >= 2000) return '4K';
+    if (height >= 1000) return 'FHD';
+    if (height >= 700) return 'HD';
     return ''; // Sem tag para SD
 }
 

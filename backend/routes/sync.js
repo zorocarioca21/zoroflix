@@ -120,9 +120,9 @@ export default function syncRoutes(db, io) {
                 
                 if (heightResult > 0) {
                     let qualityTag = '';
-                    if (heightResult >= 2000) qualityTag = '[4K]';
-                    else if (heightResult >= 1000) qualityTag = '[FHD]';
-                    else if (heightResult >= 700) qualityTag = '[HD]';
+                    if (heightResult >= 2000) qualityTag = '4K';
+                    else if (heightResult >= 1000) qualityTag = 'FHD';
+                    else if (heightResult >= 700) qualityTag = 'HD';
                     
                     // Limpa tags falsas do título e adiciona a real
                     cleanedTitle = title.replace(QUALITY_TAG_REGEX, ' ').replace(/\s{2,}/g, ' ').trim();
