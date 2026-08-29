@@ -73,24 +73,24 @@ export default function syncRoutes(db, io) {
             let actualSize = totalSize || fs.statSync(sourceFilePath).size;
             
             // Se for .ts, vamos converter rapidamente para .mp4
-            if (originalExt && originalExt.toLowerCase() === 'ts') {
+            // Se for .mp4, vamos aplicar o Fast Start (MOOV Atom no início)
+            if (originalExt && (originalExt.toLowerCase() === 'ts' || originalExt.toLowerCase() === 'mp4')) {
                 const convertedPath = path.join(tempDir, `converted_${Date.now()}.mp4`);
                 try {
-                    // Executa a conversão rápida sem re-encode (-c copy)
-                    await execPromise(`ffmpeg -i "${sourceFilePath}" -c copy "${convertedPath}"`);
+                    // Executa a conversão rápida sem re-encode (-c copy) forçando Fast Start
+                    await execPromise(`ffmpeg -i "${sourceFilePath}" -c copy -movflags +faststart "${convertedPath}"`);
                     
-                    // Se deu certo, atualiza o tamanho, extensão e deleta o arquivo .ts original
+                    // Se deu certo, atualiza o tamanho, extensão e deleta o arquivo original
                     if (fs.existsSync(convertedPath)) {
                         actualSize = fs.statSync(convertedPath).size;
                         finalExt = 'mp4';
                         fs.unlinkSync(sourceFilePath);
-                        // Substituímos o arquivo fonte pelo convertido
+                        // Substituímos o arquivo fonte pelo convertido/otimizado
                         fs.renameSync(convertedPath, sourceFilePath);
                     }
                 } catch (err) {
-                    console.error("Erro ao converter TS para MP4:", err);
-                    // Se falhar a conversão, podemos retornar erro ou continuar (vamos retornar erro)
-                    return res.status(500).json({ error: 'Erro ao converter o arquivo .ts para .mp4 via ffmpeg.' });
+                    console.error("Erro ao converter TS/MP4 para Otimizado:", err);
+                    return res.status(500).json({ error: 'Erro ao otimizar o arquivo para Web (Fast Start) via FFmpeg.' });
                 }
             }
             
