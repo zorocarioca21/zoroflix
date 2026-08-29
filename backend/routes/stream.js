@@ -65,7 +65,6 @@ export default function streamRoutes(db) {
             const downloadTitle = req.query.download === 'true' && inputTitle ? inputTitle.replace(/[^\w\s-]/g, '') : 'video';
             const originalExt = document.mimeType === 'video/x-matroska' ? 'mkv' : 'mp4';
             const disposition = req.query.download === 'true' ? `attachment; filename="${downloadTitle}.${originalExt}"` : 'inline';
-            const mimeType = document.mimeType || 'video/mp4';
 
             if (range) {
                 const parts = range.replace(/bytes=/, "").split("-");
