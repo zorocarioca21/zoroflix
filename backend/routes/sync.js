@@ -96,21 +96,59 @@ export default function syncRoutes(db, io) {
             
             const fakeUrl = `local://manual-upload-${Date.now()}.${finalExt}`;
             
+            // Detecção automática de resolução via ffprobe
+            const QUALITY_TAG_REGEX = /\s*[\[\(]?\s*(4K|UHD|2160p|FHD|1080p|FULLHD|FULL HD|HD|720p|SD|480p|360p)\s*[\]\)]?\s*/gi;
+            let cleanedTitle = title;
+            
+            try {
+                const heightResult = await new Promise((resolve, reject) => {
+                    const proc = spawn('ffprobe', [
+                        '-v', 'error',
+                        '-select_streams', 'v:0',
+                        '-show_entries', 'stream=height',
+                        '-of', 'default=noprint_wrappers=1:nokey=1',
+                        sourceFilePath
+                    ]);
+                    let output = '';
+                    proc.stdout.on('data', d => output += d.toString());
+                    proc.on('close', code => {
+                        if (code === 0 && output.trim()) resolve(parseInt(output.trim()) || 0);
+                        else reject(new Error(`ffprobe falhou (code ${code})`));
+                    });
+                    proc.on('error', () => reject(new Error('ffprobe não instalado')));
+                });
+                
+                if (heightResult > 0) {
+                    let qualityTag = '';
+                    if (heightResult >= 2000) qualityTag = '[4K]';
+                    else if (heightResult >= 1000) qualityTag = '[FHD]';
+                    else if (heightResult >= 700) qualityTag = '[HD]';
+                    
+                    // Limpa tags falsas do título e adiciona a real
+                    cleanedTitle = title.replace(QUALITY_TAG_REGEX, ' ').replace(/\s{2,}/g, ' ').trim();
+                    if (qualityTag) cleanedTitle = `${cleanedTitle} ${qualityTag}`;
+                    
+                    console.log(`[Upload Manual] 🎬 Resolução detectada: ${heightResult}p | Título: "${title}" → "${cleanedTitle}"`);
+                }
+            } catch (probeErr) {
+                console.warn(`[Upload Manual] ⚠️ Não foi possível detectar resolução: ${probeErr.message}`);
+            }
+            
             // 1. Insere no DB para pegar o ID com prioridade máxima (9999) para furar a fila absolutamente
             const result = await db.run(
                 "INSERT INTO sync_queue (title, url, status, file_size, priority) VALUES (?, ?, 'pending_upload', ?, 9999)",
-                [title, fakeUrl, actualSize]
+                [cleanedTitle, fakeUrl, actualSize]
             );
             const dbId = result.lastID;
             
             // 2. Renomeia e move para o tmp com o formato esperado pelo worker
-            const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const safeTitle = cleanedTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
             const finalTmpPath = path.join(os.tmpdir(), `${safeTitle}_${dbId}.${finalExt}`);
             
             // Move o arquivo pro destino final
             fs.renameSync(sourceFilePath, finalTmpPath);
             
-            res.json({ success: true, message: 'Upload manual enviado para a fila!', id: dbId });
+            res.json({ success: true, message: `Upload manual enviado para a fila! Qualidade detectada: ${cleanedTitle}`, id: dbId });
         } catch (err) {
             console.error("Erro ao finalizar upload:", err);
             res.status(500).json({ error: 'Erro interno ao finalizar upload.' });

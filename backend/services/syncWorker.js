@@ -5,6 +5,58 @@ import { spawn } from 'child_process';
 import readline from 'readline';
 import https from 'https';
 
+// ==========================================
+// FUNÇÕES DE DETECÇÃO DE QUALIDADE
+// ==========================================
+
+// Regex para limpar tags de qualidade falsas/existentes do título
+const QUALITY_TAG_REGEX = /\s*[\[\(]?\s*(4K|UHD|2160p|FHD|1080p|FULLHD|FULL HD|HD|720p|SD|480p|360p)\s*[\]\)]?\s*/gi;
+
+function getQualityTag(height) {
+    if (height >= 2000) return '[4K]';
+    if (height >= 1000) return '[FHD]';
+    if (height >= 700) return '[HD]';
+    return ''; // Sem tag para SD
+}
+
+async function detectVideoResolution(filePath) {
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const proc = spawn('ffprobe', [
+                '-v', 'error',
+                '-select_streams', 'v:0',
+                '-show_entries', 'stream=height',
+                '-of', 'default=noprint_wrappers=1:nokey=1',
+                filePath
+            ]);
+            let output = '';
+            proc.stdout.on('data', d => output += d.toString());
+            proc.on('close', code => {
+                if (code === 0 && output.trim()) resolve(parseInt(output.trim()) || 0);
+                else reject(new Error(`ffprobe resolução falhou (code ${code})`));
+            });
+            proc.on('error', () => reject(new Error('ffprobe não instalado')));
+        });
+        return result;
+    } catch (e) {
+        console.warn(`[Qualidade] ⚠️ Não foi possível detectar resolução: ${e.message}`);
+        return 0;
+    }
+}
+
+function cleanAndTagTitle(title, height) {
+    // Remove todas as tags de qualidade existentes (falsas ou verdadeiras)
+    let cleaned = title.replace(QUALITY_TAG_REGEX, ' ').replace(/\s{2,}/g, ' ').trim();
+    
+    // Adiciona a tag verdadeira baseada na resolução real
+    const tag = getQualityTag(height);
+    if (tag) {
+        cleaned = `${cleaned} ${tag}`;
+    }
+    
+    return cleaned;
+}
+
 // Worker Global State
 let isRunning = false;
 let isPaused = false;
@@ -284,8 +336,18 @@ async function processDownload(movie) {
             console.warn(`[Download] ⚠️ ffprobe não conseguiu validar o arquivo: ${probeErr.message}`);
         }
 
+        // Detecção automática de resolução e limpeza de título
+        const videoHeight = await detectVideoResolution(tmpPath);
+        if (videoHeight > 0) {
+            const newTitle = cleanAndTagTitle(movie.title, videoHeight);
+            if (newTitle !== movie.title) {
+                console.log(`[Qualidade] 🎬 Resolução detectada: ${videoHeight}p | Título: "${movie.title}" → "${newTitle}"`);
+                await dbInstance.run("UPDATE sync_queue SET title = ? WHERE id = ?", [newTitle, movie.id]);
+                movie.title = newTitle; // Atualiza referência local para o upload usar o nome certo
+            }
+        }
+
         // Finaliza download: altera para pending_upload para que o loop 2 assuma
-        // Salvamos a duração no erro_message apenas temporariamente para o upload recuperar, ou não precisamos pois o upload extrai.
         await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [fileSize, movie.id]);
         downloadTask = null;
         broadcastState();
@@ -518,8 +580,40 @@ async function fallbackDownloadNodeFetch(url, destPath) {
             }
             throw new Error(`Download interrompido. Baixado: ${downloadedBytes} / Total: ${totalBytes}`);
         }
+
+        // Aplica Fast Start no arquivo baixado via fallback (pois FFmpeg não processou)
+        console.log(`[FastStart] 🔄 Aplicando otimização Web no arquivo baixado via fallback...`);
+        await applyFastStart(destPath);
     } finally {
         activeDownloadController = null;
+    }
+}
+
+// Após o download via fetch (fallback), aplicar Fast Start com FFmpeg
+async function applyFastStart(filePath) {
+    const dir = path.dirname(filePath);
+    const fastStartPath = path.join(dir, `faststart_${Date.now()}.mp4`);
+    try {
+        await new Promise((resolve, reject) => {
+            const proc = spawn('ffmpeg', ['-y', '-i', filePath, '-c', 'copy', '-movflags', '+faststart', fastStartPath]);
+            proc.on('close', code => {
+                if (code === 0) resolve();
+                else reject(new Error(`FFmpeg Fast Start falhou (code ${code})`));
+            });
+            proc.on('error', reject);
+        });
+        // Substitui o arquivo original pelo otimizado
+        if (fs.existsSync(fastStartPath)) {
+            fs.unlinkSync(filePath);
+            fs.renameSync(fastStartPath, filePath);
+            console.log(`[FastStart] ✅ Arquivo otimizado com sucesso: ${path.basename(filePath)}`);
+        }
+    } catch (e) {
+        console.warn(`[FastStart] ⚠️ Não foi possível aplicar Fast Start: ${e.message}`);
+        // Limpa arquivo temporário se existir
+        if (fs.existsSync(fastStartPath)) {
+            try { fs.unlinkSync(fastStartPath); } catch (_) {}
+        }
     }
 }
 
