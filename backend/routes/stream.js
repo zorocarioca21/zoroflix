@@ -48,7 +48,11 @@ export default function streamRoutes(db) {
             }
 
             const document = message.media.document;
-            console.log(`[Stream] Documento encontrado! Tamanho: ${document.size} (Via Worker Pool)`);
+            const mimeType = document.mimeType || 'video/mp4';
+            const fileNameAttr = document.attributes?.find(attr => attr.className === 'DocumentAttributeFilename');
+            const fileName = fileNameAttr ? fileNameAttr.fileName : 'desconhecido.mp4';
+            
+            console.log(`[Stream] Documento encontrado! Tamanho: ${document.size} | Nome: ${fileName} | Mime: ${mimeType} (Via Worker Pool)`);
             const fileSize = document.size.toJSNumber ? document.size.toJSNumber() : Number(document.size);
 
             // Suporte a Range Headers (Essencial para o player de vídeo pular partes)
