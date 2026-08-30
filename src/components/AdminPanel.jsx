@@ -9,6 +9,7 @@ import AdminBotManager from './AdminBotManager';
 
 export default function AdminPanel() {
     const { user } = useAuth();
+    const token = localStorage.getItem('cinegeek_token');
     const isAuthorized = user && user.role === 'admin';
 
     const [activeTab, setActiveTab] = useState('reports');
