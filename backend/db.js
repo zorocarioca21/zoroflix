@@ -335,6 +335,42 @@ export async function initDB() {
         )
     `);
 
+    // ==========================================
+    // TABELAS DE MANGÁS E HQs
+    // ==========================================
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS mangas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            original_title TEXT,
+            synopsis TEXT,
+            cover_url TEXT,
+            banner_url TEXT,
+            author TEXT,
+            genres TEXT,
+            status TEXT DEFAULT 'ongoing',
+            type TEXT DEFAULT 'manga', -- manga, hq, webtoon
+            anilist_id INTEGER,
+            year INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS manga_chapters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            manga_id INTEGER NOT NULL,
+            chapter_number REAL NOT NULL, -- Pode ser float (ex: 10.5)
+            title TEXT,
+            telegram_message_id INTEGER NOT NULL, -- ID da msg no novo canal
+            file_size INTEGER DEFAULT 0,
+            pages_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(manga_id) REFERENCES mangas(id) ON DELETE CASCADE
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

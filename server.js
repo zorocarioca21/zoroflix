@@ -29,7 +29,9 @@ import storageRoutes from './backend/routes/storage.js';
 import embedRoutes from './backend/routes/embed.js';
 import auditRoutes from './backend/routes/audit.js';
 import botRoutes from './backend/routes/bot.js';
+import botManagerRoutes from './backend/routes/botManager.js';
 import appUpdatesRoutes from './backend/routes/appUpdates.js';
+import mangasRoutes from './backend/routes/mangas.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
@@ -67,7 +69,11 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     app.use('/api/storage', storageRoutes(storageDb));
     app.use('/api/embed', embedRoutes(db));
     app.use('/api/bot', botRoutes(db));
+    app.use('/api/bot-manager', botManagerRoutes(db));
     app.use('/api/app-updates', appUpdatesRoutes(db));
+
+    // Rotas de Mangás
+    app.use('/api/mangas', mangasRoutes());
 
     // Serve public APK downloads
     app.use('/downloads/app', express.static(path.join(__dirname, 'backend', 'uploads', 'app')));
