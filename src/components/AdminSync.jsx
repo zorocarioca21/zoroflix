@@ -573,6 +573,89 @@ export default function AdminSync() {
 
     const [isRemapping, setIsRemapping] = useState(false);
     const [isCleaningTG, setIsCleaningTG] = useState(false);
+    
+    // === AUDIT STATE ===
+    const [auditState, setAuditState] = useState({ isRunning: false, isPaused: false, progress: 0, total: 0, currentIndex: 0, currentItem: null, results: { passed: 0, failed: 0, failedItems: [] } });
+    const auditPollRef = useRef(null);
+
+    const pollAuditState = () => {
+        if (auditPollRef.current) clearInterval(auditPollRef.current);
+        auditPollRef.current = setInterval(async () => {
+            try {
+                const res = await fetch('/api/audit/state');
+                const data = await res.json();
+                setAuditState(data);
+                if (!data.isRunning && data.progress >= 100) {
+                    clearInterval(auditPollRef.current);
+                    auditPollRef.current = null;
+                }
+            } catch (e) {}
+        }, 2000);
+    };
+
+    const startAudit = async () => {
+        const ok = await dialog.confirm('Isso vai verificar TODOS os vídeos completos no Telegram para encontrar os que NÃO possuem Fast Start (otimização web). Pode demorar bastante. Deseja iniciar?', {
+            variant: 'warning', title: 'Auditoria Fast Start', confirmText: 'Iniciar Auditoria'
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch('/api/audit/start', { method: 'POST' });
+            if (res.ok) {
+                dialog.alert('Auditoria iniciada! Acompanhe o progresso aqui embaixo.', { variant: 'success', title: 'Iniciado' });
+                pollAuditState();
+            } else {
+                const data = await res.json();
+                dialog.alert(data.error || 'Erro ao iniciar', { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão', { variant: 'error', title: 'Erro' });
+        }
+    };
+
+    const stopAudit = async () => {
+        await fetch('/api/audit/stop', { method: 'POST' });
+        if (auditPollRef.current) { clearInterval(auditPollRef.current); auditPollRef.current = null; }
+        setAuditState(prev => ({ ...prev, isRunning: false }));
+    };
+
+    const reuploadAuditItems = async (ids) => {
+        const ok = await dialog.confirm(`Deseja re-enviar ${ids.length} vídeo(s) para a fila de upload com prioridade alta?`, {
+            variant: 'warning', title: 'Re-Upload', confirmText: 'Re-enviar'
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch('/api/audit/reupload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            });
+            if (res.ok) {
+                dialog.alert(`${ids.length} vídeo(s) enviados para a fila!`, { variant: 'success', title: 'Sucesso' });
+                setAuditState(prev => ({
+                    ...prev,
+                    results: {
+                        ...prev.results,
+                        failedItems: prev.results.failedItems.filter(i => !ids.includes(i.id)),
+                        failed: prev.results.failed - ids.length
+                    }
+                }));
+                fetchQueue();
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão', { variant: 'error', title: 'Erro' });
+        }
+    };
+
+    // Carrega estado da auditoria ao montar (caso ela esteja rodando)
+    useEffect(() => {
+        fetch('/api/audit/state').then(r => r.json()).then(data => {
+            setAuditState(data);
+            if (data.isRunning) pollAuditState();
+        }).catch(() => {});
+        return () => { if (auditPollRef.current) clearInterval(auditPollRef.current); };
+    }, []);
+    // === END AUDIT ===
+
     const remapTelegram = async () => {
         const ok = await dialog.confirm('Isso vai ler TODAS as mensagens do seu canal do Telegram e recriar as entradas no banco de dados. Deseja continuar?', { 
             variant: 'warning', title: 'Remapear Telegram', confirmText: 'Iniciar Remap' 
@@ -815,6 +898,78 @@ export default function AdminSync() {
                             <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
                         </button>
                     </div>
+                </div>
+
+                {/* === SEÇÃO DE AUDITORIA FAST START === */}
+                <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                    <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#fff' }}>
+                        <Activity size={20} color="#00ccff" /> Auditoria Fast Start
+                    </h3>
+                    <p style={{ color: '#888', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
+                        Verifica se os vídeos já enviados ao Telegram possuem o MOOV Atom no início (Fast Start). Vídeos sem isso travam ao pular no player.
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                        {!auditState.isRunning ? (
+                            <button onClick={startAudit} style={{ padding: '0.6rem 1.2rem', background: 'rgba(0,204,255,0.1)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                                <Search size={16} /> Iniciar Auditoria
+                            </button>
+                        ) : (
+                            <button onClick={stopAudit} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,68,68,0.1)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                                <X size={16} /> Parar Auditoria
+                            </button>
+                        )}
+                        {auditState.results.failedItems.length > 0 && (
+                            <button onClick={() => reuploadAuditItems(auditState.results.failedItems.map(i => i.id))} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                                <RefreshCcw size={16} /> Reupar Todos ({auditState.results.failedItems.length})
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Barra de Progresso */}
+                    {(auditState.isRunning || auditState.progress > 0) && (
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                <span>{auditState.isRunning ? `Verificando: ${auditState.currentItem || '...'}` : 'Concluído'}</span>
+                                <span>{auditState.currentIndex}/{auditState.total} ({auditState.progress}%)</span>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${auditState.progress}%`, height: '100%', background: 'linear-gradient(90deg, #00ccff, #00ff88)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '2rem', marginTop: '0.75rem', fontSize: '0.85rem' }}>
+                                <span style={{ color: '#00ff88' }}>✅ OK: {auditState.results.passed}</span>
+                                <span style={{ color: '#ff4444' }}>❌ Precisam Re-Upload: {auditState.results.failed}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Lista de Vídeos Reprovados */}
+                    {auditState.results.failedItems.length > 0 && (
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,68,68,0.15)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>ID</th>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>Título</th>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {auditState.results.failedItems.map(item => (
+                                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <td style={{ padding: '0.5rem 1rem', color: '#666', fontSize: '0.85rem' }}>#{item.id}</td>
+                                            <td style={{ padding: '0.5rem 1rem', color: '#ddd', fontSize: '0.85rem' }}>{item.title}</td>
+                                            <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }}>
+                                                <button onClick={() => reuploadAuditItems([item.id])} style={{ background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '6px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                                    <RefreshCcw size={12} /> Reupar
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>

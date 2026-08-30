@@ -27,6 +27,7 @@ import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import storageRoutes from './backend/routes/storage.js';
 import embedRoutes from './backend/routes/embed.js';
+import auditRoutes from './backend/routes/audit.js';
 import botRoutes from './backend/routes/bot.js';
 import appUpdatesRoutes from './backend/routes/appUpdates.js';
 import { initStorageDB } from './backend/storageDB.js';
@@ -58,6 +59,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     app.use('/api/sports', sportsRoutes());
     app.use('/api/mobile', mobileRoutes(db));
     app.use('/api/recents', recentsRoutes(db));
+    app.use('/api', auditRoutes(db));
     app.use('/api/epg', epgRoutes());
     app.use('/api/downloads', downloadsRoutes(db));
     app.use('/api/stream', streamRoutes(db));
