@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Plus, Image as ImageIcon, Trash2, Edit2, UploadCloud } from 'lucide-react';
 
+import AdminMangaChapters from './AdminMangaChapters';
+
 export default function AdminMangas({ token }) {
     const [mangas, setMangas] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [selectedManga, setSelectedManga] = useState(null);
     
-    // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
-    const [formData, setFormData] = useState({
-        title: '', original_title: '', synopsis: '', cover_url: '', type: 'manga'
-    });
+    
+    // MangaDex Search states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searching, setSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
 
     const fetchMangas = async () => {
         setLoading(true);
@@ -29,8 +33,25 @@ export default function AdminMangas({ token }) {
         fetchMangas();
     }, []);
 
-    const handleAddSubmit = async (e) => {
-        e.preventDefault();
+    const handleSearchMangaDex = async () => {
+        if (!searchQuery) return;
+        setSearching(true);
+        try {
+            const res = await fetch(`/api/mangas/mangadex/search?q=${encodeURIComponent(searchQuery)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.results) {
+                setSearchResults(data.results);
+            }
+        } catch (e) {
+            console.error('Erro na pesquisa', e);
+            window.alert('Erro ao buscar no MangaDex');
+        }
+        setSearching(false);
+    };
+
+    const handleSaveManga = async (mangaData) => {
         try {
             const res = await fetch('/api/mangas', {
                 method: 'POST',
@@ -38,20 +59,36 @@ export default function AdminMangas({ token }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    title: mangaData.title,
+                    original_title: mangaData.title,
+                    synopsis: mangaData.synopsis,
+                    cover_url: mangaData.cover_url,
+                    type: mangaData.type,
+                    anilist_id: mangaData.id // Saving MangaDex ID in anilist_id for now
+                })
             });
             if (res.ok) {
-                window.alert('Obra adicionada com sucesso!');
+                window.alert('Obra salva com sucesso!');
                 setShowAddModal(false);
-                setFormData({ title: '', original_title: '', synopsis: '', cover_url: '', type: 'manga' });
                 fetchMangas();
             } else {
-                window.alert('Erro ao adicionar obra');
+                window.alert('Erro ao salvar obra');
             }
         } catch (e) {
             window.alert('Falha na comunicação com o servidor');
         }
     };
+
+    if (selectedManga) {
+        return (
+            <AdminMangaChapters 
+                manga={selectedManga} 
+                token={token} 
+                onBack={() => setSelectedManga(null)} 
+            />
+        );
+    }
 
     return (
         <div style={{ padding: '2rem', color: '#fff' }}>
@@ -88,7 +125,7 @@ export default function AdminMangas({ token }) {
                         <div style={{ padding: '1rem' }}>
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{manga.title}</h3>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                                <button style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>
+                                <button onClick={() => setSelectedManga(manga)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>
                                     Capítulos
                                 </button>
                                 <button style={{ background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>
@@ -100,67 +137,58 @@ export default function AdminMangas({ token }) {
                 ))}
             </div>
 
-            {/* Modal de Adição */}
+            {/* Modal de Pesquisa MangaDex */}
             {showAddModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-                    <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '12px', width: '500px', maxWidth: '90%', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#ff3366' }}>Cadastrar Mangá/HQ</h3>
-                        <form onSubmit={handleAddSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#aaa' }}>Título Principal *</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={formData.title} 
-                                    onChange={e => setFormData({...formData, title: e.target.value})}
-                                    style={{ width: '100%', padding: '0.8rem', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px' }}
-                                />
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#aaa' }}>Tipo</label>
-                                    <select 
-                                        value={formData.type} 
-                                        onChange={e => setFormData({...formData, type: e.target.value})}
-                                        style={{ width: '100%', padding: '0.8rem', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px' }}
+                    <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '12px', width: '700px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, color: '#ff3366' }}>Pesquisar no MangaDex</h3>
+                            <button onClick={() => setShowAddModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <input 
+                                type="text" 
+                                placeholder="Digite o nome do mangá..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSearchMangaDex()}
+                                style={{ flex: 1, padding: '0.8rem', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px' }}
+                            />
+                            <button 
+                                onClick={handleSearchMangaDex}
+                                disabled={searching}
+                                style={{ padding: '0 1.5rem', background: '#ff3366', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: searching ? 'not-allowed' : 'pointer' }}
+                            >
+                                {searching ? 'Buscando...' : 'Pesquisar'}
+                            </button>
+                        </div>
+
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                            {searchResults.map(result => (
+                                <div key={result.id} style={{ background: '#222', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ height: '200px', background: '#111', marginBottom: '1rem', borderRadius: '4px', overflow: 'hidden' }}>
+                                        {result.cover_url ? (
+                                            <img src={result.cover_url} alt={result.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Sem Capa</div>
+                                        )}
+                                    </div>
+                                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', flex: 1 }}>{result.title}</h4>
+                                    <button 
+                                        onClick={() => handleSaveManga(result)}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                                     >
-                                        <option value="manga">Mangá</option>
-                                        <option value="hq">Comic / HQ</option>
-                                        <option value="webtoon">Webtoon / Manhwa</option>
-                                    </select>
+                                        Salvar no Banco
+                                    </button>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#aaa' }}>URL da Capa</label>
-                                    <input 
-                                        type="url" 
-                                        value={formData.cover_url} 
-                                        onChange={e => setFormData({...formData, cover_url: e.target.value})}
-                                        placeholder="https://..."
-                                        style={{ width: '100%', padding: '0.8rem', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px' }}
-                                    />
+                            ))}
+                            {searchResults.length === 0 && !searching && (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#666', padding: '2rem' }}>
+                                    Nenhum resultado encontrado.
                                 </div>
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#aaa' }}>Sinopse</label>
-                                <textarea 
-                                    rows={4}
-                                    value={formData.synopsis} 
-                                    onChange={e => setFormData({...formData, synopsis: e.target.value})}
-                                    style={{ width: '100%', padding: '0.8rem', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', resize: 'vertical' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="button" onClick={() => setShowAddModal(false)} style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid #444', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>
-                                    Cancelar
-                                </button>
-                                <button type="submit" style={{ flex: 1, padding: '0.8rem', background: '#ff3366', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>
-                                    Salvar Obra
-                                </button>
-                            </div>
-                        </form>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
