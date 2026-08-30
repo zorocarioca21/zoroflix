@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, RefreshCcw, LogIn, Save, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Cpu, RefreshCcw, LogIn, Save, CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function AdminBotManager({ token }) {
     const [dialogs, setDialogs] = useState([]);
@@ -78,7 +78,7 @@ export default function AdminBotManager({ token }) {
     return (
         <div style={{ padding: '2rem', color: '#fff' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '2rem' }}>
-                <Bot size={28} color="#00ff88" />
+                <Cpu size={28} color="#00ff88" />
                 Gerenciador do Bot (Telegram)
             </h2>
 
