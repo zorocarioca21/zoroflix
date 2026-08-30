@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, RefreshCcw, LogIn, Save, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useDialog } from './DialogContext';
 
 export default function AdminBotManager({ token }) {
-    const dialog = useDialog();
     const [dialogs, setDialogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [inviteLink, setInviteLink] = useState('');
@@ -42,23 +40,20 @@ export default function AdminBotManager({ token }) {
             });
             const data = await res.json();
             if (res.ok) {
-                dialog.alert('Bot entrou no canal com sucesso!', { title: 'Sucesso', variant: 'success' });
+                window.alert('Bot entrou no canal com sucesso!');
                 setInviteLink('');
                 fetchDialogs();
             } else {
-                dialog.alert(data.error || 'Erro ao entrar', { title: 'Erro', variant: 'error' });
+                window.alert(data.error || 'Erro ao entrar');
             }
         } catch (e) {
-            dialog.alert('Falha na comunicação com o servidor', { title: 'Erro', variant: 'error' });
+            window.alert('Falha na comunicação com o servidor');
         }
         setJoining(false);
     };
 
     const handleSetEnv = async (key, value) => {
-        const ok = await dialog.confirm(`Deseja definir ${key} como ${value} no arquivo .env?`, {
-            title: 'Salvar Configuração',
-            confirmText: 'Salvar'
-        });
+        const ok = window.confirm(`Deseja definir ${key} como ${value} no arquivo .env?`);
         if (!ok) return;
 
         try {
@@ -71,12 +66,12 @@ export default function AdminBotManager({ token }) {
                 body: JSON.stringify({ key, value })
             });
             if (res.ok) {
-                dialog.alert('Configuração salva com sucesso! O ID já está pronto para uso.', { title: 'Salvo', variant: 'success' });
+                window.alert('Configuração salva com sucesso! O ID já está pronto para uso.');
             } else {
-                dialog.alert('Erro ao salvar no .env', { title: 'Erro', variant: 'error' });
+                window.alert('Erro ao salvar no .env');
             }
         } catch (e) {
-            dialog.alert('Falha de conexão', { title: 'Erro', variant: 'error' });
+            window.alert('Falha de conexão');
         }
     };
 
