@@ -295,6 +295,22 @@ export async function initDB() {
         // Ignora se a coluna já existir
     }
 
+    // Tabela de vídeos quebrados reportados automaticamente pelo player
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS broken_videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sync_queue_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            telegram_message_id INTEGER,
+            reported_by TEXT DEFAULT 'auto',
+            status TEXT DEFAULT 'pending', -- pending, requeued, dismissed
+            report_count INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(sync_queue_id)
+        )
+    `);
+
     // Tabela de Atualizações do App (OTA)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS app_updates (

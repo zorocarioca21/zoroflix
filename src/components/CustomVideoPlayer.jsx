@@ -51,6 +51,24 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         if (!isAdmin || !videoRef.current) return;
         const vid = videoRef.current;
 
+        const reportBrokenVideo = async () => {
+            if (!messageId) return;
+            try {
+                // Evita flood: só reporta uma vez por sessão do player
+                if (window.hasReportedBrokenVideo === messageId) return;
+                window.hasReportedBrokenVideo = messageId;
+                
+                await fetch('/api/audit/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messageId })
+                });
+                console.log('Vídeo reportado como quebrado automaticamente.');
+            } catch (e) {
+                console.error('Erro ao reportar vídeo quebrado', e);
+            }
+        };
+
         const onSeeking = () => {
             seekStartTimeRef.current = performance.now();
             addDebugLog(`SEEKING para ${vid.currentTime.toFixed(2)}s`);
@@ -59,11 +77,21 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
             const timeTaken = (performance.now() - seekStartTimeRef.current).toFixed(0);
             addDebugLog(`SEEKED concluído em ${timeTaken}ms`);
         };
+        
+        let bufferingTimeout;
         const onWaiting = () => {
             addDebugLog(`WAITING (Buffering iniciado no tempo ${vid.currentTime.toFixed(2)}s)`);
             seekStartTimeRef.current = performance.now();
+            // Se ficar mais de 15 segundos no WAITING e não for iOS, pode ser falta do MOOV Atom no início
+            if (!isIOS) {
+                bufferingTimeout = setTimeout(() => {
+                    addDebugLog(`⚠️ Buffering infinito detectado (>15s). Reportando vídeo.`);
+                    reportBrokenVideo();
+                }, 15000);
+            }
         };
         const onPlaying = () => {
+            if (bufferingTimeout) clearTimeout(bufferingTimeout);
             if (seekStartTimeRef.current > 0) {
                 const timeTaken = (performance.now() - seekStartTimeRef.current).toFixed(0);
                 addDebugLog(`PLAYING (Playback retomado. Buffer levou ${timeTaken}ms)`);
@@ -76,7 +104,13 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         const onSuspend = () => addDebugLog('SUSPEND (Download suspenso pelo navegador)');
         const onCanPlay = () => addDebugLog('CAN PLAY (Dados suficientes para iniciar)');
         const onCanPlayThrough = () => addDebugLog('CAN PLAY THROUGH (Pode tocar até o fim sem pausas estimadas)');
-        const onError = () => addDebugLog(`ERROR (${vid.error?.code}: ${vid.error?.message})`);
+        const onError = () => {
+            addDebugLog(`ERROR (${vid.error?.code}: ${vid.error?.message})`);
+            // Código 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) e 3 (MEDIA_ERR_DECODE) costumam acontecer com MP4 quebrado
+            if (vid.error && (vid.error.code === 4 || vid.error.code === 3)) {
+                reportBrokenVideo();
+            }
+        };
         
         vid.addEventListener('seeking', onSeeking);
         vid.addEventListener('seeked', onSeeked);
@@ -89,6 +123,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         vid.addEventListener('error', onError);
 
         return () => {
+            if (bufferingTimeout) clearTimeout(bufferingTimeout);
             vid.removeEventListener('seeking', onSeeking);
             vid.removeEventListener('seeked', onSeeked);
             vid.removeEventListener('waiting', onWaiting);
@@ -99,7 +134,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
             vid.removeEventListener('canplaythrough', onCanPlayThrough);
             vid.removeEventListener('error', onError);
         };
-    }, [isAdmin]);
+    }, [isAdmin, messageId, isIOS]);
 
     const toggleZoom = () => setZoomMode(prev => prev === 'contain' ? 'cover' : (prev === 'cover' ? 'fill' : 'contain'));
 

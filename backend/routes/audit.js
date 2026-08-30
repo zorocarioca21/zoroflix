@@ -215,6 +215,92 @@ export default function auditRoutes(db) {
             res.status(500).json({ error: 'Erro ao solicitar re-upload.' });
         }
     });
+    // --- ROTAS DE VÍDEOS QUEBRADOS REPORTADOS PELO PLAYER ---
+    
+    // Rota para o player reportar um vídeo que não carregou
+    router.post('/audit/report', async (req, res) => {
+        try {
+            const { messageId } = req.body;
+            if (!messageId) return res.status(400).json({ error: 'messageId não fornecido' });
+
+            // Encontra qual item na fila corresponde a este messageId
+            const item = await db.get("SELECT id, title FROM sync_queue WHERE telegram_message_id = ?", [messageId]);
+            if (!item) return res.status(404).json({ error: 'Vídeo não encontrado na base' });
+
+            // Insere ou atualiza na tabela broken_videos
+            await db.run(`
+                INSERT INTO broken_videos (sync_queue_id, title, telegram_message_id, reported_by, status, report_count)
+                VALUES (?, ?, ?, 'auto_player', 'pending', 1)
+                ON CONFLICT(sync_queue_id) DO UPDATE SET 
+                    report_count = report_count + 1,
+                    status = 'pending',
+                    updated_at = CURRENT_TIMESTAMP
+            `, [item.id, item.title, messageId]);
+
+            console.log(`[Player Report] 🔴 Vídeo quebrado reportado: ${item.title} (msg_id: ${messageId})`);
+            res.json({ success: true });
+        } catch (e) {
+            console.error("Erro ao registrar report do player:", e);
+            res.status(500).json({ error: 'Erro interno' });
+        }
+    });
+
+    // Rota para o painel admin listar os vídeos quebrados reportados
+    router.get('/audit/reported', async (req, res) => {
+        try {
+            const items = await db.all("SELECT * FROM broken_videos WHERE status = 'pending' ORDER BY updated_at DESC");
+            res.json({ items });
+        } catch (e) {
+            res.status(500).json({ error: 'Erro interno' });
+        }
+    });
+
+    // Rota para reupar vídeos reportados
+    router.post('/audit/reupload-reported', async (req, res) => {
+        try {
+            const { ids } = req.body; // Array de IDs da tabela broken_videos
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({ error: 'Nenhum ID fornecido.' });
+            }
+
+            const placeholders = ids.map(() => '?').join(',');
+            
+            // 1. Busca os sync_queue_id
+            const brokenItems = await db.all(`SELECT id, sync_queue_id FROM broken_videos WHERE id IN (${placeholders})`, ids);
+            const syncQueueIds = brokenItems.map(i => i.sync_queue_id);
+            const syncPlaceholders = syncQueueIds.map(() => '?').join(',');
+
+            if (syncQueueIds.length > 0) {
+                // 2. Joga de volta pra pending com prioridade alta na tabela principal
+                await db.run(
+                    `UPDATE sync_queue SET status = 'pending', priority = 999, telegram_message_id = NULL, error_message = 'Re-upload solicitado (Report do Player)' WHERE id IN (${syncPlaceholders})`,
+                    syncQueueIds
+                );
+            }
+
+            // 3. Marca como resolvido na tabela broken_videos
+            await db.run(
+                `UPDATE broken_videos SET status = 'requeued', updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`,
+                ids
+            );
+
+            res.json({ success: true, count: syncQueueIds.length });
+        } catch (e) {
+            console.error("Erro ao reupar itens reportados:", e);
+            res.status(500).json({ error: 'Erro ao solicitar re-upload.' });
+        }
+    });
+
+    // Rota para ignorar/dispensar um report (sem reupar)
+    router.post('/audit/dismiss-reported', async (req, res) => {
+        try {
+            const { id } = req.body;
+            await db.run("UPDATE broken_videos SET status = 'dismissed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: 'Erro interno' });
+        }
+    });
 
     return router;
 }

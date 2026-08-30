@@ -645,13 +645,57 @@ export default function AdminSync() {
             dialog.alert('Erro de conexão', { variant: 'error', title: 'Erro' });
         }
     };
+    // --- VÍDEOS REPORTADOS PELO PLAYER ---
+    const [reportedVideos, setReportedVideos] = useState([]);
+    
+    const fetchReportedVideos = async () => {
+        try {
+            const res = await fetch('/api/audit/reported');
+            const data = await res.json();
+            if (data.items) setReportedVideos(data.items);
+        } catch (e) {}
+    };
 
+    const reuploadReportedItems = async (ids) => {
+        const ok = await dialog.confirm(`Deseja re-enviar ${ids.length} vídeo(s) reportado(s) para a fila de upload com prioridade alta?`, {
+            variant: 'warning', title: 'Re-Upload (Reportados)', confirmText: 'Re-enviar'
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch('/api/audit/reupload-reported', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            });
+            if (res.ok) {
+                dialog.alert(`${ids.length} vídeo(s) enviados para a fila!`, { variant: 'success', title: 'Sucesso' });
+                fetchReportedVideos();
+                fetchQueue();
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão', { variant: 'error', title: 'Erro' });
+        }
+    };
+
+    const dismissReportedItem = async (id) => {
+        try {
+            await fetch('/api/audit/dismiss-reported', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            fetchReportedVideos();
+        } catch (e) {}
+    };
     // Carrega estado da auditoria ao montar (caso ela esteja rodando)
     useEffect(() => {
         fetch('/api/audit/state').then(r => r.json()).then(data => {
             setAuditState(data);
             if (data.isRunning) pollAuditState();
         }).catch(() => {});
+        
+        fetchReportedVideos(); // Carrega os reportados
+        
         return () => { if (auditPollRef.current) clearInterval(auditPollRef.current); };
     }, []);
     // === END AUDIT ===
@@ -943,7 +987,7 @@ export default function AdminSync() {
                         </div>
                     )}
 
-                    {/* Lista de Vídeos Reprovados */}
+                    {/* Lista de Vídeos Reprovados Manualmente */}
                     {auditState.results.failedItems.length > 0 && (
                         <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,68,68,0.15)' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -971,6 +1015,51 @@ export default function AdminSync() {
                         </div>
                     )}
                 </div>
+
+                {/* === SEÇÃO DE VÍDEOS REPORTADOS PELO PLAYER === */}
+                {reportedVideos.length > 0 && (
+                    <div style={{ backgroundColor: 'rgba(255, 68, 68, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#ff4444' }}>
+                                <AlertTriangle size={20} color="#ff4444" /> Falhas Reportadas (Automático)
+                            </h3>
+                            <button onClick={() => reuploadReportedItems(reportedVideos.map(i => i.id))} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                                <RefreshCcw size={16} /> Reupar Todos ({reportedVideos.length})
+                            </button>
+                        </div>
+                        <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
+                            Estes vídeos falharam ao rodar no player principal (provavelmente por falta de Fast Start) e foram reportados automaticamente.
+                        </p>
+
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>Título</th>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Tentativas</th>
+                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reportedVideos.map(item => (
+                                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <td style={{ padding: '0.8rem 1rem', color: '#ddd', fontSize: '0.9rem' }}>{item.title}</td>
+                                            <td style={{ padding: '0.8rem 1rem', textAlign: 'center', color: '#ffaa00', fontSize: '0.9rem' }}>{item.report_count}x</td>
+                                            <td style={{ padding: '0.8rem 1rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                                                <button onClick={() => reuploadReportedItems([item.id])} style={{ background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '6px', padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <RefreshCcw size={14} /> Reupar
+                                                </button>
+                                                <button onClick={() => dismissReportedItem(item.id)} title="Ignorar (Falso Positivo)" style={{ background: 'rgba(255,255,255,0.05)', color: '#888', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.4rem', cursor: 'pointer' }}>
+                                                    <X size={14} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
                     <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#fff' }}>
