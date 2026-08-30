@@ -73,7 +73,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     app.use('/api/app-updates', appUpdatesRoutes(db));
 
     // Rotas de Mangás
-    app.use('/api/mangas', mangasRoutes());
+    app.use('/api/mangas', mangasRoutes(db));
 
     // Serve public APK downloads
     app.use('/downloads/app', express.static(path.join(__dirname, 'backend', 'uploads', 'app')));

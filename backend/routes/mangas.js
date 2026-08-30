@@ -1,13 +1,11 @@
 import express from 'express';
-import { getDb } from '../db.js';
 
-export default function createMangasRouter(telegramService) {
+export default function createMangasRouter(db) {
     const router = express.Router();
 
     // Listar mangás (admin e público)
     router.get('/', async (req, res) => {
         try {
-            const db = getDb();
             const mangas = await db.all("SELECT * FROM mangas ORDER BY updated_at DESC");
             res.json({ mangas });
         } catch (e) {
@@ -25,7 +23,6 @@ export default function createMangasRouter(telegramService) {
                 return res.status(400).json({ error: 'O título é obrigatório.' });
             }
 
-            const db = getDb();
             const result = await db.run(`
                 INSERT INTO mangas (title, original_title, synopsis, cover_url, banner_url, author, genres, status, type, year, anilist_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -42,7 +39,6 @@ export default function createMangasRouter(telegramService) {
     router.get('/:id/chapters', async (req, res) => {
         try {
             const { id } = req.params;
-            const db = getDb();
             const chapters = await db.all("SELECT * FROM manga_chapters WHERE manga_id = ? ORDER BY chapter_number ASC", [id]);
             res.json({ chapters });
         } catch (e) {
