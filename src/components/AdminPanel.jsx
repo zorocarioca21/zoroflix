@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
 import ManualUploadPage from './ManualUploadPage';
 import AppUpdatePage from './AppUpdatePage';
 import AdminBotManager from './AdminBotManager';
+import AdminMangas from './AdminMangas';
 
 export default function AdminPanel() {
     const { user } = useAuth();
@@ -399,6 +400,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'bot-manager' ? 'active' : ''} onClick={() => setActiveTab('bot-manager')}>
                         <Cpu size={18} /> Bot
+                    </button>
+                    <button className={activeTab === 'mangas' ? 'active' : ''} onClick={() => setActiveTab('mangas')} style={{ background: activeTab === 'mangas' ? '#ff3366' : 'rgba(255, 51, 102, 0.1)', color: activeTab === 'mangas' ? '#fff' : '#ff3366', borderColor: '#ff3366' }}>
+                        <BookOpen size={18} /> Mangás
                     </button>
                 </div>
             </div>
@@ -937,6 +941,11 @@ export default function AdminPanel() {
                 {activeTab === 'bot-manager' && (
                     <div className="admin-content-card">
                         <AdminBotManager token={token} />
+                    </div>
+                )}
+                {activeTab === 'mangas' && (
+                    <div className="admin-content-card" style={{ background: '#111', border: '1px solid #333' }}>
+                        <AdminMangas token={token} />
                     </div>
                 )}
             </div>
