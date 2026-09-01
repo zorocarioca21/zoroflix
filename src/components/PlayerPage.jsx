@@ -672,7 +672,7 @@ export default function PlayerPage() {
                             onNextEpisode={season && episode ? handleNext : null}
                         />
                     ) : (
-                        <iframe src={playerUrl} allowFullScreen style={{ width: '100%', height: '100%', border: 'none' }} title="Zoroflix Player"></iframe>
+                        <iframe src={playerUrl} allowFullScreen style={{ flex: 1, width: '100%', border: 'none' }} title="Zoroflix Player"></iframe>
                     )}
                 </div>
 
