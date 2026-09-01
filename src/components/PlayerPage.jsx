@@ -64,7 +64,7 @@ export default function PlayerPage() {
         }
 
         // Busca na lista oficial de canais do SuperFlix
-        const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+        const url = 'https://superflixapi.beer/lista?category=canais&format=json';
         fetchWithProxy(url)
             .then(res => {
                 if (res && res.data) {
@@ -564,15 +564,15 @@ export default function PlayerPage() {
         if (state.isVip) {
             playerUrl = state.embed_url;
         } else {
-            playerUrl = (state.embed_url || `https://superflixapi.sbs/canal/${canalId}`) + '#noEpList';
+            playerUrl = (state.embed_url || `https://superflixapi.beer/canal/${canalId}`) + '#noEpList';
         }
     } else {
         const isMovie = location.pathname.includes('/filme/');
         const apiType = isMovie ? 'filme' : 'serie';
         if (season && episode) {
-            playerUrl = `https://superflixapi.sbs/${apiType}/${id}/${season}/${episode}#noEpList`;
+            playerUrl = `https://superflixapi.beer/${apiType}/${id}/${season}/${episode}#noEpList`;
         } else {
-            playerUrl = `https://superflixapi.sbs/${apiType}/${id}#noEpList`;
+            playerUrl = `https://superflixapi.beer/${apiType}/${id}#noEpList`;
         }
     }
 

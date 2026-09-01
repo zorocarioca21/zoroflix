@@ -89,7 +89,7 @@ export default function ChannelsPage() {
     isFirstMount.current = false;
 
     setLoading(true);
-    const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+    const url = 'https://superflixapi.beer/lista?category=canais&format=json';
     
     fetchWithProxy(url)
       .then(data => {

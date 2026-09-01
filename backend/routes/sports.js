@@ -51,7 +51,7 @@ const normalizeName = (name) => {
 
 async function fetchInternalChannels() {
     try {
-        const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+        const url = 'https://superflixapi.beer/lista?category=canais&format=json';
         const response = await axios.get(url, {
             timeout: 8000,
             headers: {
@@ -92,7 +92,7 @@ export default function sportsRoutes() {
             let rawEvents = [];
             try {
                 // Tenta buscar da API Mestre da Superflix primeiro (só Futebol por requisição do admin)
-                const sfUrl = 'https://superflixapi.sbs/lista?category=eventos&sport=futebol&format=json';
+                const sfUrl = 'https://superflixapi.beer/lista?category=eventos&sport=futebol&format=json';
                 const sfResponse = await axios.get(sfUrl, { timeout: 8000 });
                 rawEvents = sfResponse.data?.data || sfResponse.data || [];
                 if (!Array.isArray(rawEvents) || rawEvents.length === 0) {

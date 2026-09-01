@@ -252,7 +252,7 @@ export default function TvGuideModal({ isOpen, onClose }) {
         (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
         (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
       ];
-      const url = 'https://superflixapi.sbs/lista?category=canais&format=json';
+      const url = 'https://superflixapi.beer/lista?category=canais&format=json';
       for (const getProxy of proxies) {
         try {
           const res = await fetch(getProxy(url));

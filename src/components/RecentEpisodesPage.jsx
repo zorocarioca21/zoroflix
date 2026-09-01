@@ -36,7 +36,7 @@ export default function RecentEpisodesPage() {
     isFirstMount.current = false;
     
     setLoading(true);
-    fetch('https://superflixapi.sbs/calendario.php')
+    fetch('https://superflixapi.beer/calendario.php')
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {

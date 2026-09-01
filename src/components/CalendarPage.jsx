@@ -10,7 +10,7 @@ export default function CalendarPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const url = 'https://superflixapi.sbs/calendario.php';
+    const url = 'https://superflixapi.beer/calendario.php';
     
     fetchWithProxy(url)
       .then(data => {
