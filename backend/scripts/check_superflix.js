@@ -24,15 +24,26 @@ const DOMAINS_TO_TEST = [
     'superflixapi.cc'
 ];
 
-async function checkDomain(domain) {
+async function checkDomain(domain, queue) {
     return new Promise((resolve) => {
         const req = https.get(`https://${domain}/calendario.php`, { timeout: 5000 }, (res) => {
             if (res.statusCode === 200) {
                 resolve(domain);
+            } else if (res.statusCode >= 301 && res.statusCode <= 308 && res.headers.location) {
+                // Se houver um redirecionamento, tenta descobrir o novo domínio!
+                try {
+                    const redirectUrl = new URL(res.headers.location, `https://${domain}`);
+                    const newDomain = redirectUrl.hostname;
+                    if (newDomain && !queue.includes(newDomain)) {
+                        console.log(`\n[*] Redirecionamento detectado! Adicionando ${newDomain} à fila.`);
+                        queue.push(newDomain);
+                    }
+                } catch (e) { }
+                resolve(null);
             } else {
                 resolve(null);
             }
-            res.resume(); // consume response data to free up memory
+            res.resume();
         }).on('error', () => {
             resolve(null);
         }).on('timeout', () => {
@@ -85,9 +96,20 @@ async function run() {
     console.log("Iniciando varredura de domínios Superflix...");
     
     let activeDomain = null;
-    for (const domain of DOMAINS_TO_TEST) {
+    let domainsQueue = [...DOMAINS_TO_TEST]; // Usamos uma fila para poder adicionar novos domínios dinamicamente
+    
+    // Opcional: Coloca o domínio atual como o primeiro da fila para checar se ele tem um redirecionamento
+    const currentDomain = getCurrentDomain();
+    if (!domainsQueue.includes(currentDomain)) {
+        domainsQueue.unshift(currentDomain);
+    } else {
+        domainsQueue = [currentDomain, ...domainsQueue.filter(d => d !== currentDomain)];
+    }
+
+    for (let i = 0; i < domainsQueue.length; i++) {
+        const domain = domainsQueue[i];
         process.stdout.write(`Testando ${domain}... `);
-        const result = await checkDomain(domain);
+        const result = await checkDomain(domain, domainsQueue);
         if (result) {
             console.log("OK!");
             activeDomain = result;
@@ -102,7 +124,6 @@ async function run() {
         return;
     }
 
-    const currentDomain = getCurrentDomain();
     console.log(`Domínio atual no código: ${currentDomain}`);
     
     if (activeDomain === currentDomain) {
