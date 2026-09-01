@@ -628,12 +628,12 @@ export default function PlayerPage() {
             <div className="player-view-layout">
                 <div className="fullscreen-player-wrapper" style={{ position: 'relative' }}>
                     {(!telegramMessageId && isCheckingTelegram) ? (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#00ff88', flexDirection: 'column' }}>
+                        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#00ff88', flexDirection: 'column' }}>
                             <Loader size={48} className="spin-anim" style={{ marginBottom: '1rem' }} />
                             <span style={{ fontWeight: 'bold' }}>Carregando Player</span>
                         </div>
                     ) : (!telegramMessageId && showLanguageSelector) ? (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
+                        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff', flexDirection: 'column' }}>
                             <h2 style={{ marginBottom: '2rem', fontSize: '1.5rem', color: '#00ff88' }}>Escolha o Idioma</h2>
                             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                                 {languageOptions && languageOptions[currentQuality]?.dub && (

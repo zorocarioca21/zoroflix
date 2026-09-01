@@ -1034,6 +1034,8 @@ body.hide-body-texture::after {
   box-shadow: var(--glow);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .fullscreen-player-wrapper iframe {
