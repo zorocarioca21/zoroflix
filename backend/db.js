@@ -230,6 +230,7 @@ export async function initDB() {
             season INTEGER,
             episode INTEGER,
             resume_time INTEGER DEFAULT 0,
+            hidden INTEGER DEFAULT 0,
             watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
@@ -417,6 +418,11 @@ export async function initDB() {
     // Adicionar coluna resume_time na watch_history
     try {
         await db.exec("ALTER TABLE watch_history ADD COLUMN resume_time INTEGER DEFAULT 0");
+    } catch (err) { /* Já existe */ }
+
+    // Adicionar coluna hidden na watch_history para manter histórico pros admins
+    try {
+        await db.exec("ALTER TABLE watch_history ADD COLUMN hidden INTEGER DEFAULT 0");
     } catch (err) { /* Já existe */ }
 
     return db;

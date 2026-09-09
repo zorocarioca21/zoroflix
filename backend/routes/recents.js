@@ -35,12 +35,12 @@ export default function recentsRoutes(db) {
             let recents;
             if (req.user_id) {
                 recents = await db.all(
-                    'SELECT * FROM watch_history WHERE user_id = ? ORDER BY watched_at DESC LIMIT ?',
+                    'SELECT * FROM watch_history WHERE user_id = ? AND IFNULL(hidden, 0) = 0 ORDER BY watched_at DESC LIMIT ?',
                     [req.user_id, MAX_RECENTS]
                 );
             } else if (req.uuid) {
                 recents = await db.all(
-                    'SELECT * FROM watch_history WHERE uuid = ? AND user_id IS NULL ORDER BY watched_at DESC LIMIT ?',
+                    'SELECT * FROM watch_history WHERE uuid = ? AND user_id IS NULL AND IFNULL(hidden, 0) = 0 ORDER BY watched_at DESC LIMIT ?',
                     [req.uuid, MAX_RECENTS]
                 );
             } else {
@@ -78,7 +78,7 @@ export default function recentsRoutes(db) {
             if (existing) {
                 // Já existe: atualiza o episódio/temporada, resume_time e o timestamp (sobe pro topo)
                 await db.run(
-                    'UPDATE watch_history SET title = ?, poster_path = ?, season = ?, episode = ?, resume_time = ?, watched_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    'UPDATE watch_history SET title = ?, poster_path = ?, season = ?, episode = ?, resume_time = ?, watched_at = CURRENT_TIMESTAMP, hidden = 0 WHERE id = ?',
                     [title, poster_path, season || null, episode || null, resume_time || 0, existing.id]
                 );
             } else {
@@ -173,12 +173,12 @@ export default function recentsRoutes(db) {
         try {
             if (req.user_id) {
                 await db.run(
-                    'DELETE FROM watch_history WHERE user_id = ? AND content_id = ?',
+                    'UPDATE watch_history SET hidden = 1 WHERE user_id = ? AND content_id = ?',
                     [req.user_id, content_id]
                 );
             } else if (req.uuid) {
                 await db.run(
-                    'DELETE FROM watch_history WHERE uuid = ? AND content_id = ? AND user_id IS NULL',
+                    'UPDATE watch_history SET hidden = 1 WHERE uuid = ? AND content_id = ? AND user_id IS NULL',
                     [req.uuid, content_id]
                 );
             } else {
