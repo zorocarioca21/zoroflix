@@ -249,10 +249,30 @@ export async function initDB() {
         )
     `);
 
-    // Índices únicos para evitar duplicados
+    // Índices únicos para evitar duplicados na watched_episodes
     await db.exec(`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_user ON watched_episodes (user_id, content_id, season, episode) WHERE user_id IS NOT NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_uuid ON watched_episodes (uuid, content_id, season, episode) WHERE user_id IS NULL AND uuid IS NOT NULL;
+    `);
+
+    // Limpar duplicados do watch_history antes de criar o index
+    try {
+        await db.exec(`
+            DELETE FROM watch_history
+            WHERE id NOT IN (
+                SELECT MAX(id)
+                FROM watch_history
+                GROUP BY COALESCE(user_id, uuid), content_id
+            )
+        `);
+    } catch(e) {
+        console.error("Erro ao limpar duplicados de watch_history:", e);
+    }
+
+    // Índices únicos para evitar duplicados na watch_history (importante para o INSERT OR REPLACE do App Mobile)
+    await db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watch_history_user ON watch_history (user_id, content_id) WHERE user_id IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_watch_history_uuid ON watch_history (uuid, content_id) WHERE user_id IS NULL AND uuid IS NOT NULL;
     `);
 
     // Tabela de Downloads de Usuários
