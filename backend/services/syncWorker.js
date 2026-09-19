@@ -343,7 +343,16 @@ async function processDownload(movie) {
             if (newTitle !== movie.title) {
                 console.log(`[Qualidade] 🎬 Resolução detectada: ${videoHeight}p | Título: "${movie.title}" → "${newTitle}"`);
                 await dbInstance.run("UPDATE sync_queue SET title = ? WHERE id = ?", [newTitle, movie.id]);
+                
+                const oldTmpPath = tmpPath;
                 movie.title = newTitle; // Atualiza referência local para o upload usar o nome certo
+                
+                // Renomeia o arquivo temp local para acompanhar a mudança de título
+                const newSafeTitle = newTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const newTmpPath = path.join(os.tmpdir(), `${newSafeTitle}_${safeId}.${ext}`);
+                if (fs.existsSync(oldTmpPath)) {
+                    fs.renameSync(oldTmpPath, newTmpPath);
+                }
             }
         }
 
