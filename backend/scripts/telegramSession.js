@@ -1,5 +1,5 @@
 import { TelegramClient } from "telegram";
-import { StoreSession } from "telegram/sessions/index.js";
+import { StoreSession, StringSession } from "telegram/sessions/index.js";
 import input from "input"; // npm i input
 import 'dotenv/config';
 
@@ -28,7 +28,13 @@ const storeSession = new StoreSession("telegram_auth_session");
     });
     
     console.log("Você está conectado agora.");
-    const savedSession = client.session.save();
+    
+    // Converte a sessão salva no HD para o formato de String para copiar pro .env
+    const exportSession = new StringSession("");
+    exportSession.setDC(client.session.dcId, client.session.serverAddress, client.session.port);
+    exportSession.setAuthKey(client.session.authKey);
+    const savedSession = exportSession.save();
+    
     console.log("\n==================================\n");
     console.log("✅ Sua String de Sessão foi gerada!");
     console.log("\nGuarde-a no arquivo .env da sua VPS.");
