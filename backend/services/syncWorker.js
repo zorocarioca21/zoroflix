@@ -503,19 +503,19 @@ async function downloadFile(url, destPath, dbId) {
             // NÃO reject aqui — deixa o 'close' handler cuidar
         });
 
-        ffmpegProcess.on('close', (code) => {
+        ffmpegProcess.on('close', (code, signal) => {
             clearInterval(watchdog);
             activeDownloadController = null;
-            if (wasAborted || code === null) {
-                // Usuário pausou ou abortou — NÃO cai no fallback fetch
+            if (wasAborted) {
+                // Usuário pausou ou abortou pelo painel — NÃO cai no fallback fetch
                 reject(new Error('Download cancelado pelo usuário.'));
             } else if (code === 0) {
                 // Download via FFmpeg foi um sucesso!
                 resolve();
             } else {
-                // FFmpeg falhou genuinamente (ex: codec não suportado)
+                // FFmpeg falhou genuinamente (ex: codec não suportado, timeout do watchdog, etc)
                 // Nesse caso sim, tenta o fallback via fetch
-                console.warn(`[FFmpeg] Falhou com código ${code}. Tentando via Node Fetch fallback...`);
+                console.warn(`[FFmpeg] Falhou com código ${code} / sinal ${signal}. Tentando via Node Fetch fallback...`);
                 if (fs.existsSync(destPath)) {
                     try { fs.unlinkSync(destPath); } catch (e) {}
                 }
