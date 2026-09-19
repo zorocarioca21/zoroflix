@@ -147,11 +147,14 @@ async function uploadToTelegram(filePath, title, taskId) {
     if (!entityId.startsWith('-100')) {
         entityId = '-100' + entityId.replace('-', '');
     }
+    // No GramJS, Sessions em string não armazenam cache de entidades, 
+    // então precisamos passar o ID como um número exato (BigInt) para forçar o envio direto.
+    const finalEntityId = BigInt(entityId);
 
     let messageId = 0;
     
     try {
-        const result = await client.sendFile(entityId, {
+        const result = await client.sendFile(finalEntityId, {
             file: filePath,
             workers: 4, 
             caption: `**${title}**\nUpload via Zoroflix Sync (PC Local)`,
