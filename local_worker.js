@@ -350,10 +350,16 @@ function cleanupLoop() {
             const filePath = path.join(DOWNLOAD_DIR, file);
             const stats = fs.statSync(filePath);
             const hoursOld = (now - stats.mtimeMs) / (1000 * 60 * 60);
+            const minutesOld = (now - stats.mtimeMs) / (1000 * 60);
             
             // Se o arquivo tiver mais de 12 horas, apaga para não lotar o HD
             if (hoursOld > 12) {
                 console.log(`\n🧹 Limpeza automática: Apagando arquivo velho/abandonado (${file})`);
+                try { fs.unlinkSync(filePath); } catch(e){}
+            } 
+            // Limpeza agressiva: Se o arquivo estiver corrompido (vazio/0KB) e estiver lá parado há mais de 10 minutos
+            else if (stats.size < 10000 && minutesOld > 10) {
+                console.log(`\n🗑️ Limpeza de Fantasmas: Apagando arquivo corrompido de 0KB (${file})`);
                 try { fs.unlinkSync(filePath); } catch(e){}
             }
         }
