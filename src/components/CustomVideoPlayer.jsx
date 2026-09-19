@@ -46,28 +46,64 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         setDebugLogs(prev => [`[${time}] ${msg}`, ...prev].slice(0, 50));
     };
 
-    // Video Event Listeners for Debugging
+    // Função de report que funciona para TODOS os usuários (não apenas admin)
+    const reportBrokenVideo = async () => {
+        if (!messageId) return;
+        try {
+            // Evita flood: só reporta uma vez POR VÍDEO na sessão
+            if (!window._reportedBrokenVideos) window._reportedBrokenVideos = new Set();
+            if (window._reportedBrokenVideos.has(messageId)) return;
+            window._reportedBrokenVideos.add(messageId);
+            
+            await fetch('/api/audit/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId })
+            });
+            console.log('Vídeo reportado como quebrado automaticamente.');
+        } catch (e) {
+            console.error('Erro ao reportar vídeo quebrado', e);
+        }
+    };
+
+    // Detector de buffering infinito - funciona para TODOS os usuários
+    useEffect(() => {
+        if (!videoRef.current) return;
+        const vid = videoRef.current;
+
+        let bufferingTimeout;
+        const onWaitingReport = () => {
+            if (!isIOS) {
+                bufferingTimeout = setTimeout(() => {
+                    reportBrokenVideo();
+                }, 15000);
+            }
+        };
+        const onPlayingReport = () => {
+            if (bufferingTimeout) clearTimeout(bufferingTimeout);
+        };
+        const onErrorReport = () => {
+            if (vid.error && (vid.error.code === 4 || vid.error.code === 3)) {
+                reportBrokenVideo();
+            }
+        };
+
+        vid.addEventListener('waiting', onWaitingReport);
+        vid.addEventListener('playing', onPlayingReport);
+        vid.addEventListener('error', onErrorReport);
+
+        return () => {
+            if (bufferingTimeout) clearTimeout(bufferingTimeout);
+            vid.removeEventListener('waiting', onWaitingReport);
+            vid.removeEventListener('playing', onPlayingReport);
+            vid.removeEventListener('error', onErrorReport);
+        };
+    }, [messageId]);
+
+    // Video Event Listeners for Debugging (Admin only)
     useEffect(() => {
         if (!isAdmin || !videoRef.current) return;
         const vid = videoRef.current;
-
-        const reportBrokenVideo = async () => {
-            if (!messageId) return;
-            try {
-                // Evita flood: só reporta uma vez por sessão do player
-                if (window.hasReportedBrokenVideo === messageId) return;
-                window.hasReportedBrokenVideo = messageId;
-                
-                await fetch('/api/audit/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messageId })
-                });
-                console.log('Vídeo reportado como quebrado automaticamente.');
-            } catch (e) {
-                console.error('Erro ao reportar vídeo quebrado', e);
-            }
-        };
 
         const onSeeking = () => {
             seekStartTimeRef.current = performance.now();
@@ -82,11 +118,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         const onWaiting = () => {
             addDebugLog(`WAITING (Buffering iniciado no tempo ${vid.currentTime.toFixed(2)}s)`);
             seekStartTimeRef.current = performance.now();
-            // Se ficar mais de 15 segundos no WAITING e não for iOS, pode ser falta do MOOV Atom no início
             if (!isIOS) {
                 bufferingTimeout = setTimeout(() => {
                     addDebugLog(`⚠️ Buffering infinito detectado (>15s). Reportando vídeo.`);
-                    reportBrokenVideo();
                 }, 15000);
             }
         };
@@ -106,10 +140,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         const onCanPlayThrough = () => addDebugLog('CAN PLAY THROUGH (Pode tocar até o fim sem pausas estimadas)');
         const onError = () => {
             addDebugLog(`ERROR (${vid.error?.code}: ${vid.error?.message})`);
-            // Código 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) e 3 (MEDIA_ERR_DECODE) costumam acontecer com MP4 quebrado
-            if (vid.error && (vid.error.code === 4 || vid.error.code === 3)) {
-                reportBrokenVideo();
-            }
         };
         
         vid.addEventListener('seeking', onSeeking);
