@@ -23,6 +23,7 @@ import http, { createServer } from 'http';
 import https from 'https';
 import { Server } from 'socket.io';
 import syncRoutes from './backend/routes/sync.js';
+import hybridWorkerRoutes from './backend/routes/hybridWorkerRoutes.js';
 import streamRoutes from './backend/routes/stream.js';
 import analyticsRoutes from './backend/routes/analytics.js';
 import storageRoutes from './backend/routes/storage.js';
@@ -275,6 +276,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     
     // Rotas de Sync injetando o io e o db (DEVE FICAR ANTES DO SPA FALLBACK)
     app.use('/api/sync', syncRoutes(db, io));
+    app.use('/api/hybrid', hybridWorkerRoutes(db, io));
 
     // Servir os arquivos estáticos do Vite (após o npm run build)
     app.use(express.static(path.join(__dirname, 'dist')));
