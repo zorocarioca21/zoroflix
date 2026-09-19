@@ -186,42 +186,58 @@ async function uploadToTelegram(filePath, title, taskId) {
     return messageId || Math.floor(Math.random() * 100000);
 }
 
-async function recoverPendingUploads() {
-    console.log(`[PC_LOCAL] Verificando arquivos pendentes no disco D:...`);
-    const files = fs.readdirSync(DOWNLOAD_DIR);
-    
-    for (const file of files) {
-        if (!file.endsWith('.mp4')) continue;
+async function uploadLoop() {
+    if (isUploading) {
+        setTimeout(uploadLoop, 3000);
+        return;
+    }
+
+    isUploading = true;
+    try {
+        const files = fs.readdirSync(DOWNLOAD_DIR);
+        // Busca o primeiro arquivo .mp4 (que já terminou de baixar, pois enquanto baixa é .download)
+        const fileToUpload = files.find(f => f.endsWith('.mp4'));
         
-        // Extrai o ID da tarefa do nome do arquivo (ex: titulo_seguro_123.mp4 -> 123)
-        const match = file.match(/_(\d+)\.mp4$/);
-        if (match) {
-            const taskId = parseInt(match[1]);
-            const filePath = path.join(DOWNLOAD_DIR, file);
-            const title = file.replace(/_\d+\.mp4$/, '').replace(/_/g, ' ').toUpperCase();
-            
-            console.log(`\n🔄 Arquivo pendente detectado: ${file} (Task ID: ${taskId}). Tentando fazer upload...`);
-            try {
+        if (fileToUpload) {
+            const match = fileToUpload.match(/_(\d+)\.mp4$/);
+            if (match) {
+                const taskId = parseInt(match[1]);
+                const filePath = path.join(DOWNLOAD_DIR, fileToUpload);
+                const title = fileToUpload.replace(/_\d+\.mp4$/, '').replace(/_/g, ' ').toUpperCase();
+                
+                console.log(`\n📤 Iniciando upload de: ${fileToUpload} (Task ID: ${taskId})`);
                 const stats = fs.statSync(filePath);
+                
                 if (stats.size < 1000000) {
-                    console.log(`⚠️ Arquivo muito pequeno (${stats.size} bytes). Provavelmente um download corrompido, pulando.`);
-                    continue;
+                    console.log(`⚠️ Arquivo muito pequeno. Excluindo corrompido: ${fileToUpload}`);
+                    try { fs.unlinkSync(filePath); } catch(e){}
+                } else {
+                    const messageId = await uploadToTelegram(filePath, title, taskId);
+                    console.log(`\n✅ Upload concluído! Avisando a VPS...`);
+                    await apiRequest('/complete', { taskId, telegram_message_id: messageId, file_size: stats.size });
+                    
+                    try { fs.unlinkSync(filePath); } catch(e){}
                 }
-                
-                const messageId = await uploadToTelegram(filePath, `[RECUPERADO] ${title}`, taskId);
-                console.log(`\n✅ Upload de recuperação concluído! Avisando a VPS...`);
-                await apiRequest('/complete', { taskId, telegram_message_id: messageId, file_size: stats.size });
-                
-                try { fs.unlinkSync(filePath); } catch(e){}
-            } catch (err) {
-                console.error(`\n❌ Erro na recuperação do arquivo ${file}: ${err.message}`);
-                // Não exclui o arquivo para tentar de novo no futuro
             }
         }
+    } catch (e) {
+        console.error("\n❌ Erro no uploadLoop:", e.message);
+    } finally {
+        isUploading = false;
+        setTimeout(uploadLoop, 5000);
     }
 }
 
-async function loop() {
+let isDownloading = false;
+let isUploading = false;
+
+async function downloadLoop() {
+    if (isDownloading) {
+        setTimeout(downloadLoop, 5000);
+        return;
+    }
+    
+    isDownloading = true;
     console.log(`[${WORKER_ID}] Procurando tarefas na VPS...`);
     
     try {
@@ -229,7 +245,8 @@ async function loop() {
         
         if (!response.task) {
             console.log("Nenhuma tarefa disponível. Aguardando...");
-            setTimeout(loop, 10000); // Tenta de novo em 10 segundos
+            setTimeout(downloadLoop, 10000); // Tenta de novo em 10 segundos
+            isDownloading = false;
             return;
         }
 
@@ -237,46 +254,43 @@ async function loop() {
         try {
             console.log(`[Nova Tarefa] Filme: ${task.title}`);
             const safeTitle = task.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const destPath = path.join(DOWNLOAD_DIR, `${safeTitle}_${task.id}.mp4`);
             
-            // Verifica se o arquivo já foi baixado (útil caso tenha caído a internet bem no finalzinho)
-            if (fs.existsSync(destPath)) {
-                const stats = fs.statSync(destPath);
-                if (stats.size > 1000000) {
-                    console.log(`\n📦 Arquivo já existe no disco (${Math.floor(stats.size/1024/1024)}MB). Pulando o download...`);
-                } else {
-                    try { fs.unlinkSync(destPath); } catch(e){}
-                    await downloadFile(task.url, destPath, task.id);
-                }
+            // Usamos .download enquanto baixa, para o uploadLoop não tentar upar um arquivo incompleto
+            const tmpPath = path.join(DOWNLOAD_DIR, `${safeTitle}_${task.id}.mp4.download`);
+            const finalPath = path.join(DOWNLOAD_DIR, `${safeTitle}_${task.id}.mp4`);
+            
+            if (fs.existsSync(finalPath)) {
+                console.log(`\n📦 Arquivo já existe no disco aguardando upload. Pulando download...`);
+                // O uploadLoop cuidará dele em breve
             } else {
-                await downloadFile(task.url, destPath, task.id);
-            }
-            
-            const finalStats = fs.statSync(destPath);
-            console.log(`\n✅ Download Finalizado! Preparando upload...`);
-            const messageId = await uploadToTelegram(destPath, task.title, task.id);
-            
-            console.log(`\n✅ Concluído com sucesso! Avisando a VPS...`);
-            await apiRequest('/complete', { taskId: task.id, telegram_message_id: messageId, file_size: finalStats.size });
-            
-            // Só exclui se chegou até aqui (não deu erro no upload e a API confirmou)
-            if (fs.existsSync(destPath)) {
-                try { fs.unlinkSync(destPath); } catch (e) {}
+                if (fs.existsSync(tmpPath)) {
+                    // Arquivo parcial de um crash anterior, deleta e recomeça
+                    try { fs.unlinkSync(tmpPath); } catch(e){}
+                }
+                
+                await downloadFile(task.url, tmpPath, task.id);
+                
+                // Renomeia para .mp4 para avisar o uploadLoop que está pronto
+                if (fs.existsSync(tmpPath)) {
+                    fs.renameSync(tmpPath, finalPath);
+                    console.log(`\n✅ Download Finalizado! Arquivo na fila local de upload.`);
+                }
             }
             
         } catch (err) {
-            console.error(`\n❌ Erro processando a tarefa: ${err.message}`);
+            console.error(`\n❌ Erro processando download: ${err.message}`);
             await apiRequest('/error', { taskId: task?.id || 0, error_message: err.message });
         }
         
-        setTimeout(loop, 5000);
+        isDownloading = false;
+        setTimeout(downloadLoop, 2000);
     } catch (e) {
         console.error("Erro ao comunicar com a VPS:", e.message);
-        setTimeout(loop, 2000);
+        isDownloading = false;
+        setTimeout(downloadLoop, 5000);
     }
 }
 
-// Inicia com a recuperação de crash antes do loop principal
-recoverPendingUploads().then(() => {
-    loop();
-});
+console.log("Iniciando Worker Híbrido Concorrente (Download/Upload paralelos)...");
+uploadLoop();
+downloadLoop();
