@@ -1102,30 +1102,69 @@ export default function AdminSync() {
 
             {/* Pipeline Cards: Download e Upload */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                {/* Hybrid Workers (PCs Remotos) */}
-                {Object.entries(hybridWorkers).map(([workerId, worker]) => (
-                    <div key={workerId} style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
-                        <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem' }}>
-                            <Activity size={20} /> Worker Híbrido: {workerId}
-                        </h3>
-                        <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{worker.title || 'Desconhecido'}</div>
-                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ 
-                                    width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
-                                    backgroundColor: '#00ccff', 
-                                    height: '100%', 
-                                    transition: 'width 0.3s',
-                                    boxShadow: '0 0 10px rgba(0,204,255,0.5)'
-                                }} />
+                {/* Download PC (Agrupado) */}
+                <div style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
+                    <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
+                        <HardDriveDownload size={20} /> Baixando da IPTV (PC Local)
+                    </h3>
+                    {Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').length > 0 ? (
+                        Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').map(([workerId, worker]) => (
+                            <div key={workerId} style={{ marginBottom: '1rem' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#fff', fontSize: '0.9rem' }}>
+                                    #{worker.title || 'Desconhecido'} <span style={{ color: '#00ccff', fontSize: '0.75rem' }}>({workerId})</span>
+                                </div>
+                                <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ 
+                                        width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
+                                        backgroundColor: '#00ccff', 
+                                        height: '100%', 
+                                        transition: 'width 0.3s',
+                                        boxShadow: '0 0 10px rgba(0,204,255,0.5)'
+                                    }} />
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.3rem', color: '#aaa' }}>
+                                    {(Number(worker.progress) || 0).toFixed(2)}%
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                                <span>{worker.status}</span>
-                                <span>{(Number(worker.progress) || 0).toFixed(2)}%</span>
-                            </div>
+                        ))
+                    ) : (
+                        <div style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', padding: '1rem 0' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><HardDriveDownload size={18} /> Aguardando fila de Download (PC)...</span>
                         </div>
-                    </div>
-                ))}
+                    )}
+                </div>
+
+                {/* Upload PC (Agrupado) */}
+                <div style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
+                    <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
+                        <Send size={20} /> Enviando pro Telegram (PC Local)
+                    </h3>
+                    {Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Enviando_Telegram_PC').length > 0 ? (
+                        Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Enviando_Telegram_PC').map(([workerId, worker]) => (
+                            <div key={workerId} style={{ marginBottom: '1rem' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#fff', fontSize: '0.9rem' }}>
+                                    #{worker.title || 'Desconhecido'} <span style={{ color: '#00ccff', fontSize: '0.75rem' }}>({workerId})</span>
+                                </div>
+                                <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ 
+                                        width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
+                                        backgroundColor: '#00ccff', 
+                                        height: '100%', 
+                                        transition: 'width 0.3s',
+                                        boxShadow: '0 0 10px rgba(0,204,255,0.5)'
+                                    }} />
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.3rem', color: '#aaa' }}>
+                                    {(Number(worker.progress) || 0).toFixed(2)}%
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', padding: '1rem 0' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (PC)...</span>
+                        </div>
+                    )}
+                </div>
 
                 {state.downloadTask ? (
                     <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
