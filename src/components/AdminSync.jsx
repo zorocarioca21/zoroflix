@@ -291,6 +291,7 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
 
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
+    const [hybridWorkers, setHybridWorkers] = useState({});
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, prioritized_count: 0, total_size_saved: 0, completed_today: 0, added_today: 0 });
     const [filter, setFilter] = useState('all');
@@ -350,6 +351,10 @@ export default function AdminSync() {
                 }
                 return data;
             });
+        });
+
+        newSocket.on('hybrid_worker_state', (data) => {
+            setHybridWorkers(data);
         });
 
         setSocket(newSocket);
@@ -1097,6 +1102,31 @@ export default function AdminSync() {
 
             {/* Pipeline Cards: Download e Upload */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                {/* Hybrid Workers (PCs Remotos) */}
+                {Object.entries(hybridWorkers).map(([workerId, worker]) => (
+                    <div key={workerId} style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
+                        <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem' }}>
+                            <Activity size={20} /> Worker Híbrido: {workerId}
+                        </h3>
+                        <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{worker.title || 'Desconhecido'}</div>
+                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ 
+                                    width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
+                                    backgroundColor: '#00ccff', 
+                                    height: '100%', 
+                                    transition: 'width 0.3s',
+                                    boxShadow: '0 0 10px rgba(0,204,255,0.5)'
+                                }} />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
+                                <span>{worker.status}</span>
+                                <span>{(Number(worker.progress) || 0).toFixed(2)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+
                 {state.downloadTask ? (
                     <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
                         <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
