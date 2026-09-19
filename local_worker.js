@@ -23,7 +23,8 @@ async function apiRequest(endpoint, body = {}) {
 }
 
 async function reportProgress(taskId, status, progress) {
-    console.log(`[Progresso] ${status} - ${progress}%`);
+    // Escreve na mesma linha do terminal ( \r volta pro início, \x1b[K apaga o resto )
+    process.stdout.write(`\r\x1b[K[Progresso] ${status} - ${progress}%`);
     await apiRequest('/progress', { taskId, status, progress });
 }
 
@@ -42,6 +43,7 @@ async function downloadFile(url, destPath, taskId) {
         console.log(`🚀 Iniciando download via FFmpeg...`);
         
         let totalDurationSec = 0;
+        let fallbackTriggered = false;
 
         ffmpegProcess.stderr.on('data', (data) => {
             const str = data.toString();
@@ -65,9 +67,59 @@ async function downloadFile(url, destPath, taskId) {
 
         ffmpegProcess.on('close', (code) => {
             if (code === 0) resolve();
-            else reject(new Error(`FFmpeg falhou (código ${code})`));
+            else {
+                if (!fallbackTriggered) {
+                    fallbackTriggered = true;
+                    console.log(`⚠️ FFmpeg falhou (código ${code}). Tentando via HTTP Nativo...`);
+                    fallbackDownloadFetch(url, destPath, taskId).then(resolve).catch(reject);
+                }
+            }
+        });
+
+        ffmpegProcess.on('error', (err) => {
+            if (!fallbackTriggered) {
+                fallbackTriggered = true;
+                console.log(`⚠️ FFmpeg não encontrado ou falhou (${err.message}). Tentando via HTTP Nativo (Fetch)...`);
+                fallbackDownloadFetch(url, destPath, taskId).then(resolve).catch(reject);
+            }
         });
     });
+}
+
+async function fallbackDownloadFetch(url, destPath, taskId) {
+    const response = await fetch(url, {
+        headers: { "User-Agent": "VLC/3.0.18 LibVLC/3.0.18", "Accept": "*/*" },
+        redirect: 'follow'
+    });
+
+    if (!response.ok) throw new Error(`Status HTTP ${response.status}`);
+
+    const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
+    let downloadedBytes = 0;
+    const fileStream = fs.createWriteStream(destPath);
+    const reader = response.body.getReader();
+    
+    let lastEmit = Date.now();
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        downloadedBytes += value.length;
+        fileStream.write(value);
+        
+        if (totalBytes > 0) {
+            const now = Date.now();
+            if (now - lastEmit > 500) { 
+                const progress = ((downloadedBytes / totalBytes) * 100).toFixed(1);
+                reportProgress(taskId, 'Baixando_PC', progress).catch(() => {});
+                lastEmit = now;
+            }
+        }
+    }
+    
+    fileStream.end();
+    await new Promise(res => fileStream.on('finish', res));
 }
 
 async function uploadToTelegram(filePath, title, taskId) {
@@ -110,13 +162,14 @@ async function loop() {
             await downloadFile(task.url, destPath, task.id);
             
             const stats = fs.statSync(destPath);
+            console.log(`\n✅ Download Finalizado! Preparando upload...`);
             const messageId = await uploadToTelegram(destPath, task.title, task.id);
             
-            console.log(`✅ Concluído! Avisando a VPS...`);
+            console.log(`\n✅ Concluído com sucesso! Avisando a VPS...`);
             await apiRequest('/complete', { taskId: task.id, telegram_message_id: messageId, file_size: stats.size });
             
         } catch (err) {
-            console.error(`❌ Erro processando a tarefa: ${err.message}`);
+            console.error(`\n❌ Erro processando a tarefa: ${err.message}`);
             await apiRequest('/error', { taskId: task.id, error_message: err.message });
         } finally {
             if (fs.existsSync(destPath)) {
