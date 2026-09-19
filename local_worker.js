@@ -148,6 +148,11 @@ async function uploadToTelegram(filePath, title, taskId) {
     client.setLogLevel("none");
     await client.connect();
 
+    // Em sessões StringSession, o GramJS não tem cache local dos canais.
+    // Precisamos buscar os dialogs uma vez para ele "lembrar" do canal antes de enviar.
+    console.log("🔄 Sincronizando chats do Telegram para encontrar o canal...");
+    await client.getDialogs();
+
     let entityId = TELEGRAM_CHANNEL_ID;
     if (!entityId.startsWith('-100')) {
         entityId = '-100' + entityId.replace('-', '');
