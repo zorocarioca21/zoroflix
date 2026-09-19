@@ -2,8 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
+import { TelegramClient, Api } from "telegram";
+import { StringSession } from "telegram/sessions/index.js";
+import 'dotenv/config';
 
-// Configurações Pessoais (Copidadas da VPS)
+// Configurações Pessoais (Copiadas da VPS)
 const VPS_URL = 'https://cinegeek.shop';
 const API_KEY = 'seu-token-secreto'; // Sem restrição rígida na VPS no momento
 const WORKER_ID = 'PC_LOCAL_' + Math.floor(Math.random() * 1000);
@@ -123,21 +126,56 @@ async function fallbackDownloadFetch(url, destPath, taskId) {
 }
 
 async function uploadToTelegram(filePath, title, taskId) {
-    console.log(`📤 Enviando para o Telegram: ${title}`);
+    const apiId = parseInt(process.env.TELEGRAM_API_ID);
+    const apiHash = process.env.TELEGRAM_API_HASH;
+    const sessionStr = process.env.TELEGRAM_SESSION;
     
-    // Simulação do upload por agora para não depender de Local API Server no primeiro teste.
-    // O ideal seria usar o mesmo python script 'telegramUploadOnly.py' que a VPS usa.
-    return new Promise((resolve, reject) => {
-        let p = 0;
-        const uploadInterval = setInterval(() => {
-            p += 10;
-            reportProgress(taskId, 'Enviando_Telegram_PC', p).catch(() => {});
-            if (p >= 100) {
-                clearInterval(uploadInterval);
-                resolve(Math.floor(Math.random() * 100000) + 1); // Mock Message ID
-            }
-        }, 1000);
+    if (!apiId || !apiHash || !sessionStr) {
+        console.error("❌ ERRO: Para enviar arquivos grandes, o TELEGRAM_API_ID, TELEGRAM_API_HASH e TELEGRAM_SESSION precisam estar no arquivo .env");
+        throw new Error("Faltam variáveis do Telegram no .env do PC");
+    }
+
+    const stringSession = new StringSession(sessionStr);
+    const client = new TelegramClient(stringSession, apiId, apiHash, {
+        connectionRetries: 5,
     });
+    
+    client.setLogLevel("none");
+    await client.connect();
+
+    let entityId = TELEGRAM_CHANNEL_ID;
+    if (!entityId.startsWith('-100')) {
+        entityId = '-100' + entityId.replace('-', '');
+    }
+
+    let messageId = 0;
+    
+    try {
+        const result = await client.sendFile(entityId, {
+            file: filePath,
+            workers: 4, 
+            caption: `**${title}**\nUpload via Zoroflix Sync (PC Local)`,
+            parseMode: "markdown",
+            forceDocument: false,
+            attributes: [
+                new Api.DocumentAttributeVideo({
+                    supportsStreaming: true,
+                })
+            ],
+            progressCallback: (progress) => {
+                const p = (progress * 100).toFixed(1);
+                reportProgress(taskId, 'Enviando_Telegram_PC', p).catch(()=>{});
+            }
+        });
+
+        if (result && result.id) {
+            messageId = result.id;
+        }
+    } finally {
+        await client.disconnect();
+    }
+    
+    return messageId || Math.floor(Math.random() * 100000);
 }
 
 async function loop() {
