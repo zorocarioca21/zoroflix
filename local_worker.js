@@ -31,8 +31,15 @@ async function apiRequest(endpoint, body = {}) {
 }
 
 async function reportProgress(taskId, status, progress) {
-    // Escreve na mesma linha do terminal ( \r volta pro início, \x1b[K apaga o resto )
-    process.stdout.write(`\r\x1b[K[Progresso] ${status} - ${progress}%`);
+    // Armazena a última vez que o log foi impresso para não spammar
+    if (!global.lastLogTime) global.lastLogTime = {};
+    const now = Date.now();
+    
+    // Só imprime no console a cada 3 segundos pra não virar bagunça
+    if (!global.lastLogTime[status] || now - global.lastLogTime[status] > 3000) {
+        console.log(`[Progresso] ${status} - ${progress}%`);
+        global.lastLogTime[status] = now;
+    }
     await apiRequest('/progress', { taskId, status, progress });
 }
 
@@ -171,11 +178,6 @@ async function uploadToTelegram(filePath, title, taskId) {
             caption: `**${title}**\nUpload via Zoroflix Sync (PC Local)`,
             parseMode: "markdown",
             forceDocument: false,
-            attributes: [
-                new Api.DocumentAttributeVideo({
-                    supportsStreaming: true,
-                })
-            ],
             progressCallback: (progress) => {
                 const p = (progress * 100).toFixed(1);
                 reportProgress(taskId, 'Enviando_Telegram_PC', p).catch(()=>{});
