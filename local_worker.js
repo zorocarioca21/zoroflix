@@ -143,6 +143,28 @@ async function fallbackDownloadFetch(url, destPath, taskId) {
     await new Promise(res => fileStream.on('finish', res));
 }
 
+async function optimizeVideo(inputPath, outputPath, taskId) {
+    return new Promise((resolve, reject) => {
+        reportProgress(taskId, 'Otimizando_Faststart', '---').catch(()=>{});
+        console.log(`\n⚙️ Otimizando vídeo para Faststart (Streaming instantâneo)...`);
+        
+        const ffmpegProcess = spawn('ffmpeg', [
+            '-i', inputPath,
+            '-c', 'copy',
+            '-movflags', '+faststart',
+            '-y',
+            outputPath
+        ]);
+        
+        ffmpegProcess.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Falha na otimização FFmpeg (código ${code})`));
+        });
+        
+        ffmpegProcess.on('error', reject);
+    });
+}
+
 async function uploadToTelegram(filePath, title, taskId) {
     const apiId = parseInt(process.env.TELEGRAM_API_ID);
     const apiHash = process.env.TELEGRAM_API_HASH;
@@ -286,8 +308,18 @@ async function downloadLoop() {
                 
                 // Renomeia para .mp4 para avisar o uploadLoop que está pronto
                 if (fs.existsSync(tmpPath)) {
-                    fs.renameSync(tmpPath, finalPath);
-                    console.log(`\n✅ Download Finalizado! Arquivo na fila local de upload.`);
+                    const optimizedPath = path.join(DOWNLOAD_DIR, `${safeTitle}_${task.id}.mp4.optimized`);
+                    try {
+                        // Aplica o Faststart
+                        await optimizeVideo(tmpPath, optimizedPath, task.id);
+                        // Se otimizou com sucesso, apaga o download bruto e renomeia o otimizado para a fila final
+                        fs.unlinkSync(tmpPath);
+                        fs.renameSync(optimizedPath, finalPath);
+                    } catch (optErr) {
+                        console.error(`⚠️ Erro no Faststart: ${optErr.message}. Usando arquivo bruto...`);
+                        fs.renameSync(tmpPath, finalPath); // Fallback silencioso pro arquivo bruto
+                    }
+                    console.log(`\n✅ Download e Otimização Finalizados! Arquivo na fila local de upload.`);
                 }
             }
             
@@ -306,5 +338,28 @@ async function downloadLoop() {
 }
 
 console.log("Iniciando Worker Híbrido Concorrente (Download/Upload paralelos)...");
-uploadLoop();
 downloadLoop();
+uploadLoop();
+
+// Sistema de Limpeza Automática (Cleanup Loop)
+function cleanupLoop() {
+    try {
+        const files = fs.readdirSync(DOWNLOAD_DIR);
+        const now = Date.now();
+        for (const file of files) {
+            const filePath = path.join(DOWNLOAD_DIR, file);
+            const stats = fs.statSync(filePath);
+            const hoursOld = (now - stats.mtimeMs) / (1000 * 60 * 60);
+            
+            // Se o arquivo tiver mais de 12 horas, apaga para não lotar o HD
+            if (hoursOld > 12) {
+                console.log(`\n🧹 Limpeza automática: Apagando arquivo velho/abandonado (${file})`);
+                try { fs.unlinkSync(filePath); } catch(e){}
+            }
+        }
+    } catch(e) {}
+    
+    // Roda a cada 5 minutos
+    setTimeout(cleanupLoop, 5 * 60 * 1000);
+}
+cleanupLoop();
