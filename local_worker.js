@@ -30,17 +30,23 @@ async function apiRequest(endpoint, body = {}) {
     return await res.json();
 }
 
+let currentDownload = "---";
+let currentUpload = "---";
+let lastApiUpdate = 0;
+
 async function reportProgress(taskId, status, progress) {
-    // Armazena a última vez que o log foi impresso para não spammar
-    if (!global.lastLogTime) global.lastLogTime = {};
-    const now = Date.now();
+    if (status === 'Baixando_PC') currentDownload = progress;
+    if (status === 'Enviando_Telegram_PC') currentUpload = progress;
     
-    // Só imprime no console a cada 3 segundos pra não virar bagunça
-    if (!global.lastLogTime[status] || now - global.lastLogTime[status] > 3000) {
-        console.log(`[Progresso] ${status} - ${progress}%`);
-        global.lastLogTime[status] = now;
+    // Escreve na mesma linha apagando o que tinha antes, mostrando os dois lado a lado
+    process.stdout.write(`\r\x1b[K[⬇️ Baixando: ${currentDownload}%]   |   [⬆️ Enviando: ${currentUpload}%]`);
+    
+    // Atualiza a VPS a cada 3 segundos pra não floodar a API
+    const now = Date.now();
+    if (now - lastApiUpdate > 3000) {
+        lastApiUpdate = now;
+        await apiRequest('/progress', { taskId, status, progress }).catch(()=>{});
     }
-    await apiRequest('/progress', { taskId, status, progress });
 }
 
 async function downloadFile(url, destPath, taskId) {
