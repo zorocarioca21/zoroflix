@@ -175,7 +175,7 @@ async function uploadToTelegram(filePath, title, taskId) {
         const result = await client.sendFile(finalEntityId, {
             file: filePath,
             workers: 4, 
-            caption: `**${title}**\nUpload via Zoroflix Sync (PC Local)`,
+            caption: `**${title}**`,
             parseMode: "markdown",
             forceDocument: false,
             progressCallback: (progress) => {
