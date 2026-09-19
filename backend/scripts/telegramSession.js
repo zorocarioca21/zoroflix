@@ -17,6 +17,7 @@ const stringSession = new StringSession("");
 
     const client = new TelegramClient(stringSession, apiId, apiHash, {
         connectionRetries: 5,
+        useWSS: true,
     });
     
     await client.start({
