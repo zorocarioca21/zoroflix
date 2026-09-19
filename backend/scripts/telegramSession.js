@@ -1,11 +1,11 @@
 import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
+import { StoreSession } from "telegram/sessions/index.js";
 import input from "input"; // npm i input
 import 'dotenv/config';
 
 const apiId = parseInt(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH;
-const stringSession = new StringSession(""); 
+const storeSession = new StoreSession("telegram_auth_session"); 
 
 (async () => {
     console.log("Iniciando processo de login no Telegram...");
@@ -15,7 +15,7 @@ const stringSession = new StringSession("");
         process.exit(1);
     }
 
-    const client = new TelegramClient(stringSession, apiId, apiHash, {
+    const client = new TelegramClient(storeSession, apiId, apiHash, {
         connectionRetries: 5,
         useWSS: true,
     });
