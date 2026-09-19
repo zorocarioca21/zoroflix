@@ -143,6 +143,7 @@ async function uploadToTelegram(filePath, title, taskId) {
     const stringSession = new StringSession(sessionStr);
     const client = new TelegramClient(stringSession, apiId, apiHash, {
         connectionRetries: 5,
+        useWSS: true,
     });
     
     client.setLogLevel("none");
