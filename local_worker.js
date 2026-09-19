@@ -202,7 +202,7 @@ async function uploadToTelegram(filePath, title, taskId) {
     try {
         const result = await client.sendFile(finalEntityId, {
             file: filePath,
-            workers: 4, 
+            workers: 1, 
             caption: `**${title}**`,
             parseMode: "markdown",
             forceDocument: false,
