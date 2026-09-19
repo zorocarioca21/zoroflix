@@ -245,7 +245,12 @@ async function uploadLoop() {
                 const stats = fs.statSync(filePath);
                 
                 if (stats.size < 1000000) {
-                    console.log(`⚠️ Arquivo muito pequeno. Excluindo corrompido: ${fileToUpload}`);
+                    console.log(`\n⚠️ Arquivo muito pequeno. Excluindo corrompido: ${fileToUpload}`);
+                    try { fs.unlinkSync(filePath); } catch(e){}
+                } else if (stats.size > 2000 * 1024 * 1024) {
+                    // Maior que 2GB (Telegram Free Limit)
+                    console.log(`\n🚫 ERRO: O arquivo ${fileToUpload} tem mais de 2GB! Requer Telegram Premium. Excluindo para não travar a fila.`);
+                    await apiRequest('/error', { taskId, error_message: "Arquivo maior que 2GB. O envio falhou pois a conta não tem Telegram Premium." }).catch(()=>{});
                     try { fs.unlinkSync(filePath); } catch(e){}
                 } else {
                     const messageId = await uploadToTelegram(filePath, title, taskId);
