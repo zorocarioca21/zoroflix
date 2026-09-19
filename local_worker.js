@@ -3,10 +3,12 @@ import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
 
-// Configurações Pessoais
-const VPS_URL = 'http://localhost:4000'; // Mude para https://cinegeek.shop em produção
-const API_KEY = 'seu-token-secreto'; // Defina o mesmo x-api-key que estiver na VPS (opcional por enquanto)
+// Configurações Pessoais (Copidadas da VPS)
+const VPS_URL = 'https://cinegeek.shop';
+const API_KEY = 'seu-token-secreto'; // Sem restrição rígida na VPS no momento
 const WORKER_ID = 'PC_LOCAL_' + Math.floor(Math.random() * 1000);
+const TELEGRAM_BOT_TOKEN = '8772357947:AAEiaxvMEjQL9x-5MqOYSXdkOGuKwpPg350';
+const TELEGRAM_CHANNEL_ID = '-1003839496993';
 
 async function apiRequest(endpoint, body = {}) {
     const res = await fetch(`${VPS_URL}/api/hybrid${endpoint}`, {
