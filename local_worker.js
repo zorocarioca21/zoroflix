@@ -108,10 +108,20 @@ async function downloadFile(url, destPath, taskId) {
 }
 
 async function fallbackDownloadFetch(url, destPath, taskId) {
-    const response = await fetch(url, {
-        headers: { "User-Agent": "VLC/3.0.18 LibVLC/3.0.18", "Accept": "*/*" },
-        redirect: 'follow'
-    });
+    let safeUrl = url;
+    try {
+        safeUrl = new URL(url).href; // Tenta corrigir espaços ou caracteres inválidos automaticamente
+    } catch(e) {}
+
+    let response;
+    try {
+        response = await fetch(safeUrl, {
+            headers: { "User-Agent": "VLC/3.0.18 LibVLC/3.0.18", "Accept": "*/*" },
+            redirect: 'follow'
+        });
+    } catch (fetchErr) {
+        throw new Error(`Fetch failed (Rede/URL Inválida): ${fetchErr.cause ? fetchErr.cause.message : fetchErr.message} | URL: ${safeUrl}`);
+    }
 
     if (!response.ok) throw new Error(`Status HTTP ${response.status}`);
 
