@@ -26,7 +26,7 @@ export default function EmbedDocsPage() {
                         <MonitorPlay size={18} /> Filmes
                     </a>
                     <a href="#series" className="docs-nav-link">
-                        <Tv size={18} /> Séries/Animes
+                        <Tv size={18} /> Séries/Animes/Doramas
                     </a>
 
                     <div className="docs-section-title">Avançado</div>
@@ -80,8 +80,8 @@ export default function EmbedDocsPage() {
 
                 {/* Séries/Animes Card */}
                 <div className="docs-card" id="series">
-                    <h2><Tv size={24} color="#00FF88" /> Séries/Animes</h2>
-                    <p>Para exibir um episódio específico de uma série ou anime, você precisa informar o ID, o número da temporada e o número do episódio.</p>
+                    <h2><Tv size={24} color="#00FF88" /> Séries/Animes/Doramas</h2>
+                    <p>Para exibir um episódio específico de uma série, anime ou dorama, você precisa informar o ID, o número da temporada e o número do episódio.</p>
                     
                     <div className="docs-code-url">
                         {baseUrl}/embed/serie/{"{tmdb_id}"}/{"{temporada}"}/{"{episodio}"}
