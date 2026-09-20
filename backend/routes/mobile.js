@@ -6,28 +6,35 @@ export default function mobileRoutes(db) {
 
     // Middleware de autenticação por API Key (valida contra o banco)
     async function authApiKey(req, res, next) {
-        const key = req.headers['x-api-key'];
+        const key = req.headers['x-api-key'] ||
+                    req.headers['x-apikey'] ||
+                    req.query.apikey ||
+                    req.query.apiKey ||
+                    req.query.api_key ||
+                    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null);
+
         if (!key) {
-            return res.status(401).json({ error: 'Header x-api-key é obrigatório.' });
+            return res.status(401).json({ error: 'API Key é obrigatória. Envie o header x-api-key ou o parâmetro ?apikey=.' });
         }
 
         try {
             const apiKey = await db.get(
-                "SELECT * FROM api_keys WHERE key = ? AND active = 1", [key]
+                "SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [key]
             );
 
             if (!apiKey) {
                 return res.status(401).json({ error: 'API Key inválida ou desativada.' });
             }
 
-            // Atualiza o last_used
-            await db.run("UPDATE api_keys SET last_used = datetime('now') WHERE id = ?", [apiKey.id]);
+            // Atualiza o last_used e incrementa usage_count
+            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = datetime('now') WHERE id = ?", [apiKey.id]);
 
             // Salva no request pra uso posterior
             req.apiKeyInfo = apiKey;
             next();
         } catch (err) {
-            return res.status(500).json({ error: 'Erro ao validar API Key.' });
+            console.error("Erro ao validar API Key na rota mobile:", err);
+            return res.status(500).json({ error: 'Erro interno ao validar API Key: ' + err.message });
         }
     }
 

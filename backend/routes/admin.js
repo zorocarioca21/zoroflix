@@ -441,11 +441,12 @@ export default function adminRoutes(db) {
 
         try {
             const result = await db.run(
-                "INSERT INTO api_keys (name, key, permissions, allowed_domains) VALUES (?, ?, ?, ?)", [name, key, perms, domains]
+                "INSERT INTO api_keys (name, key, permissions, allowed_domains, active, usage_count) VALUES (?, ?, ?, ?, 1, 0)", [name, key, perms, domains]
             );
-            res.json({ success: true, id: result.lastID, name, key, permissions: perms, allowed_domains: domains });
+            res.json({ success: true, id: result.lastID, name, key, permissions: perms, allowed_domains: domains, active: 1 });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao criar API Key.' });
+            console.error("Erro ao criar API key:", err);
+            res.status(500).json({ error: 'Erro ao criar API Key: ' + err.message });
         }
     });
 

@@ -30,7 +30,50 @@ export default function embedRoutes(db) {
         }
     });
 
-    // Rota para validar a API Key do Embed e incrementar o contador
+    // Rota GET para validar a API Key do Embed (usada pelo EmbedPlayerPage.jsx)
+    router.get('/validate-key', async (req, res) => {
+        const apikey = req.query.key || req.query.apikey || req.query.apiKey || req.headers['x-api-key'];
+
+        if (!apikey) {
+            return res.status(400).json({ valid: false, reason: "missing_key" });
+        }
+
+        try {
+            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [apikey]);
+            if (!keyData) {
+                return res.status(401).json({ valid: false, reason: "invalid_key" });
+            }
+
+            // Validate permissions if set
+            if (keyData.permissions && keyData.permissions !== 'embed' && keyData.permissions !== 'full') {
+                return res.status(403).json({ valid: false, reason: "invalid_permission" });
+            }
+
+            // Update usage count
+            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
+
+            return res.json({ valid: true, permissions: keyData.permissions });
+        } catch (err) {
+            console.error("Erro na verificação da key:", err);
+            res.status(500).json({ valid: false, error: "Erro interno no servidor." });
+        }
+    });
+
+    // Alias GET /verify -> /validate-key
+    router.get('/verify', async (req, res) => {
+        const apikey = req.query.key || req.query.apikey || req.query.apiKey || req.headers['x-api-key'];
+        if (!apikey) return res.status(400).json({ valid: false, reason: "missing_key" });
+        try {
+            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [apikey]);
+            if (!keyData) return res.status(401).json({ valid: false, reason: "invalid_key" });
+            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
+            return res.json({ valid: true });
+        } catch (err) {
+            res.status(500).json({ valid: false, error: "Erro interno no servidor." });
+        }
+    });
+
+    // Rota POST para validar a API Key do Embed e incrementar o contador
     router.post('/verify', async (req, res) => {
         const { apikey, domain } = req.body;
 
@@ -39,13 +82,13 @@ export default function embedRoutes(db) {
         }
 
         try {
-            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND active = 1", [apikey]);
+            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [apikey]);
             if (!keyData) {
                 return res.json({ valid: false, reason: "invalid_key" });
             }
 
             // Validate permissions
-            if (keyData.permissions !== 'embed' && keyData.permissions !== 'full') {
+            if (keyData.permissions && keyData.permissions !== 'embed' && keyData.permissions !== 'full') {
                 return res.json({ valid: false, reason: "invalid_permission" });
             }
 
@@ -74,7 +117,7 @@ export default function embedRoutes(db) {
             }
 
             // Update usage count
-            await db.run("UPDATE api_keys SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
+            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
 
             return res.json({ valid: true });
 

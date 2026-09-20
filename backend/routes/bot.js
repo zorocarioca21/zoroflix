@@ -7,23 +7,29 @@ const router = express.Router();
 export default function botRoutes(db) {
     // API Key Verification Middleware (reused from embed logic)
     const verifyKey = async (req, res, next) => {
-        const apikey = req.query.apikey || req.query.apiKey || req.query.api_key;
+        const apikey = req.query.apikey ||
+                       req.query.apiKey ||
+                       req.query.api_key ||
+                       req.headers['x-api-key'] ||
+                       req.headers['x-apikey'] ||
+                       (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null);
+
         if (!apikey) {
             return res.status(401).json({ error: "Missing API Key" });
         }
 
         try {
-            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND active = 1", [apikey]);
+            const keyData = await db.get("SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [apikey]);
             if (!keyData) {
                 return res.status(401).json({ error: "Invalid or inactive API Key" });
             }
 
             // Update usage count
-            await db.run("UPDATE api_keys SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
+            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = CURRENT_TIMESTAMP WHERE id = ?", [keyData.id]);
             next();
         } catch (err) {
-            console.error("Error verifying key:", err);
-            res.status(500).json({ error: "Internal server error" });
+            console.error("Error verifying key in bot route:", err);
+            res.status(500).json({ error: "Internal server error: " + err.message });
         }
     };
 

@@ -181,29 +181,7 @@ export async function initDB() {
         )
     `);
 
-    // Migrations
-    try {
-        await db.exec(`ALTER TABLE comments ADD COLUMN status TEXT DEFAULT 'visible'`);
-    } catch(e) {}
-    try {
-        await db.exec(`ALTER TABLE api_keys ADD COLUMN allowed_domains TEXT`);
-        await db.exec(`ALTER TABLE api_keys ADD COLUMN usage_count INTEGER DEFAULT 0`);
-    } catch(e) {}
-
-    // Tabela de sessões ao vivo (live_sessions)
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS live_sessions (
-            session_id TEXT PRIMARY KEY,
-            uuid TEXT,
-            user_id INTEGER,
-            content_id TEXT,
-            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_heartbeat DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    `);
-
-    // Tabela de API Keys para acesso mobile
+    // Tabela de API Keys para acesso mobile e embed
     await db.exec(`
         CREATE TABLE IF NOT EXISTS api_keys (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,6 +195,19 @@ export async function initDB() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // Migrations
+    try {
+        await db.exec(`ALTER TABLE comments ADD COLUMN status TEXT DEFAULT 'visible'`);
+    } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN permissions TEXT DEFAULT 'full'`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN allowed_domains TEXT`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN usage_count INTEGER DEFAULT 0`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN active INTEGER DEFAULT 1`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN last_used DATETIME`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE api_keys ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`); } catch(e) {}
+    try { await db.run(`UPDATE api_keys SET active = 1 WHERE active IS NULL`); } catch(e) {}
+    try { await db.run(`UPDATE api_keys SET permissions = 'full' WHERE permissions IS NULL`); } catch(e) {}
 
     // Tabela de Histórico de Assistidos (Recentes)
     await db.exec(`
