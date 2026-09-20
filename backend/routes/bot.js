@@ -141,7 +141,7 @@ export default function botRoutes(db) {
                         const patterns = [
                             `S${s}E${e}`, `S${s} E${e}`,
                             `S${season}E${episode}`, `S${season} E${episode}`,
-                            `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
+                            `EPISÓDIO ${episode}`, `EPISÓDIO 0${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
                         ];
                         const upperTitle = i.title.toUpperCase();
                         const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
@@ -162,8 +162,8 @@ export default function botRoutes(db) {
                                 break;
                             }
                         }
-                        // Default to dubbed if available, otherwise subbed
-                        foundMsgId = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                        const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                        foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
                     }
                 }
             }
