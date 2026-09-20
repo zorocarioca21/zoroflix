@@ -216,6 +216,11 @@ async function uploadToTelegram(filePath, title, taskId) {
             caption: `**${title}**`,
             parseMode: "markdown",
             forceDocument: false,
+            attributes: [
+                new Api.DocumentAttributeVideo({
+                    supportsStreaming: true,
+                })
+            ],
             progressCallback: (progress) => {
                 const p = (progress * 100).toFixed(1);
                 reportProgress(taskId, 'Enviando_Telegram_PC', p).catch(()=>{});
