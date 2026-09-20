@@ -5,14 +5,15 @@ import 'dotenv/config';
 const apiId = parseInt(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH;
 
-// Coleta TODAS as variáveis de ambiente que começam com TELEGRAM_SESSION (incluindo a original sem número)
+// Coleta variáveis que começam com TELEGRAM_SESSION_ (ex: TELEGRAM_SESSION_2, TELEGRAM_SESSION_3)
+// A TELEGRAM_SESSION original fica EXCLUSIVA para Uploads, evitando AUTH_KEY_DUPLICATED
 const sessionStrings = Object.keys(process.env)
-    .filter(key => key.startsWith('TELEGRAM_SESSION'))
+    .filter(key => key.startsWith('TELEGRAM_SESSION_'))
     .map(key => process.env[key])
     .filter(val => val && val.trim() !== ''); // Remove nulos ou vazios
 
 if (sessionStrings.length === 0) {
-    console.error("Nenhuma variável TELEGRAM_SESSION encontrada no .env!");
+    console.error("Nenhuma variável TELEGRAM_SESSION_ (como TELEGRAM_SESSION_2) encontrada no .env para o Pool de Streaming!");
 }
 
 let clients = [];
