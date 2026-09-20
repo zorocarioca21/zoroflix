@@ -809,11 +809,11 @@ export default function PlayerPage() {
                                             }
                                         }
 
-                                        let finalTitle = title.split(' - ')[0].trim();
+                                        let mediaName = title.split(' - ')[0].trim();
                                         if (season && episode) {
-                                            finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                            mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                         }
-                                        finalTitle += ' - www.cinegeek.shop';
+                                        let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
                                         if (targetStreamUrl) {
                                             const sToken = targetStreamUrl.split('/s/')[1]?.split('.mp4')[0];
@@ -979,11 +979,11 @@ export default function PlayerPage() {
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <button onClick={() => {
                                 setDownloadSelector(false);
-                                let finalTitle = title.split(' - ')[0].trim();
+                                let mediaName = title.split(' - ')[0].trim();
                                 if (season && episode) {
-                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                    mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
-                                finalTitle += ' - www.cinegeek.shop';
+                                let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
                                 const dubObj = languageOptions[currentQuality].dub;
                                 if (dubObj && dubObj.stream_url) {
@@ -1007,11 +1007,11 @@ export default function PlayerPage() {
                             
                             <button onClick={() => {
                                 setDownloadSelector(false);
-                                let finalTitle = title.split(' - ')[0].trim();
+                                let mediaName = title.split(' - ')[0].trim();
                                 if (season && episode) {
-                                    finalTitle += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                    mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
                                 }
-                                finalTitle += ' - www.cinegeek.shop';
+                                let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
                                 const legObj = languageOptions[currentQuality].leg;
                                 if (legObj && legObj.stream_url) {
