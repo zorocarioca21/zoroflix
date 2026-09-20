@@ -74,8 +74,15 @@ export default function botRoutes(db) {
             const BASE_URL = 'https://api.themoviedb.org/3';
 
             // 1. Fetch TMDB API to get exact name, year, and ID
-            const tmdbRes = await fetch(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`);
-            const tmdbData = await tmdbRes.json();
+            let tmdbData = { results: [] };
+            try {
+                const tmdbRes = await fetch(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                });
+                tmdbData = await tmdbRes.json();
+            } catch (tmdbErr) {
+                console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
+            }
 
             if (!tmdbData.results || tmdbData.results.length === 0) {
                 return res.json({
