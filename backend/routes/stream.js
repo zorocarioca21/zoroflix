@@ -26,11 +26,11 @@ export default function streamRoutes(db) {
             // Busca a mensagem (força BigInt para canais se possível)
             let resolvedEntity;
             try {
-                resolvedEntity = await tgClient.getInputEntity(BigInt(entityId));
+                resolvedEntity = await tgClient.getInputEntity(entityId);
                 console.log("[Stream] Entidade resolvida com sucesso!");
             } catch (e) {
-                console.log("[Stream] Aviso: getInputEntity falhou. Tentando com BigInt direto...");
-                resolvedEntity = BigInt(entityId); // Fallback robusto para StringSessions sem cache
+                console.log("[Stream] Aviso: getInputEntity falhou (normal se for string direta). Tentando direto...");
+                resolvedEntity = entityId; // Fallback
             }
 
             const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
