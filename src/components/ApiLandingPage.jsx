@@ -22,53 +22,55 @@ export default function ApiLandingPage() {
             <div className="api-ambient-orb orb-2"></div>
 
             {/* Hero Section */}
-            <div className="api-hero">
-                <video 
-                    autoPlay 
-                    loop 
-                    muted 
-                    playsInline
-                    className="api-hero-video"
-                >
-                    <source src="https://api.zorobot.shop/drive/f/f67b4121e5b154f4a3cfe48a652a323a/video_gerado_por_ia_pra_api_cinegeek.mp4" type="video/mp4" />
-                </video>
-                
-                <div className="api-hero-overlay"></div>
-                
-                <div className="api-hero-content">
-                    <Play size={64} className="api-hero-icon" />
-                    <h1 className="api-hero-title">
-                        Explore uma API com <span>{totalVideos.toLocaleString('pt-BR')}</span> vídeos gratuitos!
-                    </h1>
-                    <p className="api-hero-desc">
-                        Incorpore o maior acervo da internet no seu próprio site. Player extremamente rápido, zero travamentos, design moderno e a melhor qualidade de imagem do mercado.
-                    </p>
-                    <div className="api-hero-buttons">
-                        <Link to="/docs" className="api-btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                            <Code size={22} /> Ver Documentação
-                        </Link>
-                        <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="api-btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                            Adquira sua Key
-                        </a>
+            <div className="api-hero-container">
+                <div className="api-hero-card">
+                    <video 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline
+                        className="api-hero-video"
+                    >
+                        <source src="https://api.zorobot.shop/drive/f/f67b4121e5b154f4a3cfe48a652a323a/video_gerado_por_ia_pra_api_cinegeek.mp4" type="video/mp4" />
+                    </video>
+                    
+                    <div className="api-hero-overlay"></div>
+                    
+                    <div className="api-hero-content">
+                        <Play size={48} className="api-hero-icon" />
+                        <h1 className="api-hero-title">
+                            Explore uma API com <span>{totalVideos.toLocaleString('pt-BR')}</span> vídeos gratuitos!
+                        </h1>
+                        
+                        <div className="api-hero-buttons">
+                            <Link to="/docs" className="api-btn-primary">
+                                <Code size={20} /> Ver Documentação
+                            </Link>
+                            <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="api-btn-secondary">
+                                Adquira sua Key
+                            </a>
+                        </div>
+                        
+                        {/* Stats Cards Inside Hero */}
+                        <div className="api-stats-wrapper">
+                            {[
+                                { label: 'FILMES', count: stats.movies },
+                                { label: 'SÉRIES', count: stats.series },
+                                { label: 'ANIMES', count: stats.animes },
+                                { label: 'DORAMAS', count: stats.doramas },
+                                { label: 'EPISÓDIOS', count: stats.episodes }
+                            ].map((stat, i) => (
+                                <div key={i} className="api-stat-card">
+                                    <div className="api-stat-number">{stat.count.toLocaleString('pt-BR')}</div>
+                                    <div className="api-stat-label">{stat.label}</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="api-stats-wrapper">
-                {[
-                    { label: 'FILMES', count: stats.movies },
-                    { label: 'SÉRIES', count: stats.series },
-                    { label: 'ANIMES', count: stats.animes },
-                    { label: 'DORAMAS', count: stats.doramas },
-                    { label: 'EPISÓDIOS', count: stats.episodes }
-                ].map((stat, i) => (
-                    <div key={i} className="api-stat-card">
-                        <div className="api-stat-number">{stat.count.toLocaleString('pt-BR')}</div>
-                        <div className="api-stat-label">{stat.label}</div>
-                    </div>
-                ))}
-            </div>
+            {/* Removido o bloco isolado de Stats porque ele foi movido para dentro do Hero Card para ficar igual à SuperflixAPI */}
 
             {/* Features */}
             <div className="api-features-grid">

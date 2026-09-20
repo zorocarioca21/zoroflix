@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+.docs-body {
+    background-color: #0b0e14; /* Superflix dark background */
+    color: #e5e7eb;
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+}
+
+/* Sidebar */
+.docs-sidebar {
+    width: 280px;
+    background-color: #11141d; /* Slightly lighter dark */
+    padding: 2rem 0;
+    min-height: 100vh;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.docs-logo {
+    padding: 0 1.5rem;
+    margin-bottom: 2.5rem;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    color: #fff;
+}
+
+.docs-logo span {
+    color: #00FF88; /* Green accent instead of red */
+}
+
+.docs-section-title {
+    padding: 0 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.docs-nav-link {
+    padding: 0.75rem 1.5rem;
+    color: #9ca3af;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.docs-nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.docs-nav-link.active {
+    color: #fff;
+    background-color: rgba(0, 255, 136, 0.1);
+    border-left-color: #00FF88;
+}
+
+/* Main Content Area */
+.docs-main {
+    flex: 1;
+    padding: 3rem 4rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.docs-back-btn {
+    color: #00FF88;
+    text-decoration: none;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    transition: all 0.2s ease;
+}
+
+.docs-back-btn:hover {
+    transform: translateX(-5px);
+}
+
+/* Content Cards */
+.docs-card {
+    background-color: #11141d;
+    border-radius: 1rem;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.docs-card h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.docs-card h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.docs-card p {
+    color: #a1a1aa;
+    line-height: 1.7;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Code Blocks */
+.docs-code-url {
+    background-color: #0b0e14;
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 1.5rem;
+    font-family: 'Consolas', monospace;
+    color: #00D1FF;
+    font-size: 0.95rem;
+    word-break: break-all;
+}
+
+.docs-code-block {
+    background-color: #05050A;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.docs-code-block pre {
+    margin: 0;
+    color: #e5e7eb;
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Alerts */
+.docs-alert {
+    background-color: rgba(0, 255, 136, 0.05);
+    border-left: 4px solid #00FF88;
+    padding: 1rem 1.5rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    margin-bottom: 2rem;
+}
+
+.docs-alert-title {
+    color: #00FF88;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.docs-alert p {
+    margin: 0;
+    color: #CBD5E1;
+    font-size: 0.95rem;
+}
+
+/* CTA Button */
+.docs-btn {
+    background: #00FF88;
+    color: #000;
+    padding: 0.8rem 2rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.docs-btn:hover {
+    background: #00D1FF;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .docs-body {
+        flex-direction: column;
+    }
+    .docs-sidebar {
+        width: 100%;
+        min-height: auto;
+        padding: 1.5rem 0;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .docs-main {
+        padding: 2rem 1.5rem;
+    }
+}
