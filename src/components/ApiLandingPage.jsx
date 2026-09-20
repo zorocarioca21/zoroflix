@@ -21,18 +21,6 @@ export default function ApiLandingPage() {
             <div className="api-ambient-orb orb-1"></div>
             <div className="api-ambient-orb orb-2"></div>
 
-            {/* Navbar */}
-            <nav className="api-navbar">
-                <div className="api-logo">
-                    CINEGEEK<span className="api-logo-highlight">API</span>
-                </div>
-                <div className="api-nav-links">
-                    <Link to="/" className="api-nav-link">Início</Link>
-                    <Link to="/docs" className="api-nav-link">Documentação</Link>
-                    <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="api-btn-primary">Adquira sua Key</a>
-                </div>
-            </nav>
-
             {/* Hero Section */}
             <div className="api-hero">
                 <video 
@@ -55,9 +43,14 @@ export default function ApiLandingPage() {
                     <p className="api-hero-desc">
                         Incorpore o maior acervo da internet no seu próprio site. Player extremamente rápido, zero travamentos, design moderno e a melhor qualidade de imagem do mercado.
                     </p>
-                    <Link to="/docs" className="api-btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
-                        <Code size={22} /> Ver Documentação
-                    </Link>
+                    <div className="api-hero-buttons">
+                        <Link to="/docs" className="api-btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
+                            <Code size={22} /> Ver Documentação
+                        </Link>
+                        <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="api-btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
+                            Adquira sua Key
+                        </a>
+                    </div>
                 </div>
             </div>
 
