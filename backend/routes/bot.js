@@ -84,45 +84,41 @@ export default function botRoutes(db) {
                 console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
             }
 
-            if (!tmdbData.results || tmdbData.results.length === 0) {
-                return res.json({
-                    found: false,
-                    title: null,
-                    type: null,
-                    telegram_message_id: null,
-                    direct_download_url: null,
-                    site_url: null,
-                    error: "Media not found on TMDB"
-                });
-            }
+            let searchName = q;
+            let originalName = null;
+            let releaseYear = null;
+            let baseName = q.split(':')[0];
+            let type = 'filme';
+            let slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
-            // Filter for movie or tv
-            const bestMatch = tmdbData.results.find(r => r.media_type === 'movie' || r.media_type === 'tv');
-            if (!bestMatch) {
-                return res.json({
-                    found: false,
-                    error: "Media type not supported"
-                });
+            const bestMatch = (tmdbData.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv') || (tmdbData.results && tmdbData.results[0]);
+            if (bestMatch) {
+                searchName = bestMatch.name || bestMatch.title || q;
+                originalName = bestMatch.original_name || bestMatch.original_title || null;
+                releaseYear = bestMatch.release_date ? bestMatch.release_date.split('-')[0] : (bestMatch.first_air_date ? bestMatch.first_air_date.split('-')[0] : null);
+                baseName = searchName ? searchName.split(':')[0] : null;
+                type = bestMatch.media_type === 'movie' ? 'filme' : 'serie';
+                slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
             }
-
-            let searchName = bestMatch.name || bestMatch.title;
-            let originalName = bestMatch.original_name || bestMatch.original_title;
-            let releaseYear = bestMatch.release_date ? bestMatch.release_date.split('-')[0] : (bestMatch.first_air_date ? bestMatch.first_air_date.split('-')[0] : null);
-            let baseName = searchName ? searchName.split(':')[0] : null;
-            let type = bestMatch.media_type === 'movie' ? 'filme' : 'serie';
-            let tmdbId = bestMatch.id;
-            let slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
             
             const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
-            // 2. Query local database
-            const query = `
-                SELECT id, title, telegram_message_id, status 
-                FROM sync_queue 
-                WHERE status = 'completed' AND title LIKE ?
-            `;
-            const searchParam = `%${searchName}%`;
-            const items = await db.all(query, [searchParam]);
+            // 2. Query local database by TMDB ID or title match
+            let items = [];
+            if (bestMatch && bestMatch.id) {
+                items = await db.all(
+                    `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
+                    [bestMatch.id, `%${searchName}%`, `%${q}%`]
+                ).catch(() => []);
+            }
+            
+            if (!items || items.length === 0) {
+                const searchParam = `%${searchName}%`;
+                items = await db.all(
+                    `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
+                    [searchParam, `%${q}%`]
+                ).catch(() => []);
+            }
 
             let foundMsgId = null;
 
