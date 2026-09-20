@@ -56,8 +56,9 @@ export async function initDB() {
         )
     `);
 
-    // Atualiza avatares antigos quebrados da zorobot.shop para a imagem padrão local
-    await db.run("UPDATE users SET avatar = '/default-avatar.svg' WHERE avatar LIKE '%zorobot.shop%' OR avatar IS NULL OR avatar = ''");
+    // Atualiza apenas avatares nulos ou vazios para a imagem padrão local e garante HTTPS nos avatares do Drive
+    await db.run("UPDATE users SET avatar = '/default-avatar.svg' WHERE avatar IS NULL OR avatar = ''");
+    await db.run("UPDATE users SET avatar = REPLACE(avatar, 'http://', 'https://') WHERE avatar LIKE 'http://%'");
 
     // Tabela de Comentários
     await db.exec(`

@@ -31,7 +31,8 @@ export async function uploadBase64ToDrive(base64Data, filename, folderName = nul
         if (contentType && contentType.includes("application/json")) {
             const data = await response.json();
             if (data && data.sucesso && data.url) {
-                return data.url;
+                // Força protocolo HTTPS para evitar bloqueio de Mixed Content no navegador
+                return data.url.replace(/^http:\/\//i, 'https://');
             } else {
                 console.error('[ZORO DRIVE] Resposta sem sucesso:', data);
                 return null;
