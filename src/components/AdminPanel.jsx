@@ -980,6 +980,7 @@ export default function AdminPanel() {
                                     src={selectedUserDetail?.user?.avatar || '/default-avatar.svg'} 
                                     alt="" 
                                     className="admin-modal-avatar" 
+                                    referrerPolicy="no-referrer"
                                     onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                                 />
                                 <div>

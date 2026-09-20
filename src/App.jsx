@@ -356,6 +356,7 @@ function AppContent() {
                   src={user.avatar || '/default-avatar.svg'} 
                   alt="Perfil" 
                   className="user-avatar" 
+                  referrerPolicy="no-referrer"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                 />

@@ -116,6 +116,7 @@ export default function UserProfile() {
                             src={user.avatar || '/default-avatar.svg'} 
                             alt="Avatar" 
                             className="profile-avatar-big" 
+                            referrerPolicy="no-referrer"
                             onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                         />
                         <label className="avatar-upload-btn">
