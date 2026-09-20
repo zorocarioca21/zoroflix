@@ -13,9 +13,27 @@ const WORKER_ID = 'PC_LOCAL_' + Math.floor(Math.random() * 1000);
 const TELEGRAM_BOT_TOKEN = '8772357947:AAEiaxvMEjQL9x-5MqOYSXdkOGuKwpPg350';
 const TELEGRAM_CHANNEL_ID = '-1003839496993';
 const DOWNLOAD_DIR = 'D:\\cinegeek downloads';
+const MAX_FOLDER_SIZE_BYTES = 200 * 1024 * 1024 * 1024; // 200 GB max
 
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+}
+
+function getFolderSizeBytes(dirPath) {
+    try {
+        if (!fs.existsSync(dirPath)) return 0;
+        const files = fs.readdirSync(dirPath);
+        let total = 0;
+        for (const file of files) {
+            try {
+                const stats = fs.statSync(path.join(dirPath, file));
+                total += stats.size;
+            } catch (e) {}
+        }
+        return total;
+    } catch (e) {
+        return 0;
+    }
 }
 
 async function apiRequest(endpoint, body = {}) {
@@ -135,11 +153,22 @@ async function fallbackDownloadFetch(url, destPath, taskId) {
     const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
     let downloadedBytes = 0;
     const fileStream = fs.createWriteStream(destPath);
+    let writeError = null;
+
+    fileStream.on('error', (err) => {
+        writeError = err;
+        try { fs.unlinkSync(destPath); } catch(e){}
+    });
+
     const reader = response.body.getReader();
-    
     let lastEmit = Date.now();
 
     while (true) {
+        if (writeError) {
+            reader.cancel();
+            throw writeError;
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
         
@@ -157,6 +186,7 @@ async function fallbackDownloadFetch(url, destPath, taskId) {
     }
     
     fileStream.end();
+    if (writeError) throw writeError;
     await new Promise(res => fileStream.on('finish', res));
 }
 
@@ -307,6 +337,17 @@ async function downloadLoop() {
     }
     
     isDownloading = true;
+
+    // Checa o tamanho total da pasta de downloads no PC
+    const folderSizeBytes = getFolderSizeBytes(DOWNLOAD_DIR);
+    if (folderSizeBytes >= MAX_FOLDER_SIZE_BYTES) {
+        const folderSizeGB = (folderSizeBytes / (1024 * 1024 * 1024)).toFixed(2);
+        process.stdout.write(`\r\x1b[K⚠️ [Limite 200GB Atingido: ${folderSizeGB} GB] Pausando downloads temporariamente... Apenas enviando uploads.`);
+        isDownloading = false;
+        setTimeout(downloadLoop, 10000); // Re-avalia a cada 10 segundos
+        return;
+    }
+
     console.log(`[${WORKER_ID}] Procurando tarefas na VPS...`);
     
     try {
