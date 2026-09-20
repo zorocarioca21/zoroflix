@@ -30,7 +30,7 @@ export default function ApiLandingPage() {
                     playsInline
                     className="api-hero-video"
                 >
-                    <source src="https://tbcdn.talentbrew.com/company/391/v3_0/video/hero-video-0423.mp4" type="video/mp4" />
+                    <source src="https://api.zorobot.shop/drive/f/f67b4121e5b154f4a3cfe48a652a323a/video_gerado_por_ia_pra_api_cinegeek.mp4" type="video/mp4" />
                 </video>
                 
                 <div className="api-hero-overlay"></div>
