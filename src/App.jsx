@@ -353,7 +353,7 @@ function AppContent() {
             {user ? (
               <div className="user-profile-wrap">
                 <img 
-                  src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
+                  src={user.avatar || '/default-avatar.svg'} 
                   alt="Perfil" 
                   className="user-avatar" 
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}

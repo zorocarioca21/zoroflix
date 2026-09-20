@@ -977,7 +977,7 @@ export default function AdminPanel() {
                         <div className="admin-modal-header">
                             <div className="admin-modal-user-info">
                                 <img 
-                                    src={selectedUserDetail?.user?.avatar && !selectedUserDetail.user.avatar.includes('zorobot.shop') ? selectedUserDetail.user.avatar : '/default-avatar.svg'} 
+                                    src={selectedUserDetail?.user?.avatar || '/default-avatar.svg'} 
                                     alt="" 
                                     className="admin-modal-avatar" 
                                     onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}

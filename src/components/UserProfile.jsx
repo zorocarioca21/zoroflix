@@ -113,14 +113,14 @@ export default function UserProfile() {
                 <div className="profile-header-meta">
                     <div className="avatar-edit-wrap">
                         <img 
-                            src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
+                            src={user.avatar || '/default-avatar.svg'} 
                             alt="Avatar" 
                             className="profile-avatar-big" 
                             onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }}
                         />
                         <label className="avatar-upload-btn">
                             <Camera size={20} />
-                            <input type="file" hidden accept="image/*" onChange={handleAvatarChange} />
+                            <input type="file" hidden accept="image/*,.gif" onChange={handleAvatarChange} />
                         </label>
                     </div>
                     <div className="profile-title">

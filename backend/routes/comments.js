@@ -1,7 +1,9 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { UPLOADS_PATH } from '../db.js';
+import { uploadLocalFileToDrive } from '../services/zoroDriveService.js';
 
 const router = express.Router();
 
@@ -18,13 +20,25 @@ const upload = multer({ storage });
 
 export default function commentRoutes(db) {
 
-    // UPLOAD DE FIGURINHA
-    router.post('/upload-sticker', upload.single('sticker'), (req, res) => {
-        if (!req.file) {
-            return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+    // UPLOAD DE FIGURINHA / IMAGEM DE COMENTÁRIO
+    router.post('/upload-sticker', upload.single('sticker'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
+    }
+
+    let stickerUrl = `/uploads/${req.file.filename}`;
+    try {
+        const driveUrl = await uploadLocalFileToDrive(req.file.path, 'Comentarios');
+        if (driveUrl) {
+            stickerUrl = driveUrl;
+            try { fs.unlinkSync(req.file.path); } catch (e) {}
         }
-        res.json({ stickerUrl: `/uploads/${req.file.filename}` });
-    });
+    } catch (err) {
+        console.error('[COMMENTS] Erro ao enviar sticker para o Zoro Drive:', err);
+    }
+
+    res.json({ stickerUrl });
+});
 
     // LISTAR COMENTÁRIOS (com repostas e reações)
     router.get('/:mediaType/:contentId', async (req, res) => {

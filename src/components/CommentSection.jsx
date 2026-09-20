@@ -169,7 +169,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
             {user ? (
                 <div className="comment-input-box">
                     <img 
-                        src={user.avatar && !user.avatar.includes('zorobot.shop') ? user.avatar : '/default-avatar.svg'} 
+                        src={user.avatar || '/default-avatar.svg'} 
                         alt="" 
                         className="comment-avatar-small" 
                         onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} 
@@ -180,7 +180,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                         onChange={(e) => setNewComment(e.target.value)}
                     ></textarea>
                     
-                    <input type="file" ref={fileInputRef} accept="image/*" style={{display: 'none'}} onChange={handleStickerUpload} />
+                    <input type="file" ref={fileInputRef} accept="image/*,.gif" style={{display: 'none'}} onChange={handleStickerUpload} />
                     
                     <button className="comment-sticker-btn" onClick={() => fileInputRef.current?.click()} disabled={uploadingSticker} title="Anexar Imagem ou GIF">
                         {uploadingSticker ? <Loader size={18} className="spin" /> : <ImageIcon size={18} />}
@@ -201,7 +201,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                         <div key={c.id} className={`comment-item ${isDeleted ? 'deleted-by-adm' : ''}`}>
                             <div className="comment-main">
                             <div className={`avatar-wrapper-role role-${c.role}`}>
-                                <img src={c.avatar && !c.avatar.includes('zorobot.shop') ? c.avatar : '/default-avatar.svg'} alt="" className="comment-avatar" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
+                                <img src={c.avatar || '/default-avatar.svg'} alt="" className="comment-avatar" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
                             </div>
                             <div className="comment-content">
                                 <div className="comment-meta">
@@ -246,7 +246,7 @@ export default function CommentSection({ contentId, mediaType, episodeId }) {
                                 {c.replies.map(r => (
                                     <div key={r.id} className="comment-item reply">
                                         <div className={`avatar-wrapper-role role-${r.role} mini`}>
-                                            <img src={r.avatar && !r.avatar.includes('zorobot.shop') ? r.avatar : '/default-avatar.svg'} alt="" className="comment-avatar-mini" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
+                                            <img src={r.avatar || '/default-avatar.svg'} alt="" className="comment-avatar-mini" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.svg'; }} />
                                         </div>
                                         <div className="comment-content">
                                             <div className="comment-meta">
