@@ -46,37 +46,35 @@ export default function profileRoutes(db) {
         }
     });
 
-    // UPLOAD AVATAR
+    // UPLOAD AVATAR (100% Direto no Zoro Drive)
     router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
         const { userId } = req.body;
         if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
 
-        const localAvatarUrl = `/uploads/${req.file.filename}`;
         const filePath = req.file.path;
 
         try {
-            // 1. Salva a imagem localmente no banco para resposta instantânea
-            await db.run('UPDATE users SET avatar = ? WHERE id = ?', [localAvatarUrl, userId]);
-            
-            // 2. Responde o cliente IMEDIATAMENTE (sem esperar o upload do drive)
-            res.json({ avatar: localAvatarUrl, message: 'Foto de perfil atualizada!' });
+            // Upload direto para o Zoro Drive (Pasta 'Avatares')
+            const driveUrl = await uploadLocalFileToDrive(filePath, 'Avatares');
 
-            // 3. Processa o upload para o Zoro Drive em SEGUNDO PLANO (sem travar a requisição)
-            uploadLocalFileToDrive(filePath, 'Avatares')
-                .then(async (driveUrl) => {
-                    if (driveUrl) {
-                        const httpsDriveUrl = driveUrl.replace(/^http:\/\//i, 'https://');
-                        await db.run('UPDATE users SET avatar = ? WHERE id = ?', [httpsDriveUrl, userId]);
-                        console.log(`[PROFILE] Avatar do usuário #${userId} espelhado no Zoro Drive com sucesso: ${httpsDriveUrl}`);
-                        try { fs.unlinkSync(filePath); } catch (e) {}
-                    }
-                })
-                .catch(err => {
-                    console.error(`[PROFILE] Falha ao espelhar avatar no Zoro Drive para usuário #${userId}:`, err.message);
-                });
+            // Deleta o arquivo temporário local em disco imediatamente
+            try { fs.unlinkSync(filePath); } catch (e) {}
+
+            if (!driveUrl) {
+                return res.status(500).json({ error: 'Falha ao fazer upload para o Zoro Drive.' });
+            }
+
+            const httpsDriveUrl = driveUrl.replace(/^http:\/\//i, 'https://');
+
+            // Atualiza o banco de dados principal com a URL CDN do Zoro Drive
+            await db.run('UPDATE users SET avatar = ? WHERE id = ?', [httpsDriveUrl, userId]);
+
+            console.log(`[PROFILE] Avatar do usuário #${userId} salvo no Zoro Drive: ${httpsDriveUrl}`);
+            res.json({ avatar: httpsDriveUrl, message: 'Foto de perfil atualizada!' });
 
         } catch (err) {
             console.error('[PROFILE] Erro ao atualizar avatar:', err);
+            try { fs.unlinkSync(filePath); } catch (e) {}
             res.status(500).json({ error: 'Erro ao atualizar banco de dados.' });
         }
     });
