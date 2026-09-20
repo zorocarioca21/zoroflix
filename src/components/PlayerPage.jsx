@@ -35,8 +35,29 @@ export default function PlayerPage() {
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const [downloadSelector, setDownloadSelector] = useState(false);
     const [confirmDownloadUrl, setConfirmDownloadUrl] = useState(null);
+    const [adTimer, setAdTimer] = useState(10);
     const [debugMatches, setDebugMatches] = useState(null);
     const prevLanguageType = useRef(null); 
+
+    useEffect(() => {
+        if (!confirmDownloadUrl) return;
+        const isVipUser = user?.role === 'vip' || user?.role === 'admin';
+        if (isVipUser) {
+            setAdTimer(0);
+            return;
+        }
+        setAdTimer(10);
+        const interval = setInterval(() => {
+            setAdTimer(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [confirmDownloadUrl, user]);
 
     // Handler customizado para mudar messageId e guardar a preferência
     const handleSetMessageId = (id, lang, stream) => {
@@ -761,7 +782,7 @@ export default function PlayerPage() {
                                     </button>
                                 </>
                             )}
-                            {(state?.isVip || user?.role === 'vip' || user?.role === 'admin') && (telegramMessageId || languageOptions) && (
+                            {(telegramMessageId || languageOptions) && (
                                 <button 
                                     className="nav-btn-modern" 
                                     onClick={() => {
@@ -1016,38 +1037,115 @@ export default function PlayerPage() {
                 </div>
             )}
             
-            {/* Modal de Confirmação de Download */}
+            {/* Modal de Confirmação de Download com Anúncio Recompensado */}
             {confirmDownloadUrl && (
                 <div style={{
                     position: 'fixed',
                     top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.8)',
+                    background: 'rgba(0, 0, 0, 0.88)',
+                    backdropFilter: 'blur(8px)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 99999
                 }}>
                     <div style={{
-                        background: '#1a1a1a',
+                        background: '#13131a',
                         padding: '2rem',
-                        borderRadius: '15px',
-                        border: '1px solid #333',
+                        borderRadius: '20px',
+                        border: '1px solid #1a2f24',
                         textAlign: 'center',
-                        maxWidth: '400px',
-                        width: '90%'
+                        maxWidth: '480px',
+                        width: '92%',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                     }}>
-                        <h3 style={{ margin: '0 0 1rem 0', color: '#fff' }}>Pronto para Baixar</h3>
-                        <p style={{ color: '#aaa', marginBottom: '2rem' }}>Deseja iniciar o download deste arquivo agora?</p>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.4rem' }}>
+                            {(user?.role === 'vip' || user?.role === 'admin') ? '🚀 Download VIP Instantâneo' : '🎁 Anúncio Recompensado'}
+                        </h3>
                         
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button onClick={() => {
-                                window.location.href = confirmDownloadUrl;
-                                setConfirmDownloadUrl(null);
-                                setDownloadSelector(false); // Fecha o selector de idioma caso estivesse aberto
-                            }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Baixar Arquivo</button>
+                        {(user?.role === 'vip' || user?.role === 'admin') ? (
+                            <p style={{ color: '#00ff88', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+                                Sua conta VIP permite baixar diretamente sem aguardar anúncios.
+                            </p>
+                        ) : (
+                            <>
+                                <p style={{ color: '#aaa', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                                    {adTimer > 0 
+                                        ? `Assista ao anúncio abaixo para liberar o seu download em ${adTimer}s...` 
+                                        : 'Anúncio concluído! Seu download foi liberado.'}
+                                </p>
+
+                                {/* Container do Anúncio Recompensado */}
+                                <div style={{
+                                    background: '#0d1310',
+                                    borderRadius: '12px',
+                                    border: '1px solid #1f3a2c',
+                                    padding: '10px',
+                                    marginBottom: '1.2rem',
+                                    minHeight: '110px',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    overflow: 'hidden'
+                                }}>
+                                    <iframe 
+                                        src="/ad_rewarded.html" 
+                                        style={{ border: 'none', width: '100%', height: '100px', overflow: 'hidden' }}
+                                        scrolling="no"
+                                        title="Anúncio Recompensado"
+                                    />
+                                </div>
+
+                                {/* Barra de Progresso do Anúncio */}
+                                {adTimer > 0 && (
+                                    <div style={{ background: 'rgba(255,255,255,0.1)', height: '6px', borderRadius: '3px', marginBottom: '1.2rem', overflow: 'hidden' }}>
+                                        <div style={{
+                                            background: '#00ff88',
+                                            height: '100%',
+                                            width: `${((10 - adTimer) / 10) * 100}%`,
+                                            transition: 'width 1s linear'
+                                        }} />
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <button 
+                                disabled={adTimer > 0}
+                                onClick={() => {
+                                    window.location.href = confirmDownloadUrl;
+                                    setConfirmDownloadUrl(null);
+                                    setDownloadSelector(false);
+                                }} 
+                                style={{ 
+                                    background: adTimer > 0 ? '#2a2a35' : '#00ff88', 
+                                    color: adTimer > 0 ? '#666' : '#000', 
+                                    padding: '0.9rem 1.5rem', 
+                                    borderRadius: '12px', 
+                                    border: 'none', 
+                                    cursor: adTimer > 0 ? 'not-allowed' : 'pointer', 
+                                    fontWeight: 'bold',
+                                    fontSize: '1rem',
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                {adTimer > 0 ? `Aguarde ${adTimer}s para Baixar` : '✅ Baixar Arquivo Agora'}
+                            </button>
                             
-                            <button onClick={() => setConfirmDownloadUrl(null)} style={{ background: 'transparent', color: '#888', border: '1px solid #333', padding: '0.8rem 1.5rem', borderRadius: '10px', cursor: 'pointer' }}>Cancelar</button>
+                            <button 
+                                onClick={() => setConfirmDownloadUrl(null)} 
+                                style={{ background: 'transparent', color: '#888', border: 'none', padding: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}
+                            >
+                                Cancelar
+                            </button>
                         </div>
+
+                        {(!user || user?.role === 'free') && (
+                            <div style={{ marginTop: '1.2rem', paddingTop: '1rem', borderTop: '1px solid #222', fontSize: '0.8rem', color: '#666' }}>
+                                💡 Dica: <span style={{ color: '#00ff88', fontWeight: 'bold' }}>Seja VIP</span> para baixar instantaneamente sem anúncios!
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
