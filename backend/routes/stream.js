@@ -9,39 +9,53 @@ const channelId = process.env.TELEGRAM_CHANNEL_ID;
 export default function streamRoutes(db) {
     const router = express.Router();
 
-    async function handleStreamRequest(req, res, messageId, overrideTitle = null) {
+    async function handleStreamRequest(req, res, messageId, overrideTitle = null, targetChannel = null) {
         if (!messageId) return res.status(400).send("Message ID inválido");
 
         const tgClient = await getTelegramClient();
         if (!tgClient) return res.status(500).send("Erro interno ao conectar ao Telegram");
 
         try {
-            let entityId = channelId;
-            if (!entityId.startsWith('-100')) {
-                entityId = '-100' + entityId.replace('-', '');
+            const channelsToTry = [
+                targetChannel,
+                process.env.TELEGRAM_CHANNEL_ID,
+                process.env.STORAGE_CHANNEL_ID,
+                '-1003839496993',
+                '-1004394307872'
+            ].filter(Boolean);
+
+            let message = null;
+
+            for (let chId of channelsToTry) {
+                let entityId = String(chId);
+                if (!entityId.startsWith('-100')) {
+                    entityId = '-100' + entityId.replace('-', '');
+                }
+
+                let resolvedEntity;
+                try {
+                    resolvedEntity = await tgClient.getInputEntity(entityId);
+                } catch (e) {
+                    resolvedEntity = entityId;
+                }
+
+                try {
+                    console.log(`[Stream] Buscando mensagem ${messageId} no canal ${entityId}...`);
+                    const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
+                    if (result && result.length > 0 && result[0] && result[0].className !== "MessageEmpty") {
+                        message = result[0];
+                        console.log(`[Stream] Encontrado no canal ${entityId}!`);
+                        break;
+                    }
+                } catch (err) {
+                    console.log(`[Stream] Aviso: Mensagem ${messageId} não encontrada no canal ${entityId}, tentando próximo...`);
+                }
             }
 
-            console.log(`[Stream] Buscando mensagem ${messageId} na entidade ${entityId}...`);
-            
-            // Busca a mensagem (força BigInt para canais se possível)
-            let resolvedEntity;
-            try {
-                resolvedEntity = await tgClient.getInputEntity(entityId);
-                console.log("[Stream] Entidade resolvida com sucesso!");
-            } catch (e) {
-                console.log("[Stream] Aviso: getInputEntity falhou (normal se for string direta). Tentando direto...");
-                resolvedEntity = entityId; // Fallback
-            }
-
-            const result = await tgClient.getMessages(resolvedEntity, { ids: messageId });
-            console.log(`[Stream] Busca concluída. Resultado: ${result ? result.length : 'null'}`);
-
-            if (!result || result.length === 0 || !result[0] || result[0].className === "MessageEmpty") {
-                console.log(`[Stream] ERRO: Mensagem ${messageId} não encontrada no Telegram. Isso pode ser falha de cache do GramJS ou a mensagem foi apagada.`);
+            if (!message) {
+                console.log(`[Stream] ERRO: Mensagem ${messageId} não encontrada em nenhum canal Telegram cadastrado.`);
                 return res.status(404).send("Mensagem não encontrada");
             }
-
-            const message = result[0];
             if (!message.media || !message.media.document) {
                 console.log(`[Stream] ERRO: Mensagem ${messageId} não contém um documento de vídeo.`);
                 return res.status(404).send("A mensagem não contém um documento de vídeo");
@@ -234,7 +248,7 @@ export default function streamRoutes(db) {
             req.query.download = 'true';
             
             const finalTitle = req.query.title || data.title;
-            await handleStreamRequest(req, res, messageId, finalTitle);
+            await handleStreamRequest(req, res, messageId, finalTitle, data.channelId);
         } catch (err) {
             console.error("Erro ao decodificar token ofuscado:", err);
             return res.status(400).send("Link de download inválido ou corrompido.");
@@ -268,7 +282,7 @@ export default function streamRoutes(db) {
             // Como navegadores de celular (especialmente Safari no iPhone) frequentemente removem 
             // os cookies ao tentar avançar um vídeo, o método do cookie causava carregamento infinito.
             // Solução: O IP do usuário foi salvo no próprio token pelo backend. 
-            // Agora garantimos que o IP batendo na rota de stream é o mesmo dono do link!
+            // Agora garantimos que O IP batendo na rota de stream é o mesmo dono do link!
             if (!data.app && data.ip) {
                 const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
                 // Compara os IPs (ignora diferença de ipv4 mapeado como ipv6 '::ffff:')
@@ -280,7 +294,7 @@ export default function streamRoutes(db) {
                 }
             }
             
-            await handleStreamRequest(req, res, messageId, data.title);
+            await handleStreamRequest(req, res, messageId, data.title, data.channelId);
         } catch (err) {
             console.error("Erro ao decodificar token de stream:", err);
             return res.status(403).send("Acesso negado. Token corrompido ou inválido.");
