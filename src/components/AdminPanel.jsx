@@ -18,6 +18,8 @@ export default function AdminPanel() {
     const [configs, setConfigs] = useState({});
     const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0, monthlyUnique: 0, weeklyUnique: 0 });
     const [advancedStats, setAdvancedStats] = useState({ topSearches: [], topWatched: [] });
+    const [limitSearches, setLimitSearches] = useState(10);
+    const [limitWatched, setLimitWatched] = useState(10);
     const [liveSessions, setLiveSessions] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
@@ -869,7 +871,7 @@ export default function AdminPanel() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {advancedStats.topSearches.length === 0 ? (
                                         <p style={{textAlign: 'center', color: '#666', padding: '2rem 0'}}>Nenhuma busca registrada.</p>
-                                    ) : advancedStats.topSearches.map((s, index) => (
+                                    ) : advancedStats.topSearches.slice(0, limitSearches).map((s, index) => (
                                         <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', transition: 'all 0.2s ease' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                 <span style={{ color: '#666', fontSize: '0.9rem', width: '20px' }}>{index + 1}</span>
@@ -881,6 +883,15 @@ export default function AdminPanel() {
                                         </div>
                                     ))}
                                 </div>
+                                {advancedStats.topSearches.length > limitSearches && (
+                                    <button 
+                                        className="admin-pagination-btn" 
+                                        onClick={() => setLimitSearches(prev => prev + 10)}
+                                        style={{ marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.05)', color: '#aaa', border: 'none', padding: '0.6rem', borderRadius: '8px', cursor: 'pointer' }}
+                                    >
+                                        Ver Mais
+                                    </button>
+                                )}
                             </div>
 
                             {/* Top Assistidos */}
@@ -892,7 +903,7 @@ export default function AdminPanel() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {advancedStats.topWatched.length === 0 ? (
                                         <p style={{textAlign: 'center', color: '#666', padding: '2rem 0'}}>Nenhum conteúdo registrado.</p>
-                                    ) : advancedStats.topWatched.map((w, index) => (
+                                    ) : advancedStats.topWatched.slice(0, limitWatched).map((w, index) => (
                                         <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem 0.5rem 0.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', transition: 'all 0.2s ease' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                 <span style={{ color: '#666', fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{index + 1}</span>
@@ -912,6 +923,15 @@ export default function AdminPanel() {
                                         </div>
                                     ))}
                                 </div>
+                                {advancedStats.topWatched.length > limitWatched && (
+                                    <button 
+                                        className="admin-pagination-btn" 
+                                        onClick={() => setLimitWatched(prev => prev + 10)}
+                                        style={{ marginTop: '1rem', width: '100%', background: 'rgba(255,255,255,0.05)', color: '#aaa', border: 'none', padding: '0.6rem', borderRadius: '8px', cursor: 'pointer' }}
+                                    >
+                                        Ver Mais
+                                    </button>
+                                )}
                             </div>
                         </div>
 
