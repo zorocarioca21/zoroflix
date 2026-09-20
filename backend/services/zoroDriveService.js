@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 const DRIVE_URL = 'https://api.zorobot.shop/drive/api/bot/upload';
-const EMAIL = process.env.ZORO_DRIVE_EMAIL || process.env.DRIVE_EMAIL || 'sharminou@gmail.com';
-const PASS = process.env.ZORO_DRIVE_PASSWORD || process.env.DRIVE_PASSWORD || 'FA3Genh*egz7ww&yF8xN';
+const EMAIL = process.env.ZORO_DRIVE_EMAIL || process.env.DRIVE_EMAIL || 'lucaspereirarjcontato@gmail.com';
+const PASS = process.env.ZORO_DRIVE_PASSWORD || process.env.DRIVE_PASSWORD || 's1R89fr6QQHcN5Q@qpqV';
 
 /**
  * Upload de Base64 para a Zoro Drive API
