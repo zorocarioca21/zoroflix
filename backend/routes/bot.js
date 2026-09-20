@@ -207,7 +207,7 @@ export default function botRoutes(db) {
 
         } catch (err) {
             console.error("Error in bot search:", err);
-            res.status(500).json({ error: "Internal server error" });
+            res.status(500).json({ error: "Internal server error", details: err.message, stack: err.stack });
         }
     });
 
