@@ -53,21 +53,26 @@ async function downloadFile(url, destPath, taskId) {
     return new Promise((resolve, reject) => {
         const ffmpegArgs = [
             '-y',
+            '-err_detect', 'ignore_err',
+            '-fflags', '+genpts+discardcorrupt+igndts',
             '-user_agent', 'VLC/3.0.18 LibVLC/3.0.18',
             '-i', url,
             '-c', 'copy',
-            '-movflags', '+faststart',
+            '-max_interleave_delta', '0',
             destPath
         ];
 
         const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
         console.log(`🚀 Iniciando download via FFmpeg...`);
+        console.log(`[DEBUG FFmpeg] URL: ${url.substring(0, 120)}...`);
         
         let totalDurationSec = 0;
         let fallbackTriggered = false;
+        let lastStderr = '';
 
         ffmpegProcess.stderr.on('data', (data) => {
             const str = data.toString();
+            lastStderr = str; // Guarda a última saída de erro para debug
 
             if (totalDurationSec === 0) {
                 const durMatch = str.match(/Duration:\s*(\d{2}):(\d{2}):(\d{2}\.\d+)/);
@@ -91,7 +96,9 @@ async function downloadFile(url, destPath, taskId) {
             else {
                 if (!fallbackTriggered) {
                     fallbackTriggered = true;
-                    console.log(`⚠️ FFmpeg falhou (código ${code}). Tentando via HTTP Nativo...`);
+                    console.log(`⚠️ FFmpeg falhou (código ${code}). Último stderr:`);
+                    console.log(`[DEBUG FFmpeg STDERR] ${lastStderr.trim().split('\n').slice(-3).join(' | ')}`);
+                    console.log(`Tentando via HTTP Nativo...`);
                     fallbackDownloadFetch(url, destPath, taskId).then(resolve).catch(reject);
                 }
             }
@@ -159,9 +166,12 @@ async function optimizeVideo(inputPath, outputPath, taskId) {
         console.log(`\n⚙️ Otimizando vídeo para Faststart (Streaming instantâneo)...`);
         
         const ffmpegProcess = spawn('ffmpeg', [
+            '-err_detect', 'ignore_err',
+            '-fflags', '+genpts+discardcorrupt+igndts',
             '-i', inputPath,
             '-c', 'copy',
             '-movflags', '+faststart',
+            '-max_interleave_delta', '0',
             '-y',
             outputPath
         ]);
@@ -218,6 +228,9 @@ async function uploadToTelegram(filePath, title, taskId) {
             forceDocument: false,
             attributes: [
                 new Api.DocumentAttributeVideo({
+                    duration: 0,
+                    w: 0,
+                    h: 0,
                     supportsStreaming: true,
                 })
             ],

@@ -32,8 +32,10 @@ import auditRoutes from './backend/routes/audit.js';
 import botRoutes from './backend/routes/bot.js';
 import botManagerRoutes from './backend/routes/botManager.js';
 import appUpdatesRoutes from './backend/routes/appUpdates.js';
+import tmdbRoutes from './backend/routes/tmdb.js';
 import mangasRoutes from './backend/routes/mangas.js';
 import { initStorageDB } from './backend/storageDB.js';
+import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
 import fs from 'fs';
@@ -50,7 +52,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Inicializa o Banco e monta as rotas
-Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
+Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storageDb, tmdbDb]) => {
     // Apply tracking middleware for page views and live sessions (Removed - Agora no front-end em /api/analytics/pageview)
 
     // Rotas da API
@@ -72,6 +74,7 @@ Promise.all([initDB(), initStorageDB()]).then(([db, storageDb]) => {
     app.use('/api/bot', botRoutes(db));
     app.use('/api/bot-manager', botManagerRoutes(db));
     app.use('/api/app-updates', appUpdatesRoutes(db));
+    app.use('/api/tmdb', tmdbRoutes(tmdbDb));
 
     // Rotas de Mangás
     app.use('/api/mangas', mangasRoutes(db));

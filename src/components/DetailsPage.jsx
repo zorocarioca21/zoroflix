@@ -125,20 +125,29 @@ export default function DetailsPage() {
       setLoading(true);
       try {
         const type = isMovie ? 'movie' : 'tv';
-        const [detailsResp, creditsResp, videosResp] = await Promise.all([
-          fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
-          fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`),
-          fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`) // Puxando videos tbm em inglês para garantir
-        ]);
+        let detailsData = null;
+        let creditsData = null;
 
-        if (!isCurrent) return;
+        try {
+          const cacheResp = await fetch(`/api/tmdb/details/${type}/${id}`);
+          if (cacheResp.ok) {
+            detailsData = await cacheResp.json();
+            if (detailsData.credits) creditsData = detailsData.credits;
+          }
+        } catch (e) {}
 
-        const detailsData = await detailsResp.json();
-        const creditsData = await creditsResp.json();
-        const videosData = await videosResp.json();
-
-        const vid = videosData.results?.find(v => v.type === 'Trailer') || videosData.results?.find(v => v.type === 'Teaser');
-        if (vid) setTrailerKey(vid.key);
+        if (!detailsData) {
+          const [detailsResp, creditsResp, videosResp] = await Promise.all([
+            fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`),
+            fetch(`${BASE_URL}/${type}/${id}/credits?api_key=${API_KEY}&language=pt-BR`),
+            fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}`)
+          ]);
+          detailsData = await detailsResp.json();
+          creditsData = await creditsResp.json();
+          const videosData = await videosResp.json();
+          const vid = videosData.results?.find(v => v.type === 'Trailer') || videosData.results?.find(v => v.type === 'Teaser');
+          if (vid) setTrailerKey(vid.key);
+        }
 
         const title = detailsData.title || detailsData.name;
         
@@ -202,8 +211,16 @@ export default function DetailsPage() {
 
   const fetchEpisodes = async (seasonNumber) => {
     try {
-      const resp = await fetch(`${BASE_URL}/tv/${id}/season/${seasonNumber}?api_key=${API_KEY}&language=pt-BR`);
-      const data = await resp.json();
+      let data = null;
+      try {
+        const respCache = await fetch(`/api/tmdb/season/${id}/${seasonNumber}`);
+        if (respCache.ok) data = await respCache.json();
+      } catch (e) {}
+
+      if (!data) {
+        const resp = await fetch(`${BASE_URL}/tv/${id}/season/${seasonNumber}?api_key=${API_KEY}&language=pt-BR`);
+        data = await resp.json();
+      }
       setEpisodes(data.episodes || []);
     } catch (error) {
       console.error(error);
@@ -224,9 +241,13 @@ export default function DetailsPage() {
     'Released': 'Lançado'
   };
 
-  // Se não tiver dados nenhum ainda, mostra carregando full.
-  // Se já tiver (ex: trocando de filme), o Backdrop já estará lá.
-  const backdropUrl = data?.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : '';
+  const resolveImgUrl = (path, size = 'w500') => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    return `https://image.tmdb.org/t/p/${size}${path}`;
+  };
+
+  const backdropUrl = resolveImgUrl(data?.backdrop_path, 'original');
 
   return (
     <div className="details-container">
@@ -241,7 +262,7 @@ export default function DetailsPage() {
             <div className="details-poster-area">
                 <div className="details-poster-wrap">
                     <img 
-                        src={`https://image.tmdb.org/t/p/w500${data.poster_path}`} 
+                        src={resolveImgUrl(data.poster_path, 'w500')} 
                         alt={data.title || data.name} 
                         className="details-main-poster"
                     />
@@ -291,7 +312,7 @@ export default function DetailsPage() {
                   {cast.map(person => (
                     <div key={person.id} className="cast-card">
                       <div className="cast-img-wrap">
-                        <img src={person.profile_path ? `https://image.tmdb.org/t/p/w185${person.profile_path}` : 'https://via.placeholder.com/185x278?text=Sem+Foto'} alt={person.name} />
+                        <img src={person.profile_path ? resolveImgUrl(person.profile_path, 'w185') : 'https://via.placeholder.com/185x278?text=Sem+Foto'} alt={person.name} />
                       </div>
                       <div className="cast-info">
                         <p className="cast-real-name">{person.name}</p>
@@ -326,7 +347,7 @@ export default function DetailsPage() {
                   return (
                   <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
-                      <img src={ep.still_path ? `https://image.tmdb.org/t/p/w300${ep.still_path}` : `https://image.tmdb.org/t/p/w300${data.backdrop_path}`} alt={ep.name} />
+                      <img src={ep.still_path ? resolveImgUrl(ep.still_path, 'original') : resolveImgUrl(data.backdrop_path, 'original')} alt={ep.name} />
                       <div className="ep-badges-overlay">
                         {/* Tags DUB e LEG foram removidas porque o TMDB não fornece essa informação, e verificar 20+ episódios na Superflix de uma vez deixaria o site muito lento. */}
                       </div>

@@ -5,6 +5,9 @@ import { UPLOADS_PATH } from '../db.js';
 
 const router = express.Router();
 
+import { uploadLocalFileToDrive } from '../services/zoroDriveService.js';
+import fs from 'fs';
+
 // Configuração de Upload (Multer)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -48,12 +51,21 @@ export default function profileRoutes(db) {
         const { userId } = req.body;
         if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
 
-        const avatarUrl = `/uploads/${req.file.filename}`;
+        let avatarUrl = `/uploads/${req.file.filename}`;
 
         try {
+            // Tenta fazer upload para o Zoro Drive (Pasta 'Avatares')
+            const driveUrl = await uploadLocalFileToDrive(req.file.path, 'Avatares');
+            if (driveUrl) {
+                avatarUrl = driveUrl;
+                // Deleta arquivo temporário local se upload no drive teve sucesso
+                try { fs.unlinkSync(req.file.path); } catch (e) {}
+            }
+
             await db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatarUrl, userId]);
             res.json({ avatar: avatarUrl, message: 'Foto de perfil atualizada!' });
         } catch (err) {
+            console.error('[PROFILE] Erro ao atualizar avatar:', err);
             res.status(500).json({ error: 'Erro ao atualizar banco de dados.' });
         }
     });
