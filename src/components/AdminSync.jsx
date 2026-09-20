@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity } from 'lucide-react';
+import './AdminSync.css';
 
 // ==========================================
 // CUSTOM DIALOG SYSTEM - Substitui alert/confirm/prompt nativos
@@ -836,140 +837,108 @@ export default function AdminSync() {
                     cursor: pointer;
                 }
             `}</style>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <HardDriveDownload size={32} color="#00ff88" />
-                    CineGeek Sync
-                    <span style={{ fontSize: '0.9rem', color: '#888', display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '1rem', background: 'rgba(0,0,0,0.3)', padding: '0.4rem 0.8rem', borderRadius: '20px' }}>
-                        <div className="live-indicator"></div> Ao Vivo
-                    </span>
-                </h1>
-            </div>
+            <div className="sync-container">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <h1 className="sync-header-title">
+                        <HardDriveDownload size={36} color="#00ff88" />
+                        CineGeek Sync
+                        <span className="sync-live-badge">
+                            <div className="live-indicator"></div> Ao Vivo
+                        </span>
+                    </h1>
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', border: '1px solid rgba(0, 255, 136, 0.2)', padding: '1.5rem', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
-                    <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#00ff88', fontSize: '1.2rem' }}>
-                        <Activity size={20} /> Estatísticas da Fila
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #888' }}>
-                            <div style={{ color: '#888', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Clock size={16} /> Pendentes</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.pending}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div className="sync-card">
+                        <h3 className="sync-card-title">
+                            <Activity size={24} /> Estatísticas da Fila
+                        </h3>
+                        <div className="sync-stat-grid">
+                            <div className="sync-stat-item border-pending">
+                                <div className="sync-stat-label" style={{color: '#8c8f96'}}><Clock size={16} /> Pendentes</div>
+                                <div className="sync-stat-value">{queue.pending}</div>
+                            </div>
+                            <div className="sync-stat-item border-prioritized">
+                                <div className="sync-stat-label" style={{color: '#ffff00'}}><Star size={16} /> Priorizados</div>
+                                <div className="sync-stat-value">{queue.prioritized_count || 0}</div>
+                            </div>
+                            <div className="sync-stat-item border-completed">
+                                <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={16} /> Concluídos</div>
+                                <div className="sync-stat-value">{queue.completed}</div>
+                            </div>
+                            <div className="sync-stat-item border-errors">
+                                <div className="sync-stat-label" style={{color: '#ff4444'}}><XCircle size={16} /> Erros</div>
+                                <div className="sync-stat-value">{queue.error_count || 0}</div>
+                            </div>
+                            <div className="sync-stat-item border-skipped">
+                                <div className="sync-stat-label" style={{color: '#ffaa00'}}><SkipForward size={16} /> Ignorados</div>
+                                <div className="sync-stat-value">{queue.skipped || 0}</div>
+                            </div>
+                            <div className="sync-stat-item border-db">
+                                <div className="sync-stat-label" style={{color: '#00ccff'}}><Database size={16} /> Economia DB</div>
+                                <div className="sync-stat-value">{formatBytes(queue.total_size_saved)}</div>
+                            </div>
+                            <div className="sync-stat-item border-today">
+                                <div className="sync-stat-label" style={{color: '#ff00ff'}}><Rocket size={16} /> Envios Hoje</div>
+                                <div className="sync-stat-value">{queue.completed_today || 0}</div>
+                            </div>
+                            <div className="sync-stat-item border-new">
+                                <div className="sync-stat-label" style={{color: '#00D1FF'}}><Sparkles size={16} /> Novos Hoje</div>
+                                <div className="sync-stat-value">{queue.added_today || 0}</div>
+                            </div>
                         </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ffff00' }}>
-                            <div style={{ color: '#ffff00', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Star size={16} /> Priorizados</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.prioritized_count || 0}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ff88' }}>
-                            <div style={{ color: '#00ff88', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><CheckCircle size={16} /> Concluídos</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.completed}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ff4444' }}>
-                            <div style={{ color: '#ff4444', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><XCircle size={16} /> Erros</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.error_count || 0}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ffaa00' }}>
-                            <div style={{ color: '#ffaa00', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><SkipForward size={16} /> Ignorados</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.skipped || 0}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ccff' }}>
-                            <div style={{ color: '#00ccff', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Database size={16} /> Economia DB</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{formatBytes(queue.total_size_saved)}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #ff00ff' }}>
-                            <div style={{ color: '#ff00ff', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Rocket size={16} /> Envios Hoje</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.completed_today || 0}</div>
-                        </div>
-                        <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #00ff88' }}>
-                            <div style={{ color: '#00ff88', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Sparkles size={16} /> Novos Hoje</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{queue.added_today || 0}</div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
-                        <button 
-                            onClick={startScan}
-                            style={{ flex: '1 1 calc(50% - 0.4rem)', padding: '0.8rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                        >
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+                        <button onClick={startScan} className="sync-btn-secondary" style={{ flex: '1 1 calc(50% - 0.5rem)' }}>
                             <Search size={18} /> Escanear iptv_list.m3u (Local)
                         </button>
-                        <button 
-                            onClick={startRemoteScan}
-                            style={{ flex: '1 1 calc(50% - 0.4rem)', padding: '0.8rem', background: 'rgba(0,255,136,0.1)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(0,255,136,0.2)'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(0,255,136,0.1)'; }}
-                        >
+                        <button onClick={startRemoteScan} className="sync-btn-primary" style={{ flex: '1 1 calc(50% - 0.5rem)' }}>
                             <RefreshCcw size={18} /> Atualizar Catálogo (Auto)
                         </button>
-                        <button 
-                            onClick={retryErrors}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                        >
+                        <button onClick={retryErrors} className="sync-btn-secondary">
                             <RefreshCcw size={16} /> Tentar Erros
                         </button>
-                        <button 
-                            onClick={handleExport}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,204,255,0.05)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                        >
+                        <button onClick={handleExport} className="sync-btn-secondary sync-btn-info">
                             <Download size={16} /> Exportar BD
                         </button>
-                        <button 
-                            onClick={clearPending}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,68,68,0.05)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                        >
+                        <button onClick={clearPending} className="sync-btn-secondary sync-btn-danger">
                             <Eraser size={16} /> Limpar Todos Pendentes
                         </button>
-                        <button 
-                            onClick={cleanupDuplicates}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,255,136,0.05)', color: '#00ff88', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                        >
+                        <button onClick={cleanupDuplicates} className="sync-btn-secondary">
                             <Eraser size={16} /> Limpar Pendentes Duplicados
                         </button>
-                        <button 
-                            onClick={cleanM3UTitles}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(0,204,255,0.05)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.2)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                        >
+                        <button onClick={cleanM3UTitles} className="sync-btn-secondary sync-btn-info">
                             <Eraser size={16} /> Corrigir Títulos Sujos
                         </button>
-                        <button 
-                            onClick={cleanupTelegramDuplicates}
-                            disabled={isCleaningTG}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,68,68,0.05)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.2)', borderRadius: '8px', cursor: isCleaningTG ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isCleaningTG ? 0.6 : 1, transition: 'all 0.2s' }}
-                        >
+                        <button onClick={cleanupTelegramDuplicates} disabled={isCleaningTG} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningTG ? 0.6 : 1 }}>
                             <Trash2 size={16} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados do TG'}
                         </button>
-                        <button 
-                            onClick={remapTelegram}
-                            disabled={isRemapping}
-                            style={{ padding: '0.6rem 1rem', background: 'rgba(255,170,0,0.05)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '8px', cursor: isRemapping ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isRemapping ? 0.6 : 1, transition: 'all 0.2s' }}
-                        >
+                        <button onClick={remapTelegram} disabled={isRemapping} className="sync-btn-secondary sync-btn-warning" style={{ opacity: isRemapping ? 0.6 : 1 }}>
                             <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
                         </button>
                     </div>
                 </div>
 
                 {/* === SEÇÃO DE AUDITORIA FAST START === */}
-                <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                    <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#fff' }}>
-                        <Activity size={20} color="#00ccff" /> Auditoria Fast Start
+                <div className="sync-card">
+                    <h3 className="sync-card-title" style={{ color: '#fff' }}>
+                        <Activity size={24} color="#00ccff" /> Auditoria Fast Start
                     </h3>
-                    <p style={{ color: '#888', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
+                    <p style={{ color: '#8c8f96', fontSize: '0.95rem', margin: '0 0 1.5rem 0', lineHeight: '1.6' }}>
                         Verifica se os vídeos já enviados ao Telegram possuem o MOOV Atom no início (Fast Start). Vídeos sem isso travam ao pular no player.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                         {!auditState.isRunning ? (
-                            <button onClick={startAudit} style={{ padding: '0.6rem 1.2rem', background: 'rgba(0,204,255,0.1)', color: '#00ccff', border: '1px solid rgba(0,204,255,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                            <button onClick={startAudit} className="sync-btn-secondary sync-btn-info">
                                 <Search size={16} /> Iniciar Auditoria
                             </button>
                         ) : (
-                            <button onClick={stopAudit} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,68,68,0.1)', color: '#ff4444', border: '1px solid rgba(255,68,68,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                            <button onClick={stopAudit} className="sync-btn-secondary sync-btn-danger">
                                 <X size={16} /> Parar Auditoria
                             </button>
                         )}
                         {auditState.results.failedItems.length > 0 && (
-                            <button onClick={() => reuploadAuditItems(auditState.results.failedItems.map(i => i.id))} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
+                            <button onClick={() => reuploadAuditItems(auditState.results.failedItems.map(i => i.id))} className="sync-btn-secondary sync-btn-warning">
                                 <RefreshCcw size={16} /> Reupar Todos ({auditState.results.failedItems.length})
                             </button>
                         )}
@@ -1499,6 +1468,7 @@ export default function AdminSync() {
                 fetchQueueParent={fetchQueue}
             />
             {dialog.DialogPortal}
+            </div>
         </div>
     );
 }
