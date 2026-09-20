@@ -126,39 +126,43 @@ export default function botRoutes(db) {
                 const validItems = items.filter(i => {
                     if (i.status !== 'completed' || !i.telegram_message_id) return false;
                     
-                    if (!checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season)) return false;
-                    
+                    const isTitleMatch = checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
+                    let hasEp = true;
+
                     if (type === 'serie' && season && episode) {
                         const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
                         const sMatch = i.title.match(seasonRegex);
                         if (sMatch) {
                             const fileSeason = parseInt(sMatch[1]);
-                            if (fileSeason !== parseInt(season)) return false;
+                            if (fileSeason !== parseInt(season)) {
+                                hasEp = false;
+                            }
                         }
 
-                        const s = String(season).padStart(2, '0');
-                        const e = String(episode).padStart(2, '0');
-                        const patterns = [
-                            `S${s}E${e}`, `S${s} E${e}`,
-                            `S${season}E${episode}`, `S${season} E${episode}`,
-                            `EPISÓDIO ${episode}`, `EPISÓDIO 0${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
-                        ];
-                        const upperTitle = i.title.toUpperCase();
-                        const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
-                        if (!hasEp) return false;
+                        if (hasEp) {
+                            const s = String(season).padStart(2, '0');
+                            const e = String(episode).padStart(2, '0');
+                            const patterns = [
+                                `S${s}E${e}`, `S${s} E${e}`,
+                                `S${season}E${episode}`, `S${season} E${episode}`,
+                                `Episódio ${episode}`, `EPISÓDIO 0${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
+                            ];
+                            const upperTitle = i.title.toUpperCase();
+                            hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                        }
                     }
 
-                    return true;
+                    return isTitleMatch && hasEp;
                 });
 
                 if (validItems.length > 0) {
                     const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
                     if (matches) {
-                        const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+                        const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
                         let selectedQuality = Object.keys(matches)[0];
-                        for (let q of qualityOrder) {
-                            if (matches[q]) {
-                                selectedQuality = q;
+                        for (let qQuality of qualityOrder) {
+                            if (matches[qQuality]) {
+                                selectedQuality = qQuality;
                                 break;
                             }
                         }
