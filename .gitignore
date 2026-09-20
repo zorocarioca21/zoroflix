@@ -49,3 +49,8 @@ test_*.js
 test_*.cjs
 query.*
 git_log_*.txt
+
+# Telegram Sessions (dados sensíveis)
+telegram_auth_session/
+telegram_auth_session_old/
+telegram_auth_session_pc/

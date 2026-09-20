@@ -1,17 +1,21 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { UPLOADS_PATH } from '../db.js';
 
 const router = express.Router();
 
-import { uploadLocalFileToDrive } from '../services/zoroDriveService.js';
-import fs from 'fs';
+// Subpasta dedicada para avatares dentro de uploads
+const AVATARS_PATH = path.join(UPLOADS_PATH, 'avatars');
+if (!fs.existsSync(AVATARS_PATH)) {
+    fs.mkdirSync(AVATARS_PATH, { recursive: true });
+}
 
-// Configuração de Upload (Multer)
+// Configuração de Upload (Multer) — salva direto na pasta de avatares
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, UPLOADS_PATH);
+        cb(null, AVATARS_PATH);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -46,35 +50,32 @@ export default function profileRoutes(db) {
         }
     });
 
-    // UPLOAD AVATAR (100% Direto no Zoro Drive)
+    // UPLOAD AVATAR (Salva localmente no servidor)
     router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
         const { userId } = req.body;
         if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' });
 
-        const filePath = req.file.path;
-
         try {
-            // Upload direto para o Zoro Drive (Pasta 'Avatares')
-            const driveUrl = await uploadLocalFileToDrive(filePath, 'Avatares');
-
-            // Deleta o arquivo temporário local em disco imediatamente
-            try { fs.unlinkSync(filePath); } catch (e) {}
-
-            if (!driveUrl) {
-                return res.status(500).json({ error: 'Falha ao fazer upload para o Zoro Drive.' });
+            // Deleta o avatar antigo do usuário se existir (e for local)
+            const currentUser = await db.get('SELECT avatar FROM users WHERE id = ?', [userId]);
+            if (currentUser?.avatar && currentUser.avatar.startsWith('/avatars/')) {
+                const oldFile = path.join(AVATARS_PATH, path.basename(currentUser.avatar));
+                try { if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile); } catch (e) {}
             }
 
-            const httpsDriveUrl = driveUrl.replace(/^http:\/\//i, 'https://');
+            // Caminho público que será servido pelo express.static
+            const publicUrl = `/avatars/${req.file.filename}`;
 
-            // Atualiza o banco de dados principal com a URL CDN do Zoro Drive
-            await db.run('UPDATE users SET avatar = ? WHERE id = ?', [httpsDriveUrl, userId]);
+            // Atualiza o banco de dados com o caminho local
+            await db.run('UPDATE users SET avatar = ? WHERE id = ?', [publicUrl, userId]);
 
-            console.log(`[PROFILE] Avatar do usuário #${userId} salvo no Zoro Drive: ${httpsDriveUrl}`);
-            res.json({ avatar: httpsDriveUrl, message: 'Foto de perfil atualizada!' });
+            console.log(`[PROFILE] Avatar do usuário #${userId} salvo localmente: ${publicUrl}`);
+            res.json({ avatar: publicUrl, message: 'Foto de perfil atualizada!' });
 
         } catch (err) {
             console.error('[PROFILE] Erro ao atualizar avatar:', err);
-            try { fs.unlinkSync(filePath); } catch (e) {}
+            // Se deu erro, remove o arquivo que foi salvo
+            try { fs.unlinkSync(req.file.path); } catch (e) {}
             res.status(500).json({ error: 'Erro ao atualizar banco de dados.' });
         }
     });

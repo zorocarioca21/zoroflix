@@ -34,7 +34,7 @@ export default function UserProfile() {
                 if (!resp.ok) throw new Error('Servidor recusou a imagem');
                 const data = await resp.json();
                 login({ ...user, avatar: data.avatar }, localStorage.getItem('cinegeek_token'));
-                setMsg({ type: 'success', text: `Foto atualizada no Zoro Drive! URL: ${data.avatar}` });
+                setMsg({ type: 'success', text: 'Foto de perfil atualizada com sucesso!' });
             } catch (err) {
                 setMsg({ type: 'error', text: 'Erro ao enviar imagem.' });
             } finally {

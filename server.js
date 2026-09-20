@@ -82,6 +82,12 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
     // Serve public APK downloads
     app.use('/downloads/app', express.static(path.join(__dirname, 'backend', 'uploads', 'app')));
 
+    // Serve avatares locais (fotos de perfil salvas no servidor)
+    app.use('/avatars', express.static(path.join(__dirname, 'database', 'uploads', 'avatars'), {
+        maxAge: '30d',
+        immutable: true
+    }));
+
     // ==========================================
     // ZORO STORAGE CDN PROXY (LINK DIRETO)
     // ==========================================
