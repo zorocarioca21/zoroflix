@@ -296,13 +296,29 @@ async function uploadLoop() {
     isUploading = true;
     try {
         const files = fs.readdirSync(DOWNLOAD_DIR);
-        // Busca o primeiro arquivo .mp4 (que já terminou de baixar, pois enquanto baixa é .download)
-        const fileToUpload = files.find(f => f.endsWith('.mp4'));
+        // Pega todos os arquivos .mp4 prontos (que não estão sendo baixados em .download)
+        const mp4Files = files.filter(f => f.endsWith('.mp4'));
         
-        if (fileToUpload) {
-            const match = fileToUpload.match(/_(\d+)\.mp4$/);
-            if (match) {
-                const taskId = parseInt(match[1]);
+        if (mp4Files.length > 0) {
+            // Mapeia para um array de objetos { taskId, fileName }
+            const localTasks = [];
+            for (const f of mp4Files) {
+                const match = f.match(/_(\d+)\.mp4$/);
+                if (match) {
+                    localTasks.push({ taskId: parseInt(match[1]), fileName: f });
+                }
+            }
+
+            if (localTasks.length > 0) {
+                // Pergunta pra VPS qual dos arquivos presentes no disco tem a MAIOR prioridade!
+                const taskIds = localTasks.map(t => t.taskId);
+                const resp = await apiRequest('/checkout-upload', { taskIds }).catch(() => null);
+                
+                const targetTaskId = (resp && resp.taskId) ? resp.taskId : localTasks[0].taskId;
+                const targetObj = localTasks.find(t => t.taskId === targetTaskId) || localTasks[0];
+                
+                const fileToUpload = targetObj.fileName;
+                const taskId = targetObj.taskId;
                 const filePath = path.join(DOWNLOAD_DIR, fileToUpload);
                 const title = fileToUpload.replace(/_\d+\.mp4$/, '').replace(/_/g, ' ').toUpperCase();
                 

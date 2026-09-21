@@ -23,7 +23,7 @@ export default function hybridWorkerRoutes(db, io) {
         io.emit('hybrid_worker_state', remoteWorkersState);
     }
 
-    // 1. Checkout de Tarefa
+    // 1. Checkout de Tarefa de Download
     router.post('/checkout', async (req, res) => {
         try {
             const { workerId } = req.body;
@@ -54,6 +54,27 @@ export default function hybridWorkerRoutes(db, io) {
 
         } catch (err) {
             console.error('Erro no checkout híbrido:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // 1.5. Checkout de Upload (Retorna a taskId de maior prioridade dentre os arquivos locais baixados)
+    router.post('/checkout-upload', async (req, res) => {
+        try {
+            const { taskIds } = req.body;
+            if (!Array.isArray(taskIds) || taskIds.length === 0) {
+                return res.json({ taskId: null });
+            }
+
+            const placeholders = taskIds.map(() => '?').join(',');
+            const item = await db.get(
+                `SELECT id, priority FROM sync_queue WHERE id IN (${placeholders}) ORDER BY priority DESC, id ASC LIMIT 1`,
+                taskIds
+            );
+
+            return res.json({ taskId: item ? item.id : taskIds[0] });
+        } catch (err) {
+            console.error('Erro no checkout-upload:', err);
             res.status(500).json({ error: err.message });
         }
     });

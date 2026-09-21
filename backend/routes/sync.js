@@ -306,7 +306,7 @@ export default function syncRoutes(db, io) {
                     if (ext !== 'mp4' && ext !== 'mkv') continue; // Filtro de extensão
                     
                     const res = await db.run(
-                        "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                        "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 4000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                         [movie.title, movie.url, movie.url, movie.title]
                     );
                     if (res.changes > 0) insertedCount++;
@@ -333,7 +333,13 @@ export default function syncRoutes(db, io) {
         
         try {
             const placeholders = ids.map(() => '?').join(',');
-            const result = await db.run(`UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`, ids);
+            const result = await db.run(`
+                UPDATE sync_queue 
+                SET priority = 2000, 
+                    status = CASE WHEN status IN ('downloading_remote', 'downloading', 'error') THEN 'pending' ELSE status END, 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE id IN (${placeholders})
+            `, ids);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro bulk-prioritize:", err);
@@ -414,7 +420,7 @@ export default function syncRoutes(db, io) {
                     for (const movie of movies) {
                         // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
                         const result = await db.run(
-                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 4000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]
                         );
                         if (result.changes > 0) insertedCount++;
@@ -651,7 +657,13 @@ export default function syncRoutes(db, io) {
                 }
             }
 
-            const result = await db.run(`UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
+            const result = await db.run(`
+                UPDATE sync_queue 
+                SET priority = 2000, 
+                    status = CASE WHEN status IN ('downloading_remote', 'downloading', 'error') THEN 'pending' ELSE status END, 
+                    updated_at = CURRENT_TIMESTAMP 
+                ${queryCondition}
+            `, params);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro prioritize-batch:", err);
@@ -673,7 +685,13 @@ export default function syncRoutes(db, io) {
     // Rota para Priorizar ("Furar Fila") um item individual
     router.post('/queue/:id/prioritize', async (req, res) => {
         try {
-            await db.run("UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            await db.run(`
+                UPDATE sync_queue 
+                SET priority = 2000, 
+                    status = CASE WHEN status IN ('downloading_remote', 'downloading', 'error') THEN 'pending' ELSE status END, 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            `, [req.params.id]);
             res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao priorizar item' });
@@ -701,9 +719,11 @@ export default function syncRoutes(db, io) {
             const cleanName = seriesName.trim();
             const result = await db.run(`
                 UPDATE sync_queue 
-                SET priority = 2000, updated_at = CURRENT_TIMESTAMP 
+                SET priority = 2000, 
+                    status = CASE WHEN status IN ('downloading_remote', 'downloading', 'error') THEN 'pending' ELSE status END, 
+                    updated_at = CURRENT_TIMESTAMP 
                 WHERE title LIKE '%' || ? || '%' 
-                AND status IN ('pending', 'pending_upload', 'downloading', 'uploading', 'downloading_remote')
+                AND status IN ('pending', 'pending_upload', 'downloading', 'uploading', 'downloading_remote', 'error')
             `, [cleanName]);
 
             res.json({ success: true, updated: result.changes, message: `Priorizados ${result.changes} episódios da série "${cleanName}"` });
@@ -714,7 +734,7 @@ export default function syncRoutes(db, io) {
     });
 
     // ==========================================
-    // AUTO-PRIORITIZE: Prioriza itens baseado na demanda do usuário no front-end (Prioridade 100)
+    // AUTO-PRIORITIZE: Prioriza itens baseado na demanda do usuário no front-end (Prioridade 5000)
     // ==========================================
     const autoPrioritizeCache = new Map(); // Para evitar spam do mesmo título
     
@@ -731,11 +751,11 @@ export default function syncRoutes(db, io) {
             }
             autoPrioritizeCache.set(cacheKey, now);
 
-            // Tenta dar match parcial na fila de pendentes e com priority < 100
+            // Tenta dar match parcial na fila de pendentes e com priority < 5000
             const result = await db.run(`
                 UPDATE sync_queue 
-                SET priority = CASE WHEN priority < 100 THEN 100 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
-                WHERE status = 'pending' AND priority < 100 
+                SET priority = CASE WHEN priority < 5000 THEN 5000 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
+                WHERE status = 'pending' AND priority < 5000 
                 AND title LIKE '%' || ? || '%'
             `, [title]);
 

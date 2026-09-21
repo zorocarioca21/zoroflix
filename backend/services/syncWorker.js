@@ -786,16 +786,16 @@ function startAutoM3uSync() {
     // Cron job de Prioridade: Roda a cada 1 minuto (60000ms) para promover os itens de "hoje"
     setInterval(async () => {
         try {
-            // Promove itens adicionados hoje (que não são uploads manuais = 9999 e que têm priority < 500)
+            // Promove itens adicionados hoje (que não são uploads manuais = 9999 e que têm priority < 3000)
             const result = await dbInstance.run(
                 `UPDATE sync_queue 
-                 SET priority = 500 
+                 SET priority = 3000 
                  WHERE DATE(created_at, '-3 hours') = DATE('now', '-3 hours') 
-                 AND priority < 500 
+                 AND priority < 3000 
                  AND priority != 9999`
             );
             if (result.changes > 0) {
-                console.log(`[Priority Cron] Promovidos ${result.changes} filmes recentes para prioridade 500.`);
+                console.log(`[Priority Cron] Promovidos ${result.changes} filmes recentes para prioridade 3000.`);
             }
 
             // Remove prioridade de itens que já foram concluídos (synced/completed)
@@ -846,7 +846,7 @@ function startAutoM3uSync() {
                     let insertedCount = 0;
                     for (const movie of movies) {
                         const result = await dbInstance.run(
-                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 500 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
+                            "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 3000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]
                         );
                         if (result.changes > 0) insertedCount++;

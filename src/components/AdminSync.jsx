@@ -49,10 +49,10 @@ const iconMap = {
 const getPriorityBadge = (priority) => {
     if (!priority || priority <= 0) return null;
     if (priority >= 9999) return <span className="priority-badge priority-badge-manual"><Star size={12} /> UPLOAD</span>;
+    if (priority >= 5000) return <span className="priority-badge priority-badge-demand"><Activity size={12} /> DEMANDA</span>;
+    if (priority >= 3000) return <span className="priority-badge priority-badge-today"><Sparkles size={12} /> NOVOS HOJE</span>;
     if (priority >= 2000) return <span className="priority-badge priority-badge-max"><Star size={12} /> PRIORIDADE MAX</span>;
     if (priority >= 999) return <span className="priority-badge priority-badge-audit"><AlertTriangle size={12} /> RE-UPLOAD</span>;
-    if (priority >= 500) return <span className="priority-badge priority-badge-today"><Sparkles size={12} /> NOVOS HOJE</span>;
-    if (priority >= 100) return <span className="priority-badge priority-badge-demand"><Activity size={12} /> DEMANDA</span>;
     return <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>;
 };
 
