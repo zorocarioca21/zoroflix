@@ -333,11 +333,28 @@ export default function syncRoutes(db, io) {
         
         try {
             const placeholders = ids.map(() => '?').join(',');
-            const result = await db.run(`UPDATE sync_queue SET priority = 50 WHERE id IN (${placeholders})`, ids);
+            const result = await db.run(`UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`, ids);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro bulk-prioritize:", err);
             res.status(500).json({ error: 'Erro ao priorizar em lote.' });
+        }
+    });
+
+    // Bulk Unprioritize (Remover Prioridade em Lote)
+    router.post('/queue/bulk-unprioritize', async (req, res) => {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'IDs inválidos.' });
+        }
+        
+        try {
+            const placeholders = ids.map(() => '?').join(',');
+            const result = await db.run(`UPDATE sync_queue SET priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`, ids);
+            res.json({ success: true, updated: result.changes });
+        } catch (err) {
+            console.error("Erro bulk-unprioritize:", err);
+            res.status(500).json({ error: 'Erro ao remover prioridade em lote.' });
         }
     });
 
@@ -634,7 +651,7 @@ export default function syncRoutes(db, io) {
                 }
             }
 
-            const result = await db.run(`UPDATE sync_queue SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
+            const result = await db.run(`UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP ${queryCondition}`, params);
             res.json({ success: true, updated: result.changes });
         } catch (err) {
             console.error("Erro prioritize-batch:", err);
@@ -653,19 +670,51 @@ export default function syncRoutes(db, io) {
         }
     });
 
-    // Rota para Priorizar ("Furar Fila") um item
+    // Rota para Priorizar ("Furar Fila") um item individual
     router.post('/queue/:id/prioritize', async (req, res) => {
         try {
-            // Aumenta a prioridade para o topo (se já não for maior)
-            await db.run("UPDATE sync_queue SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            await db.run("UPDATE sync_queue SET priority = 2000, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
             res.json({ success: true, message: 'Filme movido para o topo da fila de downloads!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao priorizar item' });
         }
     });
 
+    // Rota para Remover Prioridade (Despriorizar) de um item individual
+    router.post('/queue/:id/unprioritize', async (req, res) => {
+        try {
+            await db.run("UPDATE sync_queue SET priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [req.params.id]);
+            res.json({ success: true, message: 'Prioridade removida com sucesso!' });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao remover prioridade' });
+        }
+    });
+
+    // Rota para Priorizar uma Série Inteira (Todos os episódios de um título)
+    router.post('/queue/prioritize-series', async (req, res) => {
+        try {
+            const { seriesName } = req.body;
+            if (!seriesName || typeof seriesName !== 'string' || !seriesName.trim()) {
+                return res.status(400).json({ error: 'Nome da série inválido' });
+            }
+
+            const cleanName = seriesName.trim();
+            const result = await db.run(`
+                UPDATE sync_queue 
+                SET priority = 2000, updated_at = CURRENT_TIMESTAMP 
+                WHERE title LIKE '%' || ? || '%' 
+                AND status IN ('pending', 'pending_upload', 'downloading', 'uploading', 'downloading_remote')
+            `, [cleanName]);
+
+            res.json({ success: true, updated: result.changes, message: `Priorizados ${result.changes} episódios da série "${cleanName}"` });
+        } catch (err) {
+            console.error('Erro ao priorizar série:', err);
+            res.status(500).json({ error: 'Erro ao priorizar série' });
+        }
+    });
+
     // ==========================================
-    // AUTO-PRIORITIZE: Prioriza itens baseado na demanda do usuário no front-end
+    // AUTO-PRIORITIZE: Prioriza itens baseado na demanda do usuário no front-end (Prioridade 100)
     // ==========================================
     const autoPrioritizeCache = new Map(); // Para evitar spam do mesmo título
     
@@ -682,11 +731,11 @@ export default function syncRoutes(db, io) {
             }
             autoPrioritizeCache.set(cacheKey, now);
 
-            // Tenta dar match parcial na fila de pendentes e com priority = 0
+            // Tenta dar match parcial na fila de pendentes e com priority < 100
             const result = await db.run(`
                 UPDATE sync_queue 
-                SET priority = CASE WHEN priority < 50 THEN 50 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
-                WHERE status = 'pending' AND priority = 0 
+                SET priority = CASE WHEN priority < 100 THEN 100 ELSE priority END, updated_at = CURRENT_TIMESTAMP 
+                WHERE status = 'pending' AND priority < 100 
                 AND title LIKE '%' || ? || '%'
             `, [title]);
 

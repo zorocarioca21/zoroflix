@@ -7,11 +7,11 @@ import { StringSession } from "telegram/sessions/index.js";
 import 'dotenv/config';
 
 // Configurações Pessoais (Copiadas da VPS)
-const VPS_URL = 'https://cinegeek.shop';
-const API_KEY = 'seu-token-secreto'; // Sem restrição rígida na VPS no momento
+const VPS_URL = process.env.VPS_URL || 'https://cinegeek.shop';
+const API_KEY = process.env.API_KEY || 'seu-token-secreto';
 const WORKER_ID = 'PC_LOCAL_' + Math.floor(Math.random() * 1000);
-const TELEGRAM_BOT_TOKEN = '8772357947:AAEiaxvMEjQL9x-5MqOYSXdkOGuKwpPg350';
-const TELEGRAM_CHANNEL_ID = '-1003839496993';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID || '-1003839496993';
 const DOWNLOAD_DIR = 'D:\\cinegeek downloads';
 const MAX_FOLDER_SIZE_BYTES = 200 * 1024 * 1024 * 1024; // 200 GB max
 
@@ -76,7 +76,7 @@ async function downloadFile(url, destPath, taskId) {
             '-user_agent', 'VLC/3.0.18 LibVLC/3.0.18',
             '-i', url,
             '-c', 'copy',
-            '-max_interleave_delta', '0',
+            '-bsf:a', 'aac_adtstoasc',
             destPath
         ];
 
@@ -195,20 +195,27 @@ async function optimizeVideo(inputPath, outputPath, taskId) {
         reportProgress(taskId, 'Otimizando_Faststart', '---').catch(()=>{});
         console.log(`\n⚙️ Otimizando vídeo para Faststart (Streaming instantâneo)...`);
         
+        let lastStderr = '';
         const ffmpegProcess = spawn('ffmpeg', [
+            '-y',
             '-err_detect', 'ignore_err',
             '-fflags', '+genpts+discardcorrupt+igndts',
             '-i', inputPath,
             '-c', 'copy',
+            '-bsf:a', 'aac_adtstoasc',
             '-movflags', '+faststart',
-            '-max_interleave_delta', '0',
-            '-y',
             outputPath
         ]);
+
+        ffmpegProcess.stderr.on('data', (data) => {
+            lastStderr += data.toString();
+        });
         
         ffmpegProcess.on('close', (code) => {
-            if (code === 0) resolve();
-            else reject(new Error(`Falha na otimização FFmpeg (código ${code})`));
+            if (code === 0 && fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) resolve();
+            else {
+                reject(new Error(`Falha na otimização FFmpeg (código ${code}). Último erro: ${lastStderr.slice(-300).trim()}`));
+            }
         });
         
         ffmpegProcess.on('error', reject);

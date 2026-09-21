@@ -46,6 +46,16 @@ const iconMap = {
     danger: { icon: AlertTriangle, color: '#ff4444', glow: 'rgba(255,68,68,0.15)' },
 };
 
+const getPriorityBadge = (priority) => {
+    if (!priority || priority <= 0) return null;
+    if (priority >= 9999) return <span className="priority-badge priority-badge-manual"><Star size={12} /> UPLOAD</span>;
+    if (priority >= 2000) return <span className="priority-badge priority-badge-max"><Star size={12} /> PRIORIDADE MAX</span>;
+    if (priority >= 999) return <span className="priority-badge priority-badge-audit"><AlertTriangle size={12} /> RE-UPLOAD</span>;
+    if (priority >= 500) return <span className="priority-badge priority-badge-today"><Sparkles size={12} /> NOVOS HOJE</span>;
+    if (priority >= 100) return <span className="priority-badge priority-badge-demand"><Activity size={12} /> DEMANDA</span>;
+    return <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>;
+};
+
 const btnBase = {
     padding: '0.6rem 1.5rem', borderRadius: '8px', border: 'none',
     cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem',
@@ -244,7 +254,7 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
                                 <tr key={item.id} className="glass-row">
                                     <td style={{ color: '#888', fontSize: '0.9rem' }}>#{item.id}</td>
                                     <td style={{ fontWeight: '500' }}>
-                                        {item.priority > 0 && <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>}
+                                        {getPriorityBadge(item.priority)}
                                         {item.title}
                                     </td>
                                     <td>
@@ -438,6 +448,42 @@ export default function AdminSync() {
             }
         } catch (e) {
             dialog.alert('Erro de conexão ao priorizar item', { variant: 'error', title: 'Erro de Conexão' });
+        }
+    };
+
+    const unprioritizeItem = async (item) => {
+        try {
+            const res = await fetch(`/api/sync/queue/${item.id}/unprioritize`, { method: 'POST' });
+            if (res.ok) {
+                fetchQueue();
+            } else {
+                dialog.alert("Erro ao remover prioridade do item", { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão ao remover prioridade', { variant: 'error', title: 'Erro de Conexão' });
+        }
+    };
+
+    const prioritizeSeries = async () => {
+        const seriesName = await dialog.prompt("Digite o nome da série para priorizar TODOS os seus episódios (ex: Castle, Alucinação):", "", { 
+            variant: 'info', title: '⭐ Priorizar Série Inteira', confirmText: 'Priorizar Série', placeholder: 'Nome da série...' 
+        });
+        if (!seriesName || !seriesName.trim()) return;
+        try {
+            const res = await fetch('/api/sync/queue/prioritize-series', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seriesName })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                dialog.alert(data.message || `${data.updated} episódios priorizados com sucesso!`, { variant: 'success', title: 'Série Priorizada!' });
+                fetchQueue();
+            } else {
+                dialog.alert("Erro ao priorizar série", { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão ao priorizar série', { variant: 'error', title: 'Erro de Conexão' });
         }
     };
 
@@ -1248,6 +1294,9 @@ export default function AdminSync() {
                     <button onClick={prioritizeFiltered} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(0, 255, 136, 0.5)', cursor: 'pointer', background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
                         <ChevronsUp size={16} /> Priorizar Busca
                     </button>
+                    <button onClick={prioritizeSeries} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 215, 0, 0.5)', cursor: 'pointer', background: 'rgba(255, 215, 0, 0.1)', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                        <Star size={16} /> Priorizar Série
+                    </button>
                     <button onClick={clearPriorities} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 68, 68, 0.5)', cursor: 'pointer', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
                         <Eraser size={16} /> Limpar Prioridades
                     </button>
@@ -1290,7 +1339,7 @@ export default function AdminSync() {
                                     Tamanho <ArrowDownUp size={14} color={sortSize !== '' ? '#00ff88' : '#888'} />
                                 </div>
                             </th>
-                            <th style={{ width: '220px', textAlign: 'center' }}>Ações</th>
+                            <th style={{ width: '240px', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1312,7 +1361,7 @@ export default function AdminSync() {
                                     </td>
                                     <td style={{ color: '#888', fontSize: '0.9rem' }}>#{item.id}</td>
                                     <td style={{ fontWeight: '500' }}>
-                                        {item.priority > 0 && <span className="priority-badge"><Star size={12} /> PRIORIDADE</span>}
+                                        {getPriorityBadge(item.priority)}
                                         {item.title}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
@@ -1351,10 +1400,19 @@ export default function AdminSync() {
                                         {(item.status === 'pending' || item.status === 'error') && (
                                             <button 
                                                 onClick={() => prioritizeItem(item)}
-                                                title="Furar Fila (Priorizar)"
+                                                title="Furar Fila (Priorizar Max)"
                                                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ffff00', marginRight: '0.5rem' }}
                                             >
                                                 <ChevronsUp size={22} />
+                                            </button>
+                                        )}
+                                        {item.priority > 0 && (
+                                            <button 
+                                                onClick={() => unprioritizeItem(item)}
+                                                title="Remover Prioridade (Despriorizar)"
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ff8800', marginRight: '0.5rem' }}
+                                            >
+                                                <Eraser size={20} />
                                             </button>
                                         )}
                                         <button 
@@ -1417,6 +1475,20 @@ export default function AdminSync() {
                             onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 0, 0.1)'; }}
                         >
                             <Star size={16} /> Priorizar
+                        </button>
+                        <button 
+                            onClick={async () => {
+                                const ok = await dialog.confirm(`Remover prioridade de ${selectedIds.length} filmes selecionados?`, { variant: 'warning', title: 'Remover Prioridade em Lote', confirmText: 'Remover' });
+                                if(!ok) return;
+                                await fetch('/api/sync/queue/bulk-unprioritize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds }) });
+                                setSelectedIds([]);
+                                fetchQueue();
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 136, 0, 0.1)', color: '#ff8800', border: '1px solid rgba(255, 136, 0, 0.3)', padding: '0.6rem 1.2rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 136, 0, 0.2)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 136, 0, 0.1)'; }}
+                        >
+                            <Eraser size={16} /> Despriorizar
                         </button>
                         <button 
                             onClick={async () => {

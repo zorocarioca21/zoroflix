@@ -183,3 +183,49 @@
     border-color: rgba(0, 204, 255, 0.5);
     box-shadow: 0 5px 15px rgba(0, 204, 255, 0.2);
 }
+
+/* Priority Badges */
+.priority-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-right: 0.5rem;
+    background: rgba(255, 255, 0, 0.15);
+    color: #ffff00;
+    border: 1px solid rgba(255, 255, 0, 0.4);
+}
+
+.priority-badge-max {
+    background: rgba(255, 215, 0, 0.25);
+    color: #ffd700;
+    border-color: rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.priority-badge-manual {
+    background: rgba(255, 0, 255, 0.2);
+    color: #ff00ff;
+    border-color: rgba(255, 0, 255, 0.5);
+}
+
+.priority-badge-audit {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+    border-color: rgba(255, 68, 68, 0.5);
+}
+
+.priority-badge-today {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border-color: rgba(0, 255, 136, 0.5);
+}
+
+.priority-badge-demand {
+    background: rgba(0, 204, 255, 0.2);
+    color: #00ccff;
+    border-color: rgba(0, 204, 255, 0.5);
+}
