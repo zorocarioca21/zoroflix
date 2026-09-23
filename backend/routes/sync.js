@@ -557,6 +557,27 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Helper para deletar mensagem do Telegram via GramJS
+    const deleteTelegramMessage = async (msgId) => {
+        try {
+            const apiId = parseInt(process.env.TELEGRAM_API_ID);
+            const apiHash = process.env.TELEGRAM_API_HASH;
+            const sessionStr = process.env.TELEGRAM_SESSION;
+            const channelId = process.env.TELEGRAM_CHANNEL_ID;
+            if (apiId && apiHash && sessionStr && channelId && msgId) {
+                const stringSession = new StringSession(sessionStr);
+                const client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 3 });
+                client.setLogLevel("none");
+                await client.connect();
+                await client.deleteMessages(channelId, [parseInt(msgId)], { revoke: true });
+                await client.disconnect();
+                console.log(`[GramJS] Mensagem ${msgId} deletada do canal Telegram.`);
+            }
+        } catch (err) {
+            console.error(`[GramJS] Erro ao deletar mensagem ${msgId} do Telegram:`, err.message);
+        }
+    };
+
     // Deleta da fila
     router.delete('/queue/:id', async (req, res) => {
         try {
@@ -565,11 +586,7 @@ export default function syncRoutes(db, io) {
             if (!item) return res.status(404).json({ error: 'Não encontrado' });
             
             if (item.telegram_message_id) {
-                // Tenta apagar do telegram
-                const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramManage.py');
-                const py = spawn('python3', [scriptPath, 'delete', item.telegram_message_id.toString()]);
-                py.stdout.on('data', data => console.log(data.toString()));
-                py.stderr.on('data', data => console.error(data.toString()));
+                await deleteTelegramMessage(item.telegram_message_id);
             }
 
             await db.run("DELETE FROM sync_queue WHERE id = ?", [id]);
@@ -588,11 +605,7 @@ export default function syncRoutes(db, io) {
             if (!item) return res.status(404).json({ error: 'Não encontrado' });
             
             if (item.telegram_message_id) {
-                // Tenta apagar do telegram
-                const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramManage.py');
-                const py = spawn('python3', [scriptPath, 'delete', item.telegram_message_id.toString()]);
-                py.stdout.on('data', data => console.log(data.toString()));
-                py.stderr.on('data', data => console.error(data.toString()));
+                await deleteTelegramMessage(item.telegram_message_id);
             }
 
             // Reseta o status para pending e limpa os dados de conclusão
@@ -1032,6 +1045,149 @@ export default function syncRoutes(db, io) {
         } catch (err) {
             console.error('[Remap] Erro:', err);
             res.status(500).json({ error: 'Erro ao iniciar remapeamento.' });
+        }
+    });
+
+    // Rota para testar saúde e resposta da IPTV
+    router.get('/iptv-status', async (req, res) => {
+        const m3uUrl = 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts';
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const startTime = Date.now();
+
+        try {
+            const response = await fetch(m3uUrl, {
+                headers: { "User-Agent": "VLC/3.0.18 LibVLC/3.0.18" },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            const durationMs = Date.now() - startTime;
+            const isOk = response.ok;
+            const textSample = await response.text();
+            
+            let isM3u = textSample.trim().startsWith('#EXTM3U');
+            
+            res.json({
+                online: isOk && isM3u,
+                statusCode: response.status,
+                statusText: response.statusText,
+                durationMs,
+                isM3u,
+                message: isOk && isM3u 
+                    ? `IPTV respondendo normalmente (${durationMs}ms)`
+                    : (response.status === 524 
+                        ? 'Servidor IPTV fora do ar ou em timeout (Cloudflare HTTP 524).' 
+                        : `IPTV respondeu com HTTP ${response.status} ${response.statusText}`),
+                sample: textSample.slice(0, 300)
+            });
+        } catch (err) {
+            clearTimeout(timeout);
+            const durationMs = Date.now() - startTime;
+            let msg = err.name === 'AbortError' ? 'Timeout ao conectar na IPTV (>10s)' : err.message;
+            res.json({
+                online: false,
+                statusCode: 0,
+                statusText: 'Connection Error',
+                durationMs,
+                isM3u: false,
+                message: `Falha ao conectar no servidor da IPTV: ${msg}`
+            });
+        }
+    });
+
+    // Rota para limpar/redefinir itens baixados com defeito (menores que 5MB que foram marcados como completed)
+    router.post('/queue/clean-broken', async (req, res) => {
+        try {
+            // Remove da lista de concluídos ou apaga registros com tamanho < 5MB (5242880 bytes) que deram problema
+            const result = await db.run(
+                `UPDATE sync_queue 
+                 SET status = 'pending', telegram_message_id = NULL, error_message = 'Limpeza de itens corrompidos (<5MB)', priority = 1 
+                 WHERE status = 'completed' AND (file_size < 5242880 OR file_size IS NULL)`
+            );
+            
+            const errorReset = await db.run(
+                `UPDATE sync_queue SET status = 'pending', error_message = NULL WHERE status = 'error'`
+            );
+
+            res.json({ 
+                success: true, 
+                cleanedBrokenCount: result.changes || 0,
+                resetErrorCount: errorReset.changes || 0,
+                message: `${result.changes || 0} itens corrompidos redefinidos para pendente e ${errorReset.changes || 0} erros limpos.` 
+            });
+        } catch (err) {
+            console.error("Erro clean-broken:", err);
+            res.status(500).json({ error: 'Erro ao limpar itens corrompidos.' });
+        }
+    });
+
+    // Rota para deletar do canal do Telegram todas as mensagens de itens corrompidos (< 5MB) em lote
+    router.post('/queue/delete-telegram-broken', async (req, res) => {
+        try {
+            const brokenItems = await db.all(
+                `SELECT id, title, telegram_message_id, file_size FROM sync_queue 
+                 WHERE telegram_message_id IS NOT NULL 
+                 AND (file_size < 5242880 OR file_size IS NULL)`
+            );
+
+            if (!brokenItems || brokenItems.length === 0) {
+                return res.json({ 
+                    success: true, 
+                    deletedTelegramCount: 0, 
+                    resetCount: 0,
+                    message: 'Nenhum item corrompido com mensagem no Telegram foi encontrado.' 
+                });
+            }
+
+            const messageIds = brokenItems.map(i => parseInt(i.telegram_message_id)).filter(id => !isNaN(id));
+            const dbIds = brokenItems.map(i => i.id);
+
+            let deletedTelegramCount = 0;
+            const apiId = parseInt(process.env.TELEGRAM_API_ID);
+            const apiHash = process.env.TELEGRAM_API_HASH;
+            const sessionStr = process.env.TELEGRAM_SESSION;
+            const channelId = process.env.TELEGRAM_CHANNEL_ID;
+
+            if (apiId && apiHash && sessionStr && channelId && messageIds.length > 0) {
+                const stringSession = new StringSession(sessionStr);
+                const client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 3 });
+                client.setLogLevel("none");
+                await client.connect();
+
+                // Apaga em lotes de 100 mensagens (limite por requisição na API do Telegram)
+                for (let i = 0; i < messageIds.length; i += 100) {
+                    const chunk = messageIds.slice(i, i + 100);
+                    try {
+                        await client.deleteMessages(channelId, chunk, { revoke: true });
+                        deletedTelegramCount += chunk.length;
+                    } catch (delErr) {
+                        console.error("[Telegram Delete Batch] Erro no lote:", delErr.message);
+                    }
+                }
+                await client.disconnect();
+            }
+
+            // Redefine os registros no banco para pendente e remove a referência do Telegram
+            if (dbIds.length > 0) {
+                const placeholders = dbIds.map(() => '?').join(',');
+                await db.run(
+                    `UPDATE sync_queue 
+                     SET status = 'pending', telegram_message_id = NULL, file_size = 0, error_message = 'Deletado do Telegram (Corrompido <5MB)' 
+                     WHERE id IN (${placeholders})`,
+                    dbIds
+                );
+            }
+
+            res.json({
+                success: true,
+                totalFound: brokenItems.length,
+                deletedTelegramCount,
+                resetCount: dbIds.length,
+                message: `${deletedTelegramCount} mensagens corrompidas foram apagadas do Telegram e ${dbIds.length} itens foram restaurados para a fila de pendentes.`
+            });
+        } catch (err) {
+            console.error("Erro delete-telegram-broken:", err);
+            res.status(500).json({ error: 'Erro ao apagar mensagens corrompidas do Telegram: ' + err.message });
         }
     });
 

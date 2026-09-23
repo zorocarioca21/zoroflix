@@ -309,14 +309,15 @@ async function processDownload(movie) {
         const fileSize = stats.size;
         const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
         
-        console.log(`[Download] ✅ Concluído: "${movie.title}" | Tamanho: ${fileSizeMB} MB | Arquivo: ${tmpPath}`);
+        console.log(`[Download] 📦 Concluído download físico: "${movie.title}" | Tamanho: ${fileSizeMB} MB | Arquivo: ${tmpPath}`);
         
-        if (fileSize === 0) {
+        const MIN_VIDEO_SIZE = 5 * 1024 * 1024; // 5 MB
+        if (fileSize < MIN_VIDEO_SIZE) {
             try { fs.unlinkSync(tmpPath); } catch (e) {}
-            throw new Error('O arquivo baixado tem 0 bytes (provável erro 404/indisponível na IPTV).');
+            throw new Error(`O arquivo baixado tem apenas ${fileSizeMB} MB (menor que o mínimo de 5MB). Provável erro 404/524 ou resposta HTML da IPTV.`);
         }
 
-        // Verificação de integridade com ffprobe
+        // Verificação obrigatória de integridade com ffprobe
         let videoDuration = 0;
         try {
             const ffprobeResult = await new Promise((resolve, reject) => {
@@ -333,7 +334,13 @@ async function processDownload(movie) {
             videoDuration = parseFloat(ffprobeResult) || 0;
             console.log(`[Download] 🔍 ffprobe validou: duração = ${videoDuration}s`);
         } catch (probeErr) {
-            console.warn(`[Download] ⚠️ ffprobe não conseguiu validar o arquivo: ${probeErr.message}`);
+            try { fs.unlinkSync(tmpPath); } catch (e) {}
+            throw new Error(`O arquivo baixado não contém uma faixa de vídeo válida ou está corrompido: ${probeErr.message}`);
+        }
+
+        if (videoDuration <= 0) {
+            try { fs.unlinkSync(tmpPath); } catch (e) {}
+            throw new Error(`Duração inválida (${videoDuration}s). O arquivo baixado não é um vídeo reproduzível.`);
         }
 
         // Detecção automática de resolução e limpeza de título
@@ -545,7 +552,12 @@ async function fallbackDownloadNodeFetch(url, destPath) {
             signal: activeDownloadController.signal
         });
 
-        if (!response.ok) throw new Error(`Status HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`Status HTTP ${response.status} ${response.statusText}`);
+
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (contentType.includes('text/html') || contentType.includes('application/json')) {
+            throw new Error(`Servidor IPTV retornou tipo '${contentType}' (página de erro) em vez de fluxo de vídeo.`);
+        }
 
         const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
         let downloadedBytes = 0;
