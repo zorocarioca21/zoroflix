@@ -625,6 +625,31 @@ export default function AdminSync() {
 
     const [isRemapping, setIsRemapping] = useState(false);
     const [isCleaningTG, setIsCleaningTG] = useState(false);
+    const [isCleaningBroken, setIsCleaningBroken] = useState(false);
+
+    const deleteTelegramBroken = async () => {
+        const ok = await dialog.confirm("Deseja APAGAR do canal do Telegram todas as mensagens de vídeos corrompidos (< 5MB)? Os conteúdos normais/válidos NÃO serão afetados.", { 
+            variant: 'danger', title: 'Apagar Vídeos Corrompidos do Telegram', confirmText: 'Sim, Apagar Corrompidos' 
+        });
+        if (!ok) return;
+        setIsCleaningBroken(true);
+        try {
+            const res = await fetch('/api/sync/queue/delete-telegram-broken', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                dialog.alert(data.message || `Apagados ${data.deletedTelegramCount} vídeos corrompidos do Telegram!`, { 
+                    variant: 'success', title: 'Limpeza Concluída' 
+                });
+                fetchQueue();
+            } else {
+                dialog.alert(data.error || 'Erro ao apagar vídeos corrompidos do Telegram', { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão ao limpar vídeos corrompidos', { variant: 'error', title: 'Erro de Conexão' });
+        } finally {
+            setIsCleaningBroken(false);
+        }
+    };
     
     // === AUDIT STATE ===
     const [auditState, setAuditState] = useState({ isRunning: false, isPaused: false, progress: 0, total: 0, currentIndex: 0, currentItem: null, results: { passed: 0, failed: 0, failedItems: [] } });
@@ -957,6 +982,9 @@ export default function AdminSync() {
                         </button>
                         <button onClick={cleanupTelegramDuplicates} disabled={isCleaningTG} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningTG ? 0.6 : 1 }}>
                             <Trash2 size={16} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados do TG'}
+                        </button>
+                        <button onClick={deleteTelegramBroken} disabled={isCleaningBroken} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningBroken ? 0.6 : 1 }}>
+                            <Trash2 size={16} /> {isCleaningBroken ? 'Apagando Corrompidos...' : 'Apagar Corrompidos (<5MB) do TG'}
                         </button>
                         <button onClick={remapTelegram} disabled={isRemapping} className="sync-btn-secondary sync-btn-warning" style={{ opacity: isRemapping ? 0.6 : 1 }}>
                             <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
