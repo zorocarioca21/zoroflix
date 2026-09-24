@@ -446,7 +446,7 @@ async function downloadFile(url, destPath, dbId) {
         // Isso previne que vídeos com conexão interrompida ou m3u8 fiquem corrompidos
         const ffmpegArgs = [
             '-y',
-            '-user_agent', 'VLC/3.0.18 LibVLC/3.0.18',
+            '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             '-i', url,
             '-c', 'copy',
             '-movflags', '+faststart',
@@ -545,7 +545,7 @@ async function fallbackDownloadNodeFetch(url, destPath) {
     try {
         const response = await fetch(url, {
             headers: {
-                "User-Agent": "VLC/3.0.18 LibVLC/3.0.18",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "*/*"
             },
             redirect: 'follow',

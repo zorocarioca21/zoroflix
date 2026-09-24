@@ -73,7 +73,7 @@ async function downloadFile(url, destPath, taskId) {
             '-y',
             '-err_detect', 'ignore_err',
             '-fflags', '+genpts+discardcorrupt+igndts',
-            '-user_agent', 'VLC/3.0.18 LibVLC/3.0.18',
+            '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             '-i', url,
             '-c', 'copy',
             '-bsf:a', 'aac_adtstoasc',
@@ -141,7 +141,10 @@ async function fallbackDownloadFetch(url, destPath, taskId) {
     let response;
     try {
         response = await fetch(safeUrl, {
-            headers: { "User-Agent": "VLC/3.0.18 LibVLC/3.0.18", "Accept": "*/*" },
+            headers: { 
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", 
+                "Accept": "*/*" 
+            },
             redirect: 'follow'
         });
     } catch (fetchErr) {
