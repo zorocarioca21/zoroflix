@@ -95,7 +95,12 @@ export default function hybridWorkerRoutes(db, io) {
         const { workerId, taskId, telegram_message_id, file_size } = req.body;
         
         try {
-            await db.run("UPDATE sync_queue SET status = 'completed', telegram_message_id = ?, file_size = ?, priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [telegram_message_id, file_size || 0, taskId]);
+            if (file_size && file_size < 5242880) {
+                console.warn(`[Hybrid Complete] ⚠️ Rejeitado complete para Task ${taskId}: Tamanho ${file_size} bytes é menor que 5MB.`);
+                await db.run("UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, file_size = 0, error_message = 'Rejeitado: Arquivo menor que 5MB (incompleto)', priority = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [taskId]);
+            } else {
+                await db.run("UPDATE sync_queue SET status = 'completed', telegram_message_id = ?, file_size = ?, priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [telegram_message_id, file_size || 0, taskId]);
+            }
             
             if (remoteWorkersState[workerId]) {
                 delete remoteWorkersState[workerId];

@@ -328,8 +328,9 @@ async function uploadLoop() {
                 console.log(`\n📤 Iniciando upload de: ${fileToUpload} (Task ID: ${taskId})`);
                 const stats = fs.statSync(filePath);
                 
-                if (stats.size < 1000000) {
-                    console.log(`\n⚠️ Arquivo muito pequeno. Excluindo corrompido: ${fileToUpload}`);
+                if (stats.size < 5242880) {
+                    console.log(`\n⚠️ Arquivo menor que 5MB (${(stats.size / (1024*1024)).toFixed(2)} MB). Excluindo corrompido: ${fileToUpload}`);
+                    await apiRequest('/error', { taskId, error_message: "Arquivo menor que 5MB (corrompido/incompleto)." }).catch(()=>{});
                     try { fs.unlinkSync(filePath); } catch(e){}
                 } else if (stats.size > 2000 * 1024 * 1024) {
                     // Maior que 2GB (Telegram Free Limit)

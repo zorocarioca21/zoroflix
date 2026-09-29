@@ -397,6 +397,15 @@ async function processUpload(movie, workerType) {
         const uploadStats = fs.statSync(tmpPath);
         console.log(`[Upload] 📤 Iniciando upload: "${movie.title}" | Método: ${workerType} | Tamanho: ${(uploadStats.size / (1024*1024)).toFixed(2)} MB | Arquivo: ${tmpPath}`);
         
+        if (uploadStats.size < 5242880) {
+            console.log(`[Upload] ⚠️ Arquivo menor que 5MB (${(uploadStats.size / (1024*1024)).toFixed(2)} MB). Cancelando upload de item corrompido/incompleto.`);
+            await dbInstance.run("UPDATE sync_queue SET status = 'pending', telegram_message_id = NULL, file_size = 0, error_message = 'Arquivo menor que 5MB (corrompido/incompleto)', priority = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
+            if (fs.existsSync(tmpPath)) {
+                try { fs.unlinkSync(tmpPath); } catch (e) {}
+            }
+            return true;
+        }
+        
         if (workerType === 'docker') {
             uploadTaskDocker = { id: movie.id, title: movie.title, progress: 0 };
         } else {
