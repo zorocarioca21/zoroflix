@@ -255,6 +255,11 @@ export default function syncRoutes(db, io) {
             cleaned = cleaned.replace(/\./g, ' ');
         }
 
+        // Remove tags de Dublado [D] / Legendado [L]
+        cleaned = cleaned.replace(/\s*\[[LD]\]\s*/gi, ' ');
+        cleaned = cleaned.replace(/\s*\([LD]\)\s*/gi, ' ');
+        cleaned = cleaned.replace(/\s*-\s*[LD]\b/gi, ' ');
+
         // Deduplica se a IPTV repetiu 'Nome S01 Nome - S01E58 - Episódio 58'
         cleaned = cleaned.replace(/^(.+?)\s+S\d+\s+\1\s*(?:-\s*)?(S\d+E\d+.*)/i, '$1 - $2');
         cleaned = cleaned.replace(/^(.+?)\s+-\s+\1\s*(?:-\s*)?/i, '$1 - ');

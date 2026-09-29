@@ -1,5 +1,4 @@
 import { getNextTmdbKey } from './tmdbKeyService.js';
-import fetch from 'node-fetch'; // Para ambiente onde fetch não for global
 
 /**
  * Mapeia em lote os itens que ainda não possuem tmdb_id na fila.
