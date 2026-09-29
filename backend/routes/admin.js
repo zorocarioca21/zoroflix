@@ -305,6 +305,30 @@ export default function adminRoutes(db) {
         }
     });
 
+    // ZoroBot Video API Key Manager
+    router.get('/zorobot-video-key', async (req, res) => {
+        try {
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'zorobot_video_api_key'");
+            res.json({ key: row ? row.value : '' });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar ZoroBot Video key.' });
+        }
+    });
+
+    router.post('/zorobot-video-key', async (req, res) => {
+        const { key } = req.body;
+        try {
+            await db.run(
+                `INSERT INTO system_settings (key, value, updated_at) VALUES ('zorobot_video_api_key', ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [key || '']
+            );
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao salvar ZoroBot Video key.' });
+        }
+    });
+
     // Estatísticas de acessos
     router.get('/stats', async (req, res) => {
         try {

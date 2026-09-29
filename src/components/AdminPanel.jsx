@@ -24,6 +24,7 @@ export default function AdminPanel() {
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
     const [tmdbKeysInput, setTmdbKeysInput] = useState('');
+    const [zorobotVideoKeyInput, setZorobotVideoKeyInput] = useState('');
     const [newKeyName, setNewKeyName] = useState('');
     const [newKeyPermissions, setNewKeyPermissions] = useState('full');
     const [newKeyDomains, setNewKeyDomains] = useState('');
@@ -236,6 +237,29 @@ export default function AdminPanel() {
                 alert('Chaves do TMDB salvas com sucesso!');
             } else {
                 alert('Erro ao salvar as chaves.');
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const fetchZorobotVideoKey = async () => {
+        try {
+            const resp = await fetch('/api/admin/zorobot-video-key');
+            const data = await resp.json();
+            setZorobotVideoKeyInput(data.key || '');
+        } catch (err) { console.error(err); }
+    };
+
+    const saveZorobotVideoKey = async () => {
+        try {
+            const resp = await fetch('/api/admin/zorobot-video-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: zorobotVideoKeyInput })
+            });
+            if (resp.ok) {
+                alert('Chave ZoroBot Video salvas com sucesso!');
+            } else {
+                alert('Erro ao salvar a chave.');
             }
         } catch (err) { console.error(err); }
     };
@@ -674,6 +698,27 @@ export default function AdminPanel() {
                                     />
                                     <button className="btn-main-play" onClick={saveTmdbKeys}>
                                         <CheckCircle size={18} /> Salvar Chaves
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="settings-grid-admin" style={{ marginTop: '1rem' }}>
+                            <div className="settings-row-card" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '1rem', gridColumn: '1 / -1'}}>
+                                <div className="setting-info">
+                                    <h3>Chave API ZoroBot Video</h3>
+                                    <p>Chave utilizada para buscar vídeos nativos do Zoro Drive sem depender do YouTube (ex: 21santoryu21).</p>
+                                </div>
+                                <div style={{display: 'flex', gap: '10px', width: '100%'}}>
+                                    <input 
+                                        type="text" 
+                                        value={zorobotVideoKeyInput} 
+                                        onChange={(e) => setZorobotVideoKeyInput(e.target.value)} 
+                                        placeholder="Sua chave secreta ZoroBot Video"
+                                        style={{flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid #333', background: '#111', color: 'white'}}
+                                    />
+                                    <button className="btn-main-play" onClick={saveZorobotVideoKey}>
+                                        <CheckCircle size={18} /> Salvar Chave
                                     </button>
                                 </div>
                             </div>
