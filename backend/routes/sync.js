@@ -248,13 +248,24 @@ export default function syncRoutes(db, io) {
         }
         
         // Remove a tag caso tenha sobrado
-        return cleaned.replace('#EXTINF:-1', '').trim();
+        cleaned = cleaned.replace('#EXTINF:-1', '').trim();
+
+        // Deduplica se a IPTV repetiu 'Nome S01 Nome - S01E58 - Episódio 58'
+        cleaned = cleaned.replace(/^(.+?)\s+S\d+\s+\1\s*(?:-\s*)?(S\d+E\d+.*)/i, '$1 - $2');
+        cleaned = cleaned.replace(/^(.+?)\s+-\s+\1\s*(?:-\s*)?/i, '$1 - ');
+
+        // Se contiver S01E58, remove o sufixo redundante '- Episódio 58'
+        if (/S\d{1,2}E\d{1,2}/i.test(cleaned)) {
+            cleaned = cleaned.replace(/\s*-\s*Episódio\s*\d+/gi, '');
+        }
+
+        return cleaned.trim();
     };
 
-    // Nova Rota para Corrigir Títulos Sujos no DB (Painel Admin)
+    // Nova Rota para Corrigir Títulos Sujos e Duplicados no DB (Painel Admin)
     router.post('/queue/clean-m3u-titles', async (req, res) => {
         try {
-            const rows = await db.all("SELECT id, title FROM sync_queue WHERE title LIKE '%tvg-logo=%' OR title LIKE '%group-title=%'");
+            const rows = await db.all("SELECT id, title FROM sync_queue");
             let count = 0;
             
             for (const r of rows) {
@@ -264,7 +275,7 @@ export default function syncRoutes(db, io) {
                     count++;
                 }
             }
-            res.json({ success: true, updated: count, message: `Foram corrigidos ${count} títulos sujos.` });
+            res.json({ success: true, updated: count, message: `Foram corrigidos ${count} títulos no banco.` });
         } catch (err) {
             console.error("Erro clean-m3u-titles:", err);
             res.status(500).json({ error: 'Erro ao limpar títulos no banco.' });
