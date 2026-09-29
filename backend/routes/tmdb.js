@@ -1,5 +1,5 @@
 import express from 'express';
-import { getOrFetchMediaDetails, getOrFetchSeasonDetails } from '../services/tmdbCacheService.js';
+import { getOrFetchMediaDetails, getOrFetchSeasonDetails, getOrFetchEpisodeGroupDetails } from '../services/tmdbCacheService.js';
 
 const router = express.Router();
 const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY || 'f9cbdd4fabd4ac77cd2ca54d80a476a5';
@@ -32,5 +32,19 @@ export default function tmdbRoutes(db) {
         }
     });
 
+    // GET /api/tmdb/episode-group/:id
+    router.get('/episode-group/:id', async (req, res) => {
+        const { id } = req.params;
+        try {
+            const data = await getOrFetchEpisodeGroupDetails(db, id, TMDB_API_KEY);
+            if (!data) return res.status(404).json({ error: 'Nenhum grupo de episódios encontrado' });
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB ROUTE] Erro ao buscar grupo de episódios:', err);
+            res.status(500).json({ error: 'Erro ao buscar grupo de episódios' });
+        }
+    });
+
     return router;
 }
+

@@ -26,7 +26,9 @@ export default function DetailsPage() {
   const [trailerKey, setTrailerKey] = useState(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [watchedEpisodes, setWatchedEpisodes] = useState([]);
+  const [episodeGroup, setEpisodeGroup] = useState(null);
   const { user, uuid, loading: authLoading } = useAuth();
+
 
   useEffect(() => {
     document.body.classList.add('hide-body-texture');
@@ -168,7 +170,18 @@ export default function DetailsPage() {
         setCast(creditsData.cast?.slice(0, 15) || []);
 
         if (!isMovie) {
+          try {
+            const groupResp = await fetch(`/api/tmdb/episode-group/${id}`);
+            if (groupResp.ok) {
+              const groupData = await groupResp.json();
+              if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
+                if (isCurrent) setEpisodeGroup(groupData);
+              }
+            }
+          } catch (err) {}
+
           fetchEpisodes(1);
+
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();
           const br = certData.results?.find(r => r.iso_3166_1 === 'BR');
@@ -334,10 +347,22 @@ export default function DetailsPage() {
                   value={selectedSeason}
                   onChange={(e) => handleSeasonChange(e.target.value)}
                 >
-                  {data.seasons?.filter(s => s.season_number > 0).map(s => (
-                    <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
-                  ))}
+                  {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
+                    episodeGroup.groups.map((g, idx) => {
+                      const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
+                      return (
+                        <option key={g.id || sNum} value={sNum}>
+                          {g.name || `Temporada ${sNum}`} ({g.episodes?.length || 0} eps)
+                        </option>
+                      );
+                    })
+                  ) : (
+                    data.seasons?.filter(s => s.season_number > 0).map(s => (
+                      <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
+                    ))
+                  )}
                 </select>
+
               </div>
 
               <div className="episodes-grid-modern">

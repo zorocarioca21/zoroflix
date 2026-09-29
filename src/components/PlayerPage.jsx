@@ -25,7 +25,9 @@ export default function PlayerPage() {
     const hasTracked = useRef(false);
     const [resolvedChannel, setResolvedChannel] = useState(null);
     const [seriesDetail, setSeriesDetail] = useState(null);
+    const [episodeGroup, setEpisodeGroup] = useState(null);
     const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
+
     const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
     const [isWatched, setIsWatched] = useState(false);
     const [telegramMessageId, setTelegramMessageId] = useState(null);
@@ -188,10 +190,15 @@ export default function PlayerPage() {
 
     useEffect(() => {
         if (activeSidebarSeason && id) {
-            fetch(`${BASE_URL}/tv/${id}/season/${activeSidebarSeason}?api_key=${API_KEY}&language=pt-BR`)
+            fetch(`/api/tmdb/season/${id}/${activeSidebarSeason}`)
                 .then(r => r.json())
                 .then(data => setEpisodes(data.episodes || []))
-                .catch(() => { });
+                .catch(() => {
+                    fetch(`${BASE_URL}/tv/${id}/season/${activeSidebarSeason}?api_key=${API_KEY}&language=pt-BR`)
+                        .then(r => r.json())
+                        .then(data => setEpisodes(data.episodes || []))
+                        .catch(() => { });
+                });
         }
     }, [id, activeSidebarSeason]);
 
@@ -199,6 +206,17 @@ export default function PlayerPage() {
         if (id && !canalId) {
             const isMovie = location.pathname.includes('/filme/');
             const type = isMovie ? 'movie' : 'tv';
+            if (type === 'tv') {
+                fetch(`/api/tmdb/episode-group/${id}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(groupData => {
+                        if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
+                            setEpisodeGroup(groupData);
+                        }
+                    })
+                    .catch(() => {});
+            }
+
             fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`)
                 .then(r => r.json())
                 .then(data => {
@@ -216,6 +234,7 @@ export default function PlayerPage() {
                 .catch(() => { });
         }
     }, [id, canalId, location.pathname]);
+
 
     const lastSearched = useRef('');
 
@@ -700,7 +719,37 @@ export default function PlayerPage() {
 
                 {showList && (
                     <div className="player-ep-sidebar">
-                        {seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
+                        {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
+                            <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
+                                <select
+                                    value={activeSidebarSeason || season}
+                                    onChange={(e) => {
+                                        setActiveSidebarSeason(parseInt(e.target.value));
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        background: '#1c1c24',
+                                        color: '#00ff88',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                        padding: '0.6rem',
+                                        fontSize: '0.95rem',
+                                        fontWeight: '700',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {episodeGroup.groups.map((g, idx) => {
+                                        const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
+                                        return (
+                                            <option key={g.id || sNum} value={sNum} style={{ background: '#13131a', color: '#fff' }}>
+                                                {g.name || `Temporada ${sNum}`} ({g.episodes?.length || 0} eps)
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                        ) : seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
                             <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
                                 <select
                                     value={activeSidebarSeason || season}
@@ -733,6 +782,7 @@ export default function PlayerPage() {
                         ) : (
                             <h4>Temporada {activeSidebarSeason || season}</h4>
                         )}
+
                         <div className="player-sidebar-list">
                             {episodes.map(ep => (
                                 <div

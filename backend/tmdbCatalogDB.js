@@ -72,5 +72,16 @@ export async function initTmdbCatalogDB() {
         )
     `);
 
+    // Tabela de Cache de Episode Groups (TMDB)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS tmdb_episode_groups_cache (
+            tmdb_id TEXT PRIMARY KEY,
+            group_id TEXT,
+            raw_data TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     return db;
 }
+

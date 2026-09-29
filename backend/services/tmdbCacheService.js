@@ -105,6 +105,39 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
     const seasonNum = parseInt(seasonNumber, 10);
 
     try {
+        // 1. Tentar buscar se existe Episode Group (para Animes e Séries reorganizadas)
+        const groupDetails = await getOrFetchEpisodeGroupDetails(db, idStr, apiKey);
+        if (groupDetails && Array.isArray(groupDetails.groups) && groupDetails.groups.length > 0) {
+            // Filtrar grupos que contenham episódios (ignora grupos vazios ou apenas especiais se houver outros)
+            const matchedGroup = groupDetails.groups.find(g => g.order === seasonNum)
+                || groupDetails.groups.find((g, idx) => (g.order !== 0 ? g.order : idx + 1) === seasonNum)
+                || groupDetails.groups[seasonNum - 1];
+
+            if (matchedGroup && Array.isArray(matchedGroup.episodes) && matchedGroup.episodes.length > 0) {
+                console.log(`[TMDB CACHE] Usando episódios do Episode Group '${matchedGroup.name}' (${matchedGroup.episodes.length} eps) para série ${idStr} temp ${seasonNum}`);
+                
+                // Processar fotos (stills) para Zoro Drive se necessário
+                for (const ep of matchedGroup.episodes) {
+                    if (ep.still_path && !ep.still_path.includes('zorobot.shop')) {
+                        const rawStill = `https://image.tmdb.org/t/p/original${ep.still_path}`;
+                        const driveStill = await uploadRemoteUrlToDrive(
+                            rawStill,
+                            'TMDB_Stills',
+                            `still_${idStr}_s${seasonNum}_e${ep.episode_number}.jpg`
+                        );
+                        if (driveStill) ep.still_path = driveStill;
+                    }
+                }
+
+                return {
+                    id: matchedGroup.id || idStr,
+                    name: matchedGroup.name || `Temporada ${seasonNum}`,
+                    season_number: seasonNum,
+                    episodes: matchedGroup.episodes
+                };
+            }
+        }
+
         console.log(`[TMDB CACHE] Baixando temporada ${seasonNum} da série ${idStr}...`);
         const url = `${TMDB_BASE_URL}/tv/${idStr}/season/${seasonNum}?api_key=${apiKey}&language=pt-BR`;
         const res = await fetch(url);
@@ -149,3 +182,84 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
         return null;
     }
 }
+
+
+/**
+ * Busca grupos de episódios (Episode Groups / Seasons) de um anime ou série no TMDB.
+ * Salva o resultado no banco SQLite local para não precisar consultar a API novamente.
+ */
+export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey) {
+    if (!tmdbId || !apiKey) return null;
+
+    const idStr = String(tmdbId);
+
+    // 1. Verificar no banco SQLite local
+    try {
+        const cached = await db.get(
+            'SELECT * FROM tmdb_episode_groups_cache WHERE tmdb_id = ?',
+            [idStr]
+        );
+        if (cached) {
+            if (cached.group_id === 'NONE' || !cached.raw_data || cached.raw_data === 'null') {
+                return null;
+            }
+            return JSON.parse(cached.raw_data);
+        }
+    } catch (err) {
+        console.error('[TMDB CACHE] Erro ao consultar episode_groups no BD:', err.message);
+    }
+
+    // 2. Não está em cache -> Buscar lista de grupos no TMDB
+    try {
+        console.log(`[TMDB CACHE] Buscando episode_groups para série ${idStr}...`);
+        const listUrl = `${TMDB_BASE_URL}/tv/${idStr}/episode_groups?api_key=${apiKey}`;
+        const res = await fetch(listUrl);
+        if (!res.ok) {
+            await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
+            return null;
+        }
+
+        const data = await res.json();
+        const results = data.results || [];
+        if (results.length === 0) {
+            await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
+            return null;
+        }
+
+        // Selecionar o melhor grupo (tipo 1 Seasons, nome "Seasons" / "Temporadas", tipo 6 ou tipo 5)
+        const selectedGroup = results.find(g => g.type === 1)
+            || results.find(g => g.name && (g.name.toLowerCase() === 'seasons' || g.name.toLowerCase() === 'temporadas'))
+            || results.find(g => g.name && (g.name.toLowerCase().includes('seasons') || g.name.toLowerCase().includes('temporadas')))
+            || results.find(g => g.type === 6)
+            || results.find(g => g.type === 5)
+            || results[0];
+
+        if (!selectedGroup) {
+            await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
+            return null;
+        }
+
+        // 3. Detalhes do grupo escolhido
+        console.log(`[TMDB CACHE] Grupo selecionado '${selectedGroup.name}' (${selectedGroup.id}) para série ${idStr}`);
+        const groupUrl = `${TMDB_BASE_URL}/tv/episode_group/${selectedGroup.id}?api_key=${apiKey}&language=pt-BR`;
+        const groupRes = await fetch(groupUrl);
+        if (!groupRes.ok) {
+            await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
+            return null;
+        }
+
+        const groupDetails = await groupRes.json();
+
+        // 4. Salvar no banco SQLite local
+        await db.run(
+            'INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
+            [idStr, selectedGroup.id, JSON.stringify(groupDetails)]
+        );
+
+        return groupDetails;
+    } catch (err) {
+        console.error('[TMDB CACHE] Erro ao buscar episode_groups:', err.message);
+        return null;
+    }
+}
+
