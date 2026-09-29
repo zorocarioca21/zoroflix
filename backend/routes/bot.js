@@ -1,8 +1,10 @@
 import express from 'express';
-import fetch from 'node-fetch'; // Vite/Node environment
+import axios from 'axios';
+import https from 'https';
 import { checkTitleMatch, getBestMatches } from '../../src/utils/titleMatch.js';
 import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
+const agent = new https.Agent({ family: 4 });
 const router = express.Router();
 
 export default function botRoutes(db) {
@@ -77,10 +79,12 @@ export default function botRoutes(db) {
             // 1. Fetch TMDB API to get exact name, year, and ID
             let tmdbData = { results: [] };
             try {
-                const tmdbRes = await fetch(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                const tmdbRes = await axios.get(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                    httpsAgent: agent,
+                    timeout: 8000
                 });
-                tmdbData = await tmdbRes.json();
+                tmdbData = tmdbRes.data;
             } catch (tmdbErr) {
                 console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
             }
