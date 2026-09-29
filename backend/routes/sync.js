@@ -406,7 +406,19 @@ export default function syncRoutes(db, io) {
         }
     });
 
-    // Rota para salvar a nova URL da IPTV
+    function parseM3uParams(urlStr) {
+        try {
+            const u = new URL(urlStr);
+            const hostname = u.hostname;
+            const username = u.searchParams.get('username');
+            const password = u.searchParams.get('password');
+            return { hostname, username, password };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Rota para salvar a nova URL da IPTV e atualizar links antigos do banco
     router.post('/m3u-url', async (req, res) => {
         try {
             const { m3uUrl } = req.body;
@@ -414,13 +426,52 @@ export default function syncRoutes(db, io) {
                 return res.status(400).json({ error: 'URL do M3U inválida.' });
             }
             const cleanUrl = m3uUrl.trim();
+
+            // Busca a URL antiga do banco para comparar credenciais/domínio
+            const oldRow = await db.get("SELECT value FROM system_settings WHERE key = 'm3u_url'");
+            const oldUrl = oldRow ? oldRow.value : '';
+
+            // Salva a nova URL no banco
             await db.run(
                 `INSERT INTO system_settings (key, value, updated_at) VALUES ('m3u_url', ?, CURRENT_TIMESTAMP)
                  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
                 [cleanUrl]
             );
-            res.json({ success: true, m3uUrl: cleanUrl, message: 'URL da IPTV salva com sucesso!' });
+
+            let updatedCount = 0;
+            const oldParams = parseM3uParams(oldUrl);
+            const newParams = parseM3uParams(cleanUrl);
+
+            if (oldParams && newParams) {
+                // Atualiza o domínio no banco se tiver mudado
+                if (oldParams.hostname && newParams.hostname && oldParams.hostname !== newParams.hostname) {
+                    const r1 = await db.run(`UPDATE sync_queue SET url = REPLACE(url, ?, ?) WHERE url LIKE ?`, [oldParams.hostname, newParams.hostname, `%${oldParams.hostname}%`]);
+                    updatedCount += r1.changes || 0;
+                }
+                // Atualiza o usuário no banco se tiver mudado
+                if (oldParams.username && newParams.username && oldParams.username !== newParams.username) {
+                    const r2 = await db.run(`UPDATE sync_queue SET url = REPLACE(url, ?, ?) WHERE url LIKE ?`, [oldParams.username, newParams.username, `%${oldParams.username}%`]);
+                    updatedCount += r2.changes || 0;
+                }
+                // Atualiza a senha no banco se tiver mudado
+                if (oldParams.password && newParams.password && oldParams.password !== newParams.password) {
+                    const r3 = await db.run(`UPDATE sync_queue SET url = REPLACE(url, ?, ?) WHERE url LIKE ?`, [oldParams.password, newParams.password, `%${oldParams.password}%`]);
+                    updatedCount += r3.changes || 0;
+                }
+            }
+
+            // Reseta todos os itens com Erro 404 para Pendente para re-tentar com as novas credenciais
+            const errorReset = await db.run("UPDATE sync_queue SET status = 'pending', error_message = NULL WHERE status = 'error'");
+
+            res.json({ 
+                success: true, 
+                m3uUrl: cleanUrl, 
+                updatedUrls: updatedCount,
+                resetErrors: errorReset.changes || 0,
+                message: `URL da IPTV atualizada! ${updatedCount} links do banco atualizados e ${errorReset.changes || 0} erros redefinidos para pendente.` 
+            });
         } catch (err) {
+            console.error("Erro m3u-url:", err);
             res.status(500).json({ error: err.message });
         }
     });
