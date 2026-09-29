@@ -1,4 +1,8 @@
 import { getNextTmdbKey } from './tmdbKeyService.js';
+import axios from 'axios';
+import https from 'https';
+
+const agent = new https.Agent({ family: 4 }); // Força IPv4 para evitar problemas de DNS/IPv6 em VPS
 
 /**
  * Mapeia em lote os itens que ainda não possuem tmdb_id na fila.
@@ -75,12 +79,14 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             let hasNetworkError = false;
             try {
                 const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${apiKey}&language=pt-BR`;
-                const tmdbRes = await fetch(url, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                const tmdbRes = await axios.get(url, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                    httpsAgent: agent,
+                    timeout: 10000 // 10 segundos
                 });
                 
-                if (tmdbRes.ok) {
-                    const tmdbData = await tmdbRes.json();
+                if (tmdbRes.status === 200) {
+                    const tmdbData = tmdbRes.data;
                     let bestMatch = null;
                     if (tmdbData.results && tmdbData.results.length > 0) {
                         if (year) {
@@ -97,14 +103,18 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     if (bestMatch) {
                         tmdb_id = String(bestMatch.id);
                         media_type = bestMatch.media_type;
-                    }
                 } else {
                     console.error(`[TMDB MAPPER] HTTP Error ${tmdbRes.status} ao buscar ${q}`);
                     if (tmdbRes.status === 429) hasNetworkError = true; // Rate limit, try again later
                 }
             } catch (err) {
                 hasNetworkError = true;
-                console.error(`[TMDB MAPPER] Falha de rede ao buscar ${q}:`, err.message);
+                const status = err.response ? err.response.status : 'NETWORK_ERROR';
+                if (status === 429) {
+                    console.error(`[TMDB MAPPER] Rate Limit (429) ao buscar ${q}.`);
+                } else {
+                    console.error(`[TMDB MAPPER] Falha de rede ao buscar ${q}:`, err.message);
+                }
             }
 
             if (tmdb_id) {

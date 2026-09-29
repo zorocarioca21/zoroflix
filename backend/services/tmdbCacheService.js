@@ -1,4 +1,8 @@
 import { uploadRemoteUrlToDrive } from './zoroDriveService.js';
+import axios from 'axios';
+import https from 'https';
+
+const agent = new https.Agent({ family: 4 }); // Força IPv4
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
@@ -32,10 +36,10 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
     try {
         console.log(`[TMDB CACHE] Baixando ${type} ${idStr} do TMDB...`);
         const url = `${TMDB_BASE_URL}/${type}/${idStr}?api_key=${apiKey}&language=pt-BR&append_to_response=credits,videos`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
+        const res = await axios.get(url, { httpsAgent: agent, timeout: 10000 });
+        if (res.status !== 200) return null;
 
-        const tmdbData = await res.json();
+        const tmdbData = res.data;
 
         // 3. Espelhar imagens no Zoro Drive em segundo plano / paralelo
         let posterUrl = null;
@@ -140,10 +144,10 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
 
         console.log(`[TMDB CACHE] Baixando temporada ${seasonNum} da série ${idStr}...`);
         const url = `${TMDB_BASE_URL}/tv/${idStr}/season/${seasonNum}?api_key=${apiKey}&language=pt-BR`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
+        const res = await axios.get(url, { httpsAgent: agent, timeout: 10000 });
+        if (res.status !== 200) return null;
 
-        const seasonData = await res.json();
+        const seasonData = res.data;
 
         if (Array.isArray(seasonData.episodes)) {
             for (const ep of seasonData.episodes) {
@@ -220,13 +224,13 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
     try {
         console.log(`[TMDB CACHE] Buscando episode_groups para série ${idStr}...`);
         const listUrl = `${TMDB_BASE_URL}/tv/${idStr}/episode_groups?api_key=${apiKey}`;
-        const res = await fetch(listUrl);
-        if (!res.ok) {
+        const res = await axios.get(listUrl, { httpsAgent: agent, timeout: 10000 });
+        if (res.status !== 200) {
             await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
             return null;
         }
 
-        const data = await res.json();
+        const data = res.data;
         const results = data.results || [];
         if (results.length === 0) {
             await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
@@ -249,13 +253,13 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
         // 3. Detalhes do grupo escolhido
         console.log(`[TMDB CACHE] Grupo selecionado '${selectedGroup.name}' (${selectedGroup.id}) para série ${idStr}`);
         const groupUrl = `${TMDB_BASE_URL}/tv/episode_group/${selectedGroup.id}?api_key=${apiKey}&language=pt-BR`;
-        const groupRes = await fetch(groupUrl);
-        if (!groupRes.ok) {
+        const groupRes = await axios.get(groupUrl, { httpsAgent: agent, timeout: 10000 });
+        if (groupRes.status !== 200) {
             await db.run('INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data) VALUES (?, ?, ?)', [idStr, 'NONE', 'null']);
             return null;
         }
 
-        const groupDetails = await groupRes.json();
+        const groupDetails = groupRes.data;
 
         // 4. Salvar no banco SQLite local
         await db.run(
