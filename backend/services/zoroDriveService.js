@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
+import https from 'https';
 
+const agent = new https.Agent({ family: 4 });
 const DRIVE_URL = 'https://api.zorobot.shop/drive/api/bot/upload';
 const EMAIL = process.env.ZORO_DRIVE_EMAIL || process.env.DRIVE_EMAIL || 'lucaspereirarjcontato@gmail.com';
 const PASS = process.env.ZORO_DRIVE_PASSWORD || process.env.DRIVE_PASSWORD || 's1R89fr6QQHcN5Q@qpqV';
@@ -21,25 +24,18 @@ export async function uploadBase64ToDrive(base64Data, filename, folderName = nul
 
         if (folderName) payload.folder_name = folderName;
 
-        const response = await fetch(DRIVE_URL, {
-            method: 'POST',
+        const response = await axios.post(DRIVE_URL, payload, {
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            httpsAgent: agent,
+            timeout: 15000
         });
 
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const data = await response.json();
-            if (data && data.sucesso && data.url) {
-                // Força protocolo HTTPS para evitar bloqueio de Mixed Content no navegador
-                return data.url.replace(/^http:\/\//i, 'https://');
-            } else {
-                console.error('[ZORO DRIVE] Resposta sem sucesso:', data);
-                return null;
-            }
+        const data = response.data;
+        if (data && data.sucesso && data.url) {
+            // Força protocolo HTTPS para evitar bloqueio de Mixed Content no navegador
+            return data.url.replace(/^http:\/\//i, 'https://');
         } else {
-            const text = await response.text();
-            console.error(`[ZORO DRIVE] Resposta não-JSON (${response.status}):`, text.substring(0, 150));
+            console.error('[ZORO DRIVE] Resposta sem sucesso:', data);
             return null;
         }
     } catch (err) {
@@ -83,14 +79,13 @@ export async function uploadRemoteUrlToDrive(url, folderName = null, customFileN
         
         if (url.includes('zorobot.shop/drive/f/')) return url;
 
-        const res = await fetch(url);
-        if (!res.ok) {
+        const res = await axios.get(url, { responseType: 'arraybuffer', httpsAgent: agent, timeout: 15000 });
+        if (res.status !== 200) {
             console.error(`[ZORO DRIVE] Falha ao baixar URL remota (${res.status}): ${url}`);
             return null;
         }
 
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer = Buffer.from(res.data);
         let filename = customFileName;
         if (!filename) {
             const urlPath = new URL(url).pathname;
