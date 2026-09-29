@@ -103,6 +103,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     if (bestMatch) {
                         tmdb_id = String(bestMatch.id);
                         media_type = bestMatch.media_type;
+                    }
                 } else {
                     console.error(`[TMDB MAPPER] HTTP Error ${tmdbRes.status} ao buscar ${q}`);
                     if (tmdbRes.status === 429) hasNetworkError = true; // Rate limit, try again later
