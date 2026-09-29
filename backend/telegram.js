@@ -12,8 +12,12 @@ const sessionStrings = Object.keys(process.env)
     .map(key => process.env[key])
     .filter(val => val && val.trim() !== ''); // Remove nulos ou vazios
 
+if (sessionStrings.length === 0 && process.env.TELEGRAM_SESSION) {
+    sessionStrings.push(process.env.TELEGRAM_SESSION);
+}
+
 if (sessionStrings.length === 0) {
-    console.error("Nenhuma variável TELEGRAM_SESSION_ (como TELEGRAM_SESSION_2) encontrada no .env para o Pool de Streaming!");
+    console.error("Nenhuma variável TELEGRAM_SESSION encontrada no .env para o Pool do Telegram!");
 }
 
 let clients = [];

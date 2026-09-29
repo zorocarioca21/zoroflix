@@ -12,6 +12,7 @@ import os from 'os';
 import https from 'https';
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
+import { getTelegramClient } from '../telegram.js';
 import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 
@@ -560,18 +561,13 @@ export default function syncRoutes(db, io) {
     // Helper para deletar mensagem do Telegram via GramJS
     const deleteTelegramMessage = async (msgId) => {
         try {
-            const apiId = parseInt(process.env.TELEGRAM_API_ID);
-            const apiHash = process.env.TELEGRAM_API_HASH;
-            const sessionStr = process.env.TELEGRAM_SESSION;
             const channelId = process.env.TELEGRAM_CHANNEL_ID;
-            if (apiId && apiHash && sessionStr && channelId && msgId) {
-                const stringSession = new StringSession(sessionStr);
-                const client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 3 });
-                client.setLogLevel("none");
-                await client.connect();
-                await client.deleteMessages(channelId, [parseInt(msgId)], { revoke: true });
-                await client.disconnect();
-                console.log(`[GramJS] Mensagem ${msgId} deletada do canal Telegram.`);
+            if (channelId && msgId) {
+                const client = await getTelegramClient();
+                if (client) {
+                    await client.deleteMessages(channelId, [parseInt(msgId)], { revoke: true });
+                    console.log(`[GramJS] Mensagem ${msgId} deletada do canal Telegram.`);
+                }
             }
         } catch (err) {
             console.error(`[GramJS] Erro ao deletar mensagem ${msgId} do Telegram:`, err.message);
@@ -1143,28 +1139,26 @@ export default function syncRoutes(db, io) {
             const dbIds = brokenItems.map(i => i.id);
 
             let deletedTelegramCount = 0;
-            const apiId = parseInt(process.env.TELEGRAM_API_ID);
-            const apiHash = process.env.TELEGRAM_API_HASH;
-            const sessionStr = process.env.TELEGRAM_SESSION;
             const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
-            if (apiId && apiHash && sessionStr && channelId && messageIds.length > 0) {
-                const stringSession = new StringSession(sessionStr);
-                const client = new TelegramClient(stringSession, apiId, apiHash, { connectionRetries: 3 });
-                client.setLogLevel("none");
-                await client.connect();
-
-                // Apaga em lotes de 100 mensagens (limite por requisição na API do Telegram)
-                for (let i = 0; i < messageIds.length; i += 100) {
-                    const chunk = messageIds.slice(i, i + 100);
-                    try {
-                        await client.deleteMessages(channelId, chunk, { revoke: true });
-                        deletedTelegramCount += chunk.length;
-                    } catch (delErr) {
-                        console.error("[Telegram Delete Batch] Erro no lote:", delErr.message);
+            if (channelId && messageIds.length > 0) {
+                try {
+                    const client = await getTelegramClient();
+                    if (client) {
+                        // Apaga em lotes de 100 mensagens (limite por requisição na API do Telegram)
+                        for (let i = 0; i < messageIds.length; i += 100) {
+                            const chunk = messageIds.slice(i, i + 100);
+                            try {
+                                await client.deleteMessages(channelId, chunk, { revoke: true });
+                                deletedTelegramCount += chunk.length;
+                            } catch (delErr) {
+                                console.error("[Telegram Delete Batch] Erro no lote:", delErr.message);
+                            }
+                        }
                     }
+                } catch (tgErr) {
+                    console.error("[Telegram Delete] Erro de conexão com Telegram:", tgErr.message);
                 }
-                await client.disconnect();
             }
 
             // Redefine os registros no banco para pendente e remove a referência do Telegram
