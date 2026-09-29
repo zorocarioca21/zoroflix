@@ -391,6 +391,16 @@ async function processDownload(movie) {
             throw new Error(`Duração inválida (${videoDuration}s). O arquivo baixado não é um vídeo reproduzível.`);
         }
 
+        // Validação de Duração Mínima para evitar uploads de filmes cortados/incompletos (ex: 2 ou 4 minutos)
+        const isEpisode = /S\d{1,2}\s*E\d{1,2}/i.test(movie.title) || /Episódio/i.test(movie.title);
+        const minDuration = isEpisode ? 300 : 1200; // 5 min para episódios, 20 min para filmes
+        if (videoDuration < minDuration) {
+            try { fs.unlinkSync(tmpPath); } catch (e) {}
+            const durationMin = (videoDuration / 60).toFixed(1);
+            const reqMin = (minDuration / 60).toFixed(0);
+            throw new Error(`Vídeo cortado/incompleto! Baixou apenas ${durationMin} minutos (mínimo exigido para ${isEpisode ? 'episódio' : 'filme'}: ${reqMin} minutos).`);
+        }
+
         // Detecção automática de resolução e limpeza de título
         const videoHeight = await detectVideoResolution(tmpPath);
         if (videoHeight > 0) {

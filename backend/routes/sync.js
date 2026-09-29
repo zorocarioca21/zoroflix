@@ -504,6 +504,8 @@ export default function syncRoutes(db, io) {
                     queryCondition += " AND priority > 0";
                 } else if (filter === 'new_today') {
                     queryCondition += " AND DATE(created_at, '-3 hours') = DATE('now', '-3 hours')";
+                } else if (filter === 'completed_today') {
+                    queryCondition += " AND status = 'completed' AND DATE(updated_at, '-3 hours') = DATE('now', '-3 hours')";
                 } else {
                     queryCondition += ' AND status = ?';
                     params.push(filter);
