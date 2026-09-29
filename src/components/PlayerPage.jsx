@@ -373,10 +373,18 @@ export default function PlayerPage() {
                     }
 
                     if (data2?.items?.length > 0) {
+                        const epNum = parseInt(episode, 10);
+                        const epStr = String(epNum).padStart(2, '0');
+                        const sNum = parseInt(season, 10);
+                        const sStr = String(sNum).padStart(2, '0');
+                        const epName = state?.title ? state.title.split(' - ').slice(1).join(' - ').trim() : '';
+
                         const patterns = [
-                            `S${s}E${e}`, `S${s} E${e}`,
-                            `S${season}E${episode}`, `S${season} E${episode}`,
-                            `Episódio ${episode}`, `EP${e}`, `EP ${e}`, `E${e}`,
+                            `S${sStr}E${epStr}`, `S${sStr} E${epStr}`, `S${sNum}E${epNum}`, `S${sNum} E${epNum}`,
+                            `S01E${epStr}`, `S01 E${epStr}`, `S01E${epNum}`, `S01 E${epNum}`,
+                            `Episódio ${epNum}`, `Episódio ${epStr}`,
+                            `EP${epStr}`, `EP ${epStr}`, `EP${epNum}`, `EP ${epNum}`,
+                            `E${epStr}`, `E${epNum}`
                         ];
 
                         const validItems = data2.items.filter(i => {
@@ -384,19 +392,26 @@ export default function PlayerPage() {
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName)) return false;
 
                             const upperTitle = i.title.toUpperCase();
-                            
+
                             const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
                             const sMatch = i.title.match(seasonRegex);
                             if (sMatch) {
                                 const fileSeason = parseInt(sMatch[1]);
-                                if (fileSeason !== parseInt(season)) return false;
+                                const matchesEpName = epName && epName.length > 3 && upperTitle.includes(epName.toUpperCase());
+                                // Permite fileSeason === 1 se o episódio for contínuo (>20) ou se o nome do episódio bater no título
+                                if (fileSeason !== sNum && !(fileSeason === 1 && (epNum > 20 || matchesEpName))) {
+                                    return false;
+                                }
                             }
 
-                            const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
-                            if (!hasEp) return false;
+                            const hasEpPattern = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                            const hasEpNameMatch = epName && epName.length > 3 && upperTitle.includes(epName.toUpperCase());
+
+                            if (!hasEpPattern && !hasEpNameMatch) return false;
 
                             return true;
                         });
+
 
                         if (validItems.length > 0) {
                             const releaseYear = seriesDetail?.first_air_date ? seriesDetail.first_air_date.split('-')[0] : null;
@@ -741,13 +756,18 @@ export default function PlayerPage() {
                                 >
                                     {episodeGroup.groups.map((g, idx) => {
                                         const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
+                                        const rawName = g.name || `Temporada ${sNum}`;
+                                        const displayName = rawName
+                                            .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
+                                            .replace(/\bSpecials?\b/gi, 'Especiais');
                                         return (
                                             <option key={g.id || sNum} value={sNum} style={{ background: '#13131a', color: '#fff' }}>
-                                                {g.name || `Temporada ${sNum}`} ({g.episodes?.length || 0} eps)
+                                                {displayName} ({g.episodes?.length || 0} eps)
                                             </option>
                                         );
                                     })}
                                 </select>
+
                             </div>
                         ) : seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
                             <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>

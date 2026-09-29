@@ -392,9 +392,13 @@ export default function DetailsPage() {
                   {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
                     episodeGroup.groups.map((g, idx) => {
                       const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
+                      const rawName = g.name || `Temporada ${sNum}`;
+                      const displayName = rawName
+                        .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
+                        .replace(/\bSpecials?\b/gi, 'Especiais');
                       return (
                         <option key={g.id || sNum} value={sNum}>
-                          {g.name || `Temporada ${sNum}`} ({g.episodes?.length || 0} eps)
+                          {displayName} ({g.episodes?.length || 0} eps)
                         </option>
                       );
                     })
@@ -403,14 +407,17 @@ export default function DetailsPage() {
                       <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
                     ))
                   )}
+
                 </select>
 
               </div>
 
               <div className="episodes-grid-modern">
-                {episodes.map(ep => {
+                {episodes.map((ep, idx) => {
                   const showSlug = getSlug(data.name);
-                  const isWatched = watchedEpisodes.some(we => we.season === parseInt(selectedSeason) && we.episode === parseInt(ep.episode_number));
+                  const relEpNum = idx + 1;
+                  const displayEpNum = episodeGroup ? relEpNum : ep.episode_number;
+                  const isWatched = watchedEpisodes.some(we => we.season === parseInt(selectedSeason) && (we.episode === parseInt(ep.episode_number) || we.episode === relEpNum));
                   return (
                   <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
@@ -445,13 +452,14 @@ export default function DetailsPage() {
                       )}
                     </div>
                     <div className="ep-info-modern">
-                        <p className="ep-title-meta">EP {ep.episode_number} <span className="ep-real-title">{ep.name}</span></p>
+                        <p className="ep-title-meta">EP {displayEpNum} <span className="ep-real-title">{ep.name}</span></p>
                         <p className="ep-overview-modern">{ep.overview || "Sinopse indisponível."}</p>
                     </div>
                   </div>
                   );
                 })}
               </div>
+
             </div>
           )}
 
