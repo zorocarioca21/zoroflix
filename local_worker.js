@@ -71,6 +71,9 @@ async function downloadFile(url, destPath, taskId) {
     return new Promise((resolve, reject) => {
         const ffmpegArgs = [
             '-y',
+            '-reconnect', '1',
+            '-reconnect_streamed', '1',
+            '-reconnect_delay_max', '5',
             '-err_detect', 'ignore_err',
             '-fflags', '+genpts+discardcorrupt+igndts',
             '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
