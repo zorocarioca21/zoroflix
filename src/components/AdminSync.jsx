@@ -402,7 +402,7 @@ export default function AdminSync() {
             const res = await fetch('/api/sync/fetch-remote-m3u', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ m3uUrl: 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts' })
+                body: JSON.stringify({ m3uUrl: 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts' })
             });
             const data = await res.json();
             if (res.ok) {

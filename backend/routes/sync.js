@@ -10,6 +10,7 @@ import readline from 'readline';
 import multer from 'multer';
 import os from 'os';
 import https from 'https';
+import http from 'http';
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import { getTelegramClient } from '../telegram.js';
@@ -393,8 +394,9 @@ export default function syncRoutes(db, io) {
 
         let movies = [];
         let currentTitle = null;
+        const httpModule = m3uUrl.startsWith('https') ? https : http;
 
-        https.get(m3uUrl, (response) => {
+        httpModule.get(m3uUrl, (response) => {
             if (response.statusCode !== 200) {
                 return res.status(500).json({ error: 'Erro ao baixar o M3U. Código HTTP: ' + response.statusCode });
             }
@@ -1046,7 +1048,7 @@ export default function syncRoutes(db, io) {
 
     // Rota para testar saúde e resposta da IPTV
     router.get('/iptv-status', async (req, res) => {
-        const m3uUrl = 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts';
+        const m3uUrl = process.env.M3U_URL || 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         const startTime = Date.now();

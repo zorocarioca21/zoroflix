@@ -4,6 +4,7 @@ import os from 'os';
 import { spawn } from 'child_process';
 import readline from 'readline';
 import https from 'https';
+import http from 'http';
 import { getTelegramClient } from '../telegram.js';
 
 // ==========================================
@@ -899,12 +900,13 @@ function startAutoM3uSync() {
     // 3600000 = 1 hora
     setInterval(() => {
         if (isPaused) return;
-        const m3uUrl = 'https://kixar.xyz/get.php?username=zorocarioca21&password=rf1st91a&type=m3u_plus&output=ts';
+        const m3uUrl = process.env.M3U_URL || 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
         console.log("[AutoSync] Iniciando varredura remota M3U automática (1h)...");
         let movies = [];
         let currentTitle = null;
 
-        https.get(m3uUrl, (response) => {
+        const httpModule = m3uUrl.startsWith('https') ? https : http;
+        httpModule.get(m3uUrl, (response) => {
             if (response.statusCode !== 200) {
                 console.error(`[AutoSync] Erro HTTP ${response.statusCode} ao tentar baixar o M3U.`);
                 return;
