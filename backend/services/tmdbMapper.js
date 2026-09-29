@@ -72,6 +72,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                 continue;
             }
 
+            let hasNetworkError = false;
             try {
                 const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${apiKey}&language=pt-BR`;
                 const tmdbRes = await fetch(url, {
@@ -97,9 +98,13 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                         tmdb_id = String(bestMatch.id);
                         media_type = bestMatch.media_type;
                     }
+                } else {
+                    console.error(`[TMDB MAPPER] HTTP Error ${tmdbRes.status} ao buscar ${q}`);
+                    if (tmdbRes.status === 429) hasNetworkError = true; // Rate limit, try again later
                 }
             } catch (err) {
-                console.error(`[TMDB MAPPER] Falha ao buscar ${q}:`, err.message);
+                hasNetworkError = true;
+                console.error(`[TMDB MAPPER] Falha de rede ao buscar ${q}:`, err.message);
             }
 
             if (tmdb_id) {
@@ -108,7 +113,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     [tmdb_id, media_type, season_number, episode_number, item.id]
                 );
                 updatedCount++;
-            } else {
+            } else if (!hasNetworkError) {
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
             
