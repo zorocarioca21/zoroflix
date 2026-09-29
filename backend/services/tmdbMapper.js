@@ -117,8 +117,8 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
             
-            // Pausa um pouquinho para não estourar a API
-            await new Promise(res => setTimeout(res, 200));
+            // Pausa maior (500ms) para evitar qualquer block por rajada na API
+            await new Promise(res => setTimeout(res, 500));
         }
 
         console.log(`[TMDB MAPPER] Mapeados ${updatedCount} de ${itemsToMap.length} processados.`);

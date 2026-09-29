@@ -912,15 +912,15 @@ function startAutoM3uSync() {
         }
     }, 60000);
 
-    // Cron job TMDB Mapper: Roda a cada 10 segundos para mapear TMDB IDs
+    // Cron job TMDB Mapper: Roda a cada 15 segundos para mapear TMDB IDs em lotes de 10
     setInterval(async () => {
         if (isPaused) return;
         try {
-            await mapPendingTmdbItems(dbInstance, 50);
+            await mapPendingTmdbItems(dbInstance, 10);
         } catch (err) {
             console.error("[TMDB Mapper Cron] Erro:", err);
         }
-    }, 10000);
+    }, 15000);
 
     // 3600000 = 1 hora
     setInterval(async () => {
