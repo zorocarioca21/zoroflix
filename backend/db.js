@@ -294,6 +294,10 @@ export async function initDB() {
             file_size INTEGER DEFAULT 0,
             telegram_message_id INTEGER DEFAULT NULL,
             error_message TEXT DEFAULT NULL,
+            tmdb_id TEXT DEFAULT NULL,
+            media_type TEXT DEFAULT NULL,
+            season_number INTEGER DEFAULT NULL,
+            episode_number INTEGER DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(url)
@@ -313,6 +317,17 @@ export async function initDB() {
         console.log("Migration: Coluna 'old_telegram_message_id' adicionada à tabela sync_queue.");
     } catch (e) {
         // Ignora se a coluna já existir
+    }
+
+    // Auto-migration: TMDB columns
+    try {
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN tmdb_id TEXT DEFAULT NULL`);
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN media_type TEXT DEFAULT NULL`);
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN season_number INTEGER DEFAULT NULL`);
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN episode_number INTEGER DEFAULT NULL`);
+        console.log("Migration: Colunas TMDB adicionadas à tabela sync_queue.");
+    } catch (e) {
+        // Ignora
     }
 
     // Tabela de Configurações Gerais do Sistema (M3U URL, etc)

@@ -6,6 +6,7 @@ import readline from 'readline';
 import https from 'https';
 import http from 'http';
 import { getTelegramClient } from '../telegram.js';
+import { mapPendingTmdbItems } from './tmdbMapper.js';
 
 // ==========================================
 // FUNÇÕES DE DETECÇÃO DE QUALIDADE
@@ -887,9 +888,10 @@ function startAutoM3uSync() {
             const result = await dbInstance.run(
                 `UPDATE sync_queue 
                  SET priority = 3000 
-                 WHERE DATE(created_at, '-3 hours') = DATE('now', '-3 hours') 
+                 WHERE created_at > datetime('now', '-2 hours', '-3 hours')
                  AND priority < 3000 
-                 AND priority != 9999`
+                 AND priority != 9999
+                 AND priority != 0`
             );
             if (result.changes > 0) {
                 console.log(`[Priority Cron] Promovidos ${result.changes} filmes recentes para prioridade 3000.`);
@@ -909,6 +911,16 @@ function startAutoM3uSync() {
             console.error("[Priority Cron] Erro ao atualizar prioridades:", err);
         }
     }, 60000);
+
+    // Cron job TMDB Mapper: Roda a cada 10 segundos para mapear TMDB IDs
+    setInterval(async () => {
+        if (isPaused) return;
+        try {
+            await mapPendingTmdbItems(dbInstance, 50);
+        } catch (err) {
+            console.error("[TMDB Mapper Cron] Erro:", err);
+        }
+    }, 10000);
 
     // 3600000 = 1 hora
     setInterval(async () => {

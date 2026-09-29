@@ -250,14 +250,25 @@ export default function syncRoutes(db, io) {
         // Remove a tag caso tenha sobrado
         cleaned = cleaned.replace('#EXTINF:-1', '').trim();
 
+        // Detecta formato "cena" com pontos: "Nome.Do.Filme.S02.E03" -> "Nome Do Filme S02 E03"
+        if (/\w+\.\w+\.S\d{2}/i.test(cleaned)) {
+            cleaned = cleaned.replace(/\./g, ' ');
+        }
+
         // Deduplica se a IPTV repetiu 'Nome S01 Nome - S01E58 - Episódio 58'
         cleaned = cleaned.replace(/^(.+?)\s+S\d+\s+\1\s*(?:-\s*)?(S\d+E\d+.*)/i, '$1 - $2');
         cleaned = cleaned.replace(/^(.+?)\s+-\s+\1\s*(?:-\s*)?/i, '$1 - ');
+
+        // Deduplica padrão "Nome SXX Nome SXX EXX" -> "Nome - SXXEXX"  
+        cleaned = cleaned.replace(/^(.+?)\s+S(\d{2})\s+\1[\s.]+S\2[\s.]*E(\d{2,3})/i, '$1 - S$2E$3');
 
         // Se contiver S01E58, remove o sufixo redundante '- Episódio 58'
         if (/S\d{1,2}E\d{1,2}/i.test(cleaned)) {
             cleaned = cleaned.replace(/\s*-\s*Episódio\s*\d+/gi, '');
         }
+
+        // Remove tags de codec/resolução falsas
+        cleaned = cleaned.replace(/\b(x264|x265|HEVC|AAC|WEB-DL|WEBRip|BluRay|HDTV|PROPER)\b/gi, '');
 
         return cleaned.trim();
     };
@@ -554,6 +565,9 @@ export default function syncRoutes(db, io) {
 
             const filter = req.query.filter || 'all';
             const search = req.query.search || '';
+            const tmdb_id = req.query.tmdb_id || '';
+            const season_number = req.query.season_number || '';
+            const episode_number = req.query.episode_number || '';
             const sortSize = req.query.sortSize || ''; // pode ser 'asc' ou 'desc'
 
             let queryCondition = 'WHERE 1=1';
@@ -584,11 +598,24 @@ export default function syncRoutes(db, io) {
                 }
             }
 
+            if (tmdb_id) {
+                queryCondition += ' AND tmdb_id = ?';
+                params.push(tmdb_id);
+            }
+            if (season_number !== '') {
+                queryCondition += ' AND season_number = ?';
+                params.push(parseInt(season_number));
+            }
+            if (episode_number !== '') {
+                queryCondition += ' AND episode_number = ?';
+                params.push(parseInt(episode_number));
+            }
+
             let orderBy = 'ORDER BY priority DESC, updated_at DESC';
             if (sortSize === 'asc') orderBy = 'ORDER BY priority DESC, file_size ASC';
             if (sortSize === 'desc') orderBy = 'ORDER BY priority DESC, file_size DESC';
 
-            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message, priority FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
+            const rows = await db.all(`SELECT id, title, status, file_size, created_at, telegram_message_id, error_message, priority, tmdb_id, media_type, season_number, episode_number FROM sync_queue ${queryCondition} ${orderBy} LIMIT ? OFFSET ?`, ...params, limit, offset);
             const total = await db.get(`SELECT COUNT(*) as count FROM sync_queue`);
             const pending = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status IN ('pending', 'pending_upload', 'downloading', 'uploading')`);
             const completed = await db.get(`SELECT COUNT(*) as count FROM sync_queue WHERE status = 'completed'`);

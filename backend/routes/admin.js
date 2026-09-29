@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { invalidateTmdbKeysCache } from '../services/tmdbKeyService.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
@@ -278,6 +279,31 @@ export default function adminRoutes(db) {
     });
 
 
+
+    // TMDB API Keys Manager
+    router.get('/tmdb-keys', async (req, res) => {
+        try {
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'tmdb_api_keys'");
+            res.json({ keys: row ? row.value : '' });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar TMDB keys.' });
+        }
+    });
+
+    router.post('/tmdb-keys', async (req, res) => {
+        const { keys } = req.body;
+        try {
+            await db.run(
+                `INSERT INTO system_settings (key, value, updated_at) VALUES ('tmdb_api_keys', ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [keys]
+            );
+            invalidateTmdbKeysCache();
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao salvar TMDB keys.' });
+        }
+    });
 
     // Estatísticas de acessos
     router.get('/stats', async (req, res) => {

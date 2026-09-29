@@ -326,6 +326,23 @@ export default function PlayerPage() {
                 if (season && episode) {
                     const s = String(season).padStart(2, '0');
                     const e = String(episode).padStart(2, '0');
+                    
+                    // 1. Tentar por TMDB ID + Temporada + Episódio (Mais exato)
+                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&season_number=${season}&episode_number=${episode}&limit=10`, { headers });
+                    let dataTmdb = await resTmdb.json();
+                    
+                    if (dataTmdb?.items?.length > 0) {
+                        const validItems = dataTmdb.items.filter(i => i.status === 'completed' && (i.telegram_message_id || i.stream_url));
+                        if (validItems.length > 0) {
+                            const matches = getBestMatches(validItems);
+                            if (matches) {
+                                handleMatches(matches);
+                                return;
+                            }
+                        }
+                    }
+
+                    // 2. Fallback: Busca por nome específico S00 E00
                     const specificSearch = `${seriesName} S${s} E${e}`;
 
                     let res = await fetch(`/api/sync/queue?search=${encodeURIComponent(specificSearch)}&limit=20`, { headers });
@@ -359,6 +376,7 @@ export default function PlayerPage() {
                         }
                     }
 
+                    // 3. Fallback: Busca genérica no título da série inteira e filtra client-side
                     let res2 = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=-1`, { headers });
                     let data2 = await res2.json();
                     
@@ -423,6 +441,24 @@ export default function PlayerPage() {
                         }
                     }
                 } else {
+                    // Filmes
+                    // 1. Tentar por TMDB ID + Filme
+                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&limit=10`, { headers });
+                    let dataTmdb = await resTmdb.json();
+                    
+                    if (dataTmdb?.items?.length > 0) {
+                        const validItems = dataTmdb.items.filter(i => i.status === 'completed' && (i.telegram_message_id || i.stream_url));
+                        if (validItems.length > 0) {
+                            const releaseYear = seriesDetail?.release_date ? seriesDetail.release_date.split('-')[0] : null;
+                            const matches = getBestMatches(validItems, releaseYear);
+                            if (matches) {
+                                handleMatches(matches);
+                                return;
+                            }
+                        }
+                    }
+
+                    // 2. Fallback antigo por nome
                     let res = await fetch(`/api/sync/queue?search=${encodeURIComponent(seriesName)}&limit=-1`, { headers });
                     let data = await res.json();
                     

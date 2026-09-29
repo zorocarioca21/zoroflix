@@ -23,6 +23,7 @@ export default function AdminPanel() {
     const [liveSessions, setLiveSessions] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
     const [apiKeys, setApiKeys] = useState([]);
+    const [tmdbKeysInput, setTmdbKeysInput] = useState('');
     const [newKeyName, setNewKeyName] = useState('');
     const [newKeyPermissions, setNewKeyPermissions] = useState('full');
     const [newKeyDomains, setNewKeyDomains] = useState('');
@@ -90,6 +91,7 @@ export default function AdminPanel() {
         if (activeTab === 'settings') {
             fetchConfigs();
             fetchTempStats();
+            fetchTmdbKeys();
         }
         if (activeTab === 'analytics') {
             fetchStats();
@@ -213,6 +215,29 @@ export default function AdminPanel() {
             body: JSON.stringify({ key, enabled: newValue })
         });
         if (resp.ok) setConfigs(prev => ({ ...prev, [key]: newValue }));
+    };
+
+    const fetchTmdbKeys = async () => {
+        try {
+            const resp = await fetch('/api/admin/tmdb-keys');
+            const data = await resp.json();
+            setTmdbKeysInput(data.keys || '');
+        } catch (err) { console.error(err); }
+    };
+
+    const saveTmdbKeys = async () => {
+        try {
+            const resp = await fetch('/api/admin/tmdb-keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keys: tmdbKeysInput })
+            });
+            if (resp.ok) {
+                alert('Chaves do TMDB salvas com sucesso!');
+            } else {
+                alert('Erro ao salvar as chaves.');
+            }
+        } catch (err) { console.error(err); }
     };
 
     // Temp Cache
@@ -629,6 +654,28 @@ export default function AdminPanel() {
                             <div className="settings-row-card warning">
                                 <div className="setting-info"><h3>Bloquear F12</h3><p>Impede que inspecionem a página.</p></div>
                                 <button className={`btn-toggle-ads ${configs.anti_devtools ? 'active' : ''}`} onClick={() => updateConfig('anti_devtools')}>{configs.anti_devtools ? 'ON' : 'OFF'}</button>
+                            </div>
+                        </div>
+
+                        <h2 style={{ marginTop: '3rem' }}>Serviços Externos (TMDB)</h2>
+                        <div className="settings-grid-admin">
+                            <div className="settings-row-card" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '1rem', gridColumn: '1 / -1'}}>
+                                <div className="setting-info">
+                                    <h3>Chaves de API do TMDB (Rodízio)</h3>
+                                    <p>Insira múltiplas chaves separadas por vírgula para evitar rate limit.</p>
+                                </div>
+                                <div style={{display: 'flex', gap: '10px', width: '100%'}}>
+                                    <input 
+                                        type="text" 
+                                        value={tmdbKeysInput} 
+                                        onChange={(e) => setTmdbKeysInput(e.target.value)} 
+                                        placeholder="ex: chave1, chave2, chave3"
+                                        style={{flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid #333', background: '#111', color: 'white'}}
+                                    />
+                                    <button className="btn-main-play" onClick={saveTmdbKeys}>
+                                        <CheckCircle size={18} /> Salvar Chaves
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

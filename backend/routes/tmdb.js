@@ -1,8 +1,8 @@
 import express from 'express';
 import { getOrFetchMediaDetails, getOrFetchSeasonDetails, getOrFetchEpisodeGroupDetails } from '../services/tmdbCacheService.js';
+import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
 const router = express.Router();
-const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY || 'f9cbdd4fabd4ac77cd2ca54d80a476a5';
 
 export default function tmdbRoutes(db) {
 
@@ -10,7 +10,8 @@ export default function tmdbRoutes(db) {
     router.get('/details/:type/:id', async (req, res) => {
         const { type, id } = req.params;
         try {
-            const data = await getOrFetchMediaDetails(db, id, type, TMDB_API_KEY);
+            const apiKey = await getNextTmdbKey(db);
+            const data = await getOrFetchMediaDetails(db, id, type, apiKey);
             if (!data) return res.status(404).json({ error: 'Conteúdo não encontrado no TMDB' });
             res.json(data);
         } catch (err) {
@@ -23,7 +24,8 @@ export default function tmdbRoutes(db) {
     router.get('/season/:id/:season', async (req, res) => {
         const { id, season } = req.params;
         try {
-            const data = await getOrFetchSeasonDetails(db, id, season, TMDB_API_KEY);
+            const apiKey = await getNextTmdbKey(db);
+            const data = await getOrFetchSeasonDetails(db, id, season, apiKey);
             if (!data) return res.status(404).json({ error: 'Temporada não encontrada no TMDB' });
             res.json(data);
         } catch (err) {
@@ -37,7 +39,8 @@ export default function tmdbRoutes(db) {
         const { id } = req.params;
         const force = req.query.force === 'true';
         try {
-            const data = await getOrFetchEpisodeGroupDetails(db, id, TMDB_API_KEY, force);
+            const apiKey = await getNextTmdbKey(db);
+            const data = await getOrFetchEpisodeGroupDetails(db, id, apiKey, force);
             if (!data) return res.status(404).json({ error: 'Nenhum grupo de episódios encontrado' });
             res.json(data);
         } catch (err) {

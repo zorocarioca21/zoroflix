@@ -1,6 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch'; // Vite/Node environment
 import { checkTitleMatch, getBestMatches } from '../../src/utils/titleMatch.js';
+import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
 const router = express.Router();
 
@@ -70,7 +71,7 @@ export default function botRoutes(db) {
             // Cleanup any trailing hyphens or colons
             q = q.replace(/[-:]$/, '').trim();
 
-            const API_KEY = process.env.VITE_TMDB_API_KEY || process.env.TMDB_API_KEY || 'f9cbdd4fabd4ac77cd2ca54d80a476a5';
+            const API_KEY = await getNextTmdbKey(db);
             const BASE_URL = 'https://api.themoviedb.org/3';
 
             // 1. Fetch TMDB API to get exact name, year, and ID
