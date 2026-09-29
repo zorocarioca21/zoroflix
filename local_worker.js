@@ -405,7 +405,23 @@ async function downloadLoop() {
                     try { fs.unlinkSync(tmpPath); } catch(e){}
                 }
                 
-                await downloadFile(task.url, tmpPath, task.id);
+                let downloaded = false;
+                if (task.old_telegram_message_id) {
+                    const tgStreamUrl = `${VPS_HOST}/api/stream/${task.old_telegram_message_id}`;
+                    console.log(`\n[Re-upload] 🚀 Baixando arquivo do próprio Telegram da VPS (Msg ID: ${task.old_telegram_message_id})...`);
+                    try {
+                        await downloadFile(tgStreamUrl, tmpPath, task.id);
+                        downloaded = true;
+                        console.log(`\n✅ Sucesso ao baixar vídeo diretamente do Telegram!`);
+                    } catch (tgErr) {
+                        console.warn(`\n⚠️ Falha ao baixar do Telegram (${tgErr.message}). Caindo de volta para o link da IPTV...`);
+                        try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch(e){}
+                    }
+                }
+
+                if (!downloaded) {
+                    await downloadFile(task.url, tmpPath, task.id);
+                }
                 
                 // Renomeia para .mp4 para avisar o uploadLoop que está pronto
                 if (fs.existsSync(tmpPath)) {

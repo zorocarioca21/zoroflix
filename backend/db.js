@@ -308,6 +308,13 @@ export async function initDB() {
         // Ignora se a coluna já existir
     }
 
+    try {
+        await db.exec(`ALTER TABLE sync_queue ADD COLUMN old_telegram_message_id INTEGER DEFAULT NULL`);
+        console.log("Migration: Coluna 'old_telegram_message_id' adicionada à tabela sync_queue.");
+    } catch (e) {
+        // Ignora se a coluna já existir
+    }
+
     // Tabela de vídeos quebrados reportados automaticamente pelo player
     await db.exec(`
         CREATE TABLE IF NOT EXISTS broken_videos (

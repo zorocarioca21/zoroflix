@@ -199,9 +199,9 @@ export default function auditRoutes(db) {
             }
 
             const placeholders = ids.map(() => '?').join(',');
-            // Joga de volta pra pending com prioridade alta e zera o message id
+            // Joga de volta pra pending com prioridade alta, preserva old_telegram_message_id e zera o telegram_message_id atual
             await db.run(
-                `UPDATE sync_queue SET status = 'pending', priority = 999, telegram_message_id = NULL, error_message = 'Re-upload solicitado pela Auditoria' WHERE id IN (${placeholders})`,
+                `UPDATE sync_queue SET status = 'pending', priority = 999, old_telegram_message_id = COALESCE(telegram_message_id, old_telegram_message_id), telegram_message_id = NULL, error_message = 'Re-upload solicitado pela Auditoria' WHERE id IN (${placeholders})`,
                 ids
             );
 
@@ -271,9 +271,9 @@ export default function auditRoutes(db) {
             const syncPlaceholders = syncQueueIds.map(() => '?').join(',');
 
             if (syncQueueIds.length > 0) {
-                // 2. Joga de volta pra pending com prioridade alta na tabela principal
+                // 2. Joga de volta pra pending com prioridade alta na tabela principal, guardando old_telegram_message_id
                 await db.run(
-                    `UPDATE sync_queue SET status = 'pending', priority = 999, telegram_message_id = NULL, error_message = 'Re-upload solicitado (Report do Player)' WHERE id IN (${syncPlaceholders})`,
+                    `UPDATE sync_queue SET status = 'pending', priority = 999, old_telegram_message_id = COALESCE(telegram_message_id, old_telegram_message_id), telegram_message_id = NULL, error_message = 'Re-upload solicitado (Report do Player)' WHERE id IN (${syncPlaceholders})`,
                     syncQueueIds
                 );
             }

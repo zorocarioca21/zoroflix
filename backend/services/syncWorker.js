@@ -4,6 +4,7 @@ import os from 'os';
 import { spawn } from 'child_process';
 import readline from 'readline';
 import https from 'https';
+import { getTelegramClient } from '../telegram.js';
 
 // ==========================================
 // FUNÇÕES DE DETECÇÃO DE QUALIDADE
@@ -288,6 +289,39 @@ async function uploadLoop() {
 // FUNÇÕES AUXILIARES DE EXECUÇÃO
 // ==========================================
 
+async function downloadFromTelegram(messageId, outputPath) {
+    const tgClient = await getTelegramClient();
+    if (!tgClient) throw new Error("Cliente do Telegram indisponível");
+
+    const channelId = process.env.TELEGRAM_CHANNEL_ID;
+    let entityId = String(channelId);
+    if (!entityId.startsWith('-100')) {
+        entityId = '-100' + entityId.replace('-', '');
+    }
+
+    let resolvedEntity;
+    try {
+        resolvedEntity = await tgClient.getInputEntity(entityId);
+    } catch (e) {
+        resolvedEntity = entityId;
+    }
+
+    const messages = await tgClient.getMessages(resolvedEntity, { ids: parseInt(messageId) });
+    if (!messages || messages.length === 0 || !messages[0] || messages[0].className === "MessageEmpty") {
+        throw new Error(`Mensagem ${messageId} não encontrada no Telegram`);
+    }
+
+    const msg = messages[0];
+    if (!msg.media) {
+        throw new Error(`Mensagem ${messageId} não possui mídia no Telegram`);
+    }
+
+    console.log(`[Telegram Download] 🚀 Baixando mensagem ${messageId} do Telegram...`);
+    await tgClient.downloadMedia(msg, { outputFile: outputPath });
+    console.log(`[Telegram Download] ✅ Baixado com sucesso do Telegram para ${outputPath}`);
+    return true;
+}
+
 async function processDownload(movie) {
     const safeTitle = movie.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const safeId = String(movie.id).replace(/[^a-z0-9]/gi, '_');
@@ -301,7 +335,20 @@ async function processDownload(movie) {
         downloadTask = { id: movie.id, title: movie.title, progress: 0 };
         broadcastState();
         
-        await downloadFile(movie.url, tmpPath, movie.id);
+        let downloadedFromTg = false;
+        if (movie.old_telegram_message_id) {
+            try {
+                console.log(`[Re-upload] 🚀 Tentando rebaixar do próprio Telegram da VPS (Message ID: ${movie.old_telegram_message_id})...`);
+                await downloadFromTelegram(movie.old_telegram_message_id, tmpPath);
+                downloadedFromTg = true;
+            } catch (tgDlErr) {
+                console.warn(`[Re-upload Warning] Falha ao rebaixar do Telegram (ID ${movie.old_telegram_message_id}): ${tgDlErr.message}. Caindo de volta para o link da IPTV.`);
+            }
+        }
+
+        if (!downloadedFromTg) {
+            await downloadFile(movie.url, tmpPath, movie.id);
+        }
         
         if (isPaused) return false; 
 
@@ -425,9 +472,24 @@ async function processUpload(movie, workerType) {
 
         // Concluído
         if (messageId) {
-            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, telegram_message_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, telegram_message_id = ?, old_telegram_message_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
+            
+            // Apaga a mensagem antiga do Telegram se existia
+            if (movie.old_telegram_message_id) {
+                try {
+                    console.log(`[Re-upload Cleanup] 🗑️ Deletando mensagem antiga falha ID ${movie.old_telegram_message_id} do Telegram...`);
+                    const tgClient = await getTelegramClient();
+                    if (tgClient) {
+                        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+                        await tgClient.deleteMessages(channelId, [parseInt(movie.old_telegram_message_id)], { revoke: true });
+                        console.log(`[Re-upload Cleanup] ✅ Mensagem antiga ID ${movie.old_telegram_message_id} apagada com sucesso!`);
+                    }
+                } catch (delErr) {
+                    console.error(`[Re-upload Cleanup] Erro ao deletar mensagem antiga ID ${movie.old_telegram_message_id}:`, delErr.message);
+                }
+            }
         } else {
-            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
+            await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, old_telegram_message_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [movie.id]);
         }
         
     } catch (err) {
