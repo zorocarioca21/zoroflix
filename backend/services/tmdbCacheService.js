@@ -188,26 +188,33 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
  * Busca grupos de episódios (Episode Groups / Seasons) de um anime ou série no TMDB.
  * Salva o resultado no banco SQLite local para não precisar consultar a API novamente.
  */
-export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey) {
+export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRefresh = false) {
     if (!tmdbId || !apiKey) return null;
 
     const idStr = String(tmdbId);
 
-    // 1. Verificar no banco SQLite local
-    try {
-        const cached = await db.get(
-            'SELECT * FROM tmdb_episode_groups_cache WHERE tmdb_id = ?',
-            [idStr]
-        );
-        if (cached) {
-            if (cached.group_id === 'NONE' || !cached.raw_data || cached.raw_data === 'null') {
-                return null;
+    // 1. Verificar no banco SQLite local (se não for forceRefresh)
+    if (!forceRefresh) {
+        try {
+            const cached = await db.get(
+                'SELECT * FROM tmdb_episode_groups_cache WHERE tmdb_id = ?',
+                [idStr]
+            );
+            if (cached) {
+                if (cached.group_id && cached.group_id !== 'NONE' && cached.raw_data && cached.raw_data !== 'null') {
+                    return JSON.parse(cached.raw_data);
+                }
+                // Se estiver marcado como NONE, verifica se a gravação foi recente (menos de 5 min)
+                const updatedAt = new Date(cached.updated_at || 0).getTime();
+                if (Date.now() - updatedAt < 5 * 60 * 1000) {
+                    return null;
+                }
             }
-            return JSON.parse(cached.raw_data);
+        } catch (err) {
+            console.error('[TMDB CACHE] Erro ao consultar episode_groups no BD:', err.message);
         }
-    } catch (err) {
-        console.error('[TMDB CACHE] Erro ao consultar episode_groups no BD:', err.message);
     }
+
 
     // 2. Não está em cache -> Buscar lista de grupos no TMDB
     try {

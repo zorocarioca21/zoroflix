@@ -35,8 +35,9 @@ export default function tmdbRoutes(db) {
     // GET /api/tmdb/episode-group/:id
     router.get('/episode-group/:id', async (req, res) => {
         const { id } = req.params;
+        const force = req.query.force === 'true';
         try {
-            const data = await getOrFetchEpisodeGroupDetails(db, id, TMDB_API_KEY);
+            const data = await getOrFetchEpisodeGroupDetails(db, id, TMDB_API_KEY, force);
             if (!data) return res.status(404).json({ error: 'Nenhum grupo de episódios encontrado' });
             res.json(data);
         } catch (err) {
@@ -44,6 +45,7 @@ export default function tmdbRoutes(db) {
             res.status(500).json({ error: 'Erro ao buscar grupo de episódios' });
         }
     });
+
 
     return router;
 }
