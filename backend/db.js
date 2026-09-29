@@ -315,6 +315,21 @@ export async function initDB() {
         // Ignora se a coluna já existir
     }
 
+    // Tabela de Configurações Gerais do Sistema (M3U URL, etc)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    
+    // Insere URL padrão se ainda não existir
+    await db.run(`
+        INSERT OR IGNORE INTO system_settings (key, value) 
+        VALUES ('m3u_url', 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts')
+    `);
+
     // Tabela de vídeos quebrados reportados automaticamente pelo player
     await db.exec(`
         CREATE TABLE IF NOT EXISTS broken_videos (

@@ -384,12 +384,43 @@ export default function syncRoutes(db, io) {
         }
     });
 
-    // Nova Rota para puxar M3U remotamente
+    // Rota para buscar a URL da IPTV salva
+    router.get('/m3u-url', async (req, res) => {
+        try {
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'm3u_url'");
+            const m3uUrl = row ? row.value : 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
+            res.json({ m3uUrl });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Rota para salvar a nova URL da IPTV
+    router.post('/m3u-url', async (req, res) => {
+        try {
+            const { m3uUrl } = req.body;
+            if (!m3uUrl || typeof m3uUrl !== 'string' || !m3uUrl.trim()) {
+                return res.status(400).json({ error: 'URL do M3U inválida.' });
+            }
+            const cleanUrl = m3uUrl.trim();
+            await db.run(
+                `INSERT INTO system_settings (key, value, updated_at) VALUES ('m3u_url', ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [cleanUrl]
+            );
+            res.json({ success: true, m3uUrl: cleanUrl, message: 'URL da IPTV salva com sucesso!' });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Rota para puxar M3U remotamente
     router.post('/fetch-remote-m3u', async (req, res) => {
-        const { m3uUrl } = req.body;
+        let { m3uUrl } = req.body || {};
         
         if (!m3uUrl) {
-            return res.status(400).json({ error: 'URL do M3U não fornecida.' });
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'm3u_url'");
+            m3uUrl = row ? row.value : 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
         }
 
         let movies = [];
@@ -1048,7 +1079,8 @@ export default function syncRoutes(db, io) {
 
     // Rota para testar saúde e resposta da IPTV
     router.get('/iptv-status', async (req, res) => {
-        const m3uUrl = process.env.M3U_URL || 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
+        const row = await db.get("SELECT value FROM system_settings WHERE key = 'm3u_url'");
+        const m3uUrl = row ? row.value : (process.env.M3U_URL || 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts');
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 10000);
         const startTime = Date.now();

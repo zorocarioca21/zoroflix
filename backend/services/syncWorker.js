@@ -898,9 +898,14 @@ function startAutoM3uSync() {
     }, 60000);
 
     // 3600000 = 1 hora
-    setInterval(() => {
+    setInterval(async () => {
         if (isPaused) return;
-        const m3uUrl = process.env.M3U_URL || 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
+        let m3uUrl = 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts';
+        try {
+            const row = await dbInstance.get("SELECT value FROM system_settings WHERE key = 'm3u_url'");
+            if (row && row.value) m3uUrl = row.value;
+        } catch (e) {}
+
         console.log("[AutoSync] Iniciando varredura remota M3U automática (1h)...");
         let movies = [];
         let currentTitle = null;

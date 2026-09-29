@@ -396,13 +396,53 @@ export default function AdminSync() {
         }
     };
 
+    const [m3uUrlInput, setM3uUrlInput] = useState('http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts');
+    const [isSavingM3u, setIsSavingM3u] = useState(false);
+
+    const fetchM3uUrl = async () => {
+        try {
+            const res = await fetch('/api/sync/m3u-url');
+            const data = await res.json();
+            if (data.m3uUrl) setM3uUrlInput(data.m3uUrl);
+        } catch (e) {}
+    };
+
+    useEffect(() => {
+        fetchM3uUrl();
+    }, []);
+
+    const saveM3uUrl = async () => {
+        if (!m3uUrlInput || !m3uUrlInput.trim()) {
+            dialog.alert('Informe uma URL do M3U válida.', { variant: 'error', title: 'URL Inválida' });
+            return;
+        }
+        setIsSavingM3u(true);
+        try {
+            const res = await fetch('/api/sync/m3u-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ m3uUrl: m3uUrlInput.trim() })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                dialog.alert('URL da IPTV atualizada e salva com sucesso!', { variant: 'success', title: 'Configuração Salva' });
+            } else {
+                dialog.alert(data.error || 'Erro ao salvar URL', { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão ao salvar URL', { variant: 'error', title: 'Erro de Conexão' });
+        } finally {
+            setIsSavingM3u(false);
+        }
+    };
+
     const startRemoteScan = async () => {
         try {
             dialog.alert('Baixando e processando lista remotamente... isso pode demorar alguns segundos.', { variant: 'info', title: 'Processando...' });
             const res = await fetch('/api/sync/fetch-remote-m3u', { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ m3uUrl: 'http://offthesun.net/get.php?username=D2YMmy&password=ZKAhFW&type=m3u_plus&output=ts' })
+                body: JSON.stringify({ m3uUrl: m3uUrlInput })
             });
             const data = await res.json();
             if (res.ok) {
@@ -958,12 +998,50 @@ export default function AdminSync() {
                                 <div className="sync-stat-value">{queue.added_today || 0}</div>
                             </div>
                         </div>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
-                        <button onClick={startScan} className="sync-btn-secondary" style={{ flex: '1 1 calc(50% - 0.5rem)' }}>
+
+                        {/* === CAMPO EDITÁVEL DA URL DA IPTV === */}
+                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)', marginTop: '1.5rem' }}>
+                            <div style={{ fontSize: '0.9rem', color: '#00ff88', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Radio size={18} /> URL do Servidor IPTV (M3U Link)
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                                <input
+                                    type="text"
+                                    value={m3uUrlInput}
+                                    onChange={(e) => setM3uUrlInput(e.target.value)}
+                                    placeholder="http://servidor-iptv.com/get.php?username=...&password=..."
+                                    style={{
+                                        flex: '1 1 300px',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        borderRadius: '8px',
+                                        padding: '0.75rem 1rem',
+                                        color: '#fff',
+                                        fontSize: '0.9rem',
+                                        outline: 'none'
+                                    }}
+                                />
+                                <button 
+                                    onClick={saveM3uUrl} 
+                                    disabled={isSavingM3u} 
+                                    className="sync-btn-secondary sync-btn-info" 
+                                    style={{ padding: '0.75rem 1.2rem' }}
+                                >
+                                    {isSavingM3u ? 'Salvando...' : '💾 Salvar URL da IPTV'}
+                                </button>
+                                <button 
+                                    onClick={startRemoteScan} 
+                                    className="sync-btn-primary" 
+                                    style={{ padding: '0.75rem 1.2rem' }}
+                                >
+                                    <RefreshCcw size={18} /> Varrer IPTV Agora
+                                </button>
+                            </div>
+                        </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
+                        <button onClick={startScan} className="sync-btn-secondary">
                             <Search size={18} /> Escanear iptv_list.m3u (Local)
-                        </button>
-                        <button onClick={startRemoteScan} className="sync-btn-primary" style={{ flex: '1 1 calc(50% - 0.5rem)' }}>
-                            <RefreshCcw size={18} /> Atualizar Catálogo (Auto)
                         </button>
                         <button onClick={retryErrors} className="sync-btn-secondary">
                             <RefreshCcw size={16} /> Tentar Erros
