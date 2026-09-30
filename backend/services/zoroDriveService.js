@@ -27,7 +27,8 @@ export async function uploadBase64ToDrive(base64Data, filename, folderName = nul
         const response = await axios.post(DRIVE_URL, payload, {
             headers: { 'Content-Type': 'application/json' },
             httpsAgent: agent,
-            timeout: 15000
+            maxBodyLength: Infinity,
+            timeout: 60000 // 60 segundos (para suportar imagens pesadas)
         });
 
         const data = response.data;
