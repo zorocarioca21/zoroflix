@@ -9,11 +9,29 @@ import AdminBotManager from './AdminBotManager';
 import AdminMangas from './AdminMangas';
 
 export default function AdminPanel() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const token = localStorage.getItem('cinegeek_token');
     const isAuthorized = user && user.role === 'admin';
 
     const [activeTab, setActiveTab] = useState('reports');
+
+    if (authLoading) {
+        return (
+            <div className="admin-access-denied" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ color: '#00ff88', fontSize: '1.2rem' }}>Carregando Painel Administrativo...</p>
+            </div>
+        );
+    }
+
+    if (!isAuthorized) {
+        return (
+            <div className="admin-access-denied">
+                <Shield size={64} color="#ff4444" />
+                <h1>Acesso Negado</h1>
+                <p>Este painel é exclusivo para administradores da Zoroflix.</p>
+            </div>
+        );
+    }
     const [loading, setLoading] = useState(false);
     const [configs, setConfigs] = useState({});
     const [stats, setStats] = useState({ monthly: 0, weekly: 0, daily: 0, monthlyUnique: 0, weeklyUnique: 0 });
@@ -398,15 +416,7 @@ export default function AdminPanel() {
         );
     };
 
-    if (!isAuthorized) {
-        return (
-            <div className="admin-access-denied">
-                <Shield size={64} color="#ff4444" />
-                <h1>Acesso Negado</h1>
-                <p>Este painel é exclusivo para administradores da Zoroflix.</p>
-            </div>
-        );
-    }
+
 
     return (
         <div className="admin-page-container">
