@@ -26,6 +26,39 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
             const parsedData = JSON.parse(cached.raw_data);
             if (cached.poster_url) parsedData.poster_path = cached.poster_url;
             if (cached.backdrop_url) parsedData.backdrop_path = cached.backdrop_url;
+
+            // Se o cache ainda possui URLs do TMDB (não espelhadas no Zoro Drive), agenda espelhamento em segundo plano
+            const needsPosterSync = parsedData.poster_path && !parsedData.poster_path.includes('zorobot.shop');
+            const needsBackdropSync = parsedData.backdrop_path && !parsedData.backdrop_path.includes('zorobot.shop');
+
+            if (needsPosterSync || needsBackdropSync) {
+                (async () => {
+                    try {
+                        let newPoster = cached.poster_url;
+                        let newBackdrop = cached.backdrop_url;
+
+                        if (needsPosterSync) {
+                            const rawPosterUrl = parsedData.poster_path.startsWith('http') ? parsedData.poster_path : `https://image.tmdb.org/t/p/w500${parsedData.poster_path}`;
+                            const drivePoster = await uploadRemoteUrlToDrive(rawPosterUrl, 'TMDB_Posters', `poster_${type}_${idStr}.jpg`);
+                            if (drivePoster) { newPoster = drivePoster; parsedData.poster_path = drivePoster; }
+                        }
+
+                        if (needsBackdropSync) {
+                            const rawBackdropUrl = parsedData.backdrop_path.startsWith('http') ? parsedData.backdrop_path : `https://image.tmdb.org/t/p/original${parsedData.backdrop_path}`;
+                            const driveBackdrop = await uploadRemoteUrlToDrive(rawBackdropUrl, 'TMDB_Backdrops', `backdrop_${type}_${idStr}.jpg`);
+                            if (driveBackdrop) { newBackdrop = driveBackdrop; parsedData.backdrop_path = driveBackdrop; }
+                        }
+
+                        await db.run(
+                            'UPDATE tmdb_media_cache SET poster_url = ?, backdrop_url = ?, raw_data = ?, updated_at = CURRENT_TIMESTAMP WHERE tmdb_id = ? AND media_type = ?',
+                            [newPoster, newBackdrop, JSON.stringify(parsedData), idStr, type]
+                        );
+                    } catch (e) {
+                        console.error('[TMDB CACHE BG] Erro ao espelhar em background:', e.message);
+                    }
+                })();
+            }
+
             return parsedData;
         }
     } catch (err) {
