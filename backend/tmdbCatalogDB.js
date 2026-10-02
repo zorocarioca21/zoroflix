@@ -82,6 +82,15 @@ export async function initTmdbCatalogDB() {
         )
     `);
 
+    // Tabela de Configurações Globais do Sistema em tmdbCatalogDB (TMDB Keys, ZoroBot Video Key, etc)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     return db;
 }
 
