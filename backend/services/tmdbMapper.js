@@ -1,4 +1,5 @@
 import { getNextTmdbKey } from './tmdbKeyService.js';
+import { getOrFetchMediaDetails } from './tmdbCacheService.js';
 import axios from 'axios';
 import https from 'https';
 
@@ -124,6 +125,11 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     [tmdb_id, media_type, season_number, episode_number, item.id]
                 );
                 updatedCount++;
+
+                // Popula imediatamente o catálogo e o Zoro Drive para este item mapeado
+                try {
+                    getOrFetchMediaDetails(db, tmdb_id, media_type, apiKey).catch(() => {});
+                } catch (e) {}
             } else if (!hasNetworkError) {
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
