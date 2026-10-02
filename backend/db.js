@@ -319,6 +319,15 @@ export async function initDB() {
         // Ignora se a coluna já existir
     }
 
+    // Tabela de Configurações Globais do Sistema (TMDB Keys, ZoroBot Video Key, etc)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Auto-migration: TMDB columns
     try {
         await db.exec(`ALTER TABLE sync_queue ADD COLUMN tmdb_id TEXT DEFAULT NULL`);

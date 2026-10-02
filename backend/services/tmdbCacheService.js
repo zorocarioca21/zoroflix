@@ -102,26 +102,32 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
             }
         }
 
-        // Espelhar Teaser/Trailer para o Zoro Drive via ZoroBot Video API Key se configurado
-        try {
-            const zoroVideoKeyRow = await db.get("SELECT value FROM system_settings WHERE key = 'zorobot_video_api_key'");
-            const zoroVideoKey = zoroVideoKeyRow?.value;
-            if (zoroVideoKey) {
-                const searchName = `${tmdbData.title || tmdbData.name} trailer oficial`;
-                const videoApiUrl = `https://api.zorobot.shop/play_video?nome=${encodeURIComponent(searchName)}&apiKey=${zoroVideoKey}`;
-                const videoRes = await axios.get(videoApiUrl, { httpsAgent: agent, timeout: 15000 });
-                
-                let rawVideoUrl = videoRes.data?.url || videoRes.data?.download_url || videoRes.data?.video_url;
-                if (rawVideoUrl) {
-                    const driveVideoUrl = await uploadRemoteUrlToDrive(rawVideoUrl, 'TMDB_Teasers', `teaser_${type}_${idStr}.mp4`);
-                    if (driveVideoUrl) {
-                        tmdbData.teaser_video_url = driveVideoUrl;
+        // Espelhar Teaser/Trailer em SEGUNDO PLANO (Não bloqueia o carregamento da página)
+        (async () => {
+            try {
+                const zoroVideoKeyRow = await db.get("SELECT value FROM system_settings WHERE key = 'zorobot_video_api_key'");
+                const zoroVideoKey = zoroVideoKeyRow?.value;
+                if (zoroVideoKey) {
+                    const searchName = `${tmdbData.title || tmdbData.name} trailer oficial`;
+                    const videoApiUrl = `https://api.zorobot.shop/play_video?nome=${encodeURIComponent(searchName)}&apiKey=${zoroVideoKey}`;
+                    const videoRes = await axios.get(videoApiUrl, { httpsAgent: agent, timeout: 15000 });
+                    
+                    let rawVideoUrl = videoRes.data?.url || videoRes.data?.download_url || videoRes.data?.video_url;
+                    if (rawVideoUrl) {
+                        const driveVideoUrl = await uploadRemoteUrlToDrive(rawVideoUrl, 'TMDB_Teasers', `teaser_${type}_${idStr}.mp4`);
+                        if (driveVideoUrl) {
+                            tmdbData.teaser_video_url = driveVideoUrl;
+                            await db.run(
+                                'UPDATE tmdb_media_cache SET raw_data = ? WHERE tmdb_id = ? AND media_type = ?',
+                                [JSON.stringify(tmdbData), idStr, type]
+                            );
+                        }
                     }
                 }
+            } catch (vErr) {
+                console.error(`[TMDB CACHE VIDEO] Erro ao baixar teaser via ZoroBot API:`, vErr.message);
             }
-        } catch (vErr) {
-            console.error(`[TMDB CACHE VIDEO] Erro ao baixar teaser via ZoroBot API:`, vErr.message);
-        }
+        })();
 
         const title = tmdbData.title || tmdbData.name || '';
         const origTitle = tmdbData.original_title || tmdbData.original_name || '';
