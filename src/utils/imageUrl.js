@@ -6,7 +6,7 @@
  */
 export function resolveImageUrl(path, size = 'w500', fallback = '') {
     if (!path) return fallback;
-    // Como a API do Zoro Drive agora possui CORS habilitado, carregamos a URL direta sem passar pelo proxy
+    if (typeof path === 'string' && path.includes('zorobot.shop')) return `/api/tmdb/img-proxy?url=${encodeURIComponent(path)}`;
     if (typeof path === 'string' && path.startsWith('http')) return path;
     return `https://image.tmdb.org/t/p/${size}${path}`;
 }
