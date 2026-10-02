@@ -311,11 +311,36 @@ export default function AdminSync() {
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
     
+    const [mappingStats, setMappingStats] = useState({
+        totalCached: 0,
+        totalMovies: 0,
+        totalSeries: 0,
+        totalDrivePosters: 0,
+        totalDriveBackdrops: 0,
+        totalEpisodes: 0,
+        totalDriveStills: 0
+    });
     const dialog = useDialog();
     
     const filterRef = useRef(filter);
     const searchRef = useRef(searchQuery);
     const sortRef = useRef(sortSize);
+
+    const fetchMappingStats = async () => {
+        try {
+            const res = await fetch('/api/admin/mapping-stats');
+            if (res.ok) {
+                const data = await res.json();
+                setMappingStats(data);
+            }
+        } catch (e) {}
+    };
+
+    useEffect(() => {
+        fetchMappingStats();
+        const interval = setInterval(fetchMappingStats, 10000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         filterRef.current = filter;
@@ -996,6 +1021,31 @@ export default function AdminSync() {
                             <div className="sync-stat-item border-new">
                                 <div className="sync-stat-label" style={{color: '#00D1FF'}}><Sparkles size={16} /> Novos Hoje</div>
                                 <div className="sync-stat-value">{queue.added_today || 0}</div>
+                            </div>
+                        </div>
+
+                        {/* === ESTATÍSTICAS DE MAPEAMENTO E ZORO DRIVE === */}
+                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)', marginTop: '1.5rem' }}>
+                            <div style={{ fontSize: '0.9rem', color: '#00ccff', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Database size={18} /> Catálogo TMDB & Zoro Drive Mapeados
+                            </div>
+                            <div className="sync-stat-grid">
+                                <div className="sync-stat-item border-db">
+                                    <div className="sync-stat-label" style={{color: '#00ccff'}}><Film size={15} /> Filmes & Séries</div>
+                                    <div className="sync-stat-value">{mappingStats.totalCached}</div>
+                                </div>
+                                <div className="sync-stat-item border-completed">
+                                    <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={15} /> Posters no Drive</div>
+                                    <div className="sync-stat-value">{mappingStats.totalDrivePosters}</div>
+                                </div>
+                                <div className="sync-stat-item border-today">
+                                    <div className="sync-stat-label" style={{color: '#ff00ff'}}><Sparkles size={15} /> Backdrops no Drive</div>
+                                    <div className="sync-stat-value">{mappingStats.totalDriveBackdrops}</div>
+                                </div>
+                                <div className="sync-stat-item border-prioritized">
+                                    <div className="sync-stat-label" style={{color: '#ffff00'}}><ListFilter size={15} /> Episódios com Stills</div>
+                                    <div className="sync-stat-value">{mappingStats.totalDriveStills} / {mappingStats.totalEpisodes}</div>
+                                </div>
                             </div>
                         </div>
 

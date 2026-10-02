@@ -8,7 +8,33 @@ import { invalidateTmdbKeysCache } from '../services/tmdbKeyService.js';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
-export default function adminRoutes(db) {
+export default function adminRoutes(db, tmdbDb) {
+    // Estatísticas de Mapeamento TMDB e Zoro Drive
+    router.get('/mapping-stats', async (req, res) => {
+        try {
+            const targetDb = tmdbDb || db;
+            const totalCached = await targetDb.get('SELECT COUNT(*) as cnt FROM tmdb_media_cache');
+            const totalMovies = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE media_type = 'movie'");
+            const totalSeries = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE media_type = 'tv'");
+            const totalDrivePosters = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE poster_url LIKE '%zorobot.shop%'");
+            const totalDriveBackdrops = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE backdrop_url LIKE '%zorobot.shop%'");
+            const totalEpisodes = await targetDb.get('SELECT COUNT(*) as cnt FROM tmdb_episodes_cache');
+            const totalDriveStills = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_episodes_cache WHERE still_url LIKE '%zorobot.shop%'");
+            
+            res.json({
+                totalCached: totalCached?.cnt || 0,
+                totalMovies: totalMovies?.cnt || 0,
+                totalSeries: totalSeries?.cnt || 0,
+                totalDrivePosters: totalDrivePosters?.cnt || 0,
+                totalDriveBackdrops: totalDriveBackdrops?.cnt || 0,
+                totalEpisodes: totalEpisodes?.cnt || 0,
+                totalDriveStills: totalDriveStills?.cnt || 0
+            });
+        } catch (err) {
+            console.error('[ADMIN STATS] Erro ao obter estatísticas de mapeamento:', err.message);
+            res.status(500).json({ error: 'Erro ao obter estatísticas de mapeamento' });
+        }
+    });
     // Endpoint para obter o tamanho da pasta temp
     router.get('/temp-stats', async (req, res) => {
         try {

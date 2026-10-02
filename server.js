@@ -59,7 +59,7 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
     app.use('/api/auth', authRoutes(db));
     app.use('/api/comments', commentRoutes(db));
     app.use('/api/profile', profileRoutes(db));
-    app.use('/api/admin', adminRoutes(db));
+    app.use('/api/admin', adminRoutes(db, tmdbDb));
     app.use('/api/favorites', favoritesRoutes(db));
     app.use('/api/sports', sportsRoutes());
     app.use('/api/mobile', mobileRoutes(db));
