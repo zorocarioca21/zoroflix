@@ -6,6 +6,7 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 
 export default function HoverVideoCard({ id, type, poster, title, onClick, badges }) {
   const [videoKey, setVideoKey] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [certification, setCertification] = useState('');
   const [mediaLabel, setMediaLabel] = useState(type === 'movie' ? 'FILME' : 'SÉRIE');
@@ -13,7 +14,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
   const cardRef = useRef(null);
   const timeoutRef = useRef(null);
 
-  // Busca classificação etária no carregamento inicial
+  // Busca classificação etária e vídeo em cache do Zoro Drive no carregamento inicial
   useEffect(() => {
     const append = type === 'movie' ? 'release_dates' : 'content_ratings';
     fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&append_to_response=${append}`)
@@ -34,6 +35,16 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
         setCertification(cert);
       })
       .catch(() => {});
+
+    // Tentar obter vídeo pré-salvo do Zoro Drive no backend
+    fetch(`/api/tmdb/details/${type}/${id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(details => {
+        if (details?.teaser_video_url) {
+          setVideoUrl(details.teaser_video_url);
+        }
+      })
+      .catch(() => {});
   }, [id, type]);
 
   const handleMouseEnter = () => {
@@ -49,15 +60,17 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
       }
     }
     setIsHovered(true);
-    timeoutRef.current = setTimeout(() => {
-      fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=pt-BR`)
-        .then(res => res.json())
-        .then(data => {
-          const video = data.results?.find(v => v.type === 'Trailer') || data.results?.find(v => v.type === 'Teaser');
-          if (video) setVideoKey(video.key);
-        })
-        .catch(err => console.error("Erro ao buscar teaser:", err));
-    }, 600); // Delay para não carregar se o mouse passar rápido
+    if (!videoUrl) {
+      timeoutRef.current = setTimeout(() => {
+        fetch(`${BASE_URL}/${type}/${id}/videos?api_key=${API_KEY}&language=pt-BR`)
+          .then(res => res.json())
+          .then(data => {
+            const video = data.results?.find(v => v.type === 'Trailer') || data.results?.find(v => v.type === 'Teaser');
+            if (video) setVideoKey(video.key);
+          })
+          .catch(err => console.error("Erro ao buscar teaser:", err));
+      }, 600);
+    }
   };
 
   const handleMouseLeave = () => {
@@ -88,8 +101,19 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
            {badges}
         </div>
         
-        {/* IFRAME DE FUNDO (Z-INDEX 0) */}
-        {videoKey && (
+        {/* VÍDEO DO ZORO DRIVE OU IFRAME DE FUNDO (Z-INDEX 0) */}
+        {videoUrl ? (
+          <div className="teaser-iframe-wrapper" style={{ zIndex: 0 }}>
+            <video
+              src={videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+        ) : videoKey ? (
           <div className="teaser-iframe-wrapper" style={{ zIndex: 0 }}>
             <iframe
               src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoKey}&modestbranding=1&rel=0&iv_load_policy=3&playsinline=1`}
@@ -98,7 +122,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
               title="teaser"
             />
           </div>
-        )}
+        ) : null}
 
         {/* PÔSTER DO FILME (Z-INDEX 1) */}
         <img 
@@ -108,7 +132,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
             style={{
                 position: 'relative', 
                 zIndex: 1, 
-                opacity: isHovered && videoKey ? 0 : 1, 
+                opacity: isHovered && (videoUrl || videoKey) ? 0 : 1, 
                 transition: 'opacity 0.6s ease',
                 display: 'block'
             }} 
