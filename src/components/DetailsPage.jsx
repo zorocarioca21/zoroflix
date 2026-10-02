@@ -298,6 +298,7 @@ export default function DetailsPage() {
 
   const resolveImgUrl = (path, size = 'w500') => {
     if (!path) return '';
+    if (path.includes('zorobot.shop')) return `/api/tmdb/img-proxy?url=${encodeURIComponent(path)}`;
     if (path.startsWith('http')) return path;
     return `https://image.tmdb.org/t/p/${size}${path}`;
   };

@@ -33,6 +33,7 @@ import WhatsappPopup from './components/WhatsappPopup';
 import TvGuideModal from './components/TvGuideModal';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import { getSlug } from './utils/slug';
+import { resolveImageUrl } from './utils/imageUrl';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -554,9 +555,9 @@ function Home({ onOpenDetails }) {
                     </button>
 
                     {item.poster_path
-                      ? (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'
+                      ? (item.poster_path === '/cinegeek-icon.png'
                           ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
-                          : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                          : <img src={resolveImageUrl(item.poster_path, 'w300')} alt={item.title} className="row-poster-img" />
                         )
                       : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
                     }
@@ -605,7 +606,7 @@ function Home({ onOpenDetails }) {
                       <X size={14} strokeWidth={2.5} />
                     </button>
 
-                    <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="row-poster-img" />
+                    <img src={resolveImageUrl(item.poster_path, 'w300')} alt={item.title} className="row-poster-img" />
                   </CustomPosterCard>
                 ))}
               </RowWithControls>

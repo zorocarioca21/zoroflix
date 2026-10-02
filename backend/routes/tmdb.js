@@ -49,6 +49,46 @@ export default function tmdbRoutes(db) {
         }
     });
 
+    // PROXY de imagens — Resolve o problema de CORS do Zoro Drive
+    // Qualquer imagem do Zoro Drive ou TMDB será servida pelo nosso backend
+    router.get('/img-proxy', async (req, res) => {
+        const url = req.query.url;
+        if (!url) return res.status(400).send('URL obrigatória');
+
+        // Só permite domínios confiáveis
+        const allowed = ['api.zorobot.shop', 'image.tmdb.org'];
+        try {
+            const parsed = new URL(url);
+            if (!allowed.some(d => parsed.hostname.includes(d))) {
+                return res.status(403).send('Domínio não permitido');
+            }
+        } catch {
+            return res.status(400).send('URL inválida');
+        }
+
+        try {
+            const { default: axios } = await import('axios');
+            const https = await import('https');
+            const agent = new https.Agent({ family: 4 });
+
+            const response = await axios.get(url, {
+                responseType: 'arraybuffer',
+                httpsAgent: agent,
+                timeout: 15000,
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
+
+            const contentType = response.headers['content-type'] || 'image/jpeg';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=2592000, immutable'); // 30 dias de cache
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.send(Buffer.from(response.data));
+        } catch (err) {
+            console.error('[IMG PROXY] Erro:', err.message);
+            res.status(502).send('Erro ao buscar imagem');
+        }
+    });
+
 
     return router;
 }
