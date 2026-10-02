@@ -7,6 +7,7 @@ import CommentSection from './CommentSection';
 import TrailerModal from './TrailerModal';
 import { useAuth } from '../context/AuthContext';
 import { getSlug } from '../utils/slug';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -296,14 +297,7 @@ export default function DetailsPage() {
     'Released': 'Lançado'
   };
 
-  const resolveImgUrl = (path, size = 'w500') => {
-    if (!path) return '';
-    if (path.includes('zorobot.shop')) return `/api/tmdb/img-proxy?url=${encodeURIComponent(path)}`;
-    if (path.startsWith('http')) return path;
-    return `https://image.tmdb.org/t/p/${size}${path}`;
-  };
-
-  const backdropUrl = resolveImgUrl(data?.backdrop_path, 'original');
+  const backdropUrl = resolveImageUrl(data?.backdrop_path, 'original');
 
   return (
     <div className="details-container">
@@ -318,7 +312,7 @@ export default function DetailsPage() {
             <div className="details-poster-area">
                 <div className="details-poster-wrap">
                     <img 
-                        src={resolveImgUrl(data.poster_path, 'w500')} 
+                        src={resolveImageUrl(data.poster_path, 'w500')} 
                         alt={data.title || data.name} 
                         className="details-main-poster"
                     />
@@ -368,7 +362,7 @@ export default function DetailsPage() {
                   {cast.map(person => (
                     <div key={person.id} className="cast-card">
                       <div className="cast-img-wrap">
-                        <img src={person.profile_path ? resolveImgUrl(person.profile_path, 'w185') : 'https://via.placeholder.com/185x278?text=Sem+Foto'} alt={person.name} />
+                        <img src={resolveImageUrl(person.profile_path, 'w185', 'https://via.placeholder.com/185x278?text=Sem+Foto')} alt={person.name} />
                       </div>
                       <div className="cast-info">
                         <p className="cast-real-name">{person.name}</p>
@@ -422,7 +416,7 @@ export default function DetailsPage() {
                   return (
                   <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
-                      <img src={ep.still_path ? resolveImgUrl(ep.still_path, 'original') : resolveImgUrl(data.backdrop_path, 'original')} alt={ep.name} />
+                      <img src={ep.still_path ? resolveImageUrl(ep.still_path, 'original') : resolveImageUrl(data.backdrop_path, 'original')} alt={ep.name} />
                       <div className="ep-badges-overlay">
                         {/* Tags DUB e LEG foram removidas porque o TMDB não fornece essa informação, e verificar 20+ episódios na Superflix de uma vez deixaria o site muito lento. */}
                       </div>
