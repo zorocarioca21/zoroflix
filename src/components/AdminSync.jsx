@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List } from 'lucide-react';
 import './AdminSync.css';
 
 // ==========================================
@@ -1033,6 +1033,10 @@ export default function AdminSync() {
                                 <div className="sync-stat-item border-db">
                                     <div className="sync-stat-label" style={{color: '#00ccff'}}><Film size={15} /> Filmes & Séries</div>
                                     <div className="sync-stat-value">{mappingStats.totalCached}</div>
+                                </div>
+                                <div className="sync-stat-item border-prioritized">
+                                    <div className="sync-stat-label" style={{color: '#ffcc00'}}><List size={15} /> Fila Mapeada</div>
+                                    <div className="sync-stat-value">{mappingStats.queueMapped || 0} / {mappingStats.queueTotal || 0}</div>
                                 </div>
                                 <div className="sync-stat-item border-completed">
                                     <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={15} /> Posters no Drive</div>

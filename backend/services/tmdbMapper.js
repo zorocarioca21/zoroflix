@@ -20,8 +20,9 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
         const itemsToMap = await db.all(`
             SELECT id, title
             FROM sync_queue
-            WHERE tmdb_id IS NULL
+            WHERE (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
             AND status IN ('pending', 'completed')
+            ORDER BY tmdb_id IS NULL DESC, updated_at ASC
             LIMIT ?
         `, [batchSize]);
 
@@ -74,12 +75,15 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             }
 
             // Remove tags e limpa o texto principal
-            const tagsRegex = /\b(DUBLADO|LEGENDADO|LEG|HD|FHD|4K|1080P|720P|2160P|CAMRIP)\b/i;
+            const tagsRegex = /\b(DUBLADO|LEGENDADO|LEG|HD|FHD|4K|1080P|720P|2160P|CAMRIP|MP4|MKV|AVI)\b/i;
             const tagMatch = q.match(tagsRegex);
             if (tagMatch) {
                 q = q.substring(0, tagMatch.index).trim();
             }
-            q = q.replace(/[-:]$/, '').trim();
+            // Substitui pontos e underscores por espaços (ex: The.Walking.Dead_S01 -> The Walking Dead)
+            q = q.replace(/[._]/g, ' ').replace(/[-:]$/, '').trim();
+            // Remove espaços duplos
+            q = q.replace(/\s+/g, ' ');
 
             if (!q) {
                 // Título não pode ser vazio para a busca

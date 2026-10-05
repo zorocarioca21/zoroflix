@@ -21,6 +21,10 @@ export default function adminRoutes(db, tmdbDb) {
             const totalEpisodes = await targetDb.get('SELECT COUNT(*) as cnt FROM tmdb_episodes_cache');
             const totalDriveStills = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_episodes_cache WHERE still_url LIKE '%zorobot.shop%'");
             
+            // Fila de sincronização (Mapeados vs Total)
+            const mappedInQueue = await db.get("SELECT COUNT(*) as cnt FROM sync_queue WHERE tmdb_id IS NOT NULL AND tmdb_id != 'NOT_FOUND'");
+            const totalInQueue = await db.get("SELECT COUNT(*) as cnt FROM sync_queue");
+
             res.json({
                 totalCached: totalCached?.cnt || 0,
                 totalMovies: totalMovies?.cnt || 0,
@@ -28,7 +32,9 @@ export default function adminRoutes(db, tmdbDb) {
                 totalDrivePosters: totalDrivePosters?.cnt || 0,
                 totalDriveBackdrops: totalDriveBackdrops?.cnt || 0,
                 totalEpisodes: totalEpisodes?.cnt || 0,
-                totalDriveStills: totalDriveStills?.cnt || 0
+                totalDriveStills: totalDriveStills?.cnt || 0,
+                queueMapped: mappedInQueue?.cnt || 0,
+                queueTotal: totalInQueue?.cnt || 0
             });
         } catch (err) {
             console.error('[ADMIN STATS] Erro ao obter estatísticas de mapeamento:', err.message);
