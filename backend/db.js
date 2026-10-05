@@ -339,6 +339,16 @@ export async function initDB() {
         // Ignora
     }
 
+    // Auto-migration: Indexes para otimizar pesquisas frequentes na fila
+    try {
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_sync_queue_tmdb_id ON sync_queue (tmdb_id)`);
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue (status)`);
+        await db.exec(`CREATE INDEX IF NOT EXISTS idx_sync_queue_updated_at ON sync_queue (updated_at)`);
+        console.log("Migration: Índices criados na tabela sync_queue.");
+    } catch (e) {
+        // Ignora
+    }
+
     // Tabela de Configurações Gerais do Sistema (M3U URL, etc)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS system_settings (
