@@ -340,7 +340,8 @@ export default function adminRoutes(db, tmdbDb) {
             invalidateTmdbKeysCache();
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao salvar TMDB keys.' });
+            console.error('Error saving TMDB keys:', err);
+            res.status(500).json({ error: 'Erro ao salvar TMDB keys: ' + err.message });
         }
     });
 
@@ -371,7 +372,8 @@ export default function adminRoutes(db, tmdbDb) {
             }
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: 'Erro ao salvar ZoroBot Video key.' });
+            console.error('Error saving ZoroBot Video key:', err);
+            res.status(500).json({ error: 'Erro ao salvar ZoroBot Video key: ' + err.message });
         }
     });
 
