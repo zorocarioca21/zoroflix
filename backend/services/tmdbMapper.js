@@ -1,15 +1,21 @@
 import { getNextTmdbKey } from './tmdbKeyService.js';
 import { getOrFetchMediaDetails } from './tmdbCacheService.js';
+import { initTmdbCatalogDB } from '../tmdbCatalogDB.js';
 import axios from 'axios';
 import https from 'https';
 
 const agent = new https.Agent({ family: 4 }); // Força IPv4 para evitar problemas de DNS/IPv6 em VPS
+
+let tmdbDbInstance = null;
 
 /**
  * Mapeia em lote os itens que ainda não possuem tmdb_id na fila.
  * Deve ser chamado via Worker (setInterval)
  */
 export async function mapPendingTmdbItems(db, batchSize = 20) {
+    if (!tmdbDbInstance) {
+        tmdbDbInstance = await initTmdbCatalogDB();
+    }
     try {
         const itemsToMap = await db.all(`
             SELECT id, title
@@ -132,7 +138,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
 
                 // Popula imediatamente o catálogo e o Zoro Drive para este item mapeado
                 try {
-                    getOrFetchMediaDetails(db, tmdb_id, media_type, apiKey).catch(() => {});
+                    getOrFetchMediaDetails(tmdbDbInstance, tmdb_id, media_type, apiKey).catch(() => {});
                 } catch (e) {}
             } else if (!hasNetworkError) {
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);

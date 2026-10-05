@@ -324,6 +324,13 @@ export default function adminRoutes(db, tmdbDb) {
                  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
                 [keys]
             );
+            if (targetDb) {
+                await targetDb.run(
+                    `INSERT INTO system_settings (key, value, updated_at) VALUES ('tmdb_api_keys', ?, CURRENT_TIMESTAMP)
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                    [keys]
+                );
+            }
             invalidateTmdbKeysCache();
             res.json({ success: true });
         } catch (err) {
@@ -349,6 +356,13 @@ export default function adminRoutes(db, tmdbDb) {
                  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
                 [key || '']
             );
+            if (targetDb) {
+                await targetDb.run(
+                    `INSERT INTO system_settings (key, value, updated_at) VALUES ('zorobot_video_api_key', ?, CURRENT_TIMESTAMP)
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                    [key || '']
+                );
+            }
             res.json({ success: true });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao salvar ZoroBot Video key.' });
