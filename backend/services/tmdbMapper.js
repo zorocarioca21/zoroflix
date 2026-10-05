@@ -20,7 +20,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
         const itemsToMap = await db.all(`
             SELECT id, title
             FROM sync_queue
-            WHERE (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-30 seconds')))
+            WHERE (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
             AND status IN ('pending', 'completed')
             ORDER BY tmdb_id IS NULL DESC, updated_at ASC
             LIMIT ?
@@ -168,6 +168,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     }
                 }
             } else if (!hasNetworkError) {
+                console.log(`[TMDB MAPPER] ❌ FALHA: Não encontrou "${item.title}" no TMDB. Arquivo possivelmente fora do padrão.`);
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
             

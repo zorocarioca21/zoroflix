@@ -41,6 +41,28 @@ export default function adminRoutes(db, tmdbDb) {
             res.status(500).json({ error: 'Erro ao obter estatísticas de mapeamento' });
         }
     });
+
+    // Endpoint para listar os arquivos que falharam no mapeamento TMDB (NOT_FOUND)
+    router.get('/not-found', async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 50;
+            const notFoundItems = await db.all(`
+                SELECT id, title, filename, created_at, updated_at 
+                FROM sync_queue 
+                WHERE tmdb_id = 'NOT_FOUND' 
+                ORDER BY updated_at DESC 
+                LIMIT ?
+            `, [limit]);
+            
+            res.json({
+                total: notFoundItems.length,
+                items: notFoundItems
+            });
+        } catch (err) {
+            console.error('[ADMIN STATS] Erro ao listar falhas de mapeamento:', err.message);
+            res.status(500).json({ error: 'Erro ao listar falhas de mapeamento' });
+        }
+    });
     // Endpoint para obter o tamanho da pasta temp
     router.get('/temp-stats', async (req, res) => {
         try {
