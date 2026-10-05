@@ -183,29 +183,9 @@ export default function DetailsPage() {
             }
           } catch (err) {}
 
-          // 2. Se o servidor não tiver em cache ou falhar, buscar diretamente da API do TMDB no client
-          if (!loadedGroup) {
-            try {
-              const listResp = await fetch(`${BASE_URL}/tv/${id}/episode_groups?api_key=${API_KEY}`);
-              if (listResp.ok) {
-                const listData = await listResp.json();
-                const results = listData.results || [];
-                const selectedGroup = results.find(g => g.type === 1)
-                  || results.find(g => g.name && (g.name.toLowerCase() === 'seasons' || g.name.toLowerCase() === 'temporadas'))
-                  || results.find(g => g.name && (g.name.toLowerCase().includes('seasons') || g.name.toLowerCase().includes('temporadas')))
-                  || results.find(g => g.type === 6)
-                  || results.find(g => g.type === 5)
-                  || results[0];
-
-                if (selectedGroup) {
-                  const detailResp = await fetch(`${BASE_URL}/tv/episode_group/${selectedGroup.id}?api_key=${API_KEY}&language=pt-BR`);
-                  if (detailResp.ok) {
-                    loadedGroup = await detailResp.json();
-                  }
-                }
-              }
-            } catch (err) {}
-          }
+          // 2. Se o servidor falhar ou não tiver (retornar null), a gente NÃO faz o fallback pro TMDB direto no frontend,
+          // porque se fizer isso a gente perde o "Merge" com o sync_queue do backend!
+          // Então, se o backend falhar, loadedGroup continua null e ele vai usar as temporadas nativas.
 
           if (loadedGroup && isCurrent) {
             setEpisodeGroup(loadedGroup);

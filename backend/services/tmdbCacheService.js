@@ -209,12 +209,12 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                 // -------------------------------------------------------------
                 try {
                     const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
-                    const tmdbEpNumbers = new Set(matchedGroup.episodes.map(e => e.episode_number));
+                    const tmdbEpNumbers = new Set(matchedGroup.episodes.map(e => Number(e.episode_number)));
                     
                     for (const localEp of localEps) {
-                        if (!tmdbEpNumbers.has(localEp.episode_number)) {
+                        if (!tmdbEpNumbers.has(Number(localEp.episode_number))) {
                             matchedGroup.episodes.push({
-                                episode_number: localEp.episode_number,
+                                episode_number: Number(localEp.episode_number),
                                 name: `Episódio ${localEp.episode_number}`,
                                 overview: 'Detalhes indisponíveis no TMDB.',
                                 still_path: null,
@@ -223,7 +223,7 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                         }
                     }
                     // Reordenar por número do episódio
-                    matchedGroup.episodes.sort((a, b) => a.episode_number - b.episode_number);
+                    matchedGroup.episodes.sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
                 } catch (e) {}
                 
                 return {
@@ -277,12 +277,12 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
             // MERGE COM O BANCO LOCAL (sync_queue) para temporadas nativas
             try {
                 const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
-                const tmdbEpNumbers = new Set(seasonData.episodes.map(e => e.episode_number));
+                const tmdbEpNumbers = new Set(seasonData.episodes.map(e => Number(e.episode_number)));
                 
                 for (const localEp of localEps) {
-                    if (!tmdbEpNumbers.has(localEp.episode_number)) {
+                    if (!tmdbEpNumbers.has(Number(localEp.episode_number))) {
                         seasonData.episodes.push({
-                            episode_number: localEp.episode_number,
+                            episode_number: Number(localEp.episode_number),
                             name: `Episódio ${localEp.episode_number}`,
                             overview: 'Detalhes indisponíveis no TMDB.',
                             still_path: null,
@@ -290,7 +290,7 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                         });
                     }
                 }
-                seasonData.episodes.sort((a, b) => a.episode_number - b.episode_number);
+                seasonData.episodes.sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
             } catch (e) {}
         }
 
@@ -328,9 +328,9 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
                         if (localEps.length > 0 && Array.isArray(parsedGroup.groups)) {
                             for (const group of parsedGroup.groups) {
                                 const sNum = group.order !== 0 ? group.order : (parsedGroup.groups.indexOf(group) + 1);
-                                const tmdbEpNumbers = new Set((group.episodes || []).map(e => e.episode_number));
+                                const tmdbEpNumbers = new Set((group.episodes || []).map(e => Number(e.episode_number)));
                                 
-                                const localMissingEps = localEps.filter(l => l.season_number === sNum && !tmdbEpNumbers.has(l.episode_number));
+                                const localMissingEps = localEps.filter(l => Number(l.season_number) === Number(sNum) && !tmdbEpNumbers.has(Number(l.episode_number)));
                                 
                                 if (localMissingEps.length > 0) {
                                     if (!group.episodes) group.episodes = [];
@@ -416,9 +416,9 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
             if (localEps.length > 0 && Array.isArray(groupDetails.groups)) {
                 for (const group of groupDetails.groups) {
                     const sNum = group.order !== 0 ? group.order : (groupDetails.groups.indexOf(group) + 1);
-                    const tmdbEpNumbers = new Set((group.episodes || []).map(e => e.episode_number));
+                    const tmdbEpNumbers = new Set((group.episodes || []).map(e => Number(e.episode_number)));
                     
-                    const localMissingEps = localEps.filter(l => l.season_number === sNum && !tmdbEpNumbers.has(l.episode_number));
+                    const localMissingEps = localEps.filter(l => Number(l.season_number) === Number(sNum) && !tmdbEpNumbers.has(Number(l.episode_number)));
                     
                     if (localMissingEps.length > 0) {
                         if (!group.episodes) group.episodes = [];
