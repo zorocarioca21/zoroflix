@@ -45,11 +45,15 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             const year = yearMatch ? yearMatch[1] : null;
             q = q.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
 
+            const sEpCombinedMatch = q.match(/\b(?:S|T)0?(\d{1,2})\s*(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
             const sMatch = q.match(/\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i);
-            const epRegex = /\b(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i;
-            const epMatch = q.match(epRegex);
+            const epMatch = q.match(/\b(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
 
-            if (sMatch && epMatch) {
+            if (sEpCombinedMatch) {
+                season_number = parseInt(sEpCombinedMatch[1]);
+                episode_number = parseInt(sEpCombinedMatch[2]);
+                q = q.replace(sEpCombinedMatch[0], '').trim();
+            } else if (sMatch && epMatch) {
                 season_number = parseInt(sMatch[1]);
                 episode_number = parseInt(epMatch[1]);
                 q = q.replace(sMatch[0], '').replace(epMatch[0], '').trim();
