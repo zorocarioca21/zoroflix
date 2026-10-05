@@ -915,7 +915,7 @@ function startAutoM3uSync() {
     // Cron job TMDB Mapper: Roda a cada 5 segundos para mapear TMDB IDs em lotes de 10
     let isMapping = false;
     setInterval(async () => {
-        if (isPaused || isMapping) return;
+        if (isMapping) return;
         isMapping = true;
         try {
             await mapPendingTmdbItems(dbInstance, 10);

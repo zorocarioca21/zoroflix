@@ -92,6 +92,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             }
 
             let hasNetworkError = false;
+            let bestMatch = null;
             try {
                 const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${apiKey}&language=pt-BR`;
                 const tmdbRes = await axios.get(url, {
@@ -102,7 +103,6 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                 
                 if (tmdbRes.status === 200) {
                     const tmdbData = tmdbRes.data;
-                    let bestMatch = null;
                     if (tmdbData.results && tmdbData.results.length > 0) {
                         if (year) {
                             bestMatch = tmdbData.results.find(r => {
@@ -139,6 +139,34 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     [tmdb_id, media_type, season_number, episode_number, item.id]
                 );
                 updatedCount++;
+
+                // Salva os dados básicos no catálogo para que apareça no painel e no front, SEM disparar download pro Zoro Drive
+                if (bestMatch) {
+                    try {
+                        const title = bestMatch.title || bestMatch.name || '';
+                        const origTitle = bestMatch.original_title || bestMatch.original_name || '';
+                        const overview = bestMatch.overview || '';
+                        const releaseDate = bestMatch.release_date || bestMatch.first_air_date || '';
+
+                        await tmdbDbInstance.run(`
+                            INSERT OR REPLACE INTO tmdb_media_cache 
+                            (tmdb_id, media_type, title, original_title, overview, release_date, poster_url, backdrop_url, raw_data, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        `, [
+                            tmdb_id,
+                            media_type,
+                            title,
+                            origTitle,
+                            overview,
+                            releaseDate,
+                            bestMatch.poster_path ? \`https://image.tmdb.org/t/p/w500\${bestMatch.poster_path}\` : null,
+                            bestMatch.backdrop_path ? \`https://image.tmdb.org/t/p/original\${bestMatch.backdrop_path}\` : null,
+                            JSON.stringify(bestMatch)
+                        ]);
+                    } catch (cacheErr) {
+                        console.error("[TMDB MAPPER] Erro ao salvar pre-cache básico:", cacheErr.message);
+                    }
+                }
             } else if (!hasNetworkError) {
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
