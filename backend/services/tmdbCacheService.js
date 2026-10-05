@@ -320,7 +320,36 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
             );
             if (cached) {
                 if (cached.group_id && cached.group_id !== 'NONE' && cached.raw_data && cached.raw_data !== 'null') {
-                    return JSON.parse(cached.raw_data);
+                    const parsedGroup = JSON.parse(cached.raw_data);
+                    
+                    // MERGE COM O BANCO LOCAL para corrigir a contagem no Dropdown mesmo quando vem do cache
+                    try {
+                        const localEps = await db.all(`SELECT season_number, episode_number FROM sync_queue WHERE tmdb_id = ?`, [idStr]);
+                        if (localEps.length > 0 && Array.isArray(parsedGroup.groups)) {
+                            for (const group of parsedGroup.groups) {
+                                const sNum = group.order !== 0 ? group.order : (parsedGroup.groups.indexOf(group) + 1);
+                                const tmdbEpNumbers = new Set((group.episodes || []).map(e => e.episode_number));
+                                
+                                const localMissingEps = localEps.filter(l => l.season_number === sNum && !tmdbEpNumbers.has(l.episode_number));
+                                
+                                if (localMissingEps.length > 0) {
+                                    if (!group.episodes) group.episodes = [];
+                                    for (const lEp of localMissingEps) {
+                                        group.episodes.push({
+                                            episode_number: lEp.episode_number,
+                                            name: `Episódio ${lEp.episode_number}`,
+                                            overview: 'Detalhes indisponíveis no TMDB.',
+                                            still_path: null,
+                                            runtime: 0
+                                        });
+                                    }
+                                    group.episodes.sort((a, b) => a.episode_number - b.episode_number);
+                                }
+                            }
+                        }
+                    } catch (e) {}
+
+                    return parsedGroup;
                 }
                 // Se estiver marcado como NONE, verifica se a gravação foi recente (menos de 5 min)
                 const updatedAt = new Date(cached.updated_at || 0).getTime();
@@ -375,11 +404,38 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
 
         const groupDetails = groupRes.data;
 
-        // 4. Salvar no banco SQLite local
+        // 4. Salvar no banco SQLite local (apenas dados do TMDB puros)
         await db.run(
             'INSERT OR REPLACE INTO tmdb_episode_groups_cache (tmdb_id, group_id, raw_data, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
             [idStr, selectedGroup.id, JSON.stringify(groupDetails)]
         );
+
+        // 5. MERGE COM O BANCO LOCAL para corrigir a contagem no Dropdown
+        try {
+            const localEps = await db.all(`SELECT season_number, episode_number FROM sync_queue WHERE tmdb_id = ?`, [idStr]);
+            if (localEps.length > 0 && Array.isArray(groupDetails.groups)) {
+                for (const group of groupDetails.groups) {
+                    const sNum = group.order !== 0 ? group.order : (groupDetails.groups.indexOf(group) + 1);
+                    const tmdbEpNumbers = new Set((group.episodes || []).map(e => e.episode_number));
+                    
+                    const localMissingEps = localEps.filter(l => l.season_number === sNum && !tmdbEpNumbers.has(l.episode_number));
+                    
+                    if (localMissingEps.length > 0) {
+                        if (!group.episodes) group.episodes = [];
+                        for (const lEp of localMissingEps) {
+                            group.episodes.push({
+                                episode_number: lEp.episode_number,
+                                name: `Episódio ${lEp.episode_number}`,
+                                overview: 'Detalhes indisponíveis no TMDB.',
+                                still_path: null,
+                                runtime: 0
+                            });
+                        }
+                        group.episodes.sort((a, b) => a.episode_number - b.episode_number);
+                    }
+                }
+            }
+        } catch (e) {}
 
         return groupDetails;
     } catch (err) {
