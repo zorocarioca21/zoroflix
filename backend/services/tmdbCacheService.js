@@ -319,42 +319,50 @@ export async function getOrFetchEpisodeGroupDetails(db, tmdbId, apiKey, forceRef
                 [idStr]
             );
             if (cached) {
+                const updatedAt = new Date(cached.updated_at || 0).getTime();
+                
                 if (cached.group_id && cached.group_id !== 'NONE' && cached.raw_data && cached.raw_data !== 'null') {
-                    const parsedGroup = JSON.parse(cached.raw_data);
+                    // Adiciona expiração de 1 minuto (60000 ms) para dados reais, garantindo atualização quase em tempo real
+                    if (Date.now() - updatedAt > 1 * 60 * 1000) {
+                        console.log(`[TMDB CACHE] Cache do Episode Group da série ${idStr} expirou (mais de 1m). Buscando atualização...`);
+                        // Deixa prosseguir para buscar no TMDB
+                    } else {
+                        const parsedGroup = JSON.parse(cached.raw_data);
                     
-                    // MERGE COM O BANCO LOCAL para corrigir a contagem no Dropdown mesmo quando vem do cache
-                    try {
-                        const localEps = await db.all(`SELECT season_number, episode_number FROM sync_queue WHERE tmdb_id = ?`, [idStr]);
-                        if (localEps.length > 0 && Array.isArray(parsedGroup.groups)) {
-                            for (const group of parsedGroup.groups) {
-                                const sNum = group.order !== 0 ? group.order : (parsedGroup.groups.indexOf(group) + 1);
-                                const tmdbEpNumbers = new Set((group.episodes || []).map(e => Number(e.episode_number)));
-                                
-                                const localMissingEps = localEps.filter(l => Number(l.season_number) === Number(sNum) && !tmdbEpNumbers.has(Number(l.episode_number)));
-                                
-                                if (localMissingEps.length > 0) {
-                                    if (!group.episodes) group.episodes = [];
-                                    for (const lEp of localMissingEps) {
-                                        group.episodes.push({
-                                            episode_number: lEp.episode_number,
-                                            name: `Episódio ${lEp.episode_number}`,
-                                            overview: 'Detalhes indisponíveis no TMDB.',
-                                            still_path: null,
-                                            runtime: 0
-                                        });
+                        // MERGE COM O BANCO LOCAL para corrigir a contagem no Dropdown mesmo quando vem do cache
+                        try {
+                            const localEps = await db.all(`SELECT season_number, episode_number FROM sync_queue WHERE tmdb_id = ?`, [idStr]);
+                            if (localEps.length > 0 && Array.isArray(parsedGroup.groups)) {
+                                for (const group of parsedGroup.groups) {
+                                    const sNum = group.order !== 0 ? group.order : (parsedGroup.groups.indexOf(group) + 1);
+                                    const tmdbEpNumbers = new Set((group.episodes || []).map(e => Number(e.episode_number)));
+                                    
+                                    const localMissingEps = localEps.filter(l => Number(l.season_number) === Number(sNum) && !tmdbEpNumbers.has(Number(l.episode_number)));
+                                    
+                                    if (localMissingEps.length > 0) {
+                                        if (!group.episodes) group.episodes = [];
+                                        for (const lEp of localMissingEps) {
+                                            group.episodes.push({
+                                                episode_number: lEp.episode_number,
+                                                name: `Episódio ${lEp.episode_number}`,
+                                                overview: 'Detalhes indisponíveis no TMDB.',
+                                                still_path: null,
+                                                runtime: 0
+                                            });
+                                        }
+                                        group.episodes.sort((a, b) => a.episode_number - b.episode_number);
                                     }
-                                    group.episodes.sort((a, b) => a.episode_number - b.episode_number);
                                 }
                             }
-                        }
-                    } catch (e) {}
+                        } catch (e) {}
 
-                    return parsedGroup;
-                }
-                // Se estiver marcado como NONE, verifica se a gravação foi recente (menos de 5 min)
-                const updatedAt = new Date(cached.updated_at || 0).getTime();
-                if (Date.now() - updatedAt < 5 * 60 * 1000) {
-                    return null;
+                        return parsedGroup;
+                    }
+                } else {
+                    // Se estiver marcado como NONE, verifica se a gravação foi recente (menos de 5 min)
+                    if (Date.now() - updatedAt < 5 * 60 * 1000) {
+                        return null;
+                    }
                 }
             }
         } catch (err) {
