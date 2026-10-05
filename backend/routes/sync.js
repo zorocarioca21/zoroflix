@@ -1147,6 +1147,12 @@ export default function syncRoutes(db, io) {
                                     [title, `telegram://msg/${messageId}`, fileSize, messageId]
                                 );
                                 totalInserted++;
+
+                                // Dispara o mapeamento automático do TMDB imediatamente para o novo envio
+                                try {
+                                    const { mapPendingTmdbItems } = await import('../services/tmdbMapper.js');
+                                    mapPendingTmdbItems(db, 5).catch(() => {});
+                                } catch (e) {}
                             } catch (e) {
                                 // UNIQUE constraint (url duplicada) - pula
                                 totalSkipped++;
