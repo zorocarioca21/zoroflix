@@ -171,10 +171,47 @@ export default function DetailsPage() {
         setCast(creditsData.cast?.slice(0, 15) || []);
 
         if (!isMovie) {
-          // ATENÇÃO: Episode Groups removidos temporariamente pois o TMDB oficial já tem as temporadas corretas para este anime (Temporada 2 nativa), 
-          // e o Episode Group da comunidade estava vazio para a Temporada 2, ocultando-a.
-          
-          fetchEpisodes(1, null);
+          let loadedGroup = null;
+          // 1. Tentar carregar do cache do servidor
+          try {
+            const groupResp = await fetch(`/api/tmdb/episode-group/${id}`);
+            if (groupResp.ok) {
+              const groupData = await groupResp.json();
+              if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
+                loadedGroup = groupData;
+              }
+            }
+          } catch (err) {}
+
+          // 2. Se o servidor não tiver em cache ou falhar, buscar diretamente da API do TMDB no client
+          if (!loadedGroup) {
+            try {
+              const listResp = await fetch(`${BASE_URL}/tv/${id}/episode_groups?api_key=${API_KEY}`);
+              if (listResp.ok) {
+                const listData = await listResp.json();
+                const results = listData.results || [];
+                const selectedGroup = results.find(g => g.type === 1)
+                  || results.find(g => g.name && (g.name.toLowerCase() === 'seasons' || g.name.toLowerCase() === 'temporadas'))
+                  || results.find(g => g.name && (g.name.toLowerCase().includes('seasons') || g.name.toLowerCase().includes('temporadas')))
+                  || results.find(g => g.type === 6)
+                  || results.find(g => g.type === 5)
+                  || results[0];
+
+                if (selectedGroup) {
+                  const detailResp = await fetch(`${BASE_URL}/tv/episode_group/${selectedGroup.id}?api_key=${API_KEY}&language=pt-BR`);
+                  if (detailResp.ok) {
+                    loadedGroup = await detailResp.json();
+                  }
+                }
+              }
+            } catch (err) {}
+          }
+
+          if (loadedGroup && isCurrent) {
+            setEpisodeGroup(loadedGroup);
+          }
+
+          fetchEpisodes(1, loadedGroup);
 
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();
@@ -218,16 +255,9 @@ export default function DetailsPage() {
 
   const fetchEpisodes = async (seasonNumber, groupObj = episodeGroup) => {
     const sNum = parseInt(seasonNumber, 10);
-    if (groupObj && Array.isArray(groupObj.groups) && groupObj.groups.length > 0) {
-      const matched = groupObj.groups.find(g => g.order === sNum)
-        || groupObj.groups.find((g, idx) => (g.order !== undefined && g.order !== 0 ? g.order : idx + 1) === sNum)
-        || groupObj.groups[sNum - 1];
-      if (matched && Array.isArray(matched.episodes) && matched.episodes.length > 0) {
-        setEpisodes(matched.episodes);
-        return;
-      }
-    }
-
+    // Removemos o bypass do frontend para que ele sempre bata no backend
+    // e o backend faça o merge com os episódios locais (sync_queue)
+    
     try {
       let data = null;
       try {

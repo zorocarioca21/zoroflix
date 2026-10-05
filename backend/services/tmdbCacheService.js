@@ -184,22 +184,48 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                 || groupDetails.groups.find((g, idx) => (g.order !== 0 ? g.order : idx + 1) === seasonNum)
                 || groupDetails.groups[seasonNum - 1];
 
-            if (matchedGroup && Array.isArray(matchedGroup.episodes) && matchedGroup.episodes.length > 0) {
+            if (matchedGroup && Array.isArray(matchedGroup.episodes)) {
                 console.log(`[TMDB CACHE] Usando episódios do Episode Group '${matchedGroup.name}' (${matchedGroup.episodes.length} eps) para série ${idStr} temp ${seasonNum}`);
                 
-                // Processar fotos (stills) para Zoro Drive se necessário
+                // Processar fotos (stills) para Zoro Drive em background
                 for (const ep of matchedGroup.episodes) {
                     if (ep.still_path && !ep.still_path.includes('zorobot.shop')) {
                         const rawStill = `https://image.tmdb.org/t/p/original${ep.still_path}`;
-                        const driveStill = await uploadRemoteUrlToDrive(
+                        ep.still_path = rawStill; // Retorna rápido
+                        
+                        // Fogo e esquece
+                        uploadRemoteUrlToDrive(
                             rawStill,
                             'TMDB_Stills',
                             `still_${idStr}_s${seasonNum}_e${ep.episode_number}.jpg`
-                        );
-                        if (driveStill) ep.still_path = driveStill;
+                        ).catch(console.error);
                     }
                 }
 
+                // -------------------------------------------------------------
+                // MERGE COM O BANCO LOCAL (sync_queue)
+                // Para mostrar episódios que você upou no Telegram mas que o TMDB
+                // ainda não tem cadastrado nessa temporada/grupo.
+                // -------------------------------------------------------------
+                try {
+                    const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
+                    const tmdbEpNumbers = new Set(matchedGroup.episodes.map(e => e.episode_number));
+                    
+                    for (const localEp of localEps) {
+                        if (!tmdbEpNumbers.has(localEp.episode_number)) {
+                            matchedGroup.episodes.push({
+                                episode_number: localEp.episode_number,
+                                name: `Episódio ${localEp.episode_number}`,
+                                overview: 'Detalhes indisponíveis no TMDB.',
+                                still_path: null,
+                                runtime: 0
+                            });
+                        }
+                    }
+                    // Reordenar por número do episódio
+                    matchedGroup.episodes.sort((a, b) => a.episode_number - b.episode_number);
+                } catch (e) {}
+                
                 return {
                     id: matchedGroup.id || idStr,
                     name: matchedGroup.name || `Temporada ${seasonNum}`,
@@ -221,16 +247,18 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                 if (ep.still_path && !ep.still_path.includes('zorobot.shop')) {
                     // Usando qualidade 'original' conforme alinhado
                     const rawStill = `https://image.tmdb.org/t/p/original${ep.still_path}`;
-                    const driveStill = await uploadRemoteUrlToDrive(
+                    ep.still_path = rawStill; // Retorna rápido pro front
+
+                    // Fogo e esquece o upload pro Zoro Drive
+                    uploadRemoteUrlToDrive(
                         rawStill,
                         'TMDB_Stills',
                         `still_${idStr}_s${seasonNum}_e${ep.episode_number}.jpg`
-                    );
-                    if (driveStill) ep.still_path = driveStill;
+                    ).catch(console.error);
                 }
 
                 // Salva episódio individual no BD
-                await db.run(`
+                db.run(`
                     INSERT OR REPLACE INTO tmdb_episodes_cache
                     (tmdb_id, season, episode, name, overview, runtime, still_url, raw_data, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -243,8 +271,27 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
                     ep.runtime || 0,
                     ep.still_path || null,
                     JSON.stringify(ep)
-                ]);
+                ]).catch(console.error); // Fire and forget no SQLite também pra ficar ultra rápido
             }
+
+            // MERGE COM O BANCO LOCAL (sync_queue) para temporadas nativas
+            try {
+                const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
+                const tmdbEpNumbers = new Set(seasonData.episodes.map(e => e.episode_number));
+                
+                for (const localEp of localEps) {
+                    if (!tmdbEpNumbers.has(localEp.episode_number)) {
+                        seasonData.episodes.push({
+                            episode_number: localEp.episode_number,
+                            name: `Episódio ${localEp.episode_number}`,
+                            overview: 'Detalhes indisponíveis no TMDB.',
+                            still_path: null,
+                            runtime: 0
+                        });
+                    }
+                }
+                seasonData.episodes.sort((a, b) => a.episode_number - b.episode_number);
+            } catch (e) {}
         }
 
         return seasonData;
