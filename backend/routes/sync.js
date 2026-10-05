@@ -1053,13 +1053,10 @@ export default function syncRoutes(db, io) {
             (async () => {
                 let client;
                 try {
-                    console.log('[Remap] 🔌 Conectando ao Telegram...');
-                    const stringSession = new StringSession(sessionStr);
-                    client = new TelegramClient(stringSession, apiId, apiHash, {
-                        connectionRetries: 5,
-                    });
-                    client.setLogLevel('none');
-                    await client.connect();
+                    console.log('[Remap] 🔌 Usando conexão compartilhada do Telegram...');
+                    const { getTelegramClient } = await import('../telegram.js');
+                    client = await getTelegramClient();
+                    client.__shared = true;
 
                     // Carrega os diálogos para resolver a entidade do canal
                     try { await client.getDialogs({}); } catch (e) {}
