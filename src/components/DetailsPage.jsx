@@ -170,6 +170,7 @@ export default function DetailsPage() {
         setData(detailsData);
         setCast(creditsData.cast?.slice(0, 15) || []);
 
+        if (!isMovie) {
           // ATENÇÃO: Episode Groups removidos temporariamente pois o TMDB oficial já tem as temporadas corretas para este anime (Temporada 2 nativa), 
           // e o Episode Group da comunidade estava vazio para a Temporada 2, ocultando-a.
           
