@@ -74,67 +74,12 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
 
         const tmdbData = res.data;
 
-        // 3. Espelhar imagens no Zoro Drive em segundo plano / paralelo
-        let posterUrl = null;
-        let backdropUrl = null;
-
-        if (tmdbData.poster_path) {
-            const rawPosterUrl = `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}`;
-            posterUrl = await uploadRemoteUrlToDrive(rawPosterUrl, 'TMDB_Posters', `poster_${type}_${idStr}.jpg`);
-            if (posterUrl) tmdbData.poster_path = posterUrl;
-        }
-
-        if (tmdbData.backdrop_path) {
-            const rawBackdropUrl = `https://image.tmdb.org/t/p/original${tmdbData.backdrop_path}`;
-            backdropUrl = await uploadRemoteUrlToDrive(rawBackdropUrl, 'TMDB_Backdrops', `backdrop_${type}_${idStr}.jpg`);
-            if (backdropUrl) tmdbData.backdrop_path = backdropUrl;
-        }
-
-        // Espelhar fotos do elenco principal no Zoro Drive (top 10)
-        if (tmdbData.credits && Array.isArray(tmdbData.credits.cast)) {
-            const topCast = tmdbData.credits.cast.slice(0, 10);
-            for (const person of topCast) {
-                if (person.profile_path && !person.profile_path.includes('zorobot.shop')) {
-                    const rawProfile = `https://image.tmdb.org/t/p/w185${person.profile_path}`;
-                    const driveProfile = await uploadRemoteUrlToDrive(rawProfile, 'TMDB_Cast', `cast_${person.id}.jpg`);
-                    if (driveProfile) person.profile_path = driveProfile;
-                }
-            }
-        }
-
-        // Espelhar Teaser/Trailer em SEGUNDO PLANO (Não bloqueia o carregamento da página)
-        (async () => {
-            try {
-                const zoroVideoKeyRow = await db.get("SELECT value FROM system_settings WHERE key = 'zorobot_video_api_key'");
-                const zoroVideoKey = zoroVideoKeyRow?.value;
-                if (zoroVideoKey) {
-                    const searchName = `${tmdbData.title || tmdbData.name} trailer oficial`;
-                    const videoApiUrl = `https://api.zorobot.shop/play_video?nome=${encodeURIComponent(searchName)}&apiKey=${zoroVideoKey}`;
-                    const videoRes = await axios.get(videoApiUrl, { httpsAgent: agent, timeout: 15000 });
-                    
-                    let rawVideoUrl = videoRes.data?.url || videoRes.data?.download_url || videoRes.data?.video_url;
-                    if (rawVideoUrl) {
-                        const driveVideoUrl = await uploadRemoteUrlToDrive(rawVideoUrl, 'TMDB_Teasers', `teaser_${type}_${idStr}.mp4`);
-                        if (driveVideoUrl) {
-                            tmdbData.teaser_video_url = driveVideoUrl;
-                            await db.run(
-                                'UPDATE tmdb_media_cache SET raw_data = ? WHERE tmdb_id = ? AND media_type = ?',
-                                [JSON.stringify(tmdbData), idStr, type]
-                            );
-                        }
-                    }
-                }
-            } catch (vErr) {
-                console.error(`[TMDB CACHE VIDEO] Erro ao baixar teaser via ZoroBot API:`, vErr.message);
-            }
-        })();
-
+        // 3. Salvar no banco local com URLs originais do TMDB imediatamente para devolver rápido pro front
         const title = tmdbData.title || tmdbData.name || '';
         const origTitle = tmdbData.original_title || tmdbData.original_name || '';
         const overview = tmdbData.overview || '';
         const releaseDate = tmdbData.release_date || tmdbData.first_air_date || '';
 
-        // 4. Salvar no banco de dados local
         await db.run(`
             INSERT OR REPLACE INTO tmdb_media_cache 
             (tmdb_id, media_type, title, original_title, overview, release_date, poster_url, backdrop_url, raw_data, updated_at)
@@ -146,12 +91,74 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
             origTitle,
             overview,
             releaseDate,
-            posterUrl || tmdbData.poster_path || null,
-            backdropUrl || tmdbData.backdrop_path || null,
+            tmdbData.poster_path || null,
+            tmdbData.backdrop_path || null,
             JSON.stringify(tmdbData)
         ]);
 
-        console.log(`[TMDB CACHE] Salvo com sucesso no cache local e Zoro Drive: ${title}`);
+        console.log(`[TMDB CACHE] Salvo com sucesso no cache local (TMDB URLs): ${title}`);
+
+        // 4. Espelhar imagens e vídeos no Zoro Drive em SEGUNDO PLANO (Lazy Load puro)
+        (async () => {
+            try {
+                let updated = false;
+
+                if (tmdbData.poster_path) {
+                    const rawPosterUrl = `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}`;
+                    const drivePoster = await uploadRemoteUrlToDrive(rawPosterUrl, 'TMDB_Posters', `poster_${type}_${idStr}.jpg`);
+                    if (drivePoster) { tmdbData.poster_path = drivePoster; updated = true; }
+                }
+
+                if (tmdbData.backdrop_path) {
+                    const rawBackdropUrl = `https://image.tmdb.org/t/p/original${tmdbData.backdrop_path}`;
+                    const driveBackdrop = await uploadRemoteUrlToDrive(rawBackdropUrl, 'TMDB_Backdrops', `backdrop_${type}_${idStr}.jpg`);
+                    if (driveBackdrop) { tmdbData.backdrop_path = driveBackdrop; updated = true; }
+                }
+
+                // Espelhar fotos do elenco principal no Zoro Drive (top 10)
+                if (tmdbData.credits && Array.isArray(tmdbData.credits.cast)) {
+                    const topCast = tmdbData.credits.cast.slice(0, 10);
+                    for (const person of topCast) {
+                        if (person.profile_path && !person.profile_path.includes('zorobot.shop')) {
+                            const rawProfile = `https://image.tmdb.org/t/p/w185${person.profile_path}`;
+                            const driveProfile = await uploadRemoteUrlToDrive(rawProfile, 'TMDB_Cast', `cast_${person.id}.jpg`);
+                            if (driveProfile) { person.profile_path = driveProfile; updated = true; }
+                        }
+                    }
+                }
+
+                // Espelhar Teaser/Trailer
+                const zoroVideoKeyRow = await db.get("SELECT value FROM system_settings WHERE key = 'zorobot_video_api_key'");
+                const zoroVideoKey = zoroVideoKeyRow?.value;
+                if (zoroVideoKey) {
+                    const searchName = `${title} trailer oficial`;
+                    const videoApiUrl = `https://api.zorobot.shop/play_video?nome=${encodeURIComponent(searchName)}&apiKey=${zoroVideoKey}`;
+                    const videoRes = await axios.get(videoApiUrl, { httpsAgent: agent, timeout: 15000 });
+                    
+                    let rawVideoUrl = videoRes.data?.url || videoRes.data?.download_url || videoRes.data?.video_url;
+                    if (rawVideoUrl) {
+                        const driveVideoUrl = await uploadRemoteUrlToDrive(rawVideoUrl, 'TMDB_Teasers', `teaser_${type}_${idStr}.mp4`);
+                        if (driveVideoUrl) {
+                            tmdbData.teaser_video_url = driveVideoUrl;
+                            updated = true;
+                        }
+                    }
+                }
+
+                // Se alguma imagem ou vídeo foi baixado, atualiza o cache
+                if (updated) {
+                    await db.run(
+                        'UPDATE tmdb_media_cache SET poster_url = ?, backdrop_url = ?, raw_data = ?, updated_at = CURRENT_TIMESTAMP WHERE tmdb_id = ? AND media_type = ?',
+                        [tmdbData.poster_path, tmdbData.backdrop_path, JSON.stringify(tmdbData), idStr, type]
+                    );
+                    console.log(`[TMDB CACHE BG] Atualizado no Zoro Drive: ${title}`);
+                }
+
+            } catch (vErr) {
+                console.error(`[TMDB CACHE BG] Erro ao espelhar mídia de ${title} no Zoro Drive:`, vErr.message);
+            }
+        })();
+
         return tmdbData;
     } catch (err) {
         console.error('[TMDB CACHE] Erro ao buscar/salvar mídia:', err.message);
