@@ -47,7 +47,7 @@ export default function adminRoutes(db, tmdbDb) {
         try {
             const limit = parseInt(req.query.limit) || 50;
             const notFoundItems = await db.all(`
-                SELECT id, title, filename, created_at, updated_at 
+                SELECT id, title, url, created_at, updated_at 
                 FROM sync_queue 
                 WHERE tmdb_id = 'NOT_FOUND' 
                 ORDER BY updated_at DESC 

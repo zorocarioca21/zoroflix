@@ -1120,7 +1120,7 @@ export default function AdminPanel() {
                                         {notFoundItems.map(item => (
                                             <tr key={item.id}>
                                                 <td>#{item.id}</td>
-                                                <td><span style={{ fontFamily: 'monospace', color: '#00ccff' }}>{item.filename}</span></td>
+                                                <td><span style={{ fontFamily: 'monospace', color: '#00ccff' }}>{item.url}</span></td>
                                                 <td>{item.title}</td>
                                                 <td>{new Date(item.updated_at).toLocaleString()}</td>
                                             </tr>
