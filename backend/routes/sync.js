@@ -912,7 +912,12 @@ export default function syncRoutes(db, io) {
     // ==========================================
     // LIMPAR DUPLICADOS DO TELEGRAM: Apaga vídeos duplicados do canal mantendo o mais recente
     // ==========================================
+    let isCleaningUp = false;
+
     router.post('/cleanup-telegram-duplicates', async (req, res) => {
+        if (isCleaningUp) {
+            return res.status(400).json({ error: 'Uma limpeza do Telegram já está em andamento. Aguarde terminar.' });
+        }
         const apiId = parseInt(process.env.TELEGRAM_API_ID);
         const apiHash = process.env.TELEGRAM_API_HASH;
         const sessionStr = process.env.TELEGRAM_SESSION;
@@ -968,6 +973,7 @@ export default function syncRoutes(db, io) {
                 return res.json({ success: true, deleted: 0, message: 'Nenhum duplicado para remover.' });
             }
 
+            isCleaningUp = true;
             res.json({ success: true, deleting: idsToDelete.length, message: `Apagando ${idsToDelete.length} vídeos duplicados do Telegram em background...` });
 
             // Executa a deleção em background
@@ -1022,6 +1028,7 @@ export default function syncRoutes(db, io) {
                 } catch (err) {
                     console.error('[CleanupTG] ❌ Erro durante limpeza:', err);
                 } finally {
+                    isCleaningUp = false;
                     if (client) {
                         try { await client.disconnect(); } catch (e) {}
                     }
