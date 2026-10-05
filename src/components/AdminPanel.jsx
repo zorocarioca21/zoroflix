@@ -62,6 +62,8 @@ export default function AdminPanel() {
     const [loadingUserDetail, setLoadingUserDetail] = useState(false);
     const [userDetailTab, setUserDetailTab] = useState('overview');
 
+    const [notFoundItems, setNotFoundItems] = useState([]);
+
     const openUserDetails = async (userId) => {
         setLoadingUserDetail(true);
         setUserModalOpen(true);
@@ -107,6 +109,7 @@ export default function AdminPanel() {
         if (activeTab === 'moderated') fetchModerated(true);
         if (activeTab === 'hidden') fetchHidden(true);
         if (activeTab === 'users') fetchUsersList(true);
+        if (activeTab === 'tmdb-errors') fetchNotFound();
         if (activeTab === 'settings') {
             fetchConfigs();
             fetchTempStats();
@@ -142,6 +145,22 @@ export default function AdminPanel() {
         const data = await resp.json();
         setReports(reset ? data : [...reports, ...data]);
         setOffsetReports(currentOffset + data.length);
+        setLoading(false);
+    };
+
+    const fetchNotFound = async () => {
+        setLoading(true);
+        try {
+            const resp = await fetch('/api/admin/not-found?limit=100', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setNotFoundItems(data.items);
+            }
+        } catch (e) {
+            console.error(e);
+        }
         setLoading(false);
     };
 
@@ -452,6 +471,9 @@ export default function AdminPanel() {
                     </button>
                     <button className={activeTab === 'sync' ? 'active' : ''} onClick={() => setActiveTab('sync')}>
                         <HardDriveUpload size={18} /> Sync IPTV
+                    </button>
+                    <button className={activeTab === 'tmdb-errors' ? 'active' : ''} onClick={() => setActiveTab('tmdb-errors')} style={{ background: activeTab === 'tmdb-errors' ? '#ffaa00' : 'rgba(255, 170, 0, 0.1)', color: activeTab === 'tmdb-errors' ? '#000' : '#ffaa00', borderColor: '#ffaa00' }}>
+                        <AlertTriangle size={18} /> Falhas TMDB
                     </button>
                     <button className={activeTab === 'manual-upload' ? 'active' : ''} onClick={() => setActiveTab('manual-upload')}>
                         <Film size={18} /> Upload Manual
@@ -1065,6 +1087,51 @@ export default function AdminPanel() {
                         <AdminBotManager token={token} />
                     </div>
                 )}
+                
+                {activeTab === 'tmdb-errors' && (
+                    <div className="admin-card-list">
+                        <div className="admin-tab-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2>Falhas de Mapeamento TMDB</h2>
+                            <button 
+                                onClick={() => fetchNotFound()}
+                                style={{ background: '#00ff88', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                                Atualizar Lista
+                            </button>
+                        </div>
+                        <p style={{ color: '#aaa', marginBottom: '1rem' }}>Esses arquivos não foram encontrados no TMDB. Verifique se o nome do arquivo contém algo que confunda o robô (ex: tags estranhas, anos errados, ou nomes abreviados).</p>
+                        
+                        {loading ? (
+                            <p style={{ color: '#00ff88' }}>Carregando falhas...</p>
+                        ) : notFoundItems.length === 0 ? (
+                            <p style={{ color: '#aaa' }}>Nenhuma falha de mapeamento registrada.</p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID Fila</th>
+                                            <th>Nome do Arquivo</th>
+                                            <th>Nome Extraído</th>
+                                            <th>Última Tentativa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {notFoundItems.map(item => (
+                                            <tr key={item.id}>
+                                                <td>#{item.id}</td>
+                                                <td><span style={{ fontFamily: 'monospace', color: '#00ccff' }}>{item.filename}</span></td>
+                                                <td>{item.title}</td>
+                                                <td>{new Date(item.updated_at).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {activeTab === 'mangas' && (
                     <div className="admin-content-card" style={{ background: '#111', border: '1px solid #333' }}>
                         <AdminMangas token={token} />
