@@ -159,8 +159,8 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                             origTitle,
                             overview,
                             releaseDate,
-                            bestMatch.poster_path ? \`https://image.tmdb.org/t/p/w500\${bestMatch.poster_path}\` : null,
-                            bestMatch.backdrop_path ? \`https://image.tmdb.org/t/p/original\${bestMatch.backdrop_path}\` : null,
+                            bestMatch.poster_path ? `https://image.tmdb.org/t/p/w500${bestMatch.poster_path}` : null,
+                            bestMatch.backdrop_path ? `https://image.tmdb.org/t/p/original${bestMatch.backdrop_path}` : null,
                             JSON.stringify(bestMatch)
                         ]);
                     } catch (cacheErr) {
