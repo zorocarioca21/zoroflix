@@ -65,18 +65,35 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             if (sEpCombinedMatch) {
                 season_number = parseInt(sEpCombinedMatch[1]);
                 episode_number = parseInt(sEpCombinedMatch[2]);
-                q = q.replace(sEpCombinedMatch[0], '').trim();
+                // Para séries no padrão "Nome da Série - S01E01 - Nome do Episódio", o que importa para achar no TMDB é o que está ANTES da temporada/episódio!
+                const parts = q.split(sEpCombinedMatch[0]);
+                if (parts[0] && parts[0].trim().length > 1) {
+                    q = parts[0].trim();
+                } else {
+                    q = q.replace(sEpCombinedMatch[0], '').trim();
+                }
             } else if (sMatch && epMatch) {
                 season_number = parseInt(sMatch[1]);
                 episode_number = parseInt(epMatch[1]);
-                q = q.replace(sMatch[0], '').replace(epMatch[0], '').trim();
+                const matchIndex = Math.min(sMatch.index, epMatch.index);
+                const beforeMatch = q.substring(0, matchIndex).trim();
+                if (beforeMatch.length > 1) {
+                    q = beforeMatch;
+                } else {
+                    q = q.replace(sMatch[0], '').replace(epMatch[0], '').trim();
+                }
             } else {
                 const epOnlyRegex = /\b(?:EPIS[OÓ]DIO|EP|E)\s*0?(\d{1,3})\b/i;
                 const altMatch = q.match(epOnlyRegex);
                 if (altMatch) {
                     season_number = 1;
                     episode_number = parseInt(altMatch[1]);
-                    q = q.replace(altMatch[0], '').trim();
+                    const beforeMatch = q.substring(0, altMatch.index).trim();
+                    if (beforeMatch.length > 1) {
+                        q = beforeMatch;
+                    } else {
+                        q = q.replace(altMatch[0], '').trim();
+                    }
                 }
             }
 
@@ -87,7 +104,9 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                 q = q.substring(0, tagMatch.index).trim();
             }
             // Substitui pontos e underscores por espaços (ex: The.Walking.Dead_S01 -> The Walking Dead)
-            q = q.replace(/[._]/g, ' ').replace(/[-:]$/, '').trim();
+            q = q.replace(/[._]/g, ' ');
+            // Remove traços, dois pontos, barras e pontuações do final ou início do nome
+            q = q.replace(/^[\s\-:|]+|[\s\-:|]+$/g, '').trim();
             // Remove espaços duplos
             q = q.replace(/\s+/g, ' ');
 
