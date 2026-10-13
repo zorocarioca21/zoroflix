@@ -230,6 +230,30 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Helper para verificar se é canal de TV 24H (ex: [24H], [24 HS], etc.), sem confundir com obras como "24 Horas"
+    const isLive24Channel = (title) => {
+        if (!title) return false;
+        return /\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(title);
+    };
+
+    // Rota para pular em lote todos os canais [24H] que já estão na fila
+    router.post('/queue/skip-24h-channels', async (req, res) => {
+        try {
+            const rows = await db.all("SELECT id, title FROM sync_queue WHERE status IN ('pending', 'error')");
+            let skippedCount = 0;
+            for (const item of rows) {
+                if (isLive24Channel(item.title)) {
+                    await db.run("UPDATE sync_queue SET status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+                    skippedCount++;
+                }
+            }
+            res.json({ success: true, skipped: skippedCount, message: `${skippedCount} canais [24H] foram marcados como pulados (skipped).` });
+        } catch (err) {
+            console.error("Erro skip-24h-channels:", err);
+            res.status(500).json({ error: 'Erro ao pular canais 24h.' });
+        }
+    });
+
     // Helper para limpar nomes sujos importados do M3U
     const cleanM3UTitle = (title) => {
         if (!title) return '';
@@ -333,6 +357,7 @@ export default function syncRoutes(db, io) {
                 for (const movie of movies) {
                     const ext = movie.url.split('?')[0].split('.').pop().toLowerCase();
                     if (ext !== 'mp4' && ext !== 'mkv') continue; // Filtro de extensão
+                    if (isLive24Channel(movie.title)) continue; // Ignora canais de TV [24H]
                     
                     const res = await db.run(
                         "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 4000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
@@ -531,6 +556,7 @@ export default function syncRoutes(db, io) {
                     let insertedCount = 0;
                     for (const movie of movies) {
                         // Não filtramos extensão aqui pois a lista M3U usa .ts que funciona bem, apenas garantimos inserção
+                        if (isLive24Channel(movie.title)) continue; // Ignora canais de TV [24H]
                         const result = await db.run(
                             "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 4000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]

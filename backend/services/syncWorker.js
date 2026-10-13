@@ -227,6 +227,13 @@ async function downloadLoop() {
             continue;
         }
 
+        // Se for canal ao vivo / 24H (ex: [24H] Zé Buscapé), pula automaticamente
+        if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(nextItem.title)) {
+            console.log(`[Download] ⏭️ Pulando canal ao vivo/24h automaticamente: "${nextItem.title}"`);
+            await dbInstance.run("UPDATE sync_queue SET status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nextItem.id]);
+            continue;
+        }
+
         // Marcar como downloading
         await dbInstance.run("UPDATE sync_queue SET status = 'downloading' WHERE id = ?", [nextItem.id]);
 
@@ -964,6 +971,7 @@ function startAutoM3uSync() {
                 try {
                     let insertedCount = 0;
                     for (const movie of movies) {
+                        if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(movie.title)) continue; // Ignora canais de TV [24H]
                         const result = await dbInstance.run(
                             "INSERT INTO sync_queue (title, url, status, priority) SELECT ?, ?, 'pending', 3000 WHERE NOT EXISTS (SELECT 1 FROM sync_queue WHERE url = ?) AND NOT EXISTS (SELECT 1 FROM sync_queue WHERE title = ?)",
                             [movie.title, movie.url, movie.url, movie.title]

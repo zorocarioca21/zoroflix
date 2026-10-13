@@ -46,6 +46,12 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             let season_number = null;
             let episode_number = null;
 
+            // Se for canal ao vivo / 24H (ex: [24H] Zé Buscapé), marca como NOT_FOUND direto sem gastar cota
+            if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(item.title)) {
+                await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+                continue;
+            }
+
             // Extrai as infos básicas do título (temporada/episódio/ano)
             let q = item.title;
             const yearMatch = q.match(/[\(\[](\d{4})[\)\]]/);

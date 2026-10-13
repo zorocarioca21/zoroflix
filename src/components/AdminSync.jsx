@@ -594,6 +594,25 @@ export default function AdminSync() {
         }
     };
 
+    const skip24hChannels = async () => {
+        const ok = await dialog.confirm("Deseja marcar como ignorados (pular) TODOS os canais de TV ao vivo [24H] que estão na fila de pendentes/erros?", { 
+            variant: 'warning', title: 'Pular Canais 24H', confirmText: 'Pular Canais [24H]' 
+        });
+        if (!ok) return;
+        try {
+            const res = await fetch(`/api/sync/queue/skip-24h-channels`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                dialog.alert(data.message || `${data.skipped} canais [24H] pulados com sucesso!`, { variant: 'success', title: 'Canais Pulados' });
+                fetchQueue();
+            } else {
+                dialog.alert("Erro ao pular canais 24h", { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro de conexão ao pular canais', { variant: 'error', title: 'Erro de Conexão' });
+        }
+    };
+
     const editItem = async (item) => {
         const newTitle = await dialog.prompt("Digite o novo título para este filme:", item.title, { 
             variant: 'info', title: 'Editar Título', confirmText: 'Salvar', placeholder: 'Novo título...' 
@@ -1460,6 +1479,9 @@ export default function AdminSync() {
                     </button>
                     <button onClick={clearPriorities} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 68, 68, 0.5)', cursor: 'pointer', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
                         <Eraser size={16} /> Limpar Prioridades
+                    </button>
+                    <button onClick={skip24hChannels} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 170, 0, 0.5)', cursor: 'pointer', background: 'rgba(255, 170, 0, 0.1)', color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                        <SkipForward size={16} /> Pular Canais [24H]
                     </button>
                 </div>
             </div>
