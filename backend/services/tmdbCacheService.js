@@ -22,10 +22,15 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
             'SELECT * FROM tmdb_media_cache WHERE tmdb_id = ? AND media_type = ?',
             [idStr, type]
         );
+        // Só considera cache válido se tiver os detalhes completos (ex: status, seasons ou credits).
+        // Se for apenas o resultado básico de busca salvo pelo mapper, busca os detalhes completos na API.
         if (cached && cached.raw_data) {
             const parsedData = JSON.parse(cached.raw_data);
-            if (cached.poster_url) parsedData.poster_path = cached.poster_url;
-            if (cached.backdrop_url) parsedData.backdrop_path = cached.backdrop_url;
+            const isFullDetails = parsedData.status !== undefined || parsedData.seasons !== undefined || parsedData.credits !== undefined;
+
+            if (isFullDetails) {
+                if (cached.poster_url) parsedData.poster_path = cached.poster_url;
+                if (cached.backdrop_url) parsedData.backdrop_path = cached.backdrop_url;
 
             // Se o cache ainda possui URLs do TMDB (não espelhadas no Zoro Drive), agenda espelhamento em segundo plano
             const needsPosterSync = parsedData.poster_path && !parsedData.poster_path.includes('zorobot.shop');
@@ -60,6 +65,7 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
             }
 
             return parsedData;
+            }
         }
     } catch (err) {
         console.error('[TMDB CACHE] Erro ao consultar banco:', err.message);
