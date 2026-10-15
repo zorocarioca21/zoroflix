@@ -171,21 +171,22 @@ export default function DetailsPage() {
         setCast(creditsData.cast?.slice(0, 15) || []);
 
         if (!isMovie) {
-          let loadedGroup = null;
-          // 1. Tentar carregar do cache do servidor
-          try {
-            const groupResp = await fetch(`/api/tmdb/episode-group/${id}`);
-            if (groupResp.ok) {
-              const groupData = await groupResp.json();
-              if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
-                loadedGroup = groupData;
-              }
-            }
-          } catch (err) {}
+          const isAnimeOrAnimation = detailsData.genres?.some(g => g.id === 16 || g.name?.toLowerCase().includes('anima'))
+            || detailsData.original_language === 'ja';
 
-          // 2. Se o servidor falhar ou não tiver (retornar null), a gente NÃO faz o fallback pro TMDB direto no frontend,
-          // porque se fizer isso a gente perde o "Merge" com o sync_queue do backend!
-          // Então, se o backend falhar, loadedGroup continua null e ele vai usar as temporadas nativas.
+          let loadedGroup = null;
+          // 1. Apenas para animes/animações busca Episode Group se existir
+          if (isAnimeOrAnimation) {
+            try {
+              const groupResp = await fetch(`/api/tmdb/episode-group/${id}`);
+              if (groupResp.ok) {
+                const groupData = await groupResp.json();
+                if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
+                  loadedGroup = groupData;
+                }
+              }
+            } catch (err) {}
+          }
 
           if (loadedGroup && isCurrent) {
             setEpisodeGroup(loadedGroup);

@@ -337,7 +337,8 @@ export default function adminRoutes(db, tmdbDb) {
     // TMDB API Keys Manager
     router.get('/tmdb-keys', async (req, res) => {
         try {
-            const row = await db.get("SELECT value FROM system_settings WHERE key = 'tmdb_api_keys'");
+            const targetDb = tmdbDb || db;
+            const row = await targetDb.get("SELECT value FROM system_settings WHERE key = 'tmdb_api_keys'");
             res.json({ keys: row ? row.value : '' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao buscar TMDB keys.' });

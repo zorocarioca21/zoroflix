@@ -4,7 +4,8 @@ import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
 const router = express.Router();
 
-export default function tmdbRoutes(db) {
+export default function tmdbRoutes(db, appDb) {
+    const mainDb = appDb || db;
 
     // GET /api/tmdb/details/:type/:id
     router.get('/details/:type/:id', async (req, res) => {
@@ -25,7 +26,7 @@ export default function tmdbRoutes(db) {
         const { id, season } = req.params;
         try {
             const apiKey = await getNextTmdbKey(db);
-            const data = await getOrFetchSeasonDetails(db, id, season, apiKey);
+            const data = await getOrFetchSeasonDetails(db, id, season, apiKey, mainDb);
             if (!data) return res.status(404).json({ error: 'Temporada não encontrada no TMDB' });
             res.json(data);
         } catch (err) {

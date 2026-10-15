@@ -169,72 +169,14 @@ export async function getOrFetchMediaDetails(db, tmdbId, mediaType = 'movie', ap
 /**
  * Busca episódios de uma temporada. Espelha as imagens dos episódios (stills em qualidade original) para o Zoro Drive.
  */
-export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) {
+export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey, appDb = null) {
     if (!tmdbId || apiKey === undefined) return null;
 
     const idStr = String(tmdbId);
     const seasonNum = parseInt(seasonNumber, 10);
+    const queueDb = appDb || db;
 
     try {
-        // 1. Tentar buscar se existe Episode Group (para Animes e Séries reorganizadas)
-        const groupDetails = await getOrFetchEpisodeGroupDetails(db, idStr, apiKey);
-        if (groupDetails && Array.isArray(groupDetails.groups) && groupDetails.groups.length > 0) {
-            // Filtrar grupos que contenham episódios (ignora grupos vazios ou apenas especiais se houver outros)
-            const matchedGroup = groupDetails.groups.find(g => g.order === seasonNum)
-                || groupDetails.groups.find((g, idx) => (g.order !== 0 ? g.order : idx + 1) === seasonNum)
-                || groupDetails.groups[seasonNum - 1];
-
-            if (matchedGroup && Array.isArray(matchedGroup.episodes)) {
-                console.log(`[TMDB CACHE] Usando episódios do Episode Group '${matchedGroup.name}' (${matchedGroup.episodes.length} eps) para série ${idStr} temp ${seasonNum}`);
-                
-                // Processar fotos (stills) para Zoro Drive em background
-                for (const ep of matchedGroup.episodes) {
-                    if (ep.still_path && !ep.still_path.includes('zorobot.shop')) {
-                        const rawStill = `https://image.tmdb.org/t/p/original${ep.still_path}`;
-                        ep.still_path = rawStill; // Retorna rápido
-                        
-                        // Fogo e esquece
-                        uploadRemoteUrlToDrive(
-                            rawStill,
-                            'TMDB_Stills',
-                            `still_${idStr}_s${seasonNum}_e${ep.episode_number}.jpg`
-                        ).catch(console.error);
-                    }
-                }
-
-                // -------------------------------------------------------------
-                // MERGE COM O BANCO LOCAL (sync_queue)
-                // Para mostrar episódios que você upou no Telegram mas que o TMDB
-                // ainda não tem cadastrado nessa temporada/grupo.
-                // -------------------------------------------------------------
-                try {
-                    const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
-                    const tmdbEpNumbers = new Set(matchedGroup.episodes.map(e => Number(e.episode_number)));
-                    
-                    for (const localEp of localEps) {
-                        if (!tmdbEpNumbers.has(Number(localEp.episode_number))) {
-                            matchedGroup.episodes.push({
-                                episode_number: Number(localEp.episode_number),
-                                name: `Episódio ${localEp.episode_number}`,
-                                overview: 'Detalhes indisponíveis no TMDB.',
-                                still_path: null,
-                                runtime: 0
-                            });
-                        }
-                    }
-                    // Reordenar por número do episódio
-                    matchedGroup.episodes.sort((a, b) => Number(a.episode_number) - Number(b.episode_number));
-                } catch (e) {}
-                
-                return {
-                    id: matchedGroup.id || idStr,
-                    name: matchedGroup.name || `Temporada ${seasonNum}`,
-                    season_number: seasonNum,
-                    episodes: matchedGroup.episodes
-                };
-            }
-        }
-
         console.log(`[TMDB CACHE] Baixando temporada ${seasonNum} da série ${idStr}...`);
         const url = `${TMDB_BASE_URL}/tv/${idStr}/season/${seasonNum}?api_key=${apiKey}&language=pt-BR`;
         const res = await axios.get(url, { httpsAgent: agent, timeout: 10000 });
@@ -276,7 +218,7 @@ export async function getOrFetchSeasonDetails(db, tmdbId, seasonNumber, apiKey) 
 
             // MERGE COM O BANCO LOCAL (sync_queue) para temporadas nativas
             try {
-                const localEps = await db.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
+                const localEps = await queueDb.all(`SELECT episode_number FROM sync_queue WHERE tmdb_id = ? AND season_number = ?`, [idStr, seasonNum]);
                 const tmdbEpNumbers = new Set(seasonData.episodes.map(e => Number(e.episode_number)));
                 
                 for (const localEp of localEps) {

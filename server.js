@@ -74,7 +74,7 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
     app.use('/api/bot', botRoutes(db));
     app.use('/api/bot-manager', botManagerRoutes(db));
     app.use('/api/app-updates', appUpdatesRoutes(db));
-    app.use('/api/tmdb', tmdbRoutes(tmdbDb));
+    app.use('/api/tmdb', tmdbRoutes(tmdbDb, db));
 
     // Rotas de Mangás
     app.use('/api/mangas', mangasRoutes(db));
