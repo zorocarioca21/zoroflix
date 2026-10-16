@@ -8,6 +8,8 @@ import AppUpdatePage from './AppUpdatePage';
 import AdminBotManager from './AdminBotManager';
 import AdminMangas from './AdminMangas';
 
+import './AdminPanel.css';
+
 export default function AdminPanel() {
     const { user, loading: authLoading } = useAuth();
     const token = localStorage.getItem('cinegeek_token');
@@ -441,52 +443,91 @@ export default function AdminPanel() {
         <div className="admin-page-container">
             <div className="admin-header-main">
                 <div className="admin-title-wrap">
-                    <Shield size={32} className="admin-icon-glow" />
-                    <h1>Painel Administrativo</h1>
+                    <div className="admin-brand-cluster">
+                        <div className="admin-brand-icon">
+                            <Shield size={26} color="#00ff88" />
+                        </div>
+                        <div className="admin-brand-text">
+                            <h1>Painel Administrativo</h1>
+                            <p>
+                                CineGeek Core Management
+                                <span className="admin-brand-badge">SaaS v2.4</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div className="admin-top-meta">
+                        <div className="admin-operator-badge">
+                            <span className="admin-operator-dot"></span>
+                            <span>Operador: <b>{user?.name || user?.email || 'Administrador'}</b></span>
+                        </div>
+                    </div>
                 </div>
-                <div className="admin-tabs">
-                    <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>
-                        <AlertTriangle size={18} /> Denúncias
-                    </button>
-                    <button className={activeTab === 'comments' ? 'active' : ''} onClick={() => setActiveTab('comments')}>
-                        <MessageSquare size={18} /> Comentários
-                    </button>
-                    <button className={activeTab === 'moderated' ? 'active' : ''} onClick={() => setActiveTab('moderated')}>
-                        <Trash2 size={18} /> Apagados
-                    </button>
-                    <button className={activeTab === 'hidden' ? 'active' : ''} onClick={() => setActiveTab('hidden')}>
-                        <EyeOff size={18} /> Escondidos
-                    </button>
-                    <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
-                        <Users size={18} /> Usuários
-                    </button>
-                    <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
-                        <Shield size={18} /> Configurações
-                    </button>
-                    <button className={activeTab === 'apikeys' ? 'active' : ''} onClick={() => setActiveTab('apikeys')}>
-                        <Key size={18} /> API Keys
-                    </button>
-                    <button className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>
-                        <ChartBar size={18} /> Analytics
-                    </button>
-                    <button className={activeTab === 'sync' ? 'active' : ''} onClick={() => setActiveTab('sync')}>
-                        <HardDriveUpload size={18} /> Sync IPTV
-                    </button>
-                    <button className={activeTab === 'tmdb-errors' ? 'active' : ''} onClick={() => setActiveTab('tmdb-errors')} style={{ background: activeTab === 'tmdb-errors' ? '#ffaa00' : 'rgba(255, 170, 0, 0.1)', color: activeTab === 'tmdb-errors' ? '#000' : '#ffaa00', borderColor: '#ffaa00' }}>
-                        <AlertTriangle size={18} /> Falhas TMDB
-                    </button>
-                    <button className={activeTab === 'manual-upload' ? 'active' : ''} onClick={() => setActiveTab('manual-upload')}>
-                        <Film size={18} /> Upload Manual
-                    </button>
-                    <button className={activeTab === 'app-update' ? 'active' : ''} onClick={() => setActiveTab('app-update')}>
-                        <Smartphone size={18} /> App
-                    </button>
-                    <button className={activeTab === 'bot-manager' ? 'active' : ''} onClick={() => setActiveTab('bot-manager')}>
-                        <Cpu size={18} /> Bot
-                    </button>
-                    <button className={activeTab === 'mangas' ? 'active' : ''} onClick={() => setActiveTab('mangas')} style={{ background: activeTab === 'mangas' ? '#ff3366' : 'rgba(255, 51, 102, 0.1)', color: activeTab === 'mangas' ? '#fff' : '#ff3366', borderColor: '#ff3366' }}>
-                        <BookOpen size={18} /> Mangás
-                    </button>
+
+                <div className="admin-nav-groups">
+                    {/* Grupo Mídia & Pipeline */}
+                    <div className="admin-nav-category">
+                        <span className="admin-nav-cat-label">Mídia & Engine</span>
+                        <div className="admin-nav-pills">
+                            <button className={`admin-tab-btn ${activeTab === 'sync' ? 'active' : ''}`} onClick={() => setActiveTab('sync')}>
+                                <HardDriveUpload size={16} /> Sync IPTV
+                            </button>
+                            <button className={`admin-tab-btn accent-warning ${activeTab === 'tmdb-errors' ? 'active' : ''}`} onClick={() => setActiveTab('tmdb-errors')}>
+                                <AlertTriangle size={16} /> Falhas TMDB
+                                {notFoundItems?.length > 0 && <span className="admin-tab-badge">{notFoundItems.length}</span>}
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'manual-upload' ? 'active' : ''}`} onClick={() => setActiveTab('manual-upload')}>
+                                <Film size={16} /> Upload Manual
+                            </button>
+                            <button className={`admin-tab-btn accent-mangas ${activeTab === 'mangas' ? 'active' : ''}`} onClick={() => setActiveTab('mangas')}>
+                                <BookOpen size={16} /> Mangás
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Grupo Moderação & Conteúdo */}
+                    <div className="admin-nav-category">
+                        <span className="admin-nav-cat-label">Moderação</span>
+                        <div className="admin-nav-pills">
+                            <button className={`admin-tab-btn ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>
+                                <AlertTriangle size={16} /> Denúncias
+                                {reports?.length > 0 && <span className="admin-tab-badge">{reports.length}</span>}
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>
+                                <MessageSquare size={16} /> Comentários
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'moderated' ? 'active' : ''}`} onClick={() => setActiveTab('moderated')}>
+                                <Trash2 size={16} /> Com Aviso
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'hidden' ? 'active' : ''}`} onClick={() => setActiveTab('hidden')}>
+                                <EyeOff size={16} /> Ocultos
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                                <Users size={16} /> Usuários
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Grupo Infraestrutura & Configurações */}
+                    <div className="admin-nav-category">
+                        <span className="admin-nav-cat-label">Infraestrutura</span>
+                        <div className="admin-nav-pills">
+                            <button className={`admin-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
+                                <ChartBar size={16} /> Analytics
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+                                <Shield size={16} /> Configurações
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'apikeys' ? 'active' : ''}`} onClick={() => setActiveTab('apikeys')}>
+                                <Key size={16} /> API Keys
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'bot-manager' ? 'active' : ''}`} onClick={() => setActiveTab('bot-manager')}>
+                                <Cpu size={16} /> Telegram Bot
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'app-update' ? 'active' : ''}`} onClick={() => setActiveTab('app-update')}>
+                                <Smartphone size={16} /> App Mobile
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

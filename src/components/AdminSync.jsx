@@ -993,14 +993,19 @@ export default function AdminSync() {
                 }
             `}</style>
             <div className="sync-container">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <h1 className="sync-header-title">
-                        <HardDriveDownload size={36} color="#00ff88" />
-                        CineGeek Sync
-                        <span className="sync-live-badge">
-                            <div className="live-indicator"></div> Ao Vivo
-                        </span>
-                    </h1>
+                <div className="sync-header-wrap">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div className="sync-header-icon">
+                            <HardDriveDownload size={24} color="#00ff88" />
+                        </div>
+                        <div>
+                            <h1 className="sync-header-title">CineGeek Sync</h1>
+                            <p style={{ margin: '2px 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>Pipeline Automatizado de Extração & Envio Telegram</p>
+                        </div>
+                    </div>
+                    <span className="sync-live-badge">
+                        <div className="live-indicator"></div> WebSocket Conectado
+                    </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -1438,50 +1443,58 @@ export default function AdminSync() {
                 )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Últimos Filmes na Fila</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <ListFilter size={20} color="#00ff88" />
+                    Fila de Processamento
+                </h3>
                 
-                <div style={{ display: 'flex', gap: '0.5rem', background: '#333', padding: '0.3rem', borderRadius: '8px', alignItems: 'center', flex: '1', maxWidth: '300px' }}>
-                    <Search size={18} color="#888" style={{ marginLeft: '0.5rem' }} />
+                <div style={{ display: 'flex', gap: '0.6rem', background: 'rgba(0,0,0,0.4)', padding: '0.4rem 0.8rem', borderRadius: '10px', alignItems: 'center', flex: '1', maxWidth: '340px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <Search size={16} color="#888" />
                     <input 
                         type="text" 
-                        placeholder="Pesquisar por título ou ID..." 
+                        placeholder="Buscar por título ou ID na fila..." 
                         value={searchQuery}
                         onChange={(e) => {
                             const val = e.target.value;
                             setSearchQuery(val);
-                            searchRef.current = val; // Atualiza a ref na hora para o socket não usar valor antigo
+                            searchRef.current = val;
                             
                             if (window.searchTimeout) clearTimeout(window.searchTimeout);
                             window.searchTimeout = setTimeout(() => {
                                 fetchQueue(filter, val, sortSize);
                             }, 400);
                         }}
-                        style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', padding: '0.3rem' }}
+                        style={{ background: 'transparent', border: 'none', color: '#fff', outline: 'none', width: '100%', fontSize: '0.85rem' }}
                     />
+                </div>
+            </div>
+
+            {/* Filter Pills and Quick Actions Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'all' ? 'active' : ''}`}><ListFilter size={15} /> Todos</button>
+                    <button onClick={() => { setFilter('prioritized'); filterRef.current='prioritized'; fetchQueue('prioritized', searchQuery, sortSize); }} className={`admin-tab-btn accent-warning ${filter === 'prioritized' ? 'active' : ''}`}><Star size={15} /> Priorizados</button>
+                    <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'pending' ? 'active' : ''}`}><Clock size={15} /> Pendentes</button>
+                    <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'completed' ? 'active' : ''}`}><CheckCircle size={15} /> Concluídos</button>
+                    <button onClick={() => { setFilter('completed_today'); filterRef.current='completed_today'; fetchQueue('completed_today', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'completed_today' ? 'active' : ''}`}><Rocket size={15} /> Hoje</button>
+                    <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'error' ? 'active' : ''}`} style={filter === 'error' ? { color: '#ff4444', borderColor: '#ff4444' } : {}}><XCircle size={15} /> Erros</button>
+                    <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'skipped' ? 'active' : ''}`}><SkipForward size={15} /> Ignorados</button>
+                    <button onClick={() => { setFilter('new_today'); filterRef.current='new_today'; fetchQueue('new_today', searchQuery, sortSize); }} className={`admin-tab-btn ${filter === 'new_today' ? 'active' : ''}`}><Sparkles size={15} /> Novos</button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button onClick={() => { setFilter('all'); filterRef.current='all'; fetchQueue('all', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'all' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'all' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'all' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ListFilter size={16} /> Todos</button>
-                    <button onClick={() => { setFilter('prioritized'); filterRef.current='prioritized'; fetchQueue('prioritized', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'prioritized' ? '#ffff00' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'prioritized' ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'prioritized' ? '#ffff00' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Star size={16} /> Priorizados</button>
-                    <button onClick={() => { setFilter('pending'); filterRef.current='pending'; fetchQueue('pending', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'pending' ? '#888' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'pending' ? 'rgba(136,136,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'pending' ? '#fff' : '#aaa', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Clock size={16} /> Pendentes</button>
-                    <button onClick={() => { setFilter('completed'); filterRef.current='completed'; fetchQueue('completed', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'completed' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'completed' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'completed' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={16} /> Concluídos</button>
-                    <button onClick={() => { setFilter('completed_today'); filterRef.current='completed_today'; fetchQueue('completed_today', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'completed_today' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'completed_today' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'completed_today' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Rocket size={16} /> Concluídos Hoje</button>
-                    <button onClick={() => { setFilter('error'); filterRef.current='error'; fetchQueue('error', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'error' ? '#ff4444' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'error' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'error' ? '#ff4444' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><XCircle size={16} /> Erros</button>
-                    <button onClick={() => { setFilter('skipped'); filterRef.current='skipped'; fetchQueue('skipped', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'skipped' ? '#ffaa00' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'skipped' ? 'rgba(255,170,0,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'skipped' ? '#ffaa00' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><SkipForward size={16} /> Ignorados</button>
-                    <button onClick={() => { setFilter('new_today'); filterRef.current='new_today'; fetchQueue('new_today', searchQuery, sortSize); }} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid ' + (filter === 'new_today' ? '#00ff88' : 'rgba(255,255,255,0.1)'), cursor: 'pointer', background: filter === 'new_today' ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', color: filter === 'new_today' ? '#00ff88' : '#fff', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Sparkles size={16} /> Novos Hoje</button>
-                    
-                    <button onClick={prioritizeFiltered} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(0, 255, 136, 0.5)', cursor: 'pointer', background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
-                        <ChevronsUp size={16} /> Priorizar Busca
+                    <button onClick={prioritizeFiltered} className="sync-btn-secondary" style={{ color: '#00ff88', borderColor: 'rgba(0,255,136,0.3)' }}>
+                        <ChevronsUp size={15} /> Priorizar Busca
                     </button>
-                    <button onClick={prioritizeSeries} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 215, 0, 0.5)', cursor: 'pointer', background: 'rgba(255, 215, 0, 0.1)', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
-                        <Star size={16} /> Priorizar Série
+                    <button onClick={prioritizeSeries} className="sync-btn-secondary sync-btn-warning">
+                        <Star size={15} /> Priorizar Série
                     </button>
-                    <button onClick={clearPriorities} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 68, 68, 0.5)', cursor: 'pointer', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
-                        <Eraser size={16} /> Limpar Prioridades
+                    <button onClick={skip24hChannels} className="sync-btn-secondary" style={{ color: '#fb923c', borderColor: 'rgba(251,146,60,0.3)' }}>
+                        <SkipForward size={15} /> Pular [24H]
                     </button>
-                    <button onClick={skip24hChannels} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255, 170, 0, 0.5)', cursor: 'pointer', background: 'rgba(255, 170, 0, 0.1)', color: '#ffaa00', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', transition: 'all 0.2s' }}>
-                        <SkipForward size={16} /> Pular Canais [24H]
+                    <button onClick={clearPriorities} className="sync-btn-secondary sync-btn-danger">
+                        <Eraser size={15} /> Limpar Prioridades
                     </button>
                 </div>
             </div>
