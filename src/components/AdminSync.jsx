@@ -306,6 +306,7 @@ export default function AdminSync() {
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, prioritized_count: 0, total_size_saved: 0, completed_today: 0, added_today: 0 });
     const [filter, setFilter] = useState('all');
+    const [syncSubTab, setSyncSubTab] = useState('queue'); // 'queue' | 'workers' | 'iptv_source' | 'audit'
     const [searchQuery, setSearchQuery] = useState('');
     const [sortSize, setSortSize] = useState(''); // '' | 'asc' | 'desc'
     const [modalOpen, setModalOpen] = useState(false);
@@ -1008,51 +1009,237 @@ export default function AdminSync() {
                     </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                    <div className="sync-card">
-                        <h3 className="sync-card-title">
-                            <Activity size={24} /> Estatísticas da Fila
-                        </h3>
-                        <div className="sync-stat-grid">
-                            <div className="sync-stat-item border-pending">
-                                <div className="sync-stat-label" style={{color: '#8c8f96'}}><Clock size={16} /> Pendentes</div>
-                                <div className="sync-stat-value">{queue.pending}</div>
+                {/* Sub-abas Hierárquicas para Sync (Evita rolar para baixo e organiza funções) */}
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    marginBottom: '1.75rem', 
+                    background: 'rgba(0,0,0,0.3)', 
+                    padding: '0.4rem', 
+                    borderRadius: '12px', 
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    width: 'fit-content',
+                    flexWrap: 'wrap'
+                }}>
+                    <button 
+                        onClick={() => setSyncSubTab('queue')}
+                        className={`admin-tab-btn ${syncSubTab === 'queue' ? 'active' : ''}`}
+                    >
+                        <ListFilter size={16} /> Fila & Processamento
+                    </button>
+                    <button 
+                        onClick={() => setSyncSubTab('stats')}
+                        className={`admin-tab-btn ${syncSubTab === 'stats' ? 'active' : ''}`}
+                    >
+                        <Activity size={16} /> Métricas & Catálogo
+                    </button>
+                    <button 
+                        onClick={() => setSyncSubTab('workers')}
+                        className={`admin-tab-btn ${syncSubTab === 'workers' ? 'active' : ''}`}
+                    >
+                        <Server size={16} /> Motores & Workers
+                        {state.isRunning && !state.isPaused && <span className="admin-operator-dot" style={{ width: '6px', height: '6px' }}></span>}
+                    </button>
+                    <button 
+                        onClick={() => setSyncSubTab('iptv_source')}
+                        className={`admin-tab-btn ${syncSubTab === 'iptv_source' ? 'active' : ''}`}
+                    >
+                        <Radio size={16} /> Conexão IPTV (M3U)
+                    </button>
+                    <button 
+                        onClick={() => setSyncSubTab('audit')}
+                        className={`admin-tab-btn accent-warning ${syncSubTab === 'audit' ? 'active' : ''}`}
+                    >
+                        <AlertTriangle size={16} /> Auditoria & Correções
+                        {reportedVideos.length > 0 && <span className="admin-tab-badge">{reportedVideos.length}</span>}
+                    </button>
+                </div>
+
+                {/* SUB-ABA: Fila & Processamento */}
+                {syncSubTab === 'queue' && (
+                    <>
+                        {/* Status Rápido dos Workers no Topo da Fila */}
+                        <div style={{ 
+                            background: '#151d26', 
+                            border: '1px solid rgba(255,255,255,0.08)', 
+                            borderRadius: '14px', 
+                            padding: '1.25rem 1.5rem', 
+                            marginBottom: '1.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '1rem'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ 
+                                    width: '10px', 
+                                    height: '10px', 
+                                    borderRadius: '50%', 
+                                    background: state.isRunning && !state.isPaused ? '#00ff88' : '#ff4444',
+                                    boxShadow: state.isRunning && !state.isPaused ? '0 0 10px #00ff88' : 'none'
+                                }} />
+                                <div>
+                                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Motor do Worker</span>
+                                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>
+                                        {state.isRunning ? (state.isPaused ? 'Em Pausa' : 'Ativo & Processando') : 'Parado'}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="sync-stat-item border-prioritized">
-                                <div className="sync-stat-label" style={{color: '#ffff00'}}><Star size={16} /> Priorizados</div>
-                                <div className="sync-stat-value">{queue.prioritized_count || 0}</div>
+
+                            {/* Mini resumo de métricas na barra superior */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                <div>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Pendentes</span>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#e2e8f0' }}>{queue.pending}</div>
+                                </div>
+                                <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.08)' }}></div>
+                                <div>
+                                    <span style={{ fontSize: '0.72rem', color: '#facc15', textTransform: 'uppercase', fontWeight: 700 }}>Priorizados</span>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#facc15' }}>{queue.prioritized_count || 0}</div>
+                                </div>
+                                <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.08)' }}></div>
+                                <div>
+                                    <span style={{ fontSize: '0.72rem', color: '#00ff88', textTransform: 'uppercase', fontWeight: 700 }}>Concluídos</span>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#00ff88' }}>{queue.completed}</div>
+                                </div>
+                                <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.08)' }}></div>
+                                <div>
+                                    <span style={{ fontSize: '0.72rem', color: '#f87171', textTransform: 'uppercase', fontWeight: 700 }}>Erros</span>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f87171' }}>{queue.error_count || 0}</div>
+                                </div>
                             </div>
-                            <div className="sync-stat-item border-completed">
-                                <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={16} /> Concluídos</div>
-                                <div className="sync-stat-value">{queue.completed}</div>
-                            </div>
-                            <div className="sync-stat-item border-errors">
-                                <div className="sync-stat-label" style={{color: '#ff4444'}}><XCircle size={16} /> Erros</div>
-                                <div className="sync-stat-value">{queue.error_count || 0}</div>
-                            </div>
-                            <div className="sync-stat-item border-skipped">
-                                <div className="sync-stat-label" style={{color: '#ffaa00'}}><SkipForward size={16} /> Ignorados</div>
-                                <div className="sync-stat-value">{queue.skipped || 0}</div>
-                            </div>
-                            <div className="sync-stat-item border-db">
-                                <div className="sync-stat-label" style={{color: '#00ccff'}}><Database size={16} /> Economia DB</div>
-                                <div className="sync-stat-value">{formatBytes(queue.total_size_saved)}</div>
-                            </div>
-                            <div className="sync-stat-item border-today">
-                                <div className="sync-stat-label" style={{color: '#ff00ff'}}><Rocket size={16} /> Envios Hoje</div>
-                                <div className="sync-stat-value">{queue.completed_today || 0}</div>
-                            </div>
-                            <div className="sync-stat-item border-new">
-                                <div className="sync-stat-label" style={{color: '#00D1FF'}}><Sparkles size={16} /> Novos Hoje</div>
-                                <div className="sync-stat-value">{queue.added_today || 0}</div>
+
+                            {/* Controles rápidos do worker */}
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button 
+                                    onClick={() => toggleWorker(false)}
+                                    disabled={state.isRunning && !state.isPaused}
+                                    className="sync-btn-primary"
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', opacity: (state.isRunning && !state.isPaused) ? 0.4 : 1 }}
+                                >
+                                    <Play size={14} /> Retomar
+                                </button>
+                                <button 
+                                    onClick={() => toggleWorker(true)}
+                                    disabled={!state.isRunning || state.isPaused}
+                                    className="sync-btn-secondary sync-btn-danger"
+                                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', opacity: (!state.isRunning || state.isPaused) ? 0.4 : 1 }}
+                                >
+                                    <Pause size={14} /> Pausar
+                                </button>
                             </div>
                         </div>
 
-                        {/* === ESTATÍSTICAS DE MAPEAMENTO E ZORO DRIVE === */}
-                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)', marginTop: '1.5rem' }}>
-                            <div style={{ fontSize: '0.9rem', color: '#00ccff', fontWeight: 'bold', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Database size={18} /> Catálogo TMDB & Zoro Drive Mapeados
+                        {/* Card do que está baixando/enviando agora (se houver atividade) */}
+                        {(state.downloadTask || state.uploadTaskDocker || state.uploadTaskPython || Object.keys(hybridWorkers).length > 0) && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                                {state.downloadTask && (
+                                    <div className="pipeline-card active">
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00d2ff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <HardDriveDownload size={14} /> BAIXANDO IPTV
+                                            </span>
+                                            <span style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 800 }}>
+                                                {typeof state.downloadTask.progress === 'number' ? `${state.downloadTask.progress.toFixed(1)}%` : 'Liberando...'}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {state.downloadTask.title}
+                                        </div>
+                                        <div className="pipeline-progress-track">
+                                            <div className="pipeline-progress-bar" style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, background: '#00d2ff' }} />
+                                        </div>
+                                    </div>
+                                )}
+                                {state.uploadTaskDocker && (
+                                    <div className="pipeline-card active">
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00ff88', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Send size={14} /> ENVIANDO TELEGRAM (TURBO)
+                                            </span>
+                                            <span style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 800 }}>
+                                                {String(state.uploadTaskDocker.progress || 0).includes('TURBO') ? state.uploadTaskDocker.progress : `${Number(state.uploadTaskDocker.progress || 0).toFixed(1)}%`}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {state.uploadTaskDocker.title}
+                                        </div>
+                                        <div className="pipeline-progress-track">
+                                            <div className="pipeline-progress-bar" style={{ width: typeof state.uploadTaskDocker.progress === 'number' ? `${state.uploadTaskDocker.progress}%` : '100%', background: '#00ff88' }} />
+                                        </div>
+                                    </div>
+                                )}
+                                {state.uploadTaskPython && (
+                                    <div className="pipeline-card active">
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Send size={14} /> ENVIANDO TELEGRAM (PYTHON)
+                                            </span>
+                                            <span style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 800 }}>
+                                                {Number(state.uploadTaskPython.progress || 0).toFixed(1)}%
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {state.uploadTaskPython.title}
+                                        </div>
+                                        <div className="pipeline-progress-track">
+                                            <div className="pipeline-progress-bar" style={{ width: `${Number(state.uploadTaskPython.progress || 0)}%`, background: '#a855f7' }} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+                        )}
+                    </>
+                )}
+
+                {/* SUB-ABA: Métricas & Catálogo */}
+                {syncSubTab === 'stats' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Activity size={20} color="#00ff88" /> Estatísticas Globais da Fila
+                            </h3>
+                            <div className="sync-stat-grid">
+                                <div className="sync-stat-item border-pending">
+                                    <div className="sync-stat-label" style={{color: '#8c8f96'}}><Clock size={15} /> Pendentes</div>
+                                    <div className="sync-stat-value">{queue.pending}</div>
+                                </div>
+                                <div className="sync-stat-item border-prioritized">
+                                    <div className="sync-stat-label" style={{color: '#ffff00'}}><Star size={15} /> Priorizados</div>
+                                    <div className="sync-stat-value">{queue.prioritized_count || 0}</div>
+                                </div>
+                                <div className="sync-stat-item border-completed">
+                                    <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={15} /> Concluídos</div>
+                                    <div className="sync-stat-value">{queue.completed}</div>
+                                </div>
+                                <div className="sync-stat-item border-errors">
+                                    <div className="sync-stat-label" style={{color: '#ff4444'}}><XCircle size={15} /> Erros</div>
+                                    <div className="sync-stat-value">{queue.error_count || 0}</div>
+                                </div>
+                                <div className="sync-stat-item border-skipped">
+                                    <div className="sync-stat-label" style={{color: '#ffaa00'}}><SkipForward size={15} /> Ignorados</div>
+                                    <div className="sync-stat-value">{queue.skipped || 0}</div>
+                                </div>
+                                <div className="sync-stat-item border-db">
+                                    <div className="sync-stat-label" style={{color: '#00ccff'}}><Database size={15} /> Economia DB</div>
+                                    <div className="sync-stat-value">{formatBytes(queue.total_size_saved)}</div>
+                                </div>
+                                <div className="sync-stat-item border-today">
+                                    <div className="sync-stat-label" style={{color: '#ff00ff'}}><Rocket size={15} /> Envios Hoje</div>
+                                    <div className="sync-stat-value">{queue.completed_today || 0}</div>
+                                </div>
+                                <div className="sync-stat-item border-new">
+                                    <div className="sync-stat-label" style={{color: '#00D1FF'}}><Sparkles size={15} /> Novos Hoje</div>
+                                    <div className="sync-stat-value">{queue.added_today || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Database size={20} color="#00ccff" /> Catálogo TMDB & Zoro Drive Mapeados
+                            </h3>
                             <div className="sync-stat-grid">
                                 <div className="sync-stat-item border-db">
                                     <div className="sync-stat-label" style={{color: '#00ccff'}}><Film size={15} /> Filmes & Séries</div>
@@ -1071,28 +1258,150 @@ export default function AdminSync() {
                                     <div className="sync-stat-value">{mappingStats.totalDriveBackdrops}</div>
                                 </div>
                                 <div className="sync-stat-item border-prioritized">
-                                    <div className="sync-stat-label" style={{color: '#ffff00'}}><ListFilter size={15} /> Episódios com Stills</div>
+                                    <div className="sync-stat-label" style={{color: '#ffff00'}}><ListFilter size={15} /> Stills de Episódios</div>
                                     <div className="sync-stat-value">{mappingStats.totalDriveStills} / {mappingStats.totalEpisodes}</div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
 
-                        {/* === CAMPO EDITÁVEL DA URL DA IPTV === */}
-                        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)', marginTop: '1.5rem' }}>
-                            <div style={{ fontSize: '0.9rem', color: '#00ff88', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Radio size={18} /> URL do Servidor IPTV (M3U Link)
+                {/* SUB-ABA: Motores & Workers */}
+                {syncSubTab === 'workers' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Server size={20} color="#00ff88" /> Controle Geral do Motor
+                            </h3>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: 'rgba(0,0,0,0.3)', padding: '1.25rem', borderRadius: '12px' }}>
+                                <div>
+                                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Status de Execução:</span>
+                                    <div style={{ marginTop: '4px' }}>
+                                        <span className={`worker-status-pill ${state.isRunning ? (state.isPaused ? 'paused' : 'running') : 'stopped'}`}>
+                                            {state.isRunning ? (state.isPaused ? 'PAUSADO' : 'RODANDO') : 'PARADO'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <button 
+                                        onClick={() => toggleWorker(false)}
+                                        disabled={state.isRunning && !state.isPaused}
+                                        className="sync-btn-primary"
+                                        style={{ opacity: (state.isRunning && !state.isPaused) ? 0.5 : 1 }}
+                                    >
+                                        <Play size={16} /> Iniciar / Retomar
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleWorker(true)}
+                                        disabled={!state.isRunning || state.isPaused}
+                                        className="sync-btn-secondary sync-btn-danger"
+                                        style={{ opacity: (!state.isRunning || state.isPaused) ? 0.5 : 1 }}
+                                    >
+                                        <Pause size={16} /> Pausar
+                                    </button>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                        </div>
+
+                        {/* Workers em Execução Detalhados */}
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Activity size={20} color="#00ccff" /> Workers Híbridos & Tarefas Atuais
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                                {/* Download Local PC */}
+                                <div className="pipeline-card">
+                                    <h4 style={{ color: '#00ccff', fontSize: '0.95rem', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <HardDriveDownload size={18} /> Download Local (PC)
+                                    </h4>
+                                    {Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').length > 0 ? (
+                                        Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').map(([workerId, worker]) => (
+                                            <div key={workerId} style={{ marginBottom: '1rem' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
+                                                    #{worker.title || 'Desconhecido'} <span style={{ color: '#00ccff', fontSize: '0.75rem' }}>({workerId})</span>
+                                                </div>
+                                                <div className="pipeline-progress-track">
+                                                    <div className="pipeline-progress-bar" style={{ width: `${Number(worker.progress) || 100}%`, background: '#00ccff' }} />
+                                                </div>
+                                                <div style={{ textAlign: 'right', fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
+                                                    {(Number(worker.progress) || 0).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>Nenhum download ativo no PC.</p>
+                                    )}
+                                </div>
+
+                                {/* Upload Docker Turbo */}
+                                <div className="pipeline-card">
+                                    <h4 style={{ color: '#00ff88', fontSize: '0.95rem', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Send size={18} /> Upload Telegram (Docker Turbo)
+                                    </h4>
+                                    {state.uploadTaskDocker ? (
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
+                                                #{state.uploadTaskDocker.title || 'Desconhecido'}
+                                            </div>
+                                            <div className="pipeline-progress-track">
+                                                <div className="pipeline-progress-bar" style={{ width: typeof state.uploadTaskDocker.progress === 'number' ? `${state.uploadTaskDocker.progress}%` : '100%', background: '#00ff88' }} />
+                                            </div>
+                                            <div style={{ textAlign: 'right', fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
+                                                {String(state.uploadTaskDocker.progress || 0).includes('TURBO') ? state.uploadTaskDocker.progress : `${Number(state.uploadTaskDocker.progress || 0).toFixed(1)}%`}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>Aguardando itens menores que 2GB...</p>
+                                    )}
+                                </div>
+
+                                {/* Upload Python */}
+                                <div className="pipeline-card">
+                                    <h4 style={{ color: '#a855f7', fontSize: '0.95rem', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Send size={18} /> Upload Telegram (Python Grandes)
+                                    </h4>
+                                    {state.uploadTaskPython ? (
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.85rem' }}>
+                                                #{state.uploadTaskPython.title || 'Desconhecido'}
+                                            </div>
+                                            <div className="pipeline-progress-track">
+                                                <div className="pipeline-progress-bar" style={{ width: `${Number(state.uploadTaskPython.progress || 0)}%`, background: '#a855f7' }} />
+                                            </div>
+                                            <div style={{ textAlign: 'right', fontSize: '0.78rem', color: '#94a3b8', marginTop: '4px' }}>
+                                                {(Number(state.uploadTaskPython.progress) || 0).toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>Aguardando itens gigantes...</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* SUB-ABA: Conexão IPTV (M3U) */}
+                {syncSubTab === 'iptv_source' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Radio size={20} color="#00ff88" /> Servidor & Lista M3U (IPTV)
+                            </h3>
+                            <p style={{ color: '#94a3b8', fontSize: '0.88rem', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+                                Configure o link oficial fornecido pelo seu provedor de IPTV para baixar o arquivo <code>.m3u_plus</code> e atualizar novos lançamentos.
+                            </p>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                                 <input
                                     type="text"
                                     value={m3uUrlInput}
                                     onChange={(e) => setM3uUrlInput(e.target.value)}
                                     placeholder="http://servidor-iptv.com/get.php?username=...&password=..."
                                     style={{
-                                        flex: '1 1 300px',
-                                        background: 'rgba(255, 255, 255, 0.05)',
-                                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                                        borderRadius: '8px',
+                                        flex: '1 1 340px',
+                                        background: 'rgba(0, 0, 0, 0.4)',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        borderRadius: '10px',
                                         padding: '0.75rem 1rem',
                                         color: '#fff',
                                         fontSize: '0.9rem',
@@ -1102,346 +1411,180 @@ export default function AdminSync() {
                                 <button 
                                     onClick={saveM3uUrl} 
                                     disabled={isSavingM3u} 
-                                    className="sync-btn-secondary sync-btn-info" 
-                                    style={{ padding: '0.75rem 1.2rem' }}
+                                    className="sync-btn-secondary sync-btn-info"
                                 >
-                                    {isSavingM3u ? 'Salvando...' : '💾 Salvar URL da IPTV'}
+                                    {isSavingM3u ? 'Salvando...' : '💾 Salvar URL M3U'}
                                 </button>
                                 <button 
                                     onClick={startRemoteScan} 
-                                    className="sync-btn-primary" 
-                                    style={{ padding: '0.75rem 1.2rem' }}
+                                    className="sync-btn-primary"
                                 >
-                                    <RefreshCcw size={18} /> Varrer IPTV Agora
+                                    <RefreshCcw size={16} /> Varrer IPTV Agora
                                 </button>
                             </div>
                         </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
-                        <button onClick={startScan} className="sync-btn-secondary">
-                            <Search size={18} /> Escanear iptv_list.m3u (Local)
-                        </button>
-                        <button onClick={retryErrors} className="sync-btn-secondary">
-                            <RefreshCcw size={16} /> Tentar Erros
-                        </button>
-                        <button onClick={handleExport} className="sync-btn-secondary sync-btn-info">
-                            <Download size={16} /> Exportar BD
-                        </button>
-                        <button onClick={clearPending} className="sync-btn-secondary sync-btn-danger">
-                            <Eraser size={16} /> Limpar Todos Pendentes
-                        </button>
-                        <button onClick={cleanupDuplicates} className="sync-btn-secondary">
-                            <Eraser size={16} /> Limpar Pendentes Duplicados
-                        </button>
-                        <button onClick={cleanM3UTitles} className="sync-btn-secondary sync-btn-info">
-                            <Eraser size={16} /> Corrigir Títulos Sujos
-                        </button>
-                        <button onClick={cleanupTelegramDuplicates} disabled={isCleaningTG} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningTG ? 0.6 : 1 }}>
-                            <Trash2 size={16} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados do TG'}
-                        </button>
-                        <button onClick={deleteTelegramBroken} disabled={isCleaningBroken} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningBroken ? 0.6 : 1 }}>
-                            <Trash2 size={16} /> {isCleaningBroken ? 'Apagando Corrompidos...' : 'Apagar Corrompidos (<5MB) do TG'}
-                        </button>
-                        <button onClick={remapTelegram} disabled={isRemapping} className="sync-btn-secondary sync-btn-warning" style={{ opacity: isRemapping ? 0.6 : 1 }}>
-                            <Radio size={16} /> {isRemapping ? 'Remapeando...' : 'Remapear Telegram'}
-                        </button>
-                    </div>
-                </div>
-
-                {/* === SEÇÃO DE AUDITORIA FAST START === */}
-                <div className="sync-card">
-                    <h3 className="sync-card-title" style={{ color: '#fff' }}>
-                        <Activity size={24} color="#00ccff" /> Auditoria Fast Start
-                    </h3>
-                    <p style={{ color: '#8c8f96', fontSize: '0.95rem', margin: '0 0 1.5rem 0', lineHeight: '1.6' }}>
-                        Verifica se os vídeos já enviados ao Telegram possuem o MOOV Atom no início (Fast Start). Vídeos sem isso travam ao pular no player.
-                    </p>
-
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-                        {!auditState.isRunning ? (
-                            <button onClick={startAudit} className="sync-btn-secondary sync-btn-info">
-                                <Search size={16} /> Iniciar Auditoria
-                            </button>
-                        ) : (
-                            <button onClick={stopAudit} className="sync-btn-secondary sync-btn-danger">
-                                <X size={16} /> Parar Auditoria
-                            </button>
-                        )}
-                        {auditState.results.failedItems.length > 0 && (
-                            <button onClick={() => reuploadAuditItems(auditState.results.failedItems.map(i => i.id))} className="sync-btn-secondary sync-btn-warning">
-                                <RefreshCcw size={16} /> Reupar Todos ({auditState.results.failedItems.length})
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Barra de Progresso */}
-                    {(auditState.isRunning || auditState.progress > 0) && (
-                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                                <span>{auditState.isRunning ? `Verificando: ${auditState.currentItem || '...'}` : 'Concluído'}</span>
-                                <span>{auditState.currentIndex}/{auditState.total} ({auditState.progress}%)</span>
-                            </div>
-                            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{ width: `${auditState.progress}%`, height: '100%', background: 'linear-gradient(90deg, #00ccff, #00ff88)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: '2rem', marginTop: '0.75rem', fontSize: '0.85rem' }}>
-                                <span style={{ color: '#00ff88' }}>✅ OK: {auditState.results.passed}</span>
-                                <span style={{ color: '#ff4444' }}>❌ Precisam Re-Upload: {auditState.results.failed}</span>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Lista de Vídeos Reprovados Manualmente */}
-                    {auditState.results.failedItems.length > 0 && (
-                        <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,68,68,0.15)' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>ID</th>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>Título</th>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {auditState.results.failedItems.map(item => (
-                                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <td style={{ padding: '0.5rem 1rem', color: '#666', fontSize: '0.85rem' }}>#{item.id}</td>
-                                            <td style={{ padding: '0.5rem 1rem', color: '#ddd', fontSize: '0.85rem' }}>{item.title}</td>
-                                            <td style={{ padding: '0.5rem 1rem', textAlign: 'center' }}>
-                                                <button onClick={() => reuploadAuditItems([item.id])} style={{ background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '6px', padding: '0.3rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                    <RefreshCcw size={12} /> Reupar
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-
-                {/* === SEÇÃO DE VÍDEOS REPORTADOS PELO PLAYER === */}
-                {reportedVideos.length > 0 && (
-                    <div style={{ backgroundColor: 'rgba(255, 68, 68, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#ff4444' }}>
-                                <AlertTriangle size={20} color="#ff4444" /> Falhas Reportadas (Automático)
+                        {/* Operações de Varredura & Limpeza */}
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Database size={20} color="#00d2ff" /> Ações de Catálogo & Banco de Dados
                             </h3>
-                            <button onClick={() => reuploadReportedItems(reportedVideos.map(i => i.id))} style={{ padding: '0.6rem 1.2rem', background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600' }}>
-                                <RefreshCcw size={16} /> Reupar Todos ({reportedVideos.length})
-                            </button>
-                        </div>
-                        <p style={{ color: '#aaa', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
-                            Estes vídeos falharam ao rodar no player principal (provavelmente por falta de Fast Start) e foram reportados automaticamente.
-                        </p>
-
-                        <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#888', fontSize: '0.8rem' }}>Título</th>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Tentativas</th>
-                                        <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#888', fontSize: '0.8rem' }}>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {reportedVideos.map(item => (
-                                        <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <td style={{ padding: '0.8rem 1rem', color: '#ddd', fontSize: '0.9rem' }}>{item.title}</td>
-                                            <td style={{ padding: '0.8rem 1rem', textAlign: 'center', color: '#ffaa00', fontSize: '0.9rem' }}>{item.report_count}x</td>
-                                            <td style={{ padding: '0.8rem 1rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-                                                <button onClick={() => reuploadReportedItems([item.id])} style={{ background: 'rgba(255,170,0,0.1)', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.2)', borderRadius: '6px', padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                    <RefreshCcw size={14} /> Reupar
-                                                </button>
-                                                <button onClick={() => dismissReportedItem(item.id)} title="Ignorar (Falso Positivo)" style={{ background: 'rgba(255,255,255,0.05)', color: '#888', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '0.4rem', cursor: 'pointer' }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="sync-toolbar" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+                                <button onClick={startScan} className="sync-btn-secondary">
+                                    <Search size={16} /> Escanear M3U Local
+                                </button>
+                                <button onClick={retryErrors} className="sync-btn-secondary">
+                                    <RefreshCcw size={15} /> Retentar Erros
+                                </button>
+                                <button onClick={handleExport} className="sync-btn-secondary sync-btn-info">
+                                    <Download size={15} /> Exportar Banco (JSON)
+                                </button>
+                                <button onClick={cleanM3UTitles} className="sync-btn-secondary sync-btn-info">
+                                    <Eraser size={15} /> Higienizar Títulos Sujos
+                                </button>
+                                <button onClick={cleanupDuplicates} className="sync-btn-secondary">
+                                    <Eraser size={15} /> Limpar Duplicados na Fila
+                                </button>
+                                <button onClick={clearPending} className="sync-btn-secondary sync-btn-danger">
+                                    <Trash2 size={15} /> Limpar Todos os Pendentes
+                                </button>
+                                <button onClick={cleanupTelegramDuplicates} disabled={isCleaningTG} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningTG ? 0.6 : 1 }}>
+                                    <Trash2 size={15} /> {isCleaningTG ? 'Limpando...' : 'Apagar Duplicados no Telegram'}
+                                </button>
+                                <button onClick={deleteTelegramBroken} disabled={isCleaningBroken} className="sync-btn-secondary sync-btn-danger" style={{ opacity: isCleaningBroken ? 0.6 : 1 }}>
+                                    <Trash2 size={15} /> {isCleaningBroken ? 'Apagando Corrompidos...' : 'Apagar Corrompidos (<5MB) no Telegram'}
+                                </button>
+                                <button onClick={remapTelegram} disabled={isRemapping} className="sync-btn-secondary sync-btn-warning" style={{ opacity: isRemapping ? 0.6 : 1 }}>
+                                    <Radio size={15} /> {isRemapping ? 'Remapeando...' : 'Remapear Mensagens do Telegram'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                    <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', color: '#fff' }}>
-                        <Server size={20} color="#00ff88" /> Controle do Worker
-                    </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px' }}>
-                        <span style={{ color: '#888' }}>Status:</span> 
-                        <strong style={{ 
-                            color: state.isRunning && !state.isPaused ? '#00ff88' : '#ff4444', 
-                            padding: '0.3rem 0.8rem', 
-                            background: state.isRunning && !state.isPaused ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)', 
-                            borderRadius: '12px' 
-                        }}>
-                            {state.isRunning ? (state.isPaused ? 'PAUSADO' : 'RODANDO') : 'PARADO'}
-                        </strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-                        <button 
-                            onClick={() => toggleWorker(false)}
-                            disabled={state.isRunning && !state.isPaused}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem', background: '#00ff88', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', opacity: (state.isRunning && !state.isPaused) ? 0.5 : 1, flex: 1, justifyContent: 'center' }}
-                        >
-                            <Play size={18} /> Iniciar / Retomar
-                        </button>
-                        <button 
-                            onClick={() => toggleWorker(true)}
-                            disabled={!state.isRunning || state.isPaused}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem', background: '#ff4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', opacity: (!state.isRunning || state.isPaused) ? 0.5 : 1, flex: 1, justifyContent: 'center' }}
-                        >
-                            <Pause size={18} /> Pausar
-                        </button>
-                    </div>
-                </div>
-            </div>
+                {/* SUB-ABA: Auditoria & Correções */}
+                {syncSubTab === 'audit' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                        {/* Seção de Falhas Reportadas pelo Player */}
+                        {reportedVideos.length > 0 && (
+                            <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.06)', padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.15rem', color: '#f87171' }}>
+                                        <AlertTriangle size={20} color="#f87171" /> Falhas Reportadas pelo Player ({reportedVideos.length})
+                                    </h3>
+                                    <button onClick={() => reuploadReportedItems(reportedVideos.map(i => i.id))} className="sync-btn-secondary sync-btn-warning">
+                                        <RefreshCcw size={15} /> Reupar Todos ({reportedVideos.length})
+                                    </button>
+                                </div>
+                                <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
+                                    Estes vídeos travaram ao rodar no player (provavelmente ausência de Fast Start MOOV atom) e foram sinalizados automaticamente pelos usuários.
+                                </p>
 
-            {/* Pipeline Cards: Download e Upload */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-                {/* Download PC (Agrupado) */}
-                <div style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
-                    <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
-                        <HardDriveDownload size={20} /> Baixando da IPTV (PC Local)
-                    </h3>
-                    {Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').length > 0 ? (
-                        Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Baixando_PC').map(([workerId, worker]) => (
-                            <div key={workerId} style={{ marginBottom: '1rem' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#fff', fontSize: '0.9rem' }}>
-                                    #{worker.title || 'Desconhecido'} <span style={{ color: '#00ccff', fontSize: '0.75rem' }}>({workerId})</span>
-                                </div>
-                                <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <div style={{ 
-                                        width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
-                                        backgroundColor: '#00ccff', 
-                                        height: '100%', 
-                                        transition: 'width 0.3s',
-                                        boxShadow: '0 0 10px rgba(0,204,255,0.5)'
-                                    }} />
-                                </div>
-                                <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.3rem', color: '#aaa' }}>
-                                    {(Number(worker.progress) || 0).toFixed(2)}%
+                                <div style={{ maxHeight: '300px', overflowY: 'auto', background: 'rgba(0,0,0,0.4)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase' }}>Título</th>
+                                                <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase' }}>Tentativas</th>
+                                                <th style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase' }}>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reportedVideos.map(item => (
+                                                <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                                    <td style={{ padding: '0.75rem 1rem', color: '#f1f5f9', fontSize: '0.88rem' }}>{item.title}</td>
+                                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: '#facc15', fontSize: '0.88rem', fontWeight: 'bold' }}>{item.report_count}x</td>
+                                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                                                        <button onClick={() => reuploadReportedItems([item.id])} className="sync-btn-secondary sync-btn-warning" style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}>
+                                                            <RefreshCcw size={13} /> Reupar
+                                                        </button>
+                                                        <button onClick={() => dismissReportedItem(item.id)} title="Ignorar (Falso Positivo)" className="sync-btn-secondary" style={{ padding: '0.35rem 0.6rem' }}>
+                                                            <X size={13} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', padding: '1rem 0' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><HardDriveDownload size={18} /> Aguardando fila de Download (PC)...</span>
-                        </div>
-                    )}
-                </div>
+                        )}
 
-                {/* Upload PC (Agrupado) */}
-                <div style={{ backgroundColor: 'rgba(0, 204, 255, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 204, 255, 0.2)' }}>
-                    <h3 style={{ color: '#00ccff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
-                        <Send size={20} /> Enviando pro Telegram (PC Local)
-                    </h3>
-                    {Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Enviando_Telegram_PC').length > 0 ? (
-                        Object.entries(hybridWorkers).filter(([_, w]) => w.status === 'Enviando_Telegram_PC').map(([workerId, worker]) => (
-                            <div key={workerId} style={{ marginBottom: '1rem' }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: '#fff', fontSize: '0.9rem' }}>
-                                    #{worker.title || 'Desconhecido'} <span style={{ color: '#00ccff', fontSize: '0.75rem' }}>({workerId})</span>
-                                </div>
-                                <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <div style={{ 
-                                        width: (typeof worker.progress === 'number' || typeof worker.progress === 'string') ? `${parseFloat(worker.progress)}%` : '100%', 
-                                        backgroundColor: '#00ccff', 
-                                        height: '100%', 
-                                        transition: 'width 0.3s',
-                                        boxShadow: '0 0 10px rgba(0,204,255,0.5)'
-                                    }} />
-                                </div>
-                                <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.3rem', color: '#aaa' }}>
-                                    {(Number(worker.progress) || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', padding: '1rem 0' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (PC)...</span>
-                        </div>
-                    )}
-                </div>
+                        {/* Auditoria Fast Start */}
+                        <div className="sync-card">
+                            <h3 className="sync-card-title">
+                                <Activity size={20} color="#00d2ff" /> Auditoria Fast Start (MOOV Atom)
+                            </h3>
+                            <p style={{ color: '#94a3b8', fontSize: '0.88rem', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+                                Varre os vídeos já hospedados no Telegram para garantir que o cabeçalho Fast Start esteja presente. Sem isso, usuários não conseguem adiantar ou pular o vídeo sem travar.
+                            </p>
 
-                {state.downloadTask ? (
-                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
-                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
-                            <HardDriveDownload size={20} /> Baixando da IPTV
-                        </h3>
-                        <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.downloadTask.title}</div>
-                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, backgroundColor: typeof state.downloadTask.progress === 'number' ? '#00ff88' : '#ffaa00', height: '100%', transition: 'width 0.3s', boxShadow: '0 0 10px rgba(0,255,136,0.5)' }} />
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                                {!auditState.isRunning ? (
+                                    <button onClick={startAudit} className="sync-btn-secondary sync-btn-info">
+                                        <Search size={16} /> Iniciar Auditoria no Telegram
+                                    </button>
+                                ) : (
+                                    <button onClick={stopAudit} className="sync-btn-secondary sync-btn-danger">
+                                        <X size={16} /> Parar Auditoria
+                                    </button>
+                                )}
+                                {auditState.results.failedItems.length > 0 && (
+                                    <button onClick={() => reuploadAuditItems(auditState.results.failedItems.map(i => i.id))} className="sync-btn-secondary sync-btn-warning">
+                                        <RefreshCcw size={16} /> Reupar Vídeos Reprovados ({auditState.results.failedItems.length})
+                                    </button>
+                                )}
                             </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                                {typeof state.downloadTask.progress === 'number' ? `${state.downloadTask.progress.toFixed(2)}%` : 'Aguardando Liberação de Espaço...'}
-                            </div>
+
+                            {(auditState.isRunning || auditState.progress > 0) && (
+                                <div style={{ background: 'rgba(0,0,0,0.35)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.6rem' }}>
+                                        <span>{auditState.isRunning ? `Verificando: ${auditState.currentItem || '...'}` : 'Varredura Concluída'}</span>
+                                        <span>{auditState.currentIndex}/{auditState.total} ({auditState.progress}%)</span>
+                                    </div>
+                                    <div className="pipeline-progress-track">
+                                        <div className="pipeline-progress-bar" style={{ width: `${auditState.progress}%`, background: 'linear-gradient(90deg, #00d2ff, #00ff88)' }} />
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '2rem', marginTop: '0.85rem', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                        <span style={{ color: '#00ff88' }}>✅ OK: {auditState.results.passed}</span>
+                                        <span style={{ color: '#f87171' }}>❌ Precisam de Re-Upload: {auditState.results.failed}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {auditState.results.failedItems.length > 0 && (
+                                <div style={{ maxHeight: '280px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#94a3b8', fontSize: '0.75rem' }}>ID</th>
+                                                <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#94a3b8', fontSize: '0.75rem' }}>Título</th>
+                                                <th style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {auditState.results.failedItems.map(item => (
+                                                <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                                    <td style={{ padding: '0.6rem 1rem', color: '#64748b', fontSize: '0.85rem' }}>#{item.id}</td>
+                                                    <td style={{ padding: '0.6rem 1rem', color: '#e2e8f0', fontSize: '0.85rem' }}>{item.title}</td>
+                                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
+                                                        <button onClick={() => reuploadAuditItems([item.id])} className="sync-btn-secondary sync-btn-warning" style={{ padding: '0.3rem 0.75rem', fontSize: '0.78rem' }}>
+                                                            <RefreshCcw size={12} /> Reupar
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ) : (
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><HardDriveDownload size={18} /> Aguardando fila de Download...</span>
                     </div>
                 )}
 
-                {/* Upload via Docker (Menores que 2GB) */}
-                {state.uploadTaskDocker ? (
-                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
-                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
-                            <Send size={20} /> Enviando pro Telegram (Motor Turbo)
-                        </h3>
-                        <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.uploadTaskDocker.title || 'Desconhecido'}</div>
-                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ 
-                                    width: (typeof state.uploadTaskDocker.progress === 'number' && !isNaN(state.uploadTaskDocker.progress)) ? `${state.uploadTaskDocker.progress}%` : '100%', 
-                                    backgroundColor: '#00ff88', 
-                                    height: '100%', 
-                                    transition: 'width 0.3s',
-                                    boxShadow: '0 0 10px rgba(0,255,136,0.5)'
-                                }} />
-                            </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                                {String(state.uploadTaskDocker.progress || 0).includes('TURBO') ? state.uploadTaskDocker.progress : (Number(state.uploadTaskDocker.progress) || 0).toFixed(2) + '%'}
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (Pequenos)...</span>
-                    </div>
-                )}
-
-                {/* Upload via Python (Qualquer tamanho, geralmente os Gigantes) */}
-                {state.uploadTaskPython ? (
-                    <div style={{ backgroundColor: 'rgba(0, 255, 136, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 255, 136, 0.2)' }}>
-                        <h3 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0' }}>
-                            <Send size={20} /> Enviando pro Telegram (Python)
-                        </h3>
-                        <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '0.8rem', color: '#fff' }}>#{state.uploadTaskPython.title || 'Desconhecido'}</div>
-                            <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.5)', height: '12px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                <div style={{ 
-                                    width: (typeof state.uploadTaskPython.progress === 'number' && !isNaN(state.uploadTaskPython.progress)) ? `${state.uploadTaskPython.progress}%` : '100%', 
-                                    backgroundColor: '#00ff88', 
-                                    height: '100%', 
-                                    transition: 'width 0.3s',
-                                    boxShadow: '0 0 10px rgba(0,255,136,0.5)'
-                                }} />
-                            </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                                {(Number(state.uploadTaskPython.progress) || 0).toFixed(2) + '%'}
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#666', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={18} /> Aguardando fila de Upload (Grandes)...</span>
-                    </div>
-                )}
-            </div>
+                {/* VISÃO DA FILA - EXIBIDA NA SUB-ABA QUEUE */}
+                {syncSubTab === 'queue' && (
+                    <>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -1720,6 +1863,8 @@ export default function AdminSync() {
                         Ver Lista Completa
                     </button>
                 </div>
+            )}
+            </>
             )}
             
             <FullListModal 
