@@ -16,11 +16,13 @@ export default function AppUpdatePage() {
     const [history, setHistory] = useState([]);
 
     // Estado Push Notifications
+    const [notifType, setNotifType] = useState('general'); // 'general' | 'content' | 'link' | 'system'
     const [notifTitle, setNotifTitle] = useState('');
     const [notifMessage, setNotifMessage] = useState('');
     const [notifImage, setNotifImage] = useState('');
     const [notifContentId, setNotifContentId] = useState('');
     const [notifMediaType, setNotifMediaType] = useState('movie');
+    const [notifActionUrl, setNotifActionUrl] = useState('');
     const [notifLoading, setNotifLoading] = useState(false);
     const [notifFeedback, setNotifFeedback] = useState({ text: '', type: '' });
     const [notifHistory, setNotifHistory] = useState([]);
@@ -150,8 +152,10 @@ export default function AppUpdatePage() {
                     title: notifTitle,
                     message: notifMessage,
                     image_url: notifImage,
-                    content_id: notifContentId,
-                    media_type: notifMediaType
+                    notification_type: notifType,
+                    content_id: notifType === 'content' ? notifContentId : null,
+                    media_type: notifType === 'content' ? notifMediaType : null,
+                    action_url: notifType === 'link' ? notifActionUrl : null
                 })
             });
 
@@ -162,6 +166,7 @@ export default function AppUpdatePage() {
                 setNotifMessage('');
                 setNotifImage('');
                 setNotifContentId('');
+                setNotifActionUrl('');
                 fetchNotifHistory();
             } else {
                 setNotifFeedback({ text: data.error || 'Erro ao enviar notificação.', type: 'error' });
@@ -334,13 +339,48 @@ export default function AppUpdatePage() {
                             </h3>
 
                             <div className="form-group">
+                                <label>Tipo de Notificação</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+                                    {[
+                                        { id: 'general', label: '📢 Comunicado Geral' },
+                                        { id: 'content', label: '🎬 Novo Conteúdo' },
+                                        { id: 'link', label: '🔗 Link Externo' },
+                                        { id: 'system', label: '⚙️ Aviso / Manutenção' },
+                                    ].map(t => (
+                                        <button
+                                            key={t.id}
+                                            type="button"
+                                            onClick={() => setNotifType(t.id)}
+                                            style={{
+                                                background: notifType === t.id ? 'rgba(0, 255, 136, 0.2)' : 'rgba(0, 0, 0, 0.4)',
+                                                border: notifType === t.id ? '1px solid #00ff88' : '1px solid rgba(255, 255, 255, 0.1)',
+                                                color: notifType === t.id ? '#00ff88' : '#cbd5e1',
+                                                padding: '8px 10px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.85rem',
+                                                cursor: 'pointer',
+                                                fontWeight: notifType === t.id ? 'bold' : 'normal'
+                                            }}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="form-group">
                                 <label>Título da Notificação *</label>
                                 <input 
                                     type="text" 
                                     value={notifTitle} 
                                     onChange={e => setNotifTitle(e.target.value)} 
                                     required 
-                                    placeholder="Ex: Novo Filme Adicionado! 🍿"
+                                    placeholder={
+                                        notifType === 'content' ? "Ex: Novo Filme Adicionado! 🍿" :
+                                        notifType === 'system' ? "Ex: Manutenção Programada ⚙️" :
+                                        notifType === 'link' ? "Ex: Entre no nosso Grupo VIP! 🚀" :
+                                        "Ex: Recado importante para todos os usuários! 📢"
+                                    }
                                 />
                             </div>
 
@@ -349,41 +389,55 @@ export default function AppUpdatePage() {
                                 <textarea 
                                     value={notifMessage} 
                                     onChange={e => setNotifMessage(e.target.value)}
-                                    placeholder="Ex: O novo episódio de Reacher acabou de sair com qualidade Full HD. Venha conferir!"
+                                    placeholder="Digite a mensagem que aparecerá na barra de notificações do celular do usuário..."
                                     rows={4}
                                     required
                                 ></textarea>
                             </div>
 
-                            <div className="form-group-row">
+                            {notifType === 'content' && (
+                                <div className="form-group-row">
+                                    <div className="form-group">
+                                        <label>TMDB ID (Abre a mídia diretamente no App)</label>
+                                        <input 
+                                            type="text" 
+                                            value={notifContentId} 
+                                            onChange={e => setNotifContentId(e.target.value)} 
+                                            placeholder="Ex: 108978"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Tipo de Mídia</label>
+                                        <select 
+                                            value={notifMediaType} 
+                                            onChange={e => setNotifMediaType(e.target.value)}
+                                            style={{
+                                                background: 'rgba(0, 0, 0, 0.5)',
+                                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                padding: '0.8rem',
+                                                borderRadius: '6px',
+                                                color: '#fff'
+                                            }}
+                                        >
+                                            <option value="movie">Filme</option>
+                                            <option value="tv">Série</option>
+                                            <option value="anime">Anime</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {notifType === 'link' && (
                                 <div className="form-group">
-                                    <label>TMDB ID (Opcional - Abre a mídia no App)</label>
+                                    <label>Link de Destino (URL ao clicar na notificação)</label>
                                     <input 
-                                        type="text" 
-                                        value={notifContentId} 
-                                        onChange={e => setNotifContentId(e.target.value)} 
-                                        placeholder="Ex: 108978"
+                                        type="url" 
+                                        value={notifActionUrl} 
+                                        onChange={e => setNotifActionUrl(e.target.value)} 
+                                        placeholder="https://t.me/seucanal ou https://cinegeek.shop"
                                     />
                                 </div>
-                                <div className="form-group">
-                                    <label>Tipo de Mídia</label>
-                                    <select 
-                                        value={notifMediaType} 
-                                        onChange={e => setNotifMediaType(e.target.value)}
-                                        style={{
-                                            background: 'rgba(0, 0, 0, 0.5)',
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                            padding: '0.8rem',
-                                            borderRadius: '6px',
-                                            color: '#fff'
-                                        }}
-                                    >
-                                        <option value="movie">Filme</option>
-                                        <option value="tv">Série</option>
-                                        <option value="anime">Anime</option>
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
                             <div className="form-group">
                                 <label>URL da Imagem / Banner (Opcional)</label>
@@ -410,14 +464,31 @@ export default function AppUpdatePage() {
                             <h3>Histórico de Notificações Enviadas</h3>
                             {notifHistory.map(item => (
                                 <div key={item.id} className="history-item">
-                                    <div className="history-version" style={{ color: '#00d2ff' }}>
-                                        🔔 {item.title}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div className="history-version" style={{ color: '#00d2ff' }}>
+                                            🔔 {item.title}
+                                        </div>
+                                        <span style={{ 
+                                            fontSize: '0.72rem', 
+                                            padding: '2px 8px', 
+                                            borderRadius: '12px', 
+                                            background: 'rgba(255, 255, 255, 0.08)',
+                                            color: '#94a3b8',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            {item.notification_type || 'geral'}
+                                        </span>
                                     </div>
                                     <div className="history-date">{new Date(item.created_at).toLocaleString('pt-BR')}</div>
                                     <div className="history-notes">{item.message}</div>
                                     {item.content_id && (
                                         <div className="history-filename" style={{ color: '#00ff88' }}>
                                             🔗 Abre: TMDB #{item.content_id} ({item.media_type})
+                                        </div>
+                                    )}
+                                    {item.action_url && (
+                                        <div className="history-filename" style={{ color: '#00d2ff' }}>
+                                            🌐 Link: {item.action_url}
                                         </div>
                                     )}
                                 </div>

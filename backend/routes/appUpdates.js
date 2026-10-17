@@ -195,7 +195,15 @@ export default function appUpdatesRoutes(db) {
     // Rota Admin: Enviar Notificação Push para os Usuários
     router.post('/notifications/send', requireAdmin, async (req, res) => {
         try {
-            const { title, message, image_url, content_id, media_type = 'movie' } = req.body;
+            const { 
+                title, 
+                message, 
+                image_url, 
+                notification_type = 'general', 
+                content_id, 
+                media_type = 'movie',
+                action_url
+            } = req.body;
 
             if (!title || !message) {
                 return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
@@ -203,8 +211,17 @@ export default function appUpdatesRoutes(db) {
 
             // Salva na tabela de notificações do app
             const result = await db.run(
-                `INSERT INTO app_notifications (title, message, image_url, content_id, media_type) VALUES (?, ?, ?, ?, ?)`,
-                [title, message, image_url || null, content_id || null, media_type]
+                `INSERT INTO app_notifications (title, message, image_url, notification_type, content_id, media_type, action_url) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    title, 
+                    message, 
+                    image_url || null, 
+                    notification_type || 'general', 
+                    content_id || null, 
+                    media_type || null,
+                    action_url || null
+                ]
             );
 
             // Obtém quantidade de dispositivos registrados

@@ -400,12 +400,18 @@ export async function initDB() {
             title TEXT NOT NULL,
             message TEXT NOT NULL,
             image_url TEXT,
+            notification_type TEXT DEFAULT 'general',
             content_id TEXT,
-            media_type TEXT DEFAULT 'movie',
+            media_type TEXT,
+            action_url TEXT,
             target_audience TEXT DEFAULT 'all',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // Migrations app_notifications
+    try { await db.exec(`ALTER TABLE app_notifications ADD COLUMN notification_type TEXT DEFAULT 'general'`); } catch(e) {}
+    try { await db.exec(`ALTER TABLE app_notifications ADD COLUMN action_url TEXT`); } catch(e) {}
 
     // Tabela de Tokens Push Mobile (FCM / OneSignal)
     await db.exec(`
