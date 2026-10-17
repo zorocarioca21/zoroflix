@@ -174,25 +174,7 @@ export default function DetailsPage() {
           const isAnimeOrAnimation = detailsData.genres?.some(g => g.id === 16 || g.name?.toLowerCase().includes('anima'))
             || detailsData.original_language === 'ja';
 
-          let loadedGroup = null;
-          // 1. Apenas para animes/animações busca Episode Group se existir
-          if (isAnimeOrAnimation) {
-            try {
-              const groupResp = await fetch(`/api/tmdb/episode-group/${id}`);
-              if (groupResp.ok) {
-                const groupData = await groupResp.json();
-                if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
-                  loadedGroup = groupData;
-                }
-              }
-            } catch (err) {}
-          }
-
-          if (loadedGroup && isCurrent) {
-            setEpisodeGroup(loadedGroup);
-          }
-
-          fetchEpisodes(1, loadedGroup);
+          fetchEpisodes(1, null);
 
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();

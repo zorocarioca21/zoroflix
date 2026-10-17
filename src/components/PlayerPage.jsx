@@ -206,16 +206,7 @@ export default function PlayerPage() {
         if (id && !canalId) {
             const isMovie = location.pathname.includes('/filme/');
             const type = isMovie ? 'movie' : 'tv';
-            if (type === 'tv') {
-                fetch(`/api/tmdb/episode-group/${id}`)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(groupData => {
-                        if (groupData && Array.isArray(groupData.groups) && groupData.groups.length > 0) {
-                            setEpisodeGroup(groupData);
-                        }
-                    })
-                    .catch(() => {});
-            }
+
 
             fetch(`${BASE_URL}/${type}/${id}?api_key=${API_KEY}&language=pt-BR`)
                 .then(r => r.json())

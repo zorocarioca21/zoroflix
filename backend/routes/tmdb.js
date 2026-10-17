@@ -35,19 +35,9 @@ export default function tmdbRoutes(db, appDb) {
         }
     });
 
-    // GET /api/tmdb/episode-group/:id
+    // GET /api/tmdb/episode-group/:id (DESATIVADO: usa a lista oficial do TMDB diretamente)
     router.get('/episode-group/:id', async (req, res) => {
-        const { id } = req.params;
-        const force = req.query.force === 'true';
-        try {
-            const apiKey = await getNextTmdbKey(db);
-            const data = await getOrFetchEpisodeGroupDetails(db, id, apiKey, force);
-            if (!data) return res.status(404).json({ error: 'Nenhum grupo de episódios encontrado' });
-            res.json(data);
-        } catch (err) {
-            console.error('[TMDB ROUTE] Erro ao buscar grupo de episódios:', err);
-            res.status(500).json({ error: 'Erro ao buscar grupo de episódios' });
-        }
+        return res.status(404).json({ error: 'Episode groups desativados. Usando lista oficial do TMDB.' });
     });
 
     // PROXY de imagens — Resolve o problema de CORS do Zoro Drive
