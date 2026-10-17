@@ -220,12 +220,47 @@ export default function tmdbRoutes(db, appDb) {
         }
     });
 
-    // 7. Busca Multi / Busca TMDB
+    // 7. Busca Multi / Busca TMDB (com interceptação inteligente para Animes e Doramas do App)
     router.get('/search', async (req, res) => {
         try {
-            const query = req.query.query || req.query.q;
-            if (!query) return res.status(400).json({ error: 'Parâmetro query é obrigatório' });
-            const data = await fetchFromTmdb('search/multi', { ...req.query, query }, db);
+            const rawQuery = req.query.query || req.query.q;
+            if (!rawQuery) return res.status(400).json({ error: 'Parâmetro query é obrigatório' });
+            
+            const normalizedQuery = rawQuery.trim().toLowerCase();
+
+            // Interceptação inteligente para carrosséis do app:
+            // Quando o app pesquisa "anime", buscamos animes de verdade (discover/tv com gênero de animação e idioma japonês)
+            if (normalizedQuery === 'anime' || normalizedQuery === 'animes') {
+                const animeData = await fetchFromTmdb('discover/tv', {
+                    ...req.query,
+                    with_genres: '16', // Gênero Animação no TMDB
+                    with_original_language: 'ja',
+                    sort_by: 'popularity.desc'
+                }, db);
+
+                if (animeData && animeData.results) {
+                    animeData.results = await filterAvailableInTelegram(animeData.results, 'tv');
+                }
+                return res.json(animeData);
+            }
+
+            // Quando o app pesquisa "dorama" ou "doramas", buscamos séries dramáticas coreanas/asiáticas
+            if (normalizedQuery === 'dorama' || normalizedQuery === 'doramas') {
+                const doramaData = await fetchFromTmdb('discover/tv', {
+                    ...req.query,
+                    with_genres: '18', // Gênero Drama no TMDB
+                    with_original_language: 'ko', // Séries Coreanas / K-Dramas
+                    sort_by: 'popularity.desc'
+                }, db);
+
+                if (doramaData && doramaData.results) {
+                    doramaData.results = await filterAvailableInTelegram(doramaData.results, 'tv');
+                }
+                return res.json(doramaData);
+            }
+
+            // Busca normal para outros termos
+            const data = await fetchFromTmdb('search/multi', { ...req.query, query: rawQuery }, db);
             if (data && data.results) {
                 data.results = await filterAvailableInTelegram(data.results);
             }
