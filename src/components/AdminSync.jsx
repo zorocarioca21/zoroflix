@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List, Bot, MessageSquare, Loader2 } from 'lucide-react';
 import './AdminSync.css';
 
 // ==========================================
@@ -459,6 +459,54 @@ export default function AdminSync() {
             dialog.alert('Erro de conexão ao salvar URL', { variant: 'error', title: 'Erro de Conexão' });
         } finally {
             setIsSavingM3u(false);
+        }
+    };
+
+    // Estado do Chat de IA Flutuante
+    const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+    const [aiInput, setAiInput] = useState('');
+    const [isAiTyping, setIsAiTyping] = useState(false);
+    const [aiMessages, setAiMessages] = useState([
+        { 
+            sender: 'ai', 
+            text: 'Olá! Sou a IA assistente do Zoroflix. Pergunte qualquer coisa sobre o sistema de sync, métricas, TMDB ou como os episódios e filmes são mapeados!' 
+        }
+    ]);
+    const aiMessagesEndRef = useRef(null);
+
+    const scrollToAiBottom = () => {
+        aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        if (isAiChatOpen) scrollToAiBottom();
+    }, [aiMessages, isAiChatOpen]);
+
+    const sendAiQuestion = async (customPrompt) => {
+        const text = (customPrompt || aiInput).trim();
+        if (!text || isAiTyping) return;
+
+        const newMsgList = [...aiMessages, { sender: 'user', text }];
+        setAiMessages(newMsgList);
+        setAiInput('');
+        setIsAiTyping(true);
+
+        try {
+            const res = await fetch('/api/admin/sync-ai-assistant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: text })
+            });
+            const data = await res.json();
+            if (data.success && data.answer) {
+                setAiMessages(prev => [...prev, { sender: 'ai', text: data.answer }]);
+            } else {
+                setAiMessages(prev => [...prev, { sender: 'ai', text: data.error || 'Erro ao processar resposta da IA.' }]);
+            }
+        } catch (e) {
+            setAiMessages(prev => [...prev, { sender: 'ai', text: 'Falha de comunicação com o servidor de IA.' }]);
+        } finally {
+            setIsAiTyping(false);
         }
     };
 
@@ -1701,7 +1749,23 @@ export default function AdminSync() {
                                     <td style={{ color: '#888', fontSize: '0.9rem' }}>#{item.id}</td>
                                     <td style={{ fontWeight: '500' }}>
                                         {getPriorityBadge(item.priority)}
-                                        {item.title}
+                                        <div>{item.title}</div>
+                                        {item.tmdb_id && item.tmdb_id !== 'NOT_FOUND' && (
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem', fontSize: '0.75rem', background: 'rgba(0, 204, 255, 0.12)', border: '1px solid rgba(0, 204, 255, 0.3)', borderRadius: '4px', padding: '1px 6px', color: '#00ccff' }}>
+                                                <span>🎬 TMDB #{item.tmdb_id}</span>
+                                                {item.media_type && <span style={{ opacity: 0.7 }}>[{item.media_type.toUpperCase()}]</span>}
+                                                {(item.season_number || item.episode_number) && (
+                                                    <span style={{ color: '#00ff88', fontWeight: 'bold' }}>
+                                                        S{String(item.season_number || 1).padStart(2, '0')}E{String(item.episode_number || 1).padStart(2, '0')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        {item.tmdb_id === 'NOT_FOUND' && (
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', marginTop: '0.25rem', fontSize: '0.72rem', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.3)', borderRadius: '4px', padding: '1px 6px', color: '#ff6666' }}>
+                                                ⚠️ TMDB Não Encontrado
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <span style={{ 
@@ -1881,6 +1945,185 @@ export default function AdminSync() {
                 fetchQueueParent={fetchQueue}
             />
             {dialog.DialogPortal}
+
+            {/* BOTÃO FLUTUANTE DE IA E MODAL DE CHAT */}
+            <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
+                {!isAiChatOpen ? (
+                    <button
+                        onClick={() => setIsAiChatOpen(true)}
+                        style={{
+                            background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
+                            border: 'none',
+                            color: '#fff',
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 8px 24px rgba(0, 204, 255, 0.4), 0 0 15px rgba(123, 97, 255, 0.5)',
+                            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                            transform: 'scale(1)'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        title="Assistente de IA do Sync"
+                    >
+                        <Bot size={28} />
+                    </button>
+                ) : (
+                    <div style={{
+                        width: '380px',
+                        height: '520px',
+                        background: 'linear-gradient(145deg, #161822 0%, #0d0e15 100%)',
+                        border: '1px solid rgba(0, 204, 255, 0.3)',
+                        borderRadius: '16px',
+                        boxShadow: '0 20px 50px rgba(0,0,0,0.7), 0 0 30px rgba(0, 204, 255, 0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        animation: 'fadeInUp 0.25s ease-out'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '1rem 1.2rem',
+                            background: 'rgba(0, 204, 255, 0.08)',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <div style={{
+                                    background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#fff'
+                                }}>
+                                    <Bot size={18} />
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', fontWeight: 'bold' }}>IA Especialista Sync</h4>
+                                    <span style={{ fontSize: '0.72rem', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00ff88', display: 'inline-block' }} /> Online (Gemini 3.5 Flash)
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsAiChatOpen(false)}
+                                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Sugestões Rápidas */}
+                        <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+                            <button
+                                onClick={() => sendAiQuestion('O que representa o card Filmes e Séries e a Fila Mapeada?')}
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            >
+                                💡 Fila Mapeada?
+                            </button>
+                            <button
+                                onClick={() => sendAiQuestion('O que são os Stills de episódios no Zoro Drive?')}
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            >
+                                🖼️ Stills de Episódios?
+                            </button>
+                            <button
+                                onClick={() => sendAiQuestion('Vários episódios da mesma série têm o mesmo TMDB ID?')}
+                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                            >
+                                🔢 Mesmo ID p/ Série?
+                            </button>
+                        </div>
+
+                        {/* Mensagens */}
+                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            {aiMessages.map((msg, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                                        maxWidth: '85%',
+                                        background: msg.sender === 'user' ? 'linear-gradient(135deg, #0077ff, #00ccff)' : 'rgba(255,255,255,0.06)',
+                                        color: msg.sender === 'user' ? '#fff' : '#e0e0e0',
+                                        padding: '0.65rem 0.9rem',
+                                        borderRadius: msg.sender === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                                        fontSize: '0.85rem',
+                                        lineHeight: '1.45',
+                                        whiteSpace: 'pre-wrap',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                    }}
+                                >
+                                    {msg.text}
+                                </div>
+                            ))}
+                            {isAiTyping && (
+                                <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.06)', padding: '0.6rem 0.9rem', borderRadius: '14px 14px 14px 2px', display: 'flex', alignItems: 'center', gap: '6px', color: '#00ccff', fontSize: '0.8rem' }}>
+                                    <Loader2 size={14} className="spin" /> Pensando...
+                                </div>
+                            )}
+                            <div ref={aiMessagesEndRef} />
+                        </div>
+
+                        {/* Input Footer */}
+                        <form
+                            onSubmit={(e) => { e.preventDefault(); sendAiQuestion(); }}
+                            style={{
+                                padding: '0.8rem',
+                                background: 'rgba(0,0,0,0.3)',
+                                borderTop: '1px solid rgba(255,255,255,0.08)',
+                                display: 'flex',
+                                gap: '0.5rem'
+                            }}
+                        >
+                            <input
+                                type="text"
+                                placeholder="Tire uma dúvida sobre o sync ou TMDB..."
+                                value={aiInput}
+                                onChange={(e) => setAiInput(e.target.value)}
+                                disabled={isAiTyping}
+                                style={{
+                                    flex: 1,
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                    borderRadius: '8px',
+                                    padding: '0.6rem 0.8rem',
+                                    color: '#fff',
+                                    fontSize: '0.85rem',
+                                    outline: 'none'
+                                }}
+                            />
+                            <button
+                                type="submit"
+                                disabled={isAiTyping || !aiInput.trim()}
+                                style={{
+                                    background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    width: '38px',
+                                    height: '38px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#fff',
+                                    cursor: isAiTyping || !aiInput.trim() ? 'not-allowed' : 'pointer',
+                                    opacity: isAiTyping || !aiInput.trim() ? 0.5 : 1
+                                }}
+                            >
+                                <Send size={16} />
+                            </button>
+                        </form>
+                    </div>
+                )}
+            </div>
             </div>
         </div>
     );

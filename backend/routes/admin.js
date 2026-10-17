@@ -87,9 +87,92 @@ export default function adminRoutes(db, tmdbDb) {
                     ? `🚀 ${count} itens redefinidos! O mapeador com IA começou a processar tudo agora mesmo.` 
                     : `Nenhum item com status NOT_FOUND encontrado para reprocessar.` 
             });
+    // Endpoint para Assistente de IA do Sistema (Botão flutuante na aba de Sync)
+    router.post('/sync-ai-assistant', async (req, res) => {
+        try {
+            const { question } = req.body;
+            if (!question) return res.status(400).json({ error: 'Pergunta obrigatória.' });
+
+            // Pega estatísticas em tempo real do sistema para municiar a IA de contexto
+            const queueStats = await db.get(`
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN tmdb_id IS NOT NULL AND tmdb_id != 'NOT_FOUND' THEN 1 ELSE 0 END) as mapped,
+                    SUM(CASE WHEN tmdb_id = 'NOT_FOUND' THEN 1 ELSE 0 END) as not_found,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+                    SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error,
+                    SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped
+                FROM sync_queue
+            `);
+
+            const targetDb = tmdbDb || db;
+            let catalogStats = {};
+            try {
+                const totalCached = await targetDb.get('SELECT COUNT(*) as cnt FROM tmdb_media_cache');
+                const totalEpisodes = await targetDb.get('SELECT COUNT(*) as cnt FROM tmdb_episodes_cache');
+                const totalDrivePosters = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE poster_url LIKE '%zorobot.shop%'");
+                const totalDriveBackdrops = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_media_cache WHERE backdrop_url LIKE '%zorobot.shop%'");
+                const totalDriveStills = await targetDb.get("SELECT COUNT(*) as cnt FROM tmdb_episodes_cache WHERE still_url LIKE '%zorobot.shop%'");
+                catalogStats = {
+                    totalCached: totalCached?.cnt || 0,
+                    totalEpisodes: totalEpisodes?.cnt || 0,
+                    totalDrivePosters: totalDrivePosters?.cnt || 0,
+                    totalDriveBackdrops: totalDriveBackdrops?.cnt || 0,
+                    totalDriveStills: totalDriveStills?.cnt || 0
+                };
+            } catch (e) {}
+
+            const systemContext = `Você é o Assistente Especialista de Inteligência Artificial do Zoroflix (CineGeek), o sistema de streaming e sincronização com IPTV e Telegram.
+Você conhece toda a arquitetura:
+1. MAPEAMENTO TMDB:
+- Filmes têm seu próprio TMDB ID individual (ex: Oppenheimer = 872585).
+- Séries de TV têm UM ÚNICO TMDB ID que representa a SÉRIE INTEIRA (ex: Grey's Anatomy = 1416). Todos os episódios de todas as temporadas de Grey's Anatomy compartilham o TMDB ID 1416, mas são diferenciados pelos campos season_number (temporada) e episode_number (episódio).
+2. CARDS E MÉTRICAS DO PAINEL DE SYNC:
+- "Filmes & Séries": Quantidade de obras únicas salvas no cache do TMDB.
+- "Fila Mapeada": Mostra quantos itens da fila do sync_queue já tiveram o TMDB ID identificado com sucesso (ex: ${queueStats?.mapped || 0} de ${queueStats?.total || 0}).
+- "Posters no Drive": Imagens de capa de filmes/séries enviadas para o Zoro Drive (Cloud Storage).
+- "Backdrops no Drive": Imagens de fundo/banners dos filmes/séries enviadas para o Zoro Drive.
+- "Stills de Episódios": Fotos/miniaturas específicas de cada episódio de série salvas no Zoro Drive.
+3. MOTOR E FILA:
+- Fila (sync_queue): Itens baixados da lista M3U da IPTV e enviados para canais do Telegram via MTProto / TelegramClient.
+- Status: pending (aguardando download), downloading, pending_upload (baixado, aguardando telegram), uploading (enviando ao Telegram), completed (concluído), error, skipped (ignorado/canais 24h/câmeras CAM de reality shows).
+
+Estatísticas Atuais em Tempo Real:
+- Total na fila: ${queueStats?.total || 0}
+- Mapeados com TMDB: ${queueStats?.mapped || 0}
+- Falhas TMDB (NOT_FOUND): ${queueStats?.not_found || 0}
+- Concluídos: ${queueStats?.completed || 0}
+- Pendentes: ${queueStats?.pending || 0}
+- Erros: ${queueStats?.error || 0}
+- Ignorados: ${queueStats?.skipped || 0}
+- Obras únicas no Catálogo TMDB: ${catalogStats?.totalCached || 0}
+- Stills de Episódios no Drive: ${catalogStats?.totalDriveStills || 0} de ${catalogStats?.totalEpisodes || 0}
+
+Instrução: Responda à dúvida do administrador com precisão técnica, clareza, simpatia e em bom português. Use formatação markdown limpa (negrito, tópicos).`;
+
+            const axios = (await import('axios')).default;
+            const https = (await import('https')).default;
+            const agent = new https.Agent({ family: 4 });
+            const ZOROBOT_API_KEY = process.env.ZOROBOT_API_KEY || '21santoryu21';
+
+            const resp = await axios.post(`https://api.zorobot.shop/api/ai/chat?apiKey=${ZOROBOT_API_KEY}`, {
+                prompt: question,
+                model: 'gemini-3.5-flash',
+                systemInstruction: systemContext,
+                temperature: 0.3,
+                maxTokens: 1500
+            }, {
+                headers: { 'Content-Type': 'application/json' },
+                httpsAgent: agent,
+                timeout: 30000
+            });
+
+            const reply = resp.data?.resposta || resp.data?.response || 'Desculpe, não consegui formular uma resposta no momento.';
+            res.json({ success: true, answer: reply });
         } catch (err) {
-            console.error('[ADMIN REMAP AI] Erro:', err.message);
-            res.status(500).json({ error: 'Erro ao reprocessar itens com IA.' });
+            console.error('[ADMIN AI ASSISTANT] Erro:', err.message);
+            res.status(500).json({ error: 'Erro ao consultar assistente de IA.' });
         }
     });
     // Endpoint para obter o tamanho da pasta temp
