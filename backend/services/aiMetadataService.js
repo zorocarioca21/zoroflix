@@ -67,7 +67,16 @@ Instruções:
             episode: typeof parsed.episode === 'number' ? parsed.episode : (parsed.episode ? parseInt(parsed.episode) : null)
         };
     } catch (e) {
-        console.warn(`[AI METADATA] Falha ao consultar Gemini 3.5 Flash para "${rawTitle}":`, e.response?.data || e.message);
+        const errorData = e.response?.data || {};
+        const errorStr = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+        const isRateLimit = e.response?.status === 429 || e.response?.status === 503 || errorStr.includes('429') || errorStr.includes('503') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded') || errorStr.includes('UNAVAILABLE');
+
+        if (isRateLimit) {
+            console.warn(`[AI METADATA] ⚠️ Rate limit / Sobrecarga no Gemini da API ZoroBot. Aguardando liberação de cota...`);
+            return { is_rate_limit: true };
+        }
+
+        console.warn(`[AI METADATA] Falha ao consultar Gemini 3.5 Flash para "${rawTitle}":`, errorData || e.message);
         return null;
     }
 }

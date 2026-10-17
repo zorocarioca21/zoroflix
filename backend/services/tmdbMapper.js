@@ -127,35 +127,59 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
 
             let hasNetworkError = false;
             let bestMatch = null;
-            try {
-                const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&api_key=${apiKey}&language=pt-BR`;
-                const tmdbRes = await axios.get(url, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                    httpsAgent: agent,
-                    timeout: 10000 // 10 segundos
-                });
-                
-                if (tmdbRes.status === 200) {
-                    const tmdbData = tmdbRes.data;
-                    if (tmdbData.results && tmdbData.results.length > 0) {
-                        if (year) {
-                            bestMatch = tmdbData.results.find(r => {
-                                const rYear = r.release_date ? r.release_date.split('-')[0] : (r.first_air_date ? r.first_air_date.split('-')[0] : null);
-                                return rYear === year && (r.media_type === 'movie' || r.media_type === 'tv');
-                            });
-                        }
-                        if (!bestMatch) {
-                            bestMatch = tmdbData.results.find(r => r.media_type === 'movie' || r.media_type === 'tv');
-                        }
-                    }
+            
+            // Lista de variações locais para tentar antes de gastar cota de IA
+            // Ex: "D.P.A. 2: O Filme - O Mistério Italiano" -> tenta o título completo, depois remove ": O Filme...", etc.
+            const queryCandidates = [q];
+            if (q.includes(':')) {
+                queryCandidates.push(q.split(':')[0].trim());
+            }
+            if (q.includes(' - ')) {
+                queryCandidates.push(q.split(' - ')[0].trim());
+            }
+            if (/\b\d{1,2}\b/.test(q)) {
+                // Ex: "D.P.A. 2: O Filme" -> "D.P.A. 2"
+                const numMatch = q.match(/^(.*?\b\d{1,2}\b)/);
+                if (numMatch && numMatch[1].trim() !== q) {
+                    queryCandidates.push(numMatch[1].trim());
+                }
+            }
 
-                    if (bestMatch) {
-                        tmdb_id = String(bestMatch.id);
-                        media_type = bestMatch.media_type;
+            // Remove duplicados
+            const uniqueQueries = [...new Set(queryCandidates.filter(Boolean))];
+
+            try {
+                for (const candidate of uniqueQueries) {
+                    const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(candidate)}&api_key=${apiKey}&language=pt-BR`;
+                    const tmdbRes = await axios.get(url, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                        httpsAgent: agent,
+                        timeout: 10000 // 10 segundos
+                    });
+                    
+                    if (tmdbRes.status === 200) {
+                        const tmdbData = tmdbRes.data;
+                        if (tmdbData.results && tmdbData.results.length > 0) {
+                            if (year) {
+                                bestMatch = tmdbData.results.find(r => {
+                                    const rYear = r.release_date ? r.release_date.split('-')[0] : (r.first_air_date ? r.first_air_date.split('-')[0] : null);
+                                    return rYear === year && (r.media_type === 'movie' || r.media_type === 'tv');
+                                });
+                            }
+                            if (!bestMatch) {
+                                bestMatch = tmdbData.results.find(r => r.media_type === 'movie' || r.media_type === 'tv');
+                            }
+                        }
+
+                        if (bestMatch) {
+                            tmdb_id = String(bestMatch.id);
+                            media_type = bestMatch.media_type;
+                            break;
+                        }
+                    } else {
+                        console.error(`[TMDB MAPPER] HTTP Error ${tmdbRes.status} ao buscar ${candidate}`);
+                        if (tmdbRes.status === 429) hasNetworkError = true;
                     }
-                } else {
-                    console.error(`[TMDB MAPPER] HTTP Error ${tmdbRes.status} ao buscar ${q}`);
-                    if (tmdbRes.status === 429) hasNetworkError = true; // Rate limit, try again later
                 }
             } catch (err) {
                 hasNetworkError = true;
@@ -167,6 +191,8 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                 }
             }
 
+            let hadAiRateLimit = false;
+
             // ==========================================
             // FALLBACK COM IA (GEMINI 3.5 FLASH)
             // ==========================================
@@ -175,49 +201,48 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     console.log(`[TMDB MAPPER] 🤖 Tentando decodificar com IA (Gemini 3.5 Flash): "${item.title}"...`);
                     const aiResult = await extractMetadataWithAI(item.title);
                     if (aiResult) {
-                        // Se for conteúdo adulto pornográfico (+18 pornô) que não tem no TMDB
-                        if (aiResult.is_porn) {
+                        if (aiResult.is_rate_limit) {
+                            hadAiRateLimit = true;
+                            console.warn(`[TMDB MAPPER] ⏳ Cota temporária da IA atingida (429/503). O item "${item.title}" será reprocessado no próximo ciclo sem ser descartado.`);
+                        } else if (aiResult.is_porn) {
                             console.log(`[TMDB MAPPER] 🔞 Conteúdo pornográfico detectado pela IA: "${item.title}". Marcando como NOT_FOUND.`);
                             await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
                             continue;
-                        }
-
-                        // Se a IA detectou que é câmera ao vivo de reality ou canal 24H
-                        if (aiResult.is_live_stream) {
+                        } else if (aiResult.is_live_stream) {
                             console.log(`[TMDB MAPPER] 📹 Câmera ao vivo / Canal 24h detectado pela IA: "${item.title}". Pulando.`);
                             await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
                             continue;
-                        }
+                        } else {
+                            if (aiResult.season !== null && aiResult.season !== undefined) season_number = aiResult.season;
+                            if (aiResult.episode !== null && aiResult.episode !== undefined) episode_number = aiResult.episode;
+                            if (aiResult.media_type) media_type = aiResult.media_type;
 
-                        if (aiResult.season !== null && aiResult.season !== undefined) season_number = aiResult.season;
-                        if (aiResult.episode !== null && aiResult.episode !== undefined) episode_number = aiResult.episode;
-                        if (aiResult.media_type) media_type = aiResult.media_type;
+                            const aiQueries = [
+                                aiResult.parent_series,
+                                aiResult.search_query,
+                                aiResult.original_title
+                            ].filter(Boolean);
 
-                        const aiQueries = [
-                            aiResult.parent_series,
-                            aiResult.search_query,
-                            aiResult.original_title
-                        ].filter(Boolean);
+                            for (const queryCandidate of aiQueries) {
+                                try {
+                                    const targetType = aiResult.media_type === 'movie' ? 'movie' : (aiResult.media_type === 'tv' ? 'tv' : 'multi');
+                                    const aiUrl = `https://api.themoviedb.org/3/search/${targetType}?query=${encodeURIComponent(queryCandidate)}&api_key=${apiKey}&language=pt-BR`;
+                                    const aiTmdbRes = await axios.get(aiUrl, {
+                                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                                        httpsAgent: agent,
+                                        timeout: 10000
+                                    });
 
-                        for (const queryCandidate of aiQueries) {
-                            try {
-                                const targetType = aiResult.media_type === 'movie' ? 'movie' : (aiResult.media_type === 'tv' ? 'tv' : 'multi');
-                                const aiUrl = `https://api.themoviedb.org/3/search/${targetType}?query=${encodeURIComponent(queryCandidate)}&api_key=${apiKey}&language=pt-BR`;
-                                const aiTmdbRes = await axios.get(aiUrl, {
-                                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                                    httpsAgent: agent,
-                                    timeout: 10000
-                                });
-
-                                if (aiTmdbRes.status === 200 && aiTmdbRes.data.results && aiTmdbRes.data.results.length > 0) {
-                                    bestMatch = aiTmdbRes.data.results[0];
-                                    tmdb_id = String(bestMatch.id);
-                                    media_type = bestMatch.media_type || aiResult.media_type;
-                                    console.log(`[TMDB MAPPER] 🎯 IA Encontrou TMDB com sucesso! "${bestMatch.title || bestMatch.name}" (ID: ${tmdb_id})`);
-                                    break;
+                                    if (aiTmdbRes.status === 200 && aiTmdbRes.data.results && aiTmdbRes.data.results.length > 0) {
+                                        bestMatch = aiTmdbRes.data.results[0];
+                                        tmdb_id = String(bestMatch.id);
+                                        media_type = bestMatch.media_type || aiResult.media_type;
+                                        console.log(`[TMDB MAPPER] 🎯 IA Encontrou TMDB com sucesso! "${bestMatch.title || bestMatch.name}" (ID: ${tmdb_id})`);
+                                        break;
+                                    }
+                                } catch (e) {
+                                    // Tenta a próxima query sugerida pela IA
                                 }
-                            } catch (e) {
-                                // Tenta a próxima query sugerida pela IA
                             }
                         }
                     }
@@ -260,13 +285,13 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                         console.error("[TMDB MAPPER] Erro ao salvar pre-cache básico:", cacheErr.message);
                     }
                 }
-            } else if (!hasNetworkError) {
+            } else if (!hasNetworkError && !hadAiRateLimit) {
                 console.log(`[TMDB MAPPER] ❌ FALHA: Não encontrou "${item.title}" no TMDB. Arquivo possivelmente fora do padrão.`);
                 await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
             }
             
-            // Pausa maior (500ms) para evitar qualquer block por rajada na API
-            await new Promise(res => setTimeout(res, 500));
+            // Pausa entre itens para respeitar rate limits (1.5s se usou IA, 500ms se foi busca direta)
+            await new Promise(res => setTimeout(res, hadAiRateLimit ? 5000 : 800));
         }
 
         console.log(`[TMDB MAPPER] Mapeados ${updatedCount} de ${itemsToMap.length} processados.`);
