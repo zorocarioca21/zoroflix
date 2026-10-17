@@ -172,6 +172,36 @@ export default function appUpdatesRoutes(db) {
         }
     });
 
+    // Rota Admin: Excluir atualização (apaga registro e arquivo físico do APK)
+    router.delete('/:id', requireAdmin, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const updateItem = await db.get(`SELECT * FROM app_updates WHERE id = ?`, [id]);
+            if (!updateItem) {
+                return res.status(404).json({ error: 'Atualização não encontrada.' });
+            }
+
+            // Deleta o arquivo físico se existir
+            if (updateItem.apk_filename) {
+                const filePath = path.join(uploadDir, updateItem.apk_filename);
+                if (fs.existsSync(filePath)) {
+                    try {
+                        fs.unlinkSync(filePath);
+                    } catch (e) {
+                        console.error('Erro ao deletar arquivo APK físico:', e.message);
+                    }
+                }
+            }
+
+            await db.run(`DELETE FROM app_updates WHERE id = ?`, [id]);
+
+            res.json({ success: true, message: `Versão v${updateItem.version_name} excluída com sucesso!` });
+        } catch (err) {
+            console.error('Erro ao excluir atualização do app:', err);
+            res.status(500).json({ error: 'Erro interno ao excluir atualização.' });
+        }
+    });
+
     // ==========================================
     // NOTIFICAÇÕES PUSH MOBILE
     // ==========================================

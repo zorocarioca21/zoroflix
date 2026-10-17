@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, CheckCircle, AlertTriangle, Smartphone, FileArchive, Package, Bell, Send, Radio, Sparkles, Download, ExternalLink } from 'lucide-react';
+import { UploadCloud, CheckCircle, AlertTriangle, Smartphone, FileArchive, Package, Bell, Send, Radio, Sparkles, Download, ExternalLink, Trash2 } from 'lucide-react';
 import './AppUpdatePage.css';
 
 export default function AppUpdatePage() {
@@ -45,6 +45,30 @@ export default function AppUpdatePage() {
             }
         } catch(e) {
             console.error(e);
+        }
+    };
+
+    const handleDeleteUpdate = async (id, versionName) => {
+        if (!window.confirm(`Tem certeza que deseja apagar o registro da versão v${versionName} e excluir o arquivo APK do servidor?`)) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('cinegeek_admin_token') || localStorage.getItem('cinegeek_token');
+            const res = await fetch(`/api/app-updates/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                setMessage({ text: data.message || 'Atualização apagada com sucesso!', type: 'success' });
+                fetchHistory();
+            } else {
+                setMessage({ text: data.error || 'Erro ao apagar atualização.', type: 'error' });
+            }
+        } catch(err) {
+            setMessage({ text: 'Erro de conexão ao apagar atualização.', type: 'error' });
         }
     };
 
@@ -339,28 +363,53 @@ export default function AppUpdatePage() {
                                     <div className="history-notes">{item.release_notes || 'Sem notas.'}</div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                         <div className="history-filename"><FileArchive size={14}/> {item.apk_filename}</div>
-                                        <a 
-                                            href={`/downloads/app/${item.apk_filename}`}
-                                            download={item.apk_filename}
-                                            style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                background: 'rgba(0, 255, 136, 0.15)',
-                                                border: '1px solid rgba(0, 255, 136, 0.4)',
-                                                color: '#00ff88',
-                                                padding: '5px 12px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '600',
-                                                textDecoration: 'none',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.3)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.15)'}
-                                        >
-                                            <Download size={14} /> Baixar APK
-                                        </a>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <a 
+                                                href={`/downloads/app/${item.apk_filename}`}
+                                                download={item.apk_filename}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    background: 'rgba(0, 255, 136, 0.15)',
+                                                    border: '1px solid rgba(0, 255, 136, 0.4)',
+                                                    color: '#00ff88',
+                                                    padding: '5px 12px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '600',
+                                                    textDecoration: 'none',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.3)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.15)'}
+                                            >
+                                                <Download size={14} /> Baixar APK
+                                            </a>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteUpdate(item.id, item.version_name)}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    background: 'rgba(239, 68, 68, 0.15)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                                                    color: '#ef4444',
+                                                    padding: '5px 12px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                                                title="Apagar versão e excluir APK do servidor"
+                                            >
+                                                <Trash2 size={14} /> Apagar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
