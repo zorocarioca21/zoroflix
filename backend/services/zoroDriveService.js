@@ -8,41 +8,91 @@ const DRIVE_URL = 'https://api.zorobot.shop/drive/api/bot/upload';
 const EMAIL = process.env.ZORO_DRIVE_EMAIL || process.env.DRIVE_EMAIL || 'lucaspereirarjcontato@gmail.com';
 const PASS = process.env.ZORO_DRIVE_PASSWORD || process.env.DRIVE_PASSWORD || 's1R89fr6QQHcN5Q@qpqV';
 
+// Fila Sequencial Assíncrona (1 upload por vez com delay entre envios para não sobrecarregar o Cloudflare/Zoro Drive)
+class UploadQueue {
+    constructor() {
+        this.queue = [];
+        this.running = false;
+        this.DELAY_MS = 600; // 600ms entre uploads
+    }
+
+    push(taskFn) {
+        return new Promise((resolve) => {
+            this.queue.push({ taskFn, resolve });
+            this.process();
+        });
+    }
+
+    async process() {
+        if (this.running) return;
+        this.running = true;
+
+        while (this.queue.length > 0) {
+            const { taskFn, resolve } = this.queue.shift();
+            try {
+                const result = await taskFn();
+                resolve(result);
+            } catch (err) {
+                console.error('[ZORO DRIVE QUEUE] Erro na execução da tarefa:', err.message);
+                resolve(null);
+            }
+            if (this.queue.length > 0) {
+                await new Promise(r => setTimeout(r, this.DELAY_MS));
+            }
+        }
+
+        this.running = false;
+    }
+}
+
+const driveQueue = new UploadQueue();
+
 /**
- * Upload de Base64 para a Zoro Drive API
+ * Upload de Base64 para a Zoro Drive API (Executado via Fila Sequencial)
  */
 export async function uploadBase64ToDrive(base64Data, filename, folderName = null) {
-    try {
-        const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
+    return driveQueue.push(async () => {
+        let retries = 2;
+        while (retries >= 0) {
+            try {
+                const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, '');
 
-        const payload = {
-            email: EMAIL,
-            password: PASS,
-            nome_arquivo: filename,
-            arquivo_base64: cleanBase64
-        };
+                const payload = {
+                    email: EMAIL,
+                    password: PASS,
+                    nome_arquivo: filename,
+                    arquivo_base64: cleanBase64
+                };
 
-        if (folderName) payload.folder_name = folderName;
+                if (folderName) payload.folder_name = folderName;
 
-        const response = await axios.post(DRIVE_URL, payload, {
-            headers: { 'Content-Type': 'application/json' },
-            httpsAgent: agent,
-            maxBodyLength: Infinity,
-            timeout: 60000 // 60 segundos (para suportar imagens pesadas)
-        });
+                const response = await axios.post(DRIVE_URL, payload, {
+                    headers: { 'Content-Type': 'application/json' },
+                    httpsAgent: agent,
+                    maxBodyLength: Infinity,
+                    timeout: 45000
+                });
 
-        const data = response.data;
-        if (data && data.sucesso && data.url) {
-            // Força protocolo HTTPS para evitar bloqueio de Mixed Content no navegador
-            return data.url.replace(/^http:\/\//i, 'https://');
-        } else {
-            console.error('[ZORO DRIVE] Resposta sem sucesso:', data);
-            return null;
+                const data = response.data;
+                if (data && data.sucesso && data.url) {
+                    return data.url.replace(/^http:\/\//i, 'https://');
+                } else {
+                    console.error('[ZORO DRIVE] Resposta sem sucesso:', data);
+                    return null;
+                }
+            } catch (err) {
+                retries--;
+                if (retries >= 0) {
+                    console.warn(`[ZORO DRIVE] Falha (${err.message}). Tentando novamente em 1.5s...`);
+                    await new Promise(r => setTimeout(r, 1500));
+                } else {
+                    console.error('[ZORO DRIVE] Erro no uploadBase64 após tentativas:', err.message);
+                    return null;
+                }
+            }
         }
-    } catch (err) {
-        console.error('[ZORO DRIVE] Erro no uploadBase64:', err.message);
         return null;
-    }
+    });
 }
 
 /**
