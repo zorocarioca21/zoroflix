@@ -456,7 +456,7 @@ exoPlayer.play()`}</code></pre>
                                 </div>
                                 <h3>Rotas de Catálogo, Lançamentos e Busca (Sem expor chaves no APK)</h3>
                                 <p>
-                                    O aplicativo não precisa conter tokens do TMDB. Todas as chamadas para alimentar a Home, carrosséis e buscas devem bater nestes endpoints protegidos com cache de 30 minutos:
+                                    O aplicativo não precisa conter tokens do TMDB. Todas as chamadas para alimentar a Home, carrosséis, telas de detalhes e buscas devem bater nestes endpoints protegidos com cache de 30 minutos:
                                 </p>
 
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', marginTop: '0.5rem' }}>
@@ -466,6 +466,13 @@ exoPlayer.play()`}</code></pre>
                                     <code className="api-code-pill">GET /api/tmdb/movie/popular (Filmes Populares)</code>
                                     <code className="api-code-pill">GET /api/tmdb/discover/movie (Destaques)</code>
                                     <code className="api-code-pill">GET /api/tmdb/search?query=nome (Busca TMDB)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/:id/credits (Elenco do Filme)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/credits (Elenco da Série)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/season/:season_number (Episódios da Temporada)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/:id/recommendations (Talvez você goste - Filme)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/recommendations (Talvez você goste - Série)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/:id/videos (Trailers do Filme)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/videos (Trailers da Série)</code>
                                 </div>
 
                                 <div className="api-modern-code">
