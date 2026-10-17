@@ -227,9 +227,18 @@ async function downloadLoop() {
             continue;
         }
 
-        // Se for canal ao vivo / 24H (ex: [24H] Zé Buscapé), pula automaticamente
-        if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(nextItem.title)) {
-            console.log(`[Download] ⏭️ Pulando canal ao vivo/24h automaticamente: "${nextItem.title}"`);
+        // Se for canal ao vivo, 24H ou transmissão de câmeras de reality show (ex: A Fazenda CAM 1, 24H • Dragon Ball Z, [24H] Zé Buscapé), pula automaticamente
+        const isLiveOrCam = (t) => {
+            if (!t) return false;
+            if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(t)) return true;
+            if (/(?:^|\s|[•|:\-\/])24\s*(?:H|HS|HORAS)\b/i.test(t)) return true;
+            if (/\b(?:CAM|CAMERA|CÂMERA)\s*\d+\b/i.test(t)) return true;
+            if (/\b(?:A\s+FAZENDA|BBB|BIG\s+BROTHER|DE\s+FERIAS\s+COM\s+O\s+EX|ESTRELA\s+DA\s+CASA)\s+.*?\b(?:CAM|MOSAICO|AO\s+VIVO)\b/i.test(t)) return true;
+            return false;
+        };
+
+        if (isLiveOrCam(nextItem.title)) {
+            console.log(`[Download] ⏭️ Pulando canal ao vivo/24h/CAM reality show automaticamente: "${nextItem.title}"`);
             await dbInstance.run("UPDATE sync_queue SET status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [nextItem.id]);
             continue;
         }

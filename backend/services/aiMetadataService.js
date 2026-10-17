@@ -16,7 +16,8 @@ export async function extractMetadataWithAI(rawTitle) {
 Título bruto do arquivo: "${rawTitle}"
 
 Instruções:
-- Verifique se é conteúdo estritamente PORNOGRÁFICO / ADULTO EXPLICITO (+18 pornô, como Brasileirinhas, Red Light, Sexo Explícito, XXX, etc). NÃO marque como pornô filmes convencionais que apenas possuem classificação indicativa para maiores (como Deadpool, 50 Tons de Cinza, etc).
+- Verifique se é conteúdo estritamente PORNOGRÁFICO / ADULTO EXPLÍCITO (+18 pornô, como Brasileirinhas, Red Light, Sexo Explícito, XXX, etc). NÃO marque como pornô filmes convencionais que apenas possuem classificação indicativa para maiores (como Deadpool, 50 Tons de Cinza, etc).
+- Verifique se é canal de transmissão contínua 24H (ex: "24H • Dragon Ball Z", "[24H] Chaves") ou câmera ao vivo de reality show (ex: "A Fazenda CAM 1", "BBB CAM 2"). Se for, defina "is_live_stream": true.
 - Se for conteúdo estritamente pornô/adulto explícito, defina "is_porn": true. Caso contrário, false.
 - Identifique se é filme ("movie") ou série/anime ("tv").
 - Extraia nome da série ou filme, título original, temporada e episódio.
@@ -24,6 +25,7 @@ Instruções:
 - Retorne EXCLUSIVAMENTE o objeto JSON a seguir, sem texto antes ou depois:
 {
   "is_porn": false,
+  "is_live_stream": false,
   "search_query": "nome do filme ou série em português ou inglês",
   "original_title": "título original ou null",
   "parent_series": "nome da franquia/anime caso seja só nome de episódio ou null",
@@ -56,6 +58,7 @@ Instruções:
 
         return {
             is_porn: Boolean(parsed.is_porn),
+            is_live_stream: Boolean(parsed.is_live_stream),
             search_query: parsed.search_query || null,
             original_title: parsed.original_title || null,
             parent_series: parsed.parent_series || null,

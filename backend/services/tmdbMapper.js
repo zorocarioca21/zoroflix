@@ -46,9 +46,18 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             let season_number = null;
             let episode_number = null;
 
-            // Se for canal ao vivo / 24H (ex: [24H] Zé Buscapé), marca como NOT_FOUND direto sem gastar cota
-            if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(item.title)) {
-                await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+            // Se for canal ao vivo, canal 24H ou transmissão de câmeras de reality show (ex: A Fazenda CAM 1, 24H • Dragon Ball Z, [24H] Zé Buscapé)
+            const isLiveOrRealityCam = (t) => {
+                if (!t) return false;
+                if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(t)) return true;
+                if (/(?:^|\s|[•|:\-\/])24\s*(?:H|HS|HORAS)\b/i.test(t)) return true;
+                if (/\b(?:CAM|CAMERA|CÂMERA)\s*\d+\b/i.test(t)) return true;
+                if (/\b(?:A\s+FAZENDA|BBB|BIG\s+BROTHER|DE\s+FERIAS\s+COM\s+O\s+EX|ESTRELA\s+DA\s+CASA)\s+.*?\b(?:CAM|MOSAICO|AO\s+VIVO)\b/i.test(t)) return true;
+                return false;
+            };
+
+            if (isLiveOrRealityCam(item.title)) {
+                await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
                 continue;
             }
 
@@ -169,7 +178,14 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                         // Se for conteúdo adulto pornográfico (+18 pornô) que não tem no TMDB
                         if (aiResult.is_porn) {
                             console.log(`[TMDB MAPPER] 🔞 Conteúdo pornográfico detectado pela IA: "${item.title}". Marcando como NOT_FOUND.`);
-                            await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+                            await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+                            continue;
+                        }
+
+                        // Se a IA detectou que é câmera ao vivo de reality ou canal 24H
+                        if (aiResult.is_live_stream) {
+                            console.log(`[TMDB MAPPER] 📹 Câmera ao vivo / Canal 24h detectado pela IA: "${item.title}". Pulando.`);
+                            await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', status = 'skipped', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
                             continue;
                         }
 

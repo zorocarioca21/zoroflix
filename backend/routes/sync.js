@@ -251,13 +251,17 @@ export default function syncRoutes(db, io) {
         }
     });
 
-    // Helper para verificar se é canal de TV 24H (ex: [24H], [24 HS], etc.), sem confundir com obras como "24 Horas"
+    // Helper para verificar se é canal de TV 24H (ex: [24H], 24H •, etc.) ou câmeras de reality shows (ex: A Fazenda CAM 1, BBB CAM 02)
     const isLive24Channel = (title) => {
         if (!title) return false;
-        return /\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(title);
+        if (/\[\s*24\s*(?:H|HS|HORAS)?\s*\]/i.test(title)) return true;
+        if (/(?:^|\s|[•|:\-\/])24\s*(?:H|HS|HORAS)\b/i.test(title)) return true;
+        if (/\b(?:CAM|CAMERA|CÂMERA)\s*\d+\b/i.test(title)) return true;
+        if (/\b(?:A\s+FAZENDA|BBB|BIG\s+BROTHER|DE\s+FERIAS\s+COM\s+O\s+EX|ESTRELA\s+DA\s+CASA)\s+.*?\b(?:CAM|MOSAICO|AO\s+VIVO)\b/i.test(title)) return true;
+        return false;
     };
 
-    // Rota para pular em lote todos os canais [24H] que já estão na fila
+    // Rota para pular em lote todos os canais [24H] e câmeras de reality show que já estão na fila
     router.post('/queue/skip-24h-channels', async (req, res) => {
         try {
             const rows = await db.all("SELECT id, title FROM sync_queue WHERE status IN ('pending', 'error')");
@@ -268,10 +272,10 @@ export default function syncRoutes(db, io) {
                     skippedCount++;
                 }
             }
-            res.json({ success: true, skipped: skippedCount, message: `${skippedCount} canais [24H] foram marcados como pulados (skipped).` });
+            res.json({ success: true, skipped: skippedCount, message: `${skippedCount} canais [24H] e câmeras de reality shows foram marcados como pulados (skipped).` });
         } catch (err) {
             console.error("Erro skip-24h-channels:", err);
-            res.status(500).json({ error: 'Erro ao pular canais 24h.' });
+            res.status(500).json({ error: 'Erro ao pular canais 24h e câmeras.' });
         }
     });
 
