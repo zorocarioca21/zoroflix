@@ -60,6 +60,21 @@ export default function syncRoutes(db, io) {
         }
     });
 
+    // Rota de IA para auto-preenchimento no Upload Manual
+    router.post('/manual-upload/ai-parse', async (req, res) => {
+        try {
+            const { fileName } = req.body;
+            if (!fileName) return res.status(400).json({ error: 'Nome do arquivo não informado.' });
+
+            const { extractMetadataWithAI } = await import('../services/aiMetadataService.js');
+            const result = await extractMetadataWithAI(fileName);
+            res.json({ success: true, data: result });
+        } catch (err) {
+            console.error("Erro ao processar nome com IA:", err);
+            res.status(500).json({ error: 'Falha ao consultar IA.' });
+        }
+    });
+
     // Rota para finalizar e mover para a fila
     router.post('/manual-upload/finalize', async (req, res) => {
         try {
@@ -150,6 +165,12 @@ export default function syncRoutes(db, io) {
             // Move o arquivo pro destino final
             fs.renameSync(sourceFilePath, finalTmpPath);
             
+            // Dispara imediatamente o mapeamento TMDB (com IA Gemini 3.5 Flash) para o item manual
+            try {
+                const { mapPendingTmdbItems } = await import('../services/tmdbMapper.js');
+                mapPendingTmdbItems(db, 5).catch(e => console.warn('[Upload Manual] Erro ao disparar mapper TMDB:', e.message));
+            } catch (e) {}
+
             res.json({ success: true, message: `Upload manual enviado para a fila! Qualidade detectada: ${cleanedTitle}`, id: dbId });
         } catch (err) {
             console.error("Erro ao finalizar upload:", err);

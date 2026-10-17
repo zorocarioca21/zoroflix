@@ -1,6 +1,7 @@
 import { getNextTmdbKey } from './tmdbKeyService.js';
 import { getOrFetchMediaDetails } from './tmdbCacheService.js';
 import { initTmdbCatalogDB } from '../tmdbCatalogDB.js';
+import { extractMetadataWithAI } from './aiMetadataService.js';
 import axios from 'axios';
 import https from 'https';
 
@@ -21,7 +22,6 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             SELECT id, title
             FROM sync_queue
             WHERE (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
-            AND status IN ('pending', 'completed')
             ORDER BY tmdb_id IS NULL DESC, updated_at ASC
             LIMIT ?
         `, [batchSize]);
@@ -155,6 +155,58 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     console.error(`[TMDB MAPPER] Rate Limit (429) ao buscar ${q}.`);
                 } else {
                     console.error(`[TMDB MAPPER] Falha de rede ao buscar ${q}:`, err.message);
+                }
+            }
+
+            // ==========================================
+            // FALLBACK COM IA (GEMINI 3.5 FLASH)
+            // ==========================================
+            if (!tmdb_id && !hasNetworkError) {
+                try {
+                    console.log(`[TMDB MAPPER] 🤖 Tentando decodificar com IA (Gemini 3.5 Flash): "${item.title}"...`);
+                    const aiResult = await extractMetadataWithAI(item.title);
+                    if (aiResult) {
+                        // Se for conteúdo adulto pornográfico (+18 pornô) que não tem no TMDB
+                        if (aiResult.is_porn) {
+                            console.log(`[TMDB MAPPER] 🔞 Conteúdo pornográfico detectado pela IA: "${item.title}". Marcando como NOT_FOUND.`);
+                            await db.run("UPDATE sync_queue SET tmdb_id = 'NOT_FOUND', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [item.id]);
+                            continue;
+                        }
+
+                        if (aiResult.season !== null && aiResult.season !== undefined) season_number = aiResult.season;
+                        if (aiResult.episode !== null && aiResult.episode !== undefined) episode_number = aiResult.episode;
+                        if (aiResult.media_type) media_type = aiResult.media_type;
+
+                        const aiQueries = [
+                            aiResult.parent_series,
+                            aiResult.search_query,
+                            aiResult.original_title
+                        ].filter(Boolean);
+
+                        for (const queryCandidate of aiQueries) {
+                            try {
+                                const targetType = aiResult.media_type === 'movie' ? 'movie' : (aiResult.media_type === 'tv' ? 'tv' : 'multi');
+                                const aiUrl = `https://api.themoviedb.org/3/search/${targetType}?query=${encodeURIComponent(queryCandidate)}&api_key=${apiKey}&language=pt-BR`;
+                                const aiTmdbRes = await axios.get(aiUrl, {
+                                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                                    httpsAgent: agent,
+                                    timeout: 10000
+                                });
+
+                                if (aiTmdbRes.status === 200 && aiTmdbRes.data.results && aiTmdbRes.data.results.length > 0) {
+                                    bestMatch = aiTmdbRes.data.results[0];
+                                    tmdb_id = String(bestMatch.id);
+                                    media_type = bestMatch.media_type || aiResult.media_type;
+                                    console.log(`[TMDB MAPPER] 🎯 IA Encontrou TMDB com sucesso! "${bestMatch.title || bestMatch.name}" (ID: ${tmdb_id})`);
+                                    break;
+                                }
+                            } catch (e) {
+                                // Tenta a próxima query sugerida pela IA
+                            }
+                        }
+                    }
+                } catch (aiErr) {
+                    console.warn(`[TMDB MAPPER] Erro no fallback de IA:`, aiErr.message);
                 }
             }
 

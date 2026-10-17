@@ -63,6 +63,35 @@ export default function adminRoutes(db, tmdbDb) {
             res.status(500).json({ error: 'Erro ao listar falhas de mapeamento' });
         }
     });
+
+    // Endpoint para reprocessar falhas com IA Gemini 3.5 Flash
+    router.post('/remap-ai', async (req, res) => {
+        try {
+            // Reseta TODOS os itens NOT_FOUND para NULL e atualiza a data para serem processados na hora
+            const result = await db.run(`
+                UPDATE sync_queue 
+                SET tmdb_id = NULL, updated_at = CURRENT_TIMESTAMP 
+                WHERE tmdb_id = 'NOT_FOUND'
+            `);
+            
+            const count = result.changes || 0;
+
+            // Dispara imediatamente o mapeador para os primeiros lotes
+            const { mapPendingTmdbItems } = await import('../services/tmdbMapper.js');
+            mapPendingTmdbItems(db, 50).catch(e => console.error('[REMAP AI] Erro ao disparar lote:', e.message));
+
+            res.json({ 
+                success: true, 
+                count, 
+                message: count > 0 
+                    ? `🚀 ${count} itens redefinidos! O mapeador com IA começou a processar tudo agora mesmo.` 
+                    : `Nenhum item com status NOT_FOUND encontrado para reprocessar.` 
+            });
+        } catch (err) {
+            console.error('[ADMIN REMAP AI] Erro:', err.message);
+            res.status(500).json({ error: 'Erro ao reprocessar itens com IA.' });
+        }
+    });
     // Endpoint para obter o tamanho da pasta temp
     router.get('/temp-stats', async (req, res) => {
         try {

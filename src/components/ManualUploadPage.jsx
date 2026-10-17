@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv, Trash2, ListOrdered, Play, RefreshCw } from 'lucide-react';
+import { HardDriveDownload, UploadCloud, X, Film, CheckCircle2, Clapperboard, Tv, Trash2, ListOrdered, Play, RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import './ManualUploadPage.css';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -8,6 +8,7 @@ export default function ManualUploadPage() {
     const [uploadQueue, setUploadQueue] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [loadingAiId, setLoadingAiId] = useState(null);
 
     // Update generated titles whenever queue items change
     useEffect(() => {
@@ -107,6 +108,38 @@ export default function ManualUploadPage() {
 
     const updateItem = (id, field, value) => {
         setUploadQueue(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const parseItemWithAI = async (item) => {
+        if (!item || !item.file?.name) return;
+        setLoadingAiId(item.id);
+        try {
+            const res = await fetch('/api/sync/manual-upload/ai-parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: item.file.name })
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                const ai = data.data;
+                const isMovie = ai.media_type === 'movie';
+                setUploadQueue(prev => prev.map(qItem => {
+                    if (qItem.id !== item.id) return qItem;
+                    return {
+                        ...qItem,
+                        type: isMovie ? 'filme' : 'serie',
+                        movieTitle: isMovie ? (ai.search_query || ai.original_title || qItem.movieTitle) : '',
+                        serieTitle: !isMovie ? (ai.parent_series || ai.search_query || qItem.serieTitle) : '',
+                        season: ai.season ? String(ai.season) : (isMovie ? '' : (qItem.season || '1')),
+                        episode: ai.episode ? String(ai.episode) : (isMovie ? '' : (qItem.episode || '1'))
+                    };
+                }));
+            }
+        } catch (e) {
+            console.error("Erro ao auto-preencher com IA:", e);
+        } finally {
+            setLoadingAiId(null);
+        }
     };
 
     const processQueue = async () => {
@@ -278,12 +311,43 @@ export default function ManualUploadPage() {
                                         <span className="file-size">{(item.file.size / (1024 * 1024)).toFixed(1)} MB</span>
                                     </div>
                                     
-                                    {item.status !== 'uploading' && item.status !== 'success' && (
-                                        <button className="remove-item-btn" onClick={() => removeItem(item.id)} title="Remover da fila">
-                                            <Trash2 size={18} />
-                                        </button>
-                                    )}
-                                    {item.status === 'success' && <CheckCircle2 size={24} color="#00ff88" />}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {item.status !== 'uploading' && item.status !== 'success' && (
+                                            <>
+                                                <button 
+                                                    className="btn-ai-autofill"
+                                                    onClick={() => parseItemWithAI(item)} 
+                                                    disabled={loadingAiId === item.id}
+                                                    title="Auto-preencher dados usando Gemini 3.5 Flash"
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, rgba(0, 204, 255, 0.2), rgba(123, 97, 255, 0.3))',
+                                                        border: '1px solid rgba(0, 204, 255, 0.4)',
+                                                        color: '#00ccff',
+                                                        borderRadius: '6px',
+                                                        padding: '4px 8px',
+                                                        fontSize: '0.75rem',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 'bold',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    {loadingAiId === item.id ? (
+                                                        <Loader2 size={13} className="spin" />
+                                                    ) : (
+                                                        <Sparkles size={13} />
+                                                    )}
+                                                    {loadingAiId === item.id ? 'Analisando...' : 'IA 3.5'}
+                                                </button>
+                                                <button className="remove-item-btn" onClick={() => removeItem(item.id)} title="Remover da fila">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </>
+                                        )}
+                                        {item.status === 'success' && <CheckCircle2 size={24} color="#00ff88" />}
+                                    </div>
                                 </div>
 
                                 {/* Form settings - only editable if not successful */}

@@ -1131,16 +1131,50 @@ export default function AdminPanel() {
                 
                 {activeTab === 'tmdb-errors' && (
                     <div className="admin-card-list">
-                        <div className="admin-tab-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2>Falhas de Mapeamento TMDB</h2>
-                            <button 
-                                onClick={() => fetchNotFound()}
-                                style={{ background: '#00ff88', color: '#000', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                            >
-                                Atualizar Lista
-                            </button>
+                        <div className="admin-tab-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            <div>
+                                <h2 style={{ margin: 0 }}>Falhas de Mapeamento TMDB</h2>
+                                <p style={{ color: '#888', margin: '4px 0 0 0', fontSize: '0.85rem' }}>Arquivos não encontrados com regex tradicional. Use a IA Gemini 3.5 Flash para resolver automaticamente.</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button 
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch('/api/admin/remap-ai', {
+                                                method: 'POST',
+                                                headers: { 'Authorization': `Bearer ${token}` }
+                                            });
+                                            const data = await res.json();
+                                            alert(data.message || 'Mapeamento com IA iniciado!');
+                                            fetchNotFound();
+                                        } catch (e) {
+                                            alert('Erro ao disparar remapeamento com IA');
+                                        }
+                                    }}
+                                    style={{ 
+                                        background: 'linear-gradient(135deg, #00ccff, #7b61ff)', 
+                                        color: '#fff', 
+                                        border: 'none', 
+                                        padding: '8px 16px', 
+                                        borderRadius: '8px', 
+                                        cursor: 'pointer', 
+                                        fontWeight: 'bold',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        boxShadow: '0 2px 10px rgba(0, 204, 255, 0.3)'
+                                    }}
+                                >
+                                    ✨ Reprocessar com IA (3.5 Flash)
+                                </button>
+                                <button 
+                                    onClick={() => fetchNotFound()}
+                                    style={{ background: '#222', color: '#fff', border: '1px solid #444', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                    Atualizar Lista
+                                </button>
+                            </div>
                         </div>
-                        <p style={{ color: '#aaa', marginBottom: '1rem' }}>Esses arquivos não foram encontrados no TMDB. Verifique se o nome do arquivo contém algo que confunda o robô (ex: tags estranhas, anos errados, ou nomes abreviados).</p>
                         
                         {loading ? (
                             <p style={{ color: '#00ff88' }}>Carregando falhas...</p>
