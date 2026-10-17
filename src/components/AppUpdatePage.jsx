@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, CheckCircle, AlertTriangle, Smartphone, FileArchive, Package, Bell, Send, Radio, Sparkles } from 'lucide-react';
+import { UploadCloud, CheckCircle, AlertTriangle, Smartphone, FileArchive, Package, Bell, Send, Radio, Sparkles, Download, ExternalLink } from 'lucide-react';
 import './AppUpdatePage.css';
 
 export default function AppUpdatePage() {
@@ -205,7 +205,7 @@ export default function AppUpdatePage() {
             {subTab === 'updates' && (
                 <>
                     {history.length > 0 && (
-                        <div className="current-version-banner">
+                        <div className="current-version-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                             <div className="banner-info">
                                 <CheckCircle size={24} color="#00ff88" />
                                 <div>
@@ -213,6 +213,28 @@ export default function AppUpdatePage() {
                                     <p>Código: {history[0].version_code} • Lançada em {new Date(history[0].created_at).toLocaleDateString('pt-BR')}</p>
                                 </div>
                             </div>
+                            <a 
+                                href={`/downloads/app/${history[0].apk_filename}`}
+                                download={history[0].apk_filename}
+                                className="btn-download-apk"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    background: 'linear-gradient(135deg, #00ff88 0%, #00d2ff 100%)',
+                                    color: '#0b0f14',
+                                    padding: '0.65rem 1.25rem',
+                                    borderRadius: '8px',
+                                    fontWeight: '700',
+                                    fontSize: '0.9rem',
+                                    textDecoration: 'none',
+                                    boxShadow: '0 4px 15px rgba(0, 255, 136, 0.3)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <Download size={18} />
+                                Baixar APK Atual (v{history[0].version_name})
+                            </a>
                         </div>
                     )}
 
@@ -307,11 +329,37 @@ export default function AppUpdatePage() {
                             <h3>Histórico de Lançamentos</h3>
                             {history.map(item => (
                                 <div key={item.id} className="history-item">
-                                    <div className="history-version">v{item.version_name} <small>(Code: {item.version_code})</small></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        <div className="history-version">v{item.version_name} <small>(Code: {item.version_code})</small></div>
+                                        {item.force_update === 1 && <span className="badge-force">Forçado</span>}
+                                    </div>
                                     <div className="history-date">{new Date(item.created_at).toLocaleString('pt-BR')}</div>
                                     <div className="history-notes">{item.release_notes || 'Sem notas.'}</div>
-                                    {item.force_update === 1 && <span className="badge-force">Forçado</span>}
-                                    <div className="history-filename"><FileArchive size={14}/> {item.apk_filename}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        <div className="history-filename"><FileArchive size={14}/> {item.apk_filename}</div>
+                                        <a 
+                                            href={`/downloads/app/${item.apk_filename}`}
+                                            download={item.apk_filename}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                background: 'rgba(0, 255, 136, 0.15)',
+                                                border: '1px solid rgba(0, 255, 136, 0.4)',
+                                                color: '#00ff88',
+                                                padding: '5px 12px',
+                                                borderRadius: '6px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '600',
+                                                textDecoration: 'none',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.3)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.15)'}
+                                        >
+                                            <Download size={14} /> Baixar APK
+                                        </a>
+                                    </div>
                                 </div>
                             ))}
                             {history.length === 0 && <p style={{color: '#666'}}>Nenhum lançamento registrado.</p>}
