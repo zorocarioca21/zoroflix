@@ -38,80 +38,160 @@ export default function botRoutes(db) {
 
     router.get('/search', verifyKey, async (req, res) => {
         try {
-            let { q } = req.query;
-            if (!q) {
-                return res.status(400).json({ error: "Query parameter 'q' is required" });
+            let { q, tmdb_id, id } = req.query;
+            let targetTmdbId = tmdb_id || id || null;
+            let season = req.query.season ? parseInt(req.query.season) : null;
+            let episode = req.query.episode ? parseInt(req.query.episode) : null;
+
+            if (!q && !targetTmdbId) {
+                return res.status(400).json({ error: "Parâmetro 'q' ou 'tmdb_id' é obrigatório." });
             }
 
-            let season = null;
-            let episode = null;
+            // Se 'q' for puramente numérico e nenhum tmdb_id foi passado, trata 'q' como tmdb_id
+            if (!targetTmdbId && q && /^\d+$/.test(q.trim())) {
+                targetTmdbId = q.trim();
+            }
 
-            // Extractor for patterns like S01E05, T01E05, S1 E5, Temporada 1 Episodio 5
-            const seasonEpRegex = /\b(?:S|T|TEMPORADA\s*)(\d{1,2})(?:[\sEXP-]+|(?:\s*EPIS[OÓ]DIO\s*))(\d{1,3})\b/i;
-            const match = q.match(seasonEpRegex);
-            
-            const altMatch = q.match(/\b(\d{1,2})[xX](\d{1,3})\b/); // 1x05
-            const epOnlyRegex = /\b(?:EP|EPIS[OÓ]DIO)\s*(\d{1,3})\b/i; // Ep 05
+            // Extractor for patterns like S01E05, T01E05, S1 E5, Temporada 1 Episodio 5 se vier dentro de 'q'
+            if (q) {
+                const seasonEpRegex = /\b(?:S|T|TEMPORADA\s*)(\d{1,2})(?:[\sEXP-]+|(?:\s*EPIS[OÓ]DIO\s*))(\d{1,3})\b/i;
+                const match = q.match(seasonEpRegex);
+                const altMatch = q.match(/\b(\d{1,2})[xX](\d{1,3})\b/); // 1x05
+                const epOnlyRegex = /\b(?:EP|EPIS[OÓ]DIO)\s*(\d{1,3})\b/i; // Ep 05
 
-            if (match) {
-                season = parseInt(match[1]);
-                episode = parseInt(match[2]);
-                q = q.replace(match[0], '').trim();
-            } else if (altMatch) {
-                season = parseInt(altMatch[1]);
-                episode = parseInt(altMatch[2]);
-                q = q.replace(altMatch[0], '').trim();
-            } else {
-                const epMatch = q.match(epOnlyRegex);
-                if (epMatch) {
-                    season = 1;
-                    episode = parseInt(epMatch[1]);
-                    q = q.replace(epMatch[0], '').trim();
+                if (match) {
+                    if (season === null) season = parseInt(match[1]);
+                    if (episode === null) episode = parseInt(match[2]);
+                    q = q.replace(match[0], '').trim();
+                } else if (altMatch) {
+                    if (season === null) season = parseInt(altMatch[1]);
+                    if (episode === null) episode = parseInt(altMatch[2]);
+                    q = q.replace(altMatch[0], '').trim();
+                } else {
+                    const epMatch = q.match(epOnlyRegex);
+                    if (epMatch) {
+                        if (season === null) season = 1;
+                        if (episode === null) episode = parseInt(epMatch[1]);
+                        q = q.replace(epMatch[0], '').trim();
+                    }
+                }
+                q = q.replace(/[-:]$/, '').trim();
+            }
+
+            // 1. PRIORIDADE MÁXIMA: Busca direta pelos campos mapeados no SQLite (tmdb_id, season_number, episode_number)
+            let foundMsgId = null;
+            let fullTitle = q || `TMDB #${targetTmdbId}`;
+            let type = (season !== null && episode !== null) ? 'serie' : 'filme';
+
+            if (targetTmdbId) {
+                if (season !== null && episode !== null) {
+                    // Episódio de Série exato mapeado!
+                    const exactEp = await db.get(
+                        `SELECT telegram_message_id, title FROM sync_queue 
+                         WHERE status = 'completed' AND telegram_message_id IS NOT NULL 
+                         AND tmdb_id = ? AND season_number = ? AND episode_number = ? 
+                         ORDER BY id DESC LIMIT 1`,
+                        [targetTmdbId, season, episode]
+                    ).catch(() => null);
+
+                    if (exactEp?.telegram_message_id) {
+                        foundMsgId = exactEp.telegram_message_id;
+                        fullTitle = exactEp.title;
+                        type = 'serie';
+                    }
+                } else {
+                    // Filme exato mapeado!
+                    const exactMovie = await db.get(
+                        `SELECT telegram_message_id, title FROM sync_queue 
+                         WHERE status = 'completed' AND telegram_message_id IS NOT NULL 
+                         AND tmdb_id = ? 
+                         ORDER BY id DESC LIMIT 1`,
+                        [targetTmdbId]
+                    ).catch(() => null);
+
+                    if (exactMovie?.telegram_message_id) {
+                        foundMsgId = exactMovie.telegram_message_id;
+                        fullTitle = exactMovie.title;
+                        type = 'filme';
+                    }
                 }
             }
 
-            // Cleanup any trailing hyphens or colons
-            q = q.replace(/[-:]$/, '').trim();
+            // Se já achou direto pelo mapeamento perfeito do banco, pula requisição externa do TMDB!
+            if (!foundMsgId) {
+                const API_KEY = await getNextTmdbKey(db);
+                const BASE_URL = 'https://api.themoviedb.org/3';
 
-            const API_KEY = await getNextTmdbKey(db);
-            const BASE_URL = 'https://api.themoviedb.org/3';
+                // 2. Fetch TMDB API para descobrir dados da obra caso 'q' seja textual
+                let tmdbData = { results: [] };
+                try {
+                    const searchParam = targetTmdbId ? targetTmdbId : q;
+                    const tmdbEndpoint = targetTmdbId 
+                        ? `${BASE_URL}/find/${targetTmdbId}?external_source=tmdb_id&api_key=${API_KEY}&language=pt-BR`
+                        : `${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`;
+                    
+                    const tmdbRes = await axios.get(tmdbEndpoint, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                        httpsAgent: agent,
+                        timeout: 8000
+                    });
+                    tmdbData = tmdbRes.data;
+                } catch (tmdbErr) {
+                    console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
+                }
 
-            // 1. Fetch TMDB API to get exact name, year, and ID
-            let tmdbData = { results: [] };
-            try {
-                const tmdbRes = await axios.get(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                    httpsAgent: agent,
-                    timeout: 8000
-                });
-                tmdbData = tmdbRes.data;
-            } catch (tmdbErr) {
-                console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
-            }
+                let searchName = q;
+                let originalName = null;
+                let releaseYear = null;
+                let baseName = q ? q.split(':')[0] : null;
+                let slug = q ? q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : 'item';
 
-            let searchName = q;
-            let originalName = null;
-            let releaseYear = null;
-            let baseName = q.split(':')[0];
-            let type = 'filme';
-            let slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                const bestMatch = (tmdbData.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv') || (tmdbData.results && tmdbData.results[0]);
+                if (bestMatch) {
+                    searchName = bestMatch.name || bestMatch.title || q;
+                    originalName = bestMatch.original_name || bestMatch.original_title || null;
+                    releaseYear = bestMatch.release_date ? bestMatch.release_date.split('-')[0] : (bestMatch.first_air_date ? bestMatch.first_air_date.split('-')[0] : null);
+                    baseName = searchName ? searchName.split(':')[0] : null;
+                    type = bestMatch.media_type === 'movie' ? 'filme' : 'serie';
+                    slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                    if (!targetTmdbId && bestMatch.id) targetTmdbId = bestMatch.id;
+                }
 
-            const bestMatch = (tmdbData.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv') || (tmdbData.results && tmdbData.results[0]);
-            if (bestMatch) {
-                searchName = bestMatch.name || bestMatch.title || q;
-                originalName = bestMatch.original_name || bestMatch.original_title || null;
-                releaseYear = bestMatch.release_date ? bestMatch.release_date.split('-')[0] : (bestMatch.first_air_date ? bestMatch.first_air_date.split('-')[0] : null);
-                baseName = searchName ? searchName.split(':')[0] : null;
-                type = bestMatch.media_type === 'movie' ? 'filme' : 'serie';
-                slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-            }
+                // Nova tentativa com tmdb_id descoberto
+                if (targetTmdbId) {
+                    if (type === 'serie' && season !== null && episode !== null) {
+                        const epMatchDb = await db.get(
+                            `SELECT telegram_message_id, title FROM sync_queue 
+                             WHERE status = 'completed' AND telegram_message_id IS NOT NULL 
+                             AND tmdb_id = ? AND season_number = ? AND episode_number = ? 
+                             ORDER BY id DESC LIMIT 1`,
+                            [targetTmdbId, season, episode]
+                        ).catch(() => null);
+
+                        if (epMatchDb?.telegram_message_id) {
+                            foundMsgId = epMatchDb.telegram_message_id;
+                            fullTitle = epMatchDb.title;
+                        }
+                    } else if (type === 'filme') {
+                        const movieMatchDb = await db.get(
+                            `SELECT telegram_message_id, title FROM sync_queue 
+                             WHERE status = 'completed' AND telegram_message_id IS NOT NULL 
+                             AND tmdb_id = ? 
+                             ORDER BY id DESC LIMIT 1`,
+                            [targetTmdbId]
+                        ).catch(() => null);
+
+                        if (movieMatchDb?.telegram_message_id) {
+                            foundMsgId = movieMatchDb.telegram_message_id;
+                            fullTitle = movieMatchDb.title;
+                        }
+                    }
+                }
             
             const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
-            // 2. Query local database using PlayerPage matching logic
-            let foundMsgId = null;
-
-            if (type === 'serie' && season && episode) {
+            // 3. Fallback: Se não encontrou pelo mapeamento direto, roda a lógica textual antiga por compatibilidade
+            if (!foundMsgId) {
                 const s = String(season).padStart(2, '0');
                 const e = String(episode).padStart(2, '0');
                 
@@ -274,8 +354,11 @@ export default function botRoutes(db) {
                     }
                 }
             }
+            }
 
-            let fullTitle = searchName + (releaseYear ? ` (${releaseYear})` : '') + (season && episode ? ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : '');
+            if (!fullTitle || fullTitle.startsWith('TMDB #')) {
+                fullTitle = (searchName || fullTitle) + (releaseYear ? ` (${releaseYear})` : '') + (season && episode ? ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}` : '');
+            }
             
             const downloadFileName = fullTitle + ' - www.cinegeek.shop';
 

@@ -399,14 +399,20 @@ exoPlayer.play()`}</code></pre>
                                 <div className="api-endpoint-box-header">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <span className="api-method-badge get">GET</span>
-                                        <span className="api-path-badge">{baseUrl}/api/bot/search?q={"nome_ou_id"}&apikey={"sua_chave"}</span>
+                                        <span className="api-path-badge">{baseUrl}/api/bot/search?tmdb_id=1416&season=2&episode=4&apikey=SUA_CHAVE</span>
                                     </div>
-                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🔍 SMART SEARCH</span>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🎯 BUSCA DIRETA POR TMDB ID</span>
                                 </div>
-                                <h3>Busca Inteligente por TMDB ID ou Título</h3>
+                                <h3>Busca Exata por TMDB ID e Episódio</h3>
                                 <p>
-                                    Suporta formatos flexíveis de busca como <code>?q=Breaking Bad S02E05</code>, <code>T02E05</code>, <code>2x05</code>, <code>Episódio 5</code> ou o ID do TMDB.
+                                    Como 100% dos arquivos baixados já estão mapeados no banco, você pode buscar diretamente passando <code>tmdb_id</code>, <code>season</code> e <code>episode</code> (ou apenas <code>tmdb_id</code> para filmes). Isso garante precisão cirúrgica de 100% sem riscos de carregar episódios repetidos ou errados!
                                 </p>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Exemplos suportados:</span>
+                                    <code className="api-code-pill">/api/bot/search?tmdb_id=550&apikey=... (Filme)</code>
+                                    <code className="api-code-pill">/api/bot/search?tmdb_id=1416&season=1&episode=2&apikey=... (Série)</code>
+                                    <code className="api-code-pill">/api/bot/search?q=1416 S01E02&apikey=... (Legado por query)</code>
+                                </div>
 
                                 <div className="api-modern-code">
                                     <div className="api-code-bar">
