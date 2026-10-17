@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List, Bot, MessageSquare, Loader2 } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List, Bot, MessageSquare, Loader2, Maximize2, Minimize2, Trash, Copy } from 'lucide-react';
 import './AdminSync.css';
 
 // ==========================================
@@ -464,6 +464,8 @@ export default function AdminSync() {
 
     // Estado do Chat de IA Flutuante
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+    const [isAiExpanded, setIsAiExpanded] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState(null);
     const [aiInput, setAiInput] = useState('');
     const [isAiTyping, setIsAiTyping] = useState(false);
     const [aiMessages, setAiMessages] = useState([
@@ -476,6 +478,82 @@ export default function AdminSync() {
 
     const scrollToAiBottom = () => {
         aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const handleCopyAiMessage = (text, idx) => {
+        if (!navigator?.clipboard) return;
+        navigator.clipboard.writeText(text);
+        setCopiedIndex(idx);
+        setTimeout(() => setCopiedIndex(null), 2000);
+    };
+
+    const clearAiChat = () => {
+        setAiMessages([
+            { 
+                sender: 'ai', 
+                text: 'Histórico limpo. Em que posso te ajudar agora?' 
+            }
+        ]);
+    };
+
+    // Renderizador leve de Markdown para mensagens do bot
+    const renderMarkdownContent = (content) => {
+        if (!content || typeof content !== 'string') return content;
+
+        // Quebra em linhas para preservar estrutura
+        const lines = content.split('\n');
+
+        return lines.map((line, lIdx) => {
+            let trimmed = line.trim();
+
+            // Identifica tópicos com * ou -
+            const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ');
+            if (isBullet) {
+                trimmed = trimmed.substring(2);
+            }
+
+            // Processa negrito (**texto**) e código (`código`)
+            const parts = [];
+            // Regex que divide tokens mantendo delimitadores
+            const tokens = trimmed.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+
+            tokens.forEach((token, tIdx) => {
+                if (token.startsWith('**') && token.endsWith('**')) {
+                    parts.push(
+                        <strong key={tIdx} style={{ color: '#00e1ff', fontWeight: '600' }}>
+                            {token.slice(2, -2)}
+                        </strong>
+                    );
+                } else if (token.startsWith('`') && token.endsWith('`')) {
+                    parts.push(
+                        <code key={tIdx} style={{ background: 'rgba(0, 204, 255, 0.15)', color: '#38bdf8', padding: '1px 5px', borderRadius: '4px', fontSize: '0.82em', fontFamily: 'monospace' }}>
+                            {token.slice(1, -1)}
+                        </code>
+                    );
+                } else {
+                    parts.push(token);
+                }
+            });
+
+            if (isBullet) {
+                return (
+                    <div key={lIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '3px 0 3px 6px' }}>
+                        <span style={{ color: '#00ccff', fontSize: '0.9rem', lineHeight: '1.2' }}>•</span>
+                        <div style={{ flex: 1 }}>{parts}</div>
+                    </div>
+                );
+            }
+
+            if (!trimmed) {
+                return <div key={lIdx} style={{ height: '6px' }} />;
+            }
+
+            return (
+                <p key={lIdx} style={{ margin: '3px 0' }}>
+                    {parts}
+                </p>
+            );
+        });
     };
 
     useEffect(() => {
@@ -2034,20 +2112,21 @@ export default function AdminSync() {
                     </button>
                 ) : (
                     <div style={{
-                        width: '380px',
-                        height: '520px',
+                        width: isAiExpanded ? 'min(680px, 92vw)' : 'min(440px, 92vw)',
+                        height: isAiExpanded ? 'min(720px, 85vh)' : '540px',
                         background: 'linear-gradient(145deg, #161822 0%, #0d0e15 100%)',
-                        border: '1px solid rgba(0, 204, 255, 0.3)',
+                        border: '1px solid rgba(0, 204, 255, 0.35)',
                         borderRadius: '16px',
                         boxShadow: '0 20px 50px rgba(0,0,0,0.7), 0 0 30px rgba(0, 204, 255, 0.15)',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
-                        animation: 'fadeInUp 0.25s ease-out'
+                        animation: 'fadeInUp 0.25s ease-out',
+                        transition: 'width 0.25s ease, height 0.25s ease'
                     }}>
                         {/* Header */}
                         <div style={{
-                            padding: '1rem 1.2rem',
+                            padding: '0.85rem 1.1rem',
                             background: 'rgba(0, 204, 255, 0.08)',
                             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                             display: 'flex',
@@ -2068,22 +2147,39 @@ export default function AdminSync() {
                                     <Bot size={18} />
                                 </div>
                                 <div>
-                                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', fontWeight: 'bold' }}>IA Especialista Sync</h4>
+                                    <h4 style={{ margin: 0, fontSize: '0.92rem', color: '#fff', fontWeight: 'bold' }}>IA Especialista Sync</h4>
                                     <span style={{ fontSize: '0.72rem', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00ff88', display: 'inline-block' }} /> Online (Gemini 3.5 Flash)
                                     </span>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsAiChatOpen(false)}
-                                style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px' }}
-                            >
-                                <X size={20} />
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <button
+                                    onClick={clearAiChat}
+                                    title="Limpar histórico da conversa"
+                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <Trash size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setIsAiExpanded(!isAiExpanded)}
+                                    title={isAiExpanded ? 'Reduzir janela' : 'Expandir janela'}
+                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                >
+                                    {isAiExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                </button>
+                                <button
+                                    onClick={() => setIsAiChatOpen(false)}
+                                    title="Fechar chat"
+                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <X size={19} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Sugestões Rápidas */}
-                        <div style={{ padding: '0.6rem 0.8rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
+                        <div style={{ padding: '0.55rem 0.8rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
                             <button
                                 onClick={() => sendAiQuestion('O que representa o card Filmes e Séries e a Fila Mapeada?')}
                                 style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
@@ -2104,25 +2200,55 @@ export default function AdminSync() {
                             </button>
                         </div>
 
-                        {/* Mensagens */}
+                        {/* Mensagens com Markdown & Botão Copiar */}
                         <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                             {aiMessages.map((msg, idx) => (
                                 <div
                                     key={idx}
                                     style={{
                                         alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                                        maxWidth: '85%',
-                                        background: msg.sender === 'user' ? 'linear-gradient(135deg, #0077ff, #00ccff)' : 'rgba(255,255,255,0.06)',
-                                        color: msg.sender === 'user' ? '#fff' : '#e0e0e0',
-                                        padding: '0.65rem 0.9rem',
+                                        maxWidth: '92%',
+                                        background: msg.sender === 'user' ? 'linear-gradient(135deg, #0077ff, #00ccff)' : 'rgba(255,255,255,0.05)',
+                                        border: msg.sender === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                                        color: msg.sender === 'user' ? '#fff' : '#e2e8f0',
+                                        padding: '0.75rem 0.95rem',
                                         borderRadius: msg.sender === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                                        fontSize: '0.85rem',
-                                        lineHeight: '1.45',
-                                        whiteSpace: 'pre-wrap',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                        fontSize: '0.86rem',
+                                        lineHeight: '1.5',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                                        position: 'relative',
+                                        group: 'msg-box'
                                     }}
                                 >
-                                    {msg.text}
+                                    {msg.sender === 'ai' ? (
+                                        <div>
+                                            <div style={{ wordBreak: 'break-word' }}>
+                                                {renderMarkdownContent(msg.text)}
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                                                <button
+                                                    onClick={() => handleCopyAiMessage(msg.text, idx)}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: copiedIndex === idx ? '#00ff88' : '#64748b',
+                                                        fontSize: '0.72rem',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        padding: '2px 4px'
+                                                    }}
+                                                    title="Copiar resposta"
+                                                >
+                                                    {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
+                                                    {copiedIndex === idx ? 'Copiado!' : 'Copiar'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                                    )}
                                 </div>
                             ))}
                             {isAiTyping && (
@@ -2137,7 +2263,7 @@ export default function AdminSync() {
                         <form
                             onSubmit={(e) => { e.preventDefault(); sendAiQuestion(); }}
                             style={{
-                                padding: '0.8rem',
+                                padding: '0.75rem 0.85rem',
                                 background: 'rgba(0,0,0,0.3)',
                                 borderTop: '1px solid rgba(255,255,255,0.08)',
                                 display: 'flex',

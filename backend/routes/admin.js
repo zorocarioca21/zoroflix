@@ -186,7 +186,11 @@ Estatísticas Atuais em Tempo Real:
 - Obras únicas no Catálogo TMDB: ${catalogStats?.totalCached || 0}
 - Stills de Episódios no Drive: ${catalogStats?.totalDriveStills || 0} de ${catalogStats?.totalEpisodes || 0}
 
-Instrução: Responda à dúvida do administrador com precisão técnica, clareza, simpatia e em bom português. Use formatação markdown limpa (negrito, tópicos).`;
+Instrução de Resposta:
+- Seja DIRETO AO PONTO. No início da resposta, dê um resumo claro em 1 ou 2 frases curtas.
+- Em seguida, explique os detalhes com tópicos (bullet points) objetivos e organizados.
+- Use negrito para dar ênfase a conceitos e termos importantes.
+- Evite blocos de texto gigantes e prolixos. Seja amigável, técnico e conciso em português do Brasil.`;
 
             const axios = (await import('axios')).default;
             const https = (await import('https')).default;
