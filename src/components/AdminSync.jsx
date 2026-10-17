@@ -1298,6 +1298,15 @@ export default function AdminSync() {
                                     <div className="sync-stat-value">{mappingStats.queueMapped || 0} / {mappingStats.queueTotal || 0}</div>
                                 </div>
                                 <div className="sync-stat-item border-completed">
+                                    <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle2 size={15} /> Baixados Mapeados</div>
+                                    <div className="sync-stat-value">
+                                        {mappingStats.completedMapped || 0} / {mappingStats.completedTotal || queue.completed || 0}
+                                        <span style={{ fontSize: '0.75rem', opacity: 0.8, marginLeft: '6px', color: '#00ff88', fontWeight: 'normal' }}>
+                                            ({(mappingStats.completedTotal ? Math.round(((mappingStats.completedMapped || 0) / mappingStats.completedTotal) * 100) : 0)}%)
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="sync-stat-item border-completed">
                                     <div className="sync-stat-label" style={{color: '#00ff88'}}><CheckCircle size={15} /> Posters no Drive</div>
                                     <div className="sync-stat-value">{mappingStats.totalDrivePosters}</div>
                                 </div>

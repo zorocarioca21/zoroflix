@@ -25,6 +25,10 @@ export default function adminRoutes(db, tmdbDb) {
             const mappedInQueue = await db.get("SELECT COUNT(*) as cnt FROM sync_queue WHERE tmdb_id IS NOT NULL AND tmdb_id != 'NOT_FOUND'");
             const totalInQueue = await db.get("SELECT COUNT(*) as cnt FROM sync_queue");
 
+            // Itens já concluídos (baixados e enviados pro Telegram) que estão mapeados com TMDB
+            const completedTotal = await db.get("SELECT COUNT(*) as cnt FROM sync_queue WHERE status = 'completed'");
+            const completedMapped = await db.get("SELECT COUNT(*) as cnt FROM sync_queue WHERE status = 'completed' AND tmdb_id IS NOT NULL AND tmdb_id != 'NOT_FOUND'");
+
             res.json({
                 totalCached: totalCached?.cnt || 0,
                 totalMovies: totalMovies?.cnt || 0,
@@ -34,7 +38,9 @@ export default function adminRoutes(db, tmdbDb) {
                 totalEpisodes: totalEpisodes?.cnt || 0,
                 totalDriveStills: totalDriveStills?.cnt || 0,
                 queueMapped: mappedInQueue?.cnt || 0,
-                queueTotal: totalInQueue?.cnt || 0
+                queueTotal: totalInQueue?.cnt || 0,
+                completedTotal: completedTotal?.cnt || 0,
+                completedMapped: completedMapped?.cnt || 0
             });
         } catch (err) {
             console.error('[ADMIN STATS] Erro ao obter estatísticas de mapeamento:', err.message);
