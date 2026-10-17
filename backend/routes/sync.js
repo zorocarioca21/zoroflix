@@ -167,8 +167,8 @@ export default function syncRoutes(db, io) {
             
             // Dispara imediatamente o mapeamento TMDB (com IA Gemini 3.5 Flash) para o item manual
             try {
-                const { mapPendingTmdbItems } = await import('../services/tmdbMapper.js');
-                mapPendingTmdbItems(db, 5).catch(e => console.warn('[Upload Manual] Erro ao disparar mapper TMDB:', e.message));
+                const { mapSingleQueueItem } = await import('../services/tmdbMapper.js');
+                mapSingleQueueItem(db, dbId).catch(e => console.warn('[Upload Manual] Erro ao disparar mapper TMDB:', e.message));
             } catch (e) {}
 
             res.json({ success: true, message: `Upload manual enviado para a fila! Qualidade detectada: ${cleanedTitle}`, id: dbId });

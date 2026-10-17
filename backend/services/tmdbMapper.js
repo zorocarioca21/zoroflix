@@ -21,8 +21,9 @@ export function getAiMapperPauseState() {
 }
 
 /**
- * Mapeia em lote os itens que ainda não possuem tmdb_id na fila.
- * Deve ser chamado via Worker (setInterval)
+ * Mapeia em lote APENAS os itens que JÁ FORAM BAIXADOS (status = 'completed') 
+ * que ainda não possuem tmdb_id ou falharam há mais de 24 horas.
+ * Itens pendentes na fila NÃO são mapeados aqui.
  */
 export async function mapPendingTmdbItems(db, batchSize = 20) {
     if (!tmdbDbInstance) {
@@ -32,7 +33,8 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
         const itemsToMap = await db.all(`
             SELECT id, title
             FROM sync_queue
-            WHERE (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
+            WHERE status = 'completed'
+              AND (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
             ORDER BY tmdb_id IS NULL DESC, updated_at ASC
             LIMIT ?
         `, [batchSize]);
@@ -314,3 +316,111 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
         console.error("[TMDB MAPPER] Erro geral no loop:", err);
     }
 }
+
+/**
+ * Mapeia um único item recém-baixado da IPTV ou enviado via upload manual.
+ * Chamado pontualmente logo após o download ou upload concluir.
+ */
+export async function mapSingleQueueItem(db, itemId) {
+    if (!itemId) return;
+    try {
+        const item = await db.get("SELECT id, title, tmdb_id FROM sync_queue WHERE id = ?", [itemId]);
+        if (!item || (item.tmdb_id && item.tmdb_id !== 'NOT_FOUND')) return;
+
+        console.log(`[TMDB MAPPER] 🎯 Mapeando item individual recém-processado #${item.id}: "${item.title}"`);
+        
+        // Executa uma rodada pontual apenas para esse ID
+        const apiKey = await getNextTmdbKey(db);
+        if (!apiKey) return;
+
+        if (!tmdbDbInstance) {
+            tmdbDbInstance = await initTmdbCatalogDB();
+        }
+
+        // Reutiliza a rotina passando uma lista contendo apenas este item
+        const singleList = [{ id: item.id, title: item.title }];
+        
+        // Executa busca para o item
+        let tmdb_id = null;
+        let media_type = null;
+        let season_number = null;
+        let episode_number = null;
+
+        let q = item.title;
+        const yearMatch = q.match(/[\(\[](\d{4})[\)\]]/);
+        const year = yearMatch ? yearMatch[1] : null;
+        q = q.replace(/[\(\[]\d{4}[\)\]]/g, '').trim();
+
+        const sEpCombinedMatch = q.match(/\b(?:S|T)0?(\d{1,2})\s*(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
+        const sMatch = q.match(/\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i);
+        const epMatch = q.match(/\b(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
+
+        if (sEpCombinedMatch) {
+            season_number = parseInt(sEpCombinedMatch[1], 10);
+            episode_number = parseInt(sEpCombinedMatch[2], 10);
+            media_type = 'tv';
+        } else if (sMatch && epMatch) {
+            season_number = parseInt(sMatch[1], 10);
+            episode_number = parseInt(epMatch[1], 10);
+            media_type = 'tv';
+        }
+
+        const isTvRegex = /\b(?:S\d{1,2}|T\d{1,2}|Temporada\s*\d{1,2}|Epis[oó]dio\s*\d{1,3}|E\d{1,3})\b/i;
+        if (isTvRegex.test(q)) {
+            media_type = 'tv';
+        } else {
+            media_type = 'movie';
+        }
+
+        // Limpeza básica
+        let cleanQuery = q
+            .replace(/\b(?:S\d{1,2}\s*E\d{1,3}|S\d{1,2}|T\d{1,2}|Temporada\s*\d{1,2}|Epis[oó]dio\s*\d{1,3}|E\d{1,3})\b/gi, ' ')
+            .replace(/\b(?:4K|1080P|720P|FHD|HD|WEB-?DL|WEBRIP|BLURAY|DUBLADO|LEGENDADO|NACIONAL|COMPLETO)\b/gi, ' ')
+            .replace(/[-_.]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const endpoint = media_type === 'tv'
+            ? `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(cleanQuery)}&language=pt-BR`
+            : `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(cleanQuery)}&language=pt-BR${year ? `&year=${year}` : ''}`;
+
+        const resp = await axios.get(endpoint, { timeout: 8000, httpsAgent: agent }).catch(() => null);
+        const results = resp?.data?.results || [];
+
+        let bestMatch = results[0] || null;
+
+        // Se falhou e IA estiver ativa, usa Gemini 3.5 Flash
+        if (!bestMatch && !isAiMapperPaused) {
+            try {
+                const aiData = await extractMetadataWithAI(item.title);
+                if (aiData?.search_query) {
+                    const aiType = aiData.media_type || media_type;
+                    const aiEndpoint = aiType === 'tv'
+                        ? `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&query=${encodeURIComponent(aiData.search_query)}&language=pt-BR`
+                        : `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(aiData.search_query)}&language=pt-BR`;
+                    
+                    const aiResp = await axios.get(aiEndpoint, { timeout: 8000, httpsAgent: agent }).catch(() => null);
+                    if (aiResp?.data?.results?.length > 0) {
+                        bestMatch = aiResp.data.results[0];
+                        media_type = aiType;
+                        if (aiData.season) season_number = aiData.season;
+                        if (aiData.episode) episode_number = aiData.episode;
+                    }
+                }
+            } catch (aiErr) {}
+        }
+
+        if (bestMatch && bestMatch.id) {
+            tmdb_id = String(bestMatch.id);
+            await db.run(`
+                UPDATE sync_queue 
+                SET tmdb_id = ?, media_type = ?, season_number = ?, episode_number = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [tmdb_id, media_type, season_number, episode_number, item.id]);
+            console.log(`[TMDB MAPPER] ✅ Mapeado pontualmente #${item.id} -> TMDB #${tmdb_id} [${media_type}] (S:${season_number || '-'} E:${episode_number || '-'})`);
+        }
+    } catch (e) {
+        console.warn(`[TMDB MAPPER] Falha ao mapear item #${itemId}:`, e.message);
+    }
+}
+

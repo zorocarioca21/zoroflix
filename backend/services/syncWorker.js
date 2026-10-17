@@ -6,7 +6,7 @@ import readline from 'readline';
 import https from 'https';
 import http from 'http';
 import { getTelegramClient } from '../telegram.js';
-import { mapPendingTmdbItems } from './tmdbMapper.js';
+import { mapPendingTmdbItems, mapSingleQueueItem } from './tmdbMapper.js';
 
 // ==========================================
 // FUNÇÕES DE DETECÇÃO DE QUALIDADE
@@ -442,6 +442,10 @@ async function processDownload(movie) {
         await dbInstance.run("UPDATE sync_queue SET file_size = ?, status = 'pending_upload', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [fileSize, movie.id]);
         downloadTask = null;
         broadcastState();
+
+        // Mapeia no TMDB imediatamente o item que acabou de ser baixado
+        mapSingleQueueItem(dbInstance, movie.id).catch(e => console.warn(`[Auto-Map Download] Erro ao mapear #${movie.id}:`, e.message));
+
         return true;
         
     } catch (err) {
