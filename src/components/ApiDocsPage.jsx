@@ -445,6 +445,49 @@ exoPlayer.play()`}</code></pre>
 }`}</code></pre>
                                 </div>
                             </div>
+                            {/* Catálogo TMDB Proxy do Servidor */}
+                            <div className="api-endpoint-box">
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge get">GET</span>
+                                        <span className="api-path-badge">{baseUrl}/api/tmdb/*</span>
+                                    </div>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🎬 CATÁLOGO TMDB (PROXY SEGURO)</span>
+                                </div>
+                                <h3>Rotas de Catálogo, Lançamentos e Busca (Sem expor chaves no APK)</h3>
+                                <p>
+                                    O aplicativo não precisa conter tokens do TMDB. Todas as chamadas para alimentar a Home, carrosséis e buscas devem bater nestes endpoints protegidos com cache de 30 minutos:
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', marginTop: '0.5rem' }}>
+                                    <code className="api-code-pill">GET /api/tmdb/trending/movie/week (Banner Principal)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/now_playing (Filmes Lançamentos)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/popular (Séries em Alta)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/popular (Filmes Populares)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/discover/movie (Destaques)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/search?query=nome (Busca TMDB)</code>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Exemplo de Resposta (JSON Padrão TMDB)</span>
+                                    </div>
+                                    <pre><code>{`{
+  "page": 1,
+  "results": [
+    {
+      "id": 550,
+      "title": "Clube da Luta",
+      "overview": "Um homem deprimido...",
+      "poster_path": "/mCICnh7QBH0gzYaTQChBDDVIKdm.jpg",
+      "backdrop_path": "/hZkgoQYus5vegHoetLkCJzb17zJ.jpg",
+      "vote_average": 8.4,
+      "release_date": "1999-10-15"
+    }
+  ]
+}`}</code></pre>
+                                </div>
+                            </div>
 
                             {/* Alerta de Segurança e Boas Práticas do App */}
                             <div className="api-callout alert" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444' }}>
