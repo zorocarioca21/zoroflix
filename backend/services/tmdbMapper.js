@@ -8,6 +8,17 @@ import https from 'https';
 const agent = new https.Agent({ family: 4 }); // Força IPv4 para evitar problemas de DNS/IPv6 em VPS
 
 let tmdbDbInstance = null;
+let isAiMapperPaused = false;
+
+export function setAiMapperPauseState(paused) {
+    isAiMapperPaused = Boolean(paused);
+    console.log(`[TMDB MAPPER] ⏸️ IA no mapeador automático de 10 em 10 ${isAiMapperPaused ? 'PAUSADA' : 'RETOMADA'}.`);
+    return isAiMapperPaused;
+}
+
+export function getAiMapperPauseState() {
+    return isAiMapperPaused;
+}
 
 /**
  * Mapeia em lote os itens que ainda não possuem tmdb_id na fila.
@@ -197,9 +208,12 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             // FALLBACK COM IA (GEMINI 3.5 FLASH)
             // ==========================================
             if (!tmdb_id && !hasNetworkError) {
-                try {
-                    console.log(`[TMDB MAPPER] 🤖 Tentando decodificar com IA (Gemini 3.5 Flash): "${item.title}"...`);
-                    const aiResult = await extractMetadataWithAI(item.title);
+                if (isAiMapperPaused) {
+                    // IA pausada pelo administrador: não chama a API ZoroBot/Gemini
+                } else {
+                    try {
+                        console.log(`[TMDB MAPPER] 🤖 Tentando decodificar com IA (Gemini 3.5 Flash): "${item.title}"...`);
+                        const aiResult = await extractMetadataWithAI(item.title);
                     if (aiResult) {
                         if (aiResult.is_rate_limit) {
                             hadAiRateLimit = true;
@@ -250,6 +264,7 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     console.warn(`[TMDB MAPPER] Erro no fallback de IA:`, aiErr.message);
                 }
             }
+        }
 
             if (tmdb_id) {
                 await db.run(

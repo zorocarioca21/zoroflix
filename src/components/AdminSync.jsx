@@ -510,6 +510,43 @@ export default function AdminSync() {
         }
     };
 
+    // Controle de Pausa da IA no Mapeador Automático (10 em 10)
+    const [isAiMapperPaused, setIsAiMapperPaused] = useState(false);
+    const [isTogglingAiMapper, setIsTogglingAiMapper] = useState(false);
+
+    const checkAiMapperStatus = async () => {
+        try {
+            const res = await fetch('/api/admin/ai-mapper/status');
+            const data = await res.json();
+            if (data && typeof data.paused === 'boolean') {
+                setIsAiMapperPaused(data.paused);
+            }
+        } catch (e) {}
+    };
+
+    useEffect(() => {
+        checkAiMapperStatus();
+    }, []);
+
+    const toggleAiMapper = async () => {
+        setIsTogglingAiMapper(true);
+        try {
+            const res = await fetch('/api/admin/ai-mapper/toggle', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setIsAiMapperPaused(data.paused);
+                dialog.alert(data.message, { 
+                    variant: data.paused ? 'warning' : 'success', 
+                    title: data.paused ? 'IA do Mapeador Pausada' : 'IA do Mapeador Ativada' 
+                });
+            }
+        } catch (e) {
+            dialog.alert('Erro ao alterar status da IA', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsTogglingAiMapper(false);
+        }
+    };
+
     const startRemoteScan = async () => {
         try {
             dialog.alert('Baixando e processando lista remotamente... isso pode demorar alguns segundos.', { variant: 'info', title: 'Processando...' });
@@ -1692,6 +1729,20 @@ export default function AdminSync() {
                     </button>
                     <button onClick={skip24hChannels} className="sync-btn-secondary" style={{ color: '#fb923c', borderColor: 'rgba(251,146,60,0.3)' }}>
                         <SkipForward size={15} /> Pular [24H]
+                    </button>
+                    <button 
+                        onClick={toggleAiMapper} 
+                        disabled={isTogglingAiMapper}
+                        className="sync-btn-secondary" 
+                        style={{ 
+                            color: isAiMapperPaused ? '#ffaa00' : '#00ccff', 
+                            borderColor: isAiMapperPaused ? 'rgba(255,170,0,0.4)' : 'rgba(0,204,255,0.4)',
+                            background: isAiMapperPaused ? 'rgba(255,170,0,0.1)' : 'rgba(0,204,255,0.08)',
+                            fontWeight: 'bold'
+                        }}
+                        title="Pausa ou retoma o uso da IA no mapeador automático de 10 em 10"
+                    >
+                        <Bot size={15} /> {isAiMapperPaused ? '▶️ Retomar IA Mapper' : '⏸️ Pausar IA Mapper'}
                     </button>
                     <button onClick={clearPriorities} className="sync-btn-secondary sync-btn-danger">
                         <Eraser size={15} /> Limpar Prioridades

@@ -99,6 +99,31 @@ export default function adminRoutes(db, tmdbDb) {
         }
     });
 
+    // Endpoint para obter e alternar estado de pausa da IA no mapeador automático (10 em 10)
+    router.get('/ai-mapper/status', async (req, res) => {
+        try {
+            const { getAiMapperPauseState } = await import('../services/tmdbMapper.js');
+            res.json({ paused: getAiMapperPauseState() });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao verificar status da IA.' });
+        }
+    });
+
+    router.post('/ai-mapper/toggle', async (req, res) => {
+        try {
+            const { getAiMapperPauseState, setAiMapperPauseState } = await import('../services/tmdbMapper.js');
+            const currentState = getAiMapperPauseState();
+            const newState = setAiMapperPauseState(!currentState);
+            res.json({ 
+                success: true, 
+                paused: newState, 
+                message: newState ? 'IA no mapeador automático PAUSADA.' : 'IA no mapeador automático RETOMADA.' 
+            });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao alternar pausa da IA.' });
+        }
+    });
+
     // Endpoint para Assistente de IA do Sistema (Botão flutuante na aba de Sync)
     router.post('/sync-ai-assistant', async (req, res) => {
         try {
