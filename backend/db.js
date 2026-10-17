@@ -393,6 +393,33 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Notificações Push / Notificações do Aplicativo Mobile
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS app_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            image_url TEXT,
+            content_id TEXT,
+            media_type TEXT DEFAULT 'movie',
+            target_audience TEXT DEFAULT 'all',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Tabela de Tokens Push Mobile (FCM / OneSignal)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS push_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT UNIQUE NOT NULL,
+            platform TEXT DEFAULT 'android',
+            user_id INTEGER,
+            device_model TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
     // Tabela de Recuperação de Senha
     await db.exec(`
         CREATE TABLE IF NOT EXISTS password_resets (

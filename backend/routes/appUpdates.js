@@ -137,5 +137,90 @@ export default function appUpdatesRoutes(db) {
         }
     });
 
+    // ==========================================
+    // NOTIFICAÇÕES PUSH MOBILE
+    // ==========================================
+
+    // Rota Pública / Mobile: Registro de Token de Dispositivo (FCM / Push)
+    router.post('/push/register', async (req, res) => {
+        try {
+            const { token, platform = 'android', device_model = '', user_id = null } = req.body;
+            if (!token) {
+                return res.status(400).json({ error: 'Token do dispositivo é obrigatório.' });
+            }
+
+            await db.run(
+                `INSERT INTO push_tokens (token, platform, device_model, user_id, updated_at) 
+                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(token) DO UPDATE SET 
+                    platform = excluded.platform, 
+                    device_model = excluded.device_model, 
+                    user_id = excluded.user_id, 
+                    updated_at = CURRENT_TIMESTAMP`,
+                [token, platform, device_model, user_id]
+            );
+
+            res.json({ success: true, message: 'Dispositivo registrado para notificações push com sucesso.' });
+        } catch (err) {
+            console.error('Erro ao registrar push token:', err);
+            res.status(500).json({ error: 'Erro ao registrar dispositivo: ' + err.message });
+        }
+    });
+
+    // Rota Pública / Mobile: Listar últimas notificações recebidas pelo app (para central de notificações do app)
+    router.get('/notifications/latest', async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit, 10) || 20;
+            const notifications = await db.all(
+                `SELECT * FROM app_notifications ORDER BY id DESC LIMIT ?`,
+                [limit]
+            );
+            res.json({ notifications });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar notificações' });
+        }
+    });
+
+    // Rota Admin: Histórico de notificações enviadas
+    router.get('/notifications/history', requireAdmin, async (req, res) => {
+        try {
+            const history = await db.all(`SELECT * FROM app_notifications ORDER BY id DESC LIMIT 50`);
+            const totalDevices = await db.get(`SELECT COUNT(*) as count FROM push_tokens`);
+            res.json({ history, totalDevices: totalDevices?.count || 0 });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao buscar histórico de notificações' });
+        }
+    });
+
+    // Rota Admin: Enviar Notificação Push para os Usuários
+    router.post('/notifications/send', requireAdmin, async (req, res) => {
+        try {
+            const { title, message, image_url, content_id, media_type = 'movie' } = req.body;
+
+            if (!title || !message) {
+                return res.status(400).json({ error: 'Título e mensagem são obrigatórios.' });
+            }
+
+            // Salva na tabela de notificações do app
+            const result = await db.run(
+                `INSERT INTO app_notifications (title, message, image_url, content_id, media_type) VALUES (?, ?, ?, ?, ?)`,
+                [title, message, image_url || null, content_id || null, media_type]
+            );
+
+            // Obtém quantidade de dispositivos registrados
+            const totalTokens = await db.get(`SELECT COUNT(*) as count FROM push_tokens`);
+
+            res.json({ 
+                success: true, 
+                message: `Notificação enviada com sucesso para a fila do App!`,
+                id: result.lastID,
+                devices_reached: totalTokens?.count || 0
+            });
+        } catch (err) {
+            console.error('Erro ao enviar notificação:', err);
+            res.status(500).json({ error: 'Erro ao enviar notificação: ' + err.message });
+        }
+    });
+
     return router;
 }
