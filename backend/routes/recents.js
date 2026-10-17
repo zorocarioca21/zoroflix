@@ -55,10 +55,13 @@ export default function recentsRoutes(db) {
 
     // POST /api/recents — Registra um conteúdo assistido (após 30s no player) e salva progresso
     router.post('/', authOrUuid, async (req, res) => {
-        const { content_id, media_type, title, poster_path, season, episode, resume_time } = req.body;
+        const content_id = req.body.content_id || req.body.tmdb_id;
+        const media_type = req.body.media_type || req.body.type || 'filme';
+        const { title, poster_path, season, episode, resume_time, progress_time } = req.body;
+        const finalResumeTime = resume_time !== undefined ? resume_time : (progress_time || 0);
 
-        if (!content_id || !media_type || (!req.user_id && !req.uuid)) {
-            return res.status(400).json({ error: 'Dados incompletos.' });
+        if (!content_id || (!req.user_id && !req.uuid)) {
+            return res.status(400).json({ error: 'Dados incompletos. Informe content_id ou tmdb_id.' });
         }
 
         try {
@@ -79,13 +82,13 @@ export default function recentsRoutes(db) {
                 // Já existe: atualiza o episódio/temporada, resume_time e o timestamp (sobe pro topo)
                 await db.run(
                     'UPDATE watch_history SET title = ?, poster_path = ?, season = ?, episode = ?, resume_time = ?, watched_at = CURRENT_TIMESTAMP, hidden = 0 WHERE id = ?',
-                    [title, poster_path, season || null, episode || null, resume_time || 0, existing.id]
+                    [title, poster_path, season || null, episode || null, finalResumeTime, existing.id]
                 );
             } else {
                 // Não existe no recents: insere novo registro
                 await db.run(
                     'INSERT INTO watch_history (uuid, user_id, content_id, media_type, title, poster_path, season, episode, resume_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, resume_time || 0]
+                    [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, finalResumeTime]
                 );
             }
 
@@ -131,10 +134,12 @@ export default function recentsRoutes(db) {
 
     // PUT /api/recents/progress — Atualiza apenas o resume_time do vídeo atual
     router.put('/progress', authOrUuid, async (req, res) => {
-        const { content_id, season, episode, resume_time } = req.body;
+        const content_id = req.body.content_id || req.body.tmdb_id;
+        const { season, episode, resume_time, progress_time } = req.body;
+        const finalTime = resume_time !== undefined ? resume_time : progress_time;
 
-        if (!content_id || (!req.user_id && !req.uuid) || resume_time === undefined) {
-            return res.status(400).json({ error: 'Dados incompletos.' });
+        if (!content_id || (!req.user_id && !req.uuid) || finalTime === undefined) {
+            return res.status(400).json({ error: 'Dados incompletos. Informe content_id ou tmdb_id e resume_time.' });
         }
 
         try {
@@ -154,7 +159,7 @@ export default function recentsRoutes(db) {
             if (existing) {
                 await db.run(
                     'UPDATE watch_history SET resume_time = ?, season = ?, episode = ? WHERE id = ?',
-                    [resume_time, season || null, episode || null, existing.id]
+                    [finalTime, season || null, episode || null, existing.id]
                 );
                 res.json({ success: true, message: 'Progresso salvo.' });
             } else {
