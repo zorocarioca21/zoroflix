@@ -42,16 +42,18 @@ export default function mobileRoutes(db) {
     router.use(authApiKey);
 
     // ============================================================
-    //  📋 GET /tables — Lista todas as tabelas do banco
+    //  📋 GET /tables — Lista tabelas públicas/permitidas do banco
     // ============================================================
     router.get('/tables', async (req, res) => {
         try {
+            const forbiddenTables = ['users', 'api_keys', 'configs', 'system_settings', 'live_sessions', 'sessions'];
             const tables = await db.all(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
             );
             
             const result = [];
             for (const t of tables) {
+                if (forbiddenTables.includes(t.name.toLowerCase())) continue;
                 const columns = await db.all(`PRAGMA table_info("${t.name}")`);
                 result.push({
                     table: t.name,
@@ -87,6 +89,18 @@ export default function mobileRoutes(db) {
             return res.status(403).json({ error: 'Rota /query só permite SELECT, PRAGMA e WITH. Use /execute para escrita.' });
         }
 
+        // SEGURANÇA MÁXIMA: Bloqueia leitura de tabelas sensíveis via SQL direto
+        const forbiddenTables = ['USERS', 'API_KEYS', 'CONFIGS', 'SYSTEM_SETTINGS', 'LIVE_SESSIONS', 'SESSIONS'];
+        for (const t of forbiddenTables) {
+            // Regex para capturar nome da tabela como palavra isolada ou entre aspas
+            const regex = new RegExp(`(\\b|["'\`])${t}(\\b|["'\`])`, 'i');
+            if (regex.test(sql)) {
+                return res.status(403).json({ 
+                    error: `Acesso negado: A tabela "${t.toLowerCase()}" contém credenciais confidenciais e é estritamente protegida contra consultas SQL diretas. Utilize as rotas dedicadas de autenticação e perfil.` 
+                });
+            }
+        }
+
         try {
             const rows = await db.all(sql, params);
             res.json({ data: rows, count: rows.length });
@@ -97,7 +111,7 @@ export default function mobileRoutes(db) {
 
     // ============================================================
     //  ✏️ POST /execute — Executa INSERT, UPDATE, DELETE
-    //  Body: { sql: "INSERT INTO users (nick, email) VALUES (?, ?)", params: ["Zoro", "z@z.com"] }
+    //  Body: { sql: "INSERT INTO watch_history (...) VALUES (?, ?)", params: [...] }
     // ============================================================
     router.post('/execute', async (req, res) => {
         const { sql, params = [] } = req.body;
@@ -111,8 +125,19 @@ export default function mobileRoutes(db) {
             return res.status(403).json({ error: 'Use /query para SELECT. Esta rota é para INSERT/UPDATE/DELETE.' });
         }
 
-        if (trimmed.includes('DROP DATABASE') || trimmed.includes('DETACH')) {
+        if (trimmed.includes('DROP DATABASE') || trimmed.includes('DETACH') || trimmed.includes('ATTACH')) {
             return res.status(403).json({ error: 'Operação bloqueada por segurança.' });
+        }
+
+        // SEGURANÇA MÁXIMA: Bloqueia alteração de tabelas de credenciais/sistema
+        const forbiddenTables = ['USERS', 'API_KEYS', 'CONFIGS', 'SYSTEM_SETTINGS', 'LIVE_SESSIONS', 'SESSIONS'];
+        for (const t of forbiddenTables) {
+            const regex = new RegExp(`(\\b|["'\`])${t}(\\b|["'\`])`, 'i');
+            if (regex.test(sql)) {
+                return res.status(403).json({ 
+                    error: `Acesso negado: Modificação na tabela "${t.toLowerCase()}" bloqueada pela API mobile por razões de segurança.` 
+                });
+            }
         }
 
         try {
@@ -160,6 +185,11 @@ export default function mobileRoutes(db) {
 
         if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
             return res.status(400).json({ error: 'Nome da tabela inválido.' });
+        }
+
+        const forbiddenTables = ['users', 'api_keys', 'configs', 'system_settings', 'live_sessions', 'sessions'];
+        if (forbiddenTables.includes(name.toLowerCase())) {
+            return res.status(403).json({ error: `Acesso negado: A tabela "${name}" é restrita e protegida.` });
         }
 
         const direction = dir.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';

@@ -373,21 +373,24 @@ exoPlayer.play()`}</code></pre>
                                 </div>
                             </div>
 
-                            {/* Salvar Progresso */}
+                            {/* Salvar Progresso (REST Seguro) */}
                             <div className="api-endpoint-box">
                                 <div className="api-endpoint-box-header">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <span className="api-method-badge post">POST</span>
                                         <span className="api-path-badge">{baseUrl}/api/recents</span>
                                     </div>
-                                    <span style={{ color: '#00ccff', fontSize: '0.8rem', fontWeight: 'bold' }}>⏱️ CONTINUE ASSISTINDO</span>
+                                    <span style={{ color: '#00ccff', fontSize: '0.8rem', fontWeight: 'bold' }}>⏱️ CONTINUE ASSISTINDO (SEGURO)</span>
                                 </div>
-                                <h3>Sincronizar Progresso do Usuário</h3>
-                                <p>Envie a posição atual do vídeo a cada 10-15 segundos ou ao pausar para manter a lista "Continuar Assistindo" atualizada no App e no Site.</p>
+                                <h3>Sincronizar Progresso do Usuário (Substituto Seguro de SQL)</h3>
+                                <p>
+                                    <strong>IMPORTANTE:</strong> O aplicativo nunca deve enviar queries SQL como <code>INSERT OR REPLACE INTO watch_history</code> para a rota <code>/mobile/execute</code>. 
+                                    Utilize sempre este endpoint REST nativo. Ele associa automaticamente o progresso ao usuário autenticado (via Bearer JWT no header <code>Authorization</code>) ou via API Key.
+                                </p>
 
                                 <div className="api-modern-code">
                                     <div className="api-code-bar">
-                                        <span className="api-code-label">Payload JSON</span>
+                                        <span className="api-code-label">Payload JSON (Salvar Progresso)</span>
                                         <button 
                                             className={`api-copy-btn ${copiedIndex === 'progress-json' ? 'copied' : ''}`}
                                             onClick={() => handleCopy(`{\n  "tmdb_id": 550,\n  "type": "filme",\n  "title": "Clube da Luta",\n  "progress_time": 1420,\n  "duration": 8340\n}`, 'progress-json')}
@@ -402,10 +405,58 @@ exoPlayer.play()`}</code></pre>
   "title": "Clube da Luta",
   "progress_time": 1420, // Segundos assistidos
   "duration": 8340,      // Duração total em segundos
-  // Para episódios de séries, adicione:
+  // Para episódios de séries, inclua também:
   "season": 1,
   "episode": 3
 }`}</code></pre>
+                                </div>
+                            </div>
+
+                            {/* Atualizar Progresso Rápido (PUT) */}
+                            <div className="api-endpoint-box">
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge put">PUT</span>
+                                        <span className="api-path-badge">{baseUrl}/api/recents/progress</span>
+                                    </div>
+                                    <span style={{ color: '#fb923c', fontSize: '0.8rem', fontWeight: 'bold' }}>🔄 ATUALIZAÇÃO RÁPIDA DE TEMPO</span>
+                                </div>
+                                <h3>Atualizar Tempo Assistido Enquanto o Vídeo Toca</h3>
+                                <p>
+                                    Chamada leve disparada a cada 10-15 segundos pelo player durante a reprodução.
+                                </p>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Payload JSON</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'progress-put-json' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "tmdb_id": 1416,\n  "season": 2,\n  "episode": 4,\n  "progress_time": 850\n}`, 'progress-put-json')}
+                                        >
+                                            {copiedIndex === 'progress-put-json' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'progress-put-json' ? 'Copiado!' : 'Copiar JSON'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`{
+  "tmdb_id": 1416,
+  "season": 2,
+  "episode": 4,
+  "progress_time": 850 // Segundos
+}`}</code></pre>
+                                </div>
+                            </div>
+
+                            {/* Alerta de Segurança e Boas Práticas do App */}
+                            <div className="api-callout alert" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444' }}>
+                                <AlertTriangle size={26} color="#ef4444" style={{ flexShrink: 0 }} />
+                                <div>
+                                    <strong style={{ color: '#ef4444' }}>DIRETRIZES OBRIGATÓRIAS DE SEGURANÇA NO APLICATIVO:</strong>
+                                    <ul style={{ margin: '8px 0 0 18px', padding: 0, color: '#e2e8f0', fontSize: '0.88rem', lineHeight: '1.5' }}>
+                                        <li><strong>Não envie código SQL bruto:</strong> As rotas <code>/mobile/query</code> e <code>/mobile/execute</code> bloqueiam consultas às tabelas confidenciais (<code>users</code>, <code>api_keys</code>, etc.). Sempre use as rotas REST parametrizadas.</li>
+                                        <li><strong>Não armazene Tokens do TMDB no APK:</strong> O aplicativo nunca deve conter tokens de terceiros hardcoded nem em bibliotecas C++. As requisições de metadados devem ser feitas exclusivamente pelo backend <code>/api/tmdb/...</code>.</li>
+                                        <li><strong>Desative Cleartext Traffic:</strong> Defina <code>android:usesCleartextTraffic="false"</code> no <code>AndroidManifest.xml</code> para forçar conexões HTTPS seguras e prevenir ataques MitM.</li>
+                                        <li><strong>Validação de Planos no Servidor:</strong> Nunca decida acesso VIP através de flags locais editáveis em <code>SharedPreferences</code>. Envie o JWT do usuário autenticado no header <code>Authorization: Bearer &lt;token&gt;</code> para validação no backend.</li>
+                                    </ul>
                                 </div>
                             </div>
 
