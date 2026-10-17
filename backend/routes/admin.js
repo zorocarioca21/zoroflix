@@ -208,8 +208,22 @@ Instrução: Responda à dúvida do administrador com precisão técnica, clarez
             const reply = resp.data?.resposta || resp.data?.response || 'Desculpe, não consegui formular uma resposta no momento.';
             res.json({ success: true, answer: reply });
         } catch (err) {
-            console.error('[ADMIN AI ASSISTANT] Erro:', err.message);
-            res.status(500).json({ error: 'Erro ao consultar assistente de IA.' });
+            const errData = err.response?.data;
+            const errMessage = err.message || '';
+            console.error('[ADMIN AI ASSISTANT] Erro:', errMessage, errData || '');
+
+            // Se for cota esgotada ou erro interno da API de IA
+            if (JSON.stringify(errData || '').includes('429') || JSON.stringify(errData || '').includes('Quota exceeded') || JSON.stringify(errData || '').includes('RESOURCE_EXHAUSTED')) {
+                return res.json({
+                    success: true,
+                    answer: '⚠️ **Cota de IA Temporariamente Esgotada**\n\nA chave de API do Gemini atingiu o limite de requisições gratuitas (Rate Limit / Quota Exceeded). Ela retornará automaticamente assim que a cota do Google renovar ou quando adicionar créditos. Enquanto isso, o sistema continuará operando com a busca direta normal do TMDB!'
+                });
+            }
+
+            res.json({
+                success: true,
+                answer: `⚠️ Não foi possível obter resposta da IA no momento (Erro no servidor da IA: ${errMessage}). Tente novamente em alguns instantes.`
+            });
         }
     });
     // Endpoint para obter o tamanho da pasta temp
