@@ -294,19 +294,61 @@ export default function ApiDocsPage() {
                         </div>
 
                         <div className="api-endpoints-stack">
-                            {/* Stream Nativo */}
+                            {/* PASSO 1: Obter Vídeo por TMDB ID sem errar episódios */}
+                            <div className="api-endpoint-box">
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge get">GET</span>
+                                        <span className="api-path-badge">{baseUrl}/api/bot/search?tmdb_id=1416&season=2&episode=4&app=true&apikey=SUA_CHAVE</span>
+                                    </div>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>1️⃣ PASSO 1: RESGATAR STREAM POR TMDB ID</span>
+                                </div>
+                                <h3>Buscar Episódio ou Filme Exato (100% Preciso)</h3>
+                                <p>
+                                    <strong>Evite buscar por nomes de texto</strong> como "Série S01E03" para evitar episódios repetidos ou confusão de temporadas. 
+                                    Como 100% dos 32.000+ arquivos baixados estão indexados por ID, envie diretamente os parâmetros <code>tmdb_id</code>, <code>season</code> e <code>episode</code> junto com <code>app=true</code> para desativar o bloqueio de IP.
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Exemplos de chamadas do App:</span>
+                                    <code className="api-code-pill">/api/bot/search?tmdb_id=1416&season=1&episode=3&app=true&apikey=... (Série)</code>
+                                    <code className="api-code-pill">/api/bot/search?tmdb_id=550&app=true&apikey=... (Filme)</code>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Resposta da API (JSON Retornado)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'app-search-res' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "found": true,\n  "title": "Grey's Anatomy S02E04 - Negando, Negando, Negando",\n  "type": "serie",\n  "stream_url": "${baseUrl}/api/stream/s/eyJ...XYZ.mp4"\n}`, 'app-search-res')}
+                                        >
+                                            {copiedIndex === 'app-search-res' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'app-search-res' ? 'Copiado!' : 'Copiar Resposta'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`{
+  "found": true,
+  "title": "Grey's Anatomy S02E04 - Negando, Negando, Negando",
+  "type": "serie",
+  "telegram_message_id": 84512,
+  "stream_url": "${baseUrl}/api/stream/s/eyJhbGciOi...XYZ.mp4", // <- URL EXATA DO EPISÓDIO
+  "site_url": "${baseUrl}/serie/greys-anatomy"
+}`}</code></pre>
+                                </div>
+                            </div>
+
+                            {/* PASSO 2: Stream Nativo no ExoPlayer */}
                             <div className="api-endpoint-box">
                                 <div className="api-endpoint-box-header">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <span className="api-method-badge get">GET</span>
                                         <span className="api-path-badge">{baseUrl}/api/stream/s/{"{token}"}.mp4</span>
                                     </div>
-                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🚀 FAST STREAM</span>
+                                    <span style={{ color: '#00ccff', fontSize: '0.8rem', fontWeight: 'bold' }}>2️⃣ PASSO 2: INJETAR NO PLAYER</span>
                                 </div>
-                                <h3>URL de Vídeo Direta (Sem Bloqueio de IP para Apps)</h3>
+                                <h3>Carregar o Vídeo no Player Nativo (ExoPlayer, AVPlayer)</h3>
                                 <p>
-                                    As rotas da API (como <code>/api/bot/search</code>) retornam uma propriedade chamada <code>stream_url</code>.
-                                    Basta injetar essa URL diretamente na propriedade <code>source</code> do reprodutor do seu aplicativo.
+                                    Basta injetar o <code>stream_url</code> recebido no Passo 1 diretamente na fonte do seu player de vídeo.
                                 </p>
 
                                 <div className="api-modern-code">
@@ -314,16 +356,16 @@ export default function ApiDocsPage() {
                                         <span className="api-code-label">Exemplo de Implementação (Kotlin / ExoPlayer)</span>
                                         <button 
                                             className={`api-copy-btn ${copiedIndex === 'exoplayer' ? 'copied' : ''}`}
-                                            onClick={() => handleCopy(`val mediaItem = MediaItem.fromUri(streamUrl)\nexoPlayer.setMediaItem(mediaItem)\nexoPlayer.prepare()\nexoPlayer.play()`, 'exoplayer')}
+                                            onClick={() => handleCopy(`// 1. Pega a stream_url que a API retornou no Passo 1\nval streamUrl = movieResponse.getString("stream_url")\n\n// 2. Toca no ExoPlayer\nval mediaItem = MediaItem.fromUri(streamUrl)\nexoPlayer.setMediaItem(mediaItem)\nexoPlayer.prepare()\nexoPlayer.play()`, 'exoplayer')}
                                         >
                                             {copiedIndex === 'exoplayer' ? <Check size={14} /> : <Copy size={14} />}
                                             {copiedIndex === 'exoplayer' ? 'Copiado!' : 'Copiar Código'}
                                         </button>
                                     </div>
-                                    <pre><code>{`// 1. Receba o stream_url retornado pela busca da API
+                                    <pre><code>{`// 1. Receba o stream_url retornado pela busca do Passo 1
 val streamUrl = movieResponse.getString("stream_url")
 
-// 2. Injete no ExoPlayer
+// 2. Injete no ExoPlayer nativo
 val mediaItem = MediaItem.fromUri(streamUrl)
 exoPlayer.setMediaItem(mediaItem)
 exoPlayer.prepare()
