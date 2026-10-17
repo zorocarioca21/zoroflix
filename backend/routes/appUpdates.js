@@ -43,7 +43,7 @@ const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
-        const name = `cinegeek-v${req.body.version_name || Date.now()}${ext}`;
+        const name = `cinegeek-${Date.now()}${ext}`;
         cb(null, name);
     }
 });
@@ -84,27 +84,57 @@ export default function appUpdatesRoutes(db) {
         }
     });
 
-    // Rota Admin: Upload de nova atualização
+    // Rota Admin: Upload de nova atualização (extração automática de versão e código)
     router.post('/upload', requireAdmin, upload.single('apk'), async (req, res) => {
         try {
             if (!req.file) {
                 return res.status(400).json({ error: 'Arquivo APK é obrigatório.' });
             }
 
-            const { version_name, version_code, release_notes, force_update } = req.body;
-            
-            if (!version_name || !version_code) {
-                return res.status(400).json({ error: 'Versão e código da versão são obrigatórios.' });
+            let { version_name, version_code, release_notes, force_update } = req.body;
+            const originalSavedPath = req.file.path;
+
+            // Extração automática via AppInfoParser do AndroidManifest.xml interno do APK
+            try {
+                const { default: AppInfoParser } = await import('app-info-parser');
+                const parser = new AppInfoParser(originalSavedPath);
+                const apkResult = await parser.parse();
+
+                if (apkResult) {
+                    if (apkResult.versionName) {
+                        version_name = apkResult.versionName.toString().trim();
+                    }
+                    if (apkResult.versionCode !== undefined && apkResult.versionCode !== null) {
+                        version_code = parseInt(apkResult.versionCode, 10);
+                    }
+                }
+            } catch (parseErr) {
+                console.warn('[APK Parser] Não foi possível extrair metadados automaticamente:', parseErr.message);
             }
 
+            if (!version_name || !version_code) {
+                return res.status(400).json({ 
+                    error: 'Não foi possível detectar a versão e código automaticamente do APK. Certifique-se de que é um APK Android válido.' 
+                });
+            }
+
+            // Renomeia o arquivo para um nome padronizado com a versão
+            const finalApkFilename = `cinegeek-v${version_name}-${Date.now()}.apk`;
+            const finalPath = path.join(uploadDir, finalApkFilename);
+            try {
+                fs.renameSync(originalSavedPath, finalPath);
+            } catch (renameErr) {
+                console.error('[APK Rename] Falha ao renomear, mantendo original:', renameErr.message);
+            }
+
+            const apkFilenameToSave = fs.existsSync(finalPath) ? finalApkFilename : req.file.filename;
             const isForceUpdate = force_update === 'true' || force_update === true ? 1 : 0;
-            const apkFilename = req.file.filename;
 
             // Delete old APK files to save space
             try {
                 const oldUpdates = await db.all(`SELECT apk_filename FROM app_updates`);
                 for (const old of oldUpdates) {
-                    if (old.apk_filename && old.apk_filename !== apkFilename) {
+                    if (old.apk_filename && old.apk_filename !== apkFilenameToSave) {
                         const oldPath = path.join(uploadDir, old.apk_filename);
                         if (fs.existsSync(oldPath)) {
                             fs.unlinkSync(oldPath);
@@ -117,10 +147,15 @@ export default function appUpdatesRoutes(db) {
 
             await db.run(
                 `INSERT INTO app_updates (version_name, version_code, release_notes, force_update, apk_filename) VALUES (?, ?, ?, ?, ?)`,
-                [version_name, parseInt(version_code, 10), release_notes || '', isForceUpdate, apkFilename]
+                [version_name, parseInt(version_code, 10), release_notes || '', isForceUpdate, apkFilenameToSave]
             );
 
-            res.json({ success: true, message: 'Atualização cadastrada com sucesso!' });
+            res.json({ 
+                success: true, 
+                message: `Atualização v${version_name} (Code: ${version_code}) detectada e cadastrada com sucesso!`,
+                version_name,
+                version_code
+            });
         } catch (err) {
             console.error('Erro ao fazer upload da atualização:', err);
             res.status(500).json({ error: err.message || 'Erro interno' });

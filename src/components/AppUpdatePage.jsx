@@ -85,8 +85,8 @@ export default function AppUpdatePage() {
 
     const handleUpload = async (e) => {
         e.preventDefault();
-        if (!file || !versionName || !versionCode) {
-            setMessage({ text: 'Preencha os campos obrigatórios e selecione o arquivo.', type: 'error' });
+        if (!file) {
+            setMessage({ text: 'Por favor, selecione o arquivo .apk.', type: 'error' });
             return;
         }
 
@@ -95,8 +95,8 @@ export default function AppUpdatePage() {
 
         const formData = new FormData();
         formData.append('apk', file);
-        formData.append('version_name', versionName);
-        formData.append('version_code', versionCode);
+        if (versionName) formData.append('version_name', versionName);
+        if (versionCode) formData.append('version_code', versionCode);
         formData.append('release_notes', releaseNotes);
         formData.append('force_update', forceUpdate);
 
@@ -242,49 +242,24 @@ export default function AppUpdatePage() {
                         <form className="app-update-form" onSubmit={handleUpload}>
                             <h3>Lançar Nova Versão</h3>
                             
-                            <div className="form-group-row">
-                                <div className="form-group">
-                                    <label>Nome da Versão (ex: 1.0.5)</label>
-                                    <input 
-                                        type="text" 
-                                        value={versionName} 
-                                        onChange={e => setVersionName(e.target.value)} 
-                                        required 
-                                        placeholder="1.0.5"
-                                    />
+                            <div style={{
+                                background: 'rgba(0, 255, 136, 0.08)',
+                                border: '1px solid rgba(0, 255, 136, 0.25)',
+                                padding: '12px 16px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '0.88rem',
+                                color: '#cbd5e1'
+                            }}>
+                                <Sparkles size={20} color="#00ff88" style={{ flexShrink: 0 }} />
+                                <div>
+                                    <strong style={{ color: '#00ff88' }}>Detecção 100% Automática:</strong>
+                                    <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                                        A versão (ex: 1.0.2) e o código da versão (ex: 3) são lidos diretamente do <code>AndroidManifest.xml</code> do arquivo APK.
+                                    </p>
                                 </div>
-                                <div className="form-group">
-                                    <label>Código da Versão (ex: 5)</label>
-                                    <input 
-                                        type="number" 
-                                        value={versionCode} 
-                                        onChange={e => setVersionCode(e.target.value)} 
-                                        required 
-                                        placeholder="5"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Notas de Lançamento (Changelog)</label>
-                                <textarea 
-                                    value={releaseNotes} 
-                                    onChange={e => setReleaseNotes(e.target.value)}
-                                    placeholder="O que há de novo nesta versão?"
-                                    rows={4}
-                                ></textarea>
-                            </div>
-
-                            <div className="form-group checkbox-group">
-                                <label className="checkbox-label">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={forceUpdate} 
-                                        onChange={e => setForceUpdate(e.target.checked)}
-                                    />
-                                    <AlertTriangle size={18} color="#ffaa00" style={{marginRight: '8px'}} />
-                                    Forçar Atualização (Impede o uso de versões anteriores)
-                                </label>
                             </div>
 
                             <div 
@@ -304,15 +279,42 @@ export default function AppUpdatePage() {
                                     <div className="file-selected">
                                         <Package size={48} color="#00ff88" />
                                         <h4>{file.name}</h4>
-                                        <p>{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                        <p>{(file.size / (1024 * 1024)).toFixed(2)} MB • Pronto para envio</p>
                                     </div>
                                 ) : (
                                     <div className="file-placeholder">
                                         <UploadCloud size={48} color="#888" />
                                         <h4>Arraste o arquivo .apk aqui ou clique para selecionar</h4>
+                                        <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>
+                                            Versão e Código serão lidos automaticamente
+                                        </p>
                                     </div>
                                 )}
                             </div>
+
+                            <div className="form-group">
+                                <label>Notas de Lançamento (Changelog)</label>
+                                <textarea 
+                                    value={releaseNotes} 
+                                    onChange={e => setReleaseNotes(e.target.value)}
+                                    placeholder="O que há de novo nesta versão? (Ex: Correções de reprodução, novidades na interface...)"
+                                    rows={4}
+                                ></textarea>
+                            </div>
+
+                            <div className="form-group checkbox-group">
+                                <label className="checkbox-label">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={forceUpdate} 
+                                        onChange={e => setForceUpdate(e.target.checked)}
+                                    />
+                                    <AlertTriangle size={18} color="#ffaa00" style={{marginRight: '8px'}} />
+                                    Forçar Atualização (Bloqueia o app se o usuário não atualizar)
+                                </label>
+                            </div>
+
+
 
                             {message.text && (
                                 <div className={`message-banner ${message.type}`}>
