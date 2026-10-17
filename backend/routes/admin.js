@@ -93,6 +93,12 @@ export default function adminRoutes(db, tmdbDb) {
                     ? `🚀 ${count} itens redefinidos! O mapeador com IA começou a processar tudo agora mesmo.` 
                     : `Nenhum item com status NOT_FOUND encontrado para reprocessar.` 
             });
+        } catch (err) {
+            console.error('[ADMIN REMAP AI] Erro:', err.message);
+            res.status(500).json({ error: 'Erro ao reprocessar itens com IA.' });
+        }
+    });
+
     // Endpoint para Assistente de IA do Sistema (Botão flutuante na aba de Sync)
     router.post('/sync-ai-assistant', async (req, res) => {
         try {
