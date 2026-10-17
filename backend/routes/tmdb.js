@@ -171,6 +171,39 @@ export default function tmdbRoutes(db, appDb) {
         }
     });
 
+    // 8.1 Elenco do Filme (/movie/:id/credits)
+    router.get('/movie/:id/credits', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`movie/${req.params.id}/credits`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro movie/:id/credits:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar elenco do filme' });
+        }
+    });
+
+    // 8.2 Recomendações do Filme (/movie/:id/recommendations)
+    router.get('/movie/:id/recommendations', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`movie/${req.params.id}/recommendations`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro movie/:id/recommendations:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar recomendações do filme' });
+        }
+    });
+
+    // 8.3 Vídeos e Trailers do Filme (/movie/:id/videos)
+    router.get('/movie/:id/videos', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`movie/${req.params.id}/videos`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro movie/:id/videos:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar trailers do filme' });
+        }
+    });
+
     // 9. Detalhes de Série por ID direto (/tv/:id)
     router.get('/tv/:id', async (req, res) => {
         const { id } = req.params;
@@ -182,6 +215,53 @@ export default function tmdbRoutes(db, appDb) {
         } catch (err) {
             console.error('[TMDB PROXY] Erro tv/:id:', err.message);
             res.status(500).json({ error: 'Erro ao buscar detalhes da série' });
+        }
+    });
+
+    // 9.1 Elenco da Série (/tv/:id/credits)
+    router.get('/tv/:id/credits', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`tv/${req.params.id}/credits`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro tv/:id/credits:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar elenco da série' });
+        }
+    });
+
+    // 9.2 Recomendações da Série (/tv/:id/recommendations)
+    router.get('/tv/:id/recommendations', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`tv/${req.params.id}/recommendations`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro tv/:id/recommendations:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar recomendações da série' });
+        }
+    });
+
+    // 9.3 Vídeos e Trailers da Série (/tv/:id/videos)
+    router.get('/tv/:id/videos', async (req, res) => {
+        try {
+            const data = await fetchFromTmdb(`tv/${req.params.id}/videos`, req.query, db);
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro tv/:id/videos:', err.message);
+            res.status(err.response?.status || 500).json({ error: 'Erro ao buscar trailers da série' });
+        }
+    });
+
+    // 9.4 Temporada da Série (/tv/:id/season/:season_number)
+    router.get('/tv/:id/season/:season_number', async (req, res) => {
+        const { id, season_number } = req.params;
+        try {
+            const apiKey = await getNextTmdbKey(db);
+            const data = await getOrFetchSeasonDetails(db, id, season_number, apiKey, mainDb);
+            if (!data) return res.status(404).json({ error: 'Temporada não encontrada no TMDB' });
+            res.json(data);
+        } catch (err) {
+            console.error('[TMDB PROXY] Erro tv/:id/season/:season_number:', err.message);
+            res.status(500).json({ error: 'Erro ao buscar episódios da temporada' });
         }
     });
 
