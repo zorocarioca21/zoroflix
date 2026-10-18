@@ -20,6 +20,23 @@ function ChannelCard({ ch, onClick }) {
     badgeBg = 'linear-gradient(45deg, #a855f7, #ec4899)';
   }
 
+  // Limpa o nome do canal para visualização limpa e premium nos cards
+  const cleanDisplayName = (raw) => {
+    if (!raw) return '';
+    let name = raw
+      .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+      .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+      .replace(/\s*\(.*?cdn.*?\)/gi, '')
+      .replace(/\s*\(band.*?\)/gi, '')
+      .replace(/\s*\(globo.*?\)/gi, '')
+      .replace(/\s*\[.*?\]/gi, '')
+      .replace(/\s*\)+/g, '')
+      .trim();
+    return name || raw;
+  };
+
+  const displayName = cleanDisplayName(ch.name);
+
   return (
     <div className="search-card channel-card-item" onClick={onClick} style={{ position: 'relative' }}>
       {ch.isVip ? (
@@ -35,7 +52,7 @@ function ChannelCard({ ch, onClick }) {
         {!imgError ? (
           <img 
             src={ch.logo_url} 
-            alt={ch.name} 
+            alt={displayName} 
             className="search-card-img channel-logo-img"
             loading="lazy"
             onError={() => setImgError(true)}
@@ -43,7 +60,7 @@ function ChannelCard({ ch, onClick }) {
         ) : (
           <div className="channel-placeholder-box">
             <Tv size={36} className="channel-tv-icon" />
-            <span className="channel-placeholder-name">{ch.name}</span>
+            <span className="channel-placeholder-name">{displayName}</span>
           </div>
         )}
         <div className="search-card-overlay">
@@ -51,7 +68,7 @@ function ChannelCard({ ch, onClick }) {
         </div>
       </div>
       <div className="search-card-info">
-        <div className="search-card-title">{ch.name}</div>
+        <div className="search-card-title">{displayName}</div>
         <div className="search-card-type">{ch.sub_category || ch.category || 'TV'}</div>
       </div>
     </div>
