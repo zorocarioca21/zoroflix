@@ -22,9 +22,13 @@ function ChannelCard({ ch, onClick }) {
 
   return (
     <div className="search-card channel-card-item" onClick={onClick} style={{ position: 'relative' }}>
-      {ch.isVip && (
+      {ch.isVip ? (
         <div style={{ position: 'absolute', top: 5, right: 5, background: badgeBg, color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', zIndex: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>
           {badgeText}
+        </div>
+      ) : (
+        <div style={{ position: 'absolute', top: 5, right: 5, background: 'rgba(239, 68, 68, 0.9)', color: '#fff', padding: '3px 7px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', zIndex: 10, boxShadow: '0 2px 5px rgba(0,0,0,0.5)', letterSpacing: '0.5px', border: '1px solid rgba(255,255,255,0.2)' }} title="Canal com anúncios externos">
+          ANÚNCIOS
         </div>
       )}
       <div className="search-card-img-wrapper channel-img-box">

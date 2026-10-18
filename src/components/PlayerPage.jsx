@@ -98,6 +98,32 @@ export default function PlayerPage() {
         return !!(user && (user.role === 'admin' || user.role === 'vip'));
     });
 
+    const [allDbChannels, setAllDbChannels] = useState([]);
+    const [liveChannelVariants, setLiveChannelVariants] = useState([]);
+    const [activeLiveChannel, setActiveLiveChannel] = useState(null);
+
+    // Normalizador de nome de canal para agrupar repetidos entre listas
+    const normalizeLiveChannelName = (name) => {
+        if (!name) return '';
+        return name
+            .replace(/\(.*?\)/g, '')
+            .replace(/\[.*?\]/g, '')
+            .replace(/\b(sd|hd|fhd|4k|uhd|h265|hevc|cdn\s*\d*|opção\s*\d*|opcao\s*\d*|\d+p)\b/gi, '')
+            .replace(/[^a-zA-Z0-9\s]/g, '')
+            .trim()
+            .toLowerCase();
+    };
+
+    // Detecção da qualidade pelo nome
+    const detectLiveQuality = (name) => {
+        if (!name) return 'HD';
+        if (/\b(4k|uhd)\b/i.test(name)) return '4K';
+        if (/\b(fhd|1080p)\b/i.test(name)) return 'FHD';
+        if (/\b(hd|720p)\b/i.test(name)) return 'HD';
+        if (/\b(sd|480p|360p)\b/i.test(name)) return 'SD';
+        return 'HD';
+    };
+
     // Resolvendo as informações do Canal (Nome e Logo_url)
     useEffect(() => {
         if (!canalId) return;
@@ -111,12 +137,32 @@ export default function PlayerPage() {
             fetch('/api/iptv/all')
                 .then(r => r.json())
                 .then(d => {
-                    const found = d.channels?.find(c => String(c.id) === String(canalId) || String(c.db_id) === dbId);
+                    const chList = d.channels || [];
+                    setAllDbChannels(chList);
+                    const found = chList.find(c => String(c.id) === String(canalId) || String(c.db_id) === dbId);
                     if (found) {
+                        setActiveLiveChannel(found);
                         setResolvedChannel({
                             name: found.name,
                             logo_url: found.logo_url || '/cinegeek-icon.png'
                         });
+
+                        // Agrupa todas as opções/versões deste mesmo canal (inclusive entre listas diferentes)
+                        const baseNorm = normalizeLiveChannelName(found.name);
+                        const matched = chList.filter(c => normalizeLiveChannelName(c.name) === baseNorm);
+                        
+                        const withDetails = (matched.length > 0 ? matched : [found]).map((c, idx) => {
+                            const q = detectLiveQuality(c.name);
+                            // Extrai detalhes do parênteses se houver (ex: Opção 01, Band SP, etc)
+                            const parenMatch = c.name.match(/\((.*?)\)/);
+                            const optText = parenMatch ? parenMatch[1] : `Opção ${idx + 1}`;
+                            return {
+                                ...c,
+                                detectedQuality: q,
+                                displayOptionName: `${c.name} • ${c.vip_badge || 'VIP'}`
+                            };
+                        });
+                        setLiveChannelVariants(withDetails);
                     } else {
                         setResolvedChannel({
                             name: state.title || `Canal VIP`,
@@ -834,6 +880,35 @@ export default function PlayerPage() {
                             season={season}
                             episode={episode}
                             onNextEpisode={season && episode ? handleNext : null}
+                            liveOptions={canalId && liveChannelVariants.length > 0 ? {
+                                currentChannelId: canalId,
+                                currentLabel: activeLiveChannel ? (activeLiveChannel.vip_badge || 'VIP') : 'Opções',
+                                currentQuality: activeLiveChannel ? detectLiveQuality(activeLiveChannel.name) : 'HD',
+                                qualities: Array.from(new Set(liveChannelVariants.map(v => v.detectedQuality || 'HD'))),
+                                channels: liveChannelVariants,
+                                onQualitySelect: (selectedQ) => {
+                                    // Tenta encontrar um canal variante com essa qualidade
+                                    const matchQ = liveChannelVariants.find(v => (v.detectedQuality || 'HD') === selectedQ);
+                                    if (matchQ) {
+                                        setActiveLiveChannel(matchQ);
+                                        const dbId = String(matchQ.id).replace('vip-db-', '');
+                                        setStreamUrl(`/api/stream/proxy?url=${encodeURIComponent(dbId)}`);
+                                        setResolvedChannel({
+                                            name: matchQ.name,
+                                            logo_url: matchQ.logo_url || '/cinegeek-icon.png'
+                                        });
+                                    }
+                                },
+                                onChannelSelect: (ch) => {
+                                    setActiveLiveChannel(ch);
+                                    const dbId = String(ch.id).replace('vip-db-', '');
+                                    setStreamUrl(`/api/stream/proxy?url=${encodeURIComponent(dbId)}`);
+                                    setResolvedChannel({
+                                        name: ch.name,
+                                        logo_url: ch.logo_url || '/cinegeek-icon.png'
+                                    });
+                                }
+                            } : null}
                         />
                     ) : (
                         <iframe src={playerUrl} allowFullScreen style={{ flex: 1, width: '100%', border: 'none' }} title="Zoroflix Player"></iframe>

@@ -242,6 +242,7 @@ export default function SportsFixtures() {
                                               >
                                                   <img src={ch.logo} alt={ch.provider} />
                                                   <span>{ch.provider}</span>
+                                                  <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
                                               </button>
                                           ))}
                                           {/* Fallback Rei dos Embeds Principal */}
@@ -257,6 +258,7 @@ export default function SportsFixtures() {
                                               >
                                                   <Radio size={14} />
                                                   <span>Player Original (RDE)</span>
+                                                  <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
                                               </button>
                                           )}
                                       </div>

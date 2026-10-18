@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast, Layers } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, isLive, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange, currentVersion, onVersionChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, isLive, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange, currentVersion, onVersionChange, liveOptions }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -1165,7 +1165,25 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                                     gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
                                 }}>
                                     <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Qualidade</div>
-                                    {videoQualities && Object.keys(videoQualities).length > 0 ? (
+                                    {liveOptions && liveOptions.qualities && liveOptions.qualities.length > 0 ? (
+                                        liveOptions.qualities.map((q) => (
+                                            <button 
+                                                key={q}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowQualityMenu(false);
+                                                    if (liveOptions.onQualitySelect) liveOptions.onQualitySelect(q);
+                                                }}
+                                                style={{
+                                                    padding: '8px 12px', background: (liveOptions.currentQuality || currentQuality) === q ? '#00ff88' : 'transparent',
+                                                    color: (liveOptions.currentQuality || currentQuality) === q ? '#000' : '#fff',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                                }}
+                                            >
+                                                {q}
+                                            </button>
+                                        ))
+                                    ) : videoQualities && Object.keys(videoQualities).length > 0 ? (
                                         Object.keys(videoQualities).map((q) => (
                                             <button 
                                                 key={q}
@@ -1198,7 +1216,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                         <div style={{ position: 'relative' }}>
                             <button 
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} 
-                                title="Versão do Arquivo" 
+                                title={liveOptions ? "Opções do Canal" : "Versão do Arquivo"} 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
                                     setShowVersionMenu(!showVersionMenu); 
@@ -1208,7 +1226,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                             >
                                 <Layers size={22} color={showVersionMenu ? '#00ff88' : '#fff'} />
                                 <span style={{ color: showVersionMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                    {currentVersion ? `V${currentVersion}` : 'Versão'}
+                                    {liveOptions ? (liveOptions.currentLabel || 'Opção') : (currentVersion ? `V${currentVersion}` : 'Versão')}
                                 </span>
                             </button>
                             
@@ -1216,12 +1234,45 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                                 <div style={{
                                     position: 'absolute', bottom: '100%', right: '0',
                                     marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
-                                    borderRadius: '8px', padding: '10px', minWidth: '160px',
+                                    borderRadius: '8px', padding: '10px', minWidth: '200px', maxWidth: '300px',
                                     border: '1px solid #333', display: 'flex', flexDirection: 'column',
-                                    gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
+                                    gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100,
+                                    maxHeight: '260px', overflowY: 'auto'
                                 }}>
-                                    <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Versão</div>
-                                    {(() => {
+                                    <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                        {liveOptions ? "Opções / Listas do Canal" : "Versão"}
+                                    </div>
+                                    {liveOptions && liveOptions.channels && liveOptions.channels.length > 0 ? (
+                                        liveOptions.channels.map((ch, idx) => {
+                                            const isSelected = String(ch.id) === String(liveOptions.currentChannelId);
+                                            const badgeColor = ch.vip_badge?.includes('3') ? '#a855f7' : ch.vip_badge?.includes('2') ? '#00ff88' : '#ffd700';
+                                            return (
+                                                <button 
+                                                    key={ch.id || idx}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setShowVersionMenu(false);
+                                                        if (liveOptions.onChannelSelect) liveOptions.onChannelSelect(ch);
+                                                    }}
+                                                    style={{
+                                                        padding: '8px 10px', 
+                                                        background: isSelected ? 'rgba(0, 255, 136, 0.2)' : 'transparent',
+                                                        color: isSelected ? '#00ff88' : '#fff',
+                                                        border: isSelected ? '1px solid #00ff88' : 'none',
+                                                        borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold',
+                                                        fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px'
+                                                    }}
+                                                >
+                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {ch.displayOptionName || ch.name}
+                                                    </span>
+                                                    <span style={{ fontSize: '10px', background: badgeColor, color: '#000', padding: '2px 5px', borderRadius: '3px', fontWeight: 'bold', flexShrink: 0 }}>
+                                                        {ch.vip_badge || 'VIP'}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })
+                                    ) : (() => {
                                         const currentGroup = videoQualities && videoQualities[currentQuality];
                                         const versionsList = [];
                                         if (currentGroup) {
