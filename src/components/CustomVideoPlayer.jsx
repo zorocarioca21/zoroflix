@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -23,6 +23,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
     const [resumeData, setResumeData] = useState(null);
     const [showResumePopup, setShowResumePopup] = useState(false);
     const [videoError, setVideoError] = useState(false);
+    const [concurrencyError, setConcurrencyError] = useState(null); // Bloqueio de 1 tela por vez
     const [showLanguageMenu, setShowLanguageMenu] = useState(false);
     
     // Detecta iOS para fallback
@@ -460,6 +461,66 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
         };
     }, [contentId, season, episode, videoError]);
 
+    // === HEARTBEAT DE CONCORRÊNCIA (1 TELA POR VEZ PARA USUÁRIOS FREE) ===
+    useEffect(() => {
+        if (isVip || isAdmin) return; // VIP e Admin têm telas simultâneas ilimitadas
+
+        const currentMediaId = String(contentId || messageId || srcUrl || 'video');
+        const mediaTitle = title || 'Conteúdo CineGeek';
+
+        const sendHeartbeat = async () => {
+            try {
+                const token = localStorage.getItem('cinegeek_token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch('/api/stream/ping', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ mediaId: currentMediaId, title: mediaTitle })
+                });
+
+                if (res.status === 409) {
+                    const data = await res.json().catch(() => ({}));
+                    if (videoRef.current) {
+                        videoRef.current.pause();
+                        setIsPlaying(false);
+                    }
+                    setConcurrencyError(data.message || 'Você já está assistindo a outro conteúdo. Seu plano permite 1 tela por vez.');
+                } else if (res.ok) {
+                    setConcurrencyError(null);
+                }
+            } catch (e) {
+                console.warn('Erro no heartbeat do player:', e);
+            }
+        };
+
+        // Envia o primeiro ping imediatamente ao montar o player
+        sendHeartbeat();
+
+        // Heartbeat recorrente a cada 20 segundos
+        const pingInterval = setInterval(() => {
+            if (videoRef.current && !videoRef.current.paused) {
+                sendHeartbeat();
+            }
+        }, 20000);
+
+        return () => {
+            clearInterval(pingInterval);
+            // Avisa o servidor ao sair da página para liberar a tela instantaneamente
+            try {
+                const token = localStorage.getItem('cinegeek_token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                fetch('/api/stream/close-session', {
+                    method: 'POST',
+                    headers,
+                    keepalive: true
+                }).catch(() => {});
+            } catch (e) {}
+        };
+    }, [contentId, messageId, srcUrl, title, isVip, isAdmin]);
+
     // Auto-hide controls
     useEffect(() => {
         const handlePointerMove = (e) => {
@@ -680,6 +741,79 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
                         <p style={{ color: '#00ff88', fontWeight: 'bold' }}>
                             O nosso sistema inteligente já detectou o problema e mandou o robô baixar este filme de novo! Tente assistir novamente daqui a alguns minutos.
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Aviso de Limite de Telas Simultâneas (Opção A) */}
+            {concurrencyError && (
+                <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.92)',
+                    backdropFilter: 'blur(8px)',
+                    zIndex: 9999,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '2rem', textAlign: 'center'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        padding: '2.5rem 2rem',
+                        borderRadius: '20px',
+                        border: '1px solid #ff4444',
+                        maxWidth: '460px',
+                        width: '90%',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+                    }}>
+                        <div style={{
+                            width: '64px', height: '64px', borderRadius: '50%',
+                            background: 'rgba(255, 68, 68, 0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 1.2rem auto',
+                            color: '#ff4444'
+                        }}>
+                            <AlertTriangle size={36} />
+                        </div>
+                        <h3 style={{ color: '#fff', marginBottom: '0.8rem', fontSize: '1.4rem', fontWeight: 'bold' }}>
+                            Você já está assistindo
+                        </h3>
+                        <p style={{ color: '#bbb', lineHeight: '1.6', fontSize: '0.95rem', marginBottom: '1.8rem' }}>
+                            {concurrencyError}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <a
+                                href="/vip"
+                                style={{
+                                    background: '#00ff88',
+                                    color: '#000',
+                                    fontWeight: 'bold',
+                                    padding: '0.9rem',
+                                    borderRadius: '12px',
+                                    textDecoration: 'none',
+                                    fontSize: '0.95rem',
+                                    display: 'block'
+                                }}
+                            >
+                                ✨ Fazer Upgrade para VIP (Telas Ilimitadas)
+                            </a>
+                            <button
+                                onClick={() => {
+                                    setConcurrencyError(null);
+                                    if (videoRef.current) {
+                                        videoRef.current.play().catch(() => {});
+                                    }
+                                }}
+                                style={{
+                                    background: 'transparent',
+                                    color: '#888',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    padding: '0.5rem'
+                                }}
+                            >
+                                Tentar assistir aqui mesmo
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

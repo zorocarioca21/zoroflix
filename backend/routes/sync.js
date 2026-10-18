@@ -20,6 +20,22 @@ import jwt from 'jsonwebtoken';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// === RATE LIMITER (Máximo 5 consultas por conteúdo a cada 30 segundos) ===
+// Protege a busca e entrega de links de streaming contra robôs e scrapers automatizados
+const contentRateLimitMap = new Map(); // clientKey -> [timestamps]
+
+setInterval(() => {
+    const cutoff = Date.now() - 30000;
+    for (const [key, timestamps] of contentRateLimitMap.entries()) {
+        const filtered = timestamps.filter(t => t > cutoff);
+        if (filtered.length === 0) {
+            contentRateLimitMap.delete(key);
+        } else {
+            contentRateLimitMap.set(key, filtered);
+        }
+    }
+}, 60000);
+
 export default function syncRoutes(db, io) {
     const router = express.Router();
     
@@ -686,16 +702,37 @@ export default function syncRoutes(db, io) {
 
             // Verifica se quem está chamando é admin
             let isAdmin = false;
+            let clientKey = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace(/^.*:/, '');
+
             try {
                 const authHeader = req.headers.authorization;
                 if (authHeader && authHeader.startsWith('Bearer ')) {
                     const tokenStr = authHeader.split(' ')[1];
                     const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET);
-                    if (decoded && decoded.role === 'admin') {
-                        isAdmin = true;
+                    if (decoded) {
+                        if (decoded.role === 'admin') isAdmin = true;
+                        clientKey = `user_${decoded.id}`;
                     }
                 }
             } catch (e) { }
+
+            // Rate Limit: máximo 5 buscas/resoluções de conteúdo a cada 30 segundos
+            // Não bloqueia o admin no painel de controle
+            if (!isAdmin) {
+                const now = Date.now();
+                const timestamps = contentRateLimitMap.get(clientKey) || [];
+                const recent = timestamps.filter(t => now - t < 30000);
+
+                if (recent.length >= 5) {
+                    return res.status(429).json({
+                        error: 'rate_limit',
+                        message: 'Muitas requisições. Aguarde alguns segundos para acessar outro conteúdo.'
+                    });
+                }
+
+                recent.push(now);
+                contentRateLimitMap.set(clientKey, recent);
+            }
 
             // Injeta o stream_url criptografado em cada item da fila
             const processedRows = rows.map(item => {

@@ -8,13 +8,103 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 const router = express.Router();
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
+// === CONTROLE DE RATE LIMIT E CONCORRÊNCIA EM MEMÓRIA ===
+// 1. Rate Limit: máximo 5 acessos a mídias a cada 30 segundos
+const rateLimitMap = new Map(); // clientKey -> [timestamps]
+
+// 2. Telas Ativas: 1 tela por vez para usuários Free / Não logados
+const activeSessions = new Map(); // clientKey -> { mediaId, lastPing, title }
+
+// 3. Downloads Ativos: 1 download por vez para Free / Não logados
+const activeDownloads = new Map(); // clientKey -> timestamp
+
+// Função auxiliar para identificar o cliente (por Usuário JWT ou IP)
+function getClientIdentifier(req) {
+    let clientKey = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace(/^.*:/, '');
+    let isVip = false;
+    let userId = null;
+
+    try {
+        const auth = req.headers.authorization;
+        if (auth && auth.startsWith('Bearer ')) {
+            const token = auth.split(' ')[1];
+            const decoded = jwt.verify(token, JWT_SECRET);
+            if (decoded) {
+                userId = decoded.id;
+                clientKey = `user_${decoded.id}`;
+                if (decoded.role === 'vip' || decoded.role === 'admin') {
+                    isVip = true;
+                }
+            }
+        }
+    } catch (e) { }
+
+    return { clientKey, isVip, userId };
+}
+
+// Limpeza automática de sessões inativas (a cada 1 minuto)
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, sess] of activeSessions.entries()) {
+        if (now - sess.lastPing > 45000) { // Sem ping há 45s = fechou aba
+            activeSessions.delete(key);
+        }
+    }
+    for (const [key, ts] of activeDownloads.entries()) {
+        if (now - ts > 14400000) { // Mais de 4h = remove download fantasma
+            activeDownloads.delete(key);
+        }
+    }
+}, 60000);
+
 export default function streamRoutes(db) {
     const router = express.Router();
+
+    // POST /api/stream/ping (Heartbeat do Player a cada 20s para manter tela ativa)
+    router.post('/ping', (req, res) => {
+        const { mediaId, title } = req.body;
+        const { clientKey, isVip } = getClientIdentifier(req);
+
+        if (!isVip) {
+            const existing = activeSessions.get(clientKey);
+            // Se já tem outra tela tocando outro filme nos últimos 40s
+            if (existing && String(existing.mediaId) !== String(mediaId) && (Date.now() - existing.lastPing < 40000)) {
+                return res.status(409).json({
+                    error: 'concurrency_limit',
+                    message: `Você já está assistindo a "${existing.title || 'outro conteúdo'}". Seu plano permite 1 tela por vez. Faça upgrade para o plano VIP para assistir em várias telas simultâneas!`
+                });
+            }
+
+            activeSessions.set(clientKey, {
+                mediaId: String(mediaId),
+                title: title || 'Vídeo',
+                lastPing: Date.now()
+            });
+        }
+
+        res.json({ ok: true });
+    });
+
+    // POST /api/stream/close-session (Quando o usuário sai da página ou pausa)
+    router.post('/close-session', (req, res) => {
+        const { clientKey } = getClientIdentifier(req);
+        activeSessions.delete(clientKey);
+        res.json({ ok: true });
+    });
 
     // POST /api/stream/generate-download
     // Gera token seguro e assinado criptograficamente com HMAC SHA-256 e validade de 5 minutos
     router.post('/generate-download', (req, res) => {
         try {
+            const { clientKey, isVip } = getClientIdentifier(req);
+
+            // Trava de 1 Download Simultâneo por vez (Apenas VIP pode baixar vários juntos)
+            if (!isVip && activeDownloads.has(clientKey)) {
+                return res.status(429).json({
+                    error: 'download_concurrency_limit',
+                    message: 'Você já possui um download em andamento. Aguarde a conclusão ou assine o plano VIP para downloads simultâneos ilimitados!'
+                });
+            }
             let { messageId, streamUrl, title, channelId: targetChannelId } = req.body;
             let parsedMsgId = parseInt(messageId);
 
@@ -315,6 +405,14 @@ export default function streamRoutes(db) {
             }
             
             if (!messageId) return res.status(400).send("Token inválido");
+
+            const { clientKey, isVip } = getClientIdentifier(req);
+            if (!isVip) {
+                activeDownloads.set(clientKey, Date.now());
+                const releaseDownload = () => activeDownloads.delete(clientKey);
+                req.on('close', releaseDownload);
+                res.on('finish', releaseDownload);
+            }
 
             // Força modo de download na rota /d/
             req.query.download = 'true';

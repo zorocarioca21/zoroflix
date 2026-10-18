@@ -768,6 +768,7 @@ export default function PlayerPage() {
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
                             srcUrl={streamUrl}
+                            title={title}
                             isVip={state?.isVip}
                             isAdmin={user?.role === 'admin'}
                             isLoadingEpisode={isCheckingTelegram}
