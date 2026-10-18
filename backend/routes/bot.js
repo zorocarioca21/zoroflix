@@ -122,37 +122,58 @@ export default function botRoutes(db) {
                 const API_KEY = await getNextTmdbKey(db);
                 const BASE_URL = 'https://api.themoviedb.org/3';
 
-                // 2. Fetch TMDB API para descobrir dados da obra caso 'q' seja textual
-                let tmdbData = { results: [] };
-                try {
-                    const searchParam = targetTmdbId ? targetTmdbId : q;
-                    const tmdbEndpoint = targetTmdbId 
-                        ? `${BASE_URL}/find/${targetTmdbId}?external_source=tmdb_id&api_key=${API_KEY}&language=pt-BR`
-                        : `${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`;
-                    
-                    const tmdbRes = await axios.get(tmdbEndpoint, {
-                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-                        httpsAgent: agent,
-                        timeout: 8000
-                    });
-                    tmdbData = tmdbRes.data;
-                } catch (tmdbErr) {
-                    console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
-                }
-
+                // 2. Fetch TMDB API para descobrir dados da obra caso 'q' seja textual ou tmdb_id foi passado
                 let searchName = q;
                 let originalName = null;
                 let releaseYear = null;
                 let baseName = q ? q.split(':')[0] : null;
                 let slug = q ? q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : 'item';
+                let bestMatch = null;
 
-                const bestMatch = (tmdbData.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv') || (tmdbData.results && tmdbData.results[0]);
+                try {
+                    if (targetTmdbId) {
+                        // Tenta buscar diretamente como TV ou Movie
+                        const isProbableTv = (season !== null && episode !== null) || type === 'serie';
+                        const firstType = isProbableTv ? 'tv' : 'movie';
+                        const secondType = isProbableTv ? 'movie' : 'tv';
+
+                        let detailRes = null;
+                        try {
+                            detailRes = await axios.get(`${BASE_URL}/${firstType}/${targetTmdbId}?api_key=${API_KEY}&language=pt-BR`, {
+                                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                                httpsAgent: agent,
+                                timeout: 8000
+                            });
+                            bestMatch = { ...detailRes.data, media_type: firstType };
+                        } catch (e1) {
+                            try {
+                                detailRes = await axios.get(`${BASE_URL}/${secondType}/${targetTmdbId}?api_key=${API_KEY}&language=pt-BR`, {
+                                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                                    httpsAgent: agent,
+                                    timeout: 8000
+                                });
+                                bestMatch = { ...detailRes.data, media_type: secondType };
+                            } catch (e2) {}
+                        }
+                    } else if (q) {
+                        const tmdbRes = await axios.get(`${BASE_URL}/search/multi?query=${encodeURIComponent(q)}&api_key=${API_KEY}&language=pt-BR`, {
+                            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+                            httpsAgent: agent,
+                            timeout: 8000
+                        });
+                        const results = tmdbRes.data?.results || [];
+                        bestMatch = results.find(r => r.media_type === 'movie' || r.media_type === 'tv') || results[0];
+                    }
+                } catch (tmdbErr) {
+                    console.error("⚠️ Failed to reach TMDB API:", tmdbErr.message);
+                }
+
                 if (bestMatch) {
                     searchName = bestMatch.name || bestMatch.title || q;
                     originalName = bestMatch.original_name || bestMatch.original_title || null;
                     releaseYear = bestMatch.release_date ? bestMatch.release_date.split('-')[0] : (bestMatch.first_air_date ? bestMatch.first_air_date.split('-')[0] : null);
                     baseName = searchName ? searchName.split(':')[0] : null;
-                    type = bestMatch.media_type === 'movie' ? 'filme' : 'serie';
+                    type = (season !== null && episode !== null) ? 'serie' : (bestMatch.media_type === 'movie' ? 'filme' : 'serie');
                     slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                     if (!targetTmdbId && bestMatch.id) targetTmdbId = bestMatch.id;
                 }
@@ -187,173 +208,190 @@ export default function botRoutes(db) {
                         }
                     }
                 }
-            
-            const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
-            // 3. Fallback: Se não encontrou pelo mapeamento direto, roda a lógica textual antiga por compatibilidade
-            if (!foundMsgId) {
-                const s = String(season).padStart(2, '0');
-                const e = String(episode).padStart(2, '0');
-                
-                // 1. Specific episode search (e.g., Reacher S01 E01 / Reacher S01E01)
-                const specificSearch1 = `${searchName} S${s} E${e}`;
-                const specificSearch2 = `${searchName} S${s}E${e}`;
-                
-                let specificItems = [];
-                if (bestMatch && bestMatch.id) {
-                    specificItems = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
-                        [bestMatch.id, `%${specificSearch1}%`, `%${specificSearch2}%`]
-                    ).catch(() => []);
-                }
-                
-                if (!specificItems || specificItems.length === 0) {
-                    specificItems = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
-                        [`%${specificSearch1}%`, `%${specificSearch2}%`]
-                    ).catch(() => []);
-                }
+                const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
-                if ((!specificItems || specificItems.length === 0) && originalName) {
-                    const origSearch = `${originalName} S${s} E${e}`;
-                    specificItems = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND title LIKE ?`,
-                        [`%${origSearch}%`]
-                    ).catch(() => []);
-                }
-
-                if ((!specificItems || specificItems.length === 0) && baseName) {
-                    const baseSearch = `${baseName} S${s} E${e}`;
-                    specificItems = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND title LIKE ?`,
-                        [`%${baseSearch}%`]
-                    ).catch(() => []);
-                }
-
-                if (specificItems && specificItems.length > 0) {
-                    const validSpecificItems = specificItems.filter(i => {
-                        if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                        if (!checkTitleMatch(i.title, searchName, originalName, baseName)) return false;
-                        return true;
-                    });
-
-                    if (validSpecificItems.length > 0) {
-                        const matches = getBestMatches(validSpecificItems);
-                        if (matches) {
-                            const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
-                            let selectedQuality = Object.keys(matches)[0];
-                            for (let qQuality of qualityOrder) {
-                                if (matches[qQuality]) {
-                                    selectedQuality = qQuality;
-                                    break;
-                                }
-                            }
-                            const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
-                            foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
-                        }
-                    }
-                }
-
-                // 2. Fallback search (broad search by searchName / originalName / baseName)
+                // 3. Fallback: Se não encontrou pelo mapeamento direto, roda a lógica textual por compatibilidade
                 if (!foundMsgId) {
-                    let items = [];
-                    if (bestMatch && bestMatch.id) {
-                        items = await db.all(
-                            `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
-                            [bestMatch.id, `%${searchName}%`, `%${q}%`]
-                        ).catch(() => []);
-                    }
+                    if (season !== null && episode !== null) {
+                        const s = String(season).padStart(2, '0');
+                        const e = String(episode).padStart(2, '0');
+                        
+                        // 1. Specific episode search (e.g., Reacher S01 E01 / Reacher S01E01)
+                        const specificSearch1 = `${searchName} S${s} E${e}`;
+                        const specificSearch2 = `${searchName} S${s}E${e}`;
+                        
+                        let specificItems = [];
+                        if (bestMatch && bestMatch.id) {
+                            // Se filtrar por tmdb_id aqui, DEVE OBRIGATORIAMENTE bater a temporada e o episódio!
+                            specificItems = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue 
+                                 WHERE status = 'completed' 
+                                 AND ((tmdb_id = ? AND season_number = ? AND episode_number = ?) OR title LIKE ? OR title LIKE ?)`,
+                                [bestMatch.id, season, episode, `%${specificSearch1}%`, `%${specificSearch2}%`]
+                            ).catch(() => []);
+                        }
+                        
+                        if (!specificItems || specificItems.length === 0) {
+                            specificItems = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
+                                [`%${specificSearch1}%`, `%${specificSearch2}%`]
+                            ).catch(() => []);
+                        }
 
-                    if (!items || items.length === 0) {
-                        items = await db.all(
-                            `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
-                            [`%${searchName}%`, `%${q}%`]
-                        ).catch(() => []);
-                    }
+                        if ((!specificItems || specificItems.length === 0) && originalName) {
+                            const origSearch = `${originalName} S${s} E${e}`;
+                            specificItems = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND title LIKE ?`,
+                                [`%${origSearch}%`]
+                            ).catch(() => []);
+                        }
 
-                    if (items && items.length > 0) {
+                        if ((!specificItems || specificItems.length === 0) && baseName) {
+                            const baseSearch = `${baseName} S${s} E${e}`;
+                            specificItems = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND title LIKE ?`,
+                                [`%${baseSearch}%`]
+                            ).catch(() => []);
+                        }
+
                         const patterns = [
                             `S${s}E${e}`, `S${s} E${e}`,
                             `S${season}E${episode}`, `S${season} E${episode}`,
                             `Episódio ${episode}`, `EPISÓDIO 0${episode}`, `EP${e}`, `EP ${e}`, `E${e}`
                         ];
 
-                        const validItems = items.filter(i => {
-                            if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                            if (!checkTitleMatch(i.title, searchName, originalName, baseName)) return false;
+                        if (specificItems && specificItems.length > 0) {
+                            const validSpecificItems = specificItems.filter(i => {
+                                if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                                if (!checkTitleMatch(i.title, searchName, originalName, baseName)) return false;
 
-                            const upperTitle = i.title.toUpperCase();
+                                const upperTitle = i.title.toUpperCase();
+                                const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
+                                const sMatch = i.title.match(seasonRegex);
+                                if (sMatch) {
+                                    const fileSeason = parseInt(sMatch[1]);
+                                    if (fileSeason !== parseInt(season)) return false;
+                                }
 
-                            const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
-                            const sMatch = i.title.match(seasonRegex);
-                            if (sMatch) {
-                                const fileSeason = parseInt(sMatch[1]);
-                                if (fileSeason !== parseInt(season)) return false;
+                                const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                                if (!hasEp) return false;
+
+                                return true;
+                            });
+
+                            if (validSpecificItems.length > 0) {
+                                const matches = getBestMatches(validSpecificItems);
+                                if (matches) {
+                                    const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
+                                    let selectedQuality = Object.keys(matches)[0];
+                                    for (let qQuality of qualityOrder) {
+                                        if (matches[qQuality]) {
+                                            selectedQuality = qQuality;
+                                            break;
+                                        }
+                                    }
+                                    const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                                    foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
+                                }
+                            }
+                        }
+
+                        // 2. Fallback search (broad search by searchName / originalName / baseName mas COM filtro estrito de ep)
+                        if (!foundMsgId) {
+                            let items = [];
+                            if (bestMatch && bestMatch.id) {
+                                items = await db.all(
+                                    `SELECT id, title, telegram_message_id, status FROM sync_queue 
+                                     WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
+                                    [bestMatch.id, `%${searchName}%`, `%${q}%`]
+                                ).catch(() => []);
                             }
 
-                            const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
-                            if (!hasEp) return false;
+                            if (!items || items.length === 0) {
+                                items = await db.all(
+                                    `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
+                                    [`%${searchName}%`, `%${q}%`]
+                                ).catch(() => []);
+                            }
 
-                            return true;
-                        });
+                            if (items && items.length > 0) {
+                                const validItems = items.filter(i => {
+                                    if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                                    if (!checkTitleMatch(i.title, searchName, originalName, baseName)) return false;
 
-                        if (validItems.length > 0) {
-                            const matches = getBestMatches(validItems);
-                            if (matches) {
-                                const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
-                                let selectedQuality = Object.keys(matches)[0];
-                                for (let qQuality of qualityOrder) {
-                                    if (matches[qQuality]) {
-                                        selectedQuality = qQuality;
-                                        break;
+                                    const upperTitle = i.title.toUpperCase();
+                                    const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
+                                    const sMatch = i.title.match(seasonRegex);
+                                    if (sMatch) {
+                                        const fileSeason = parseInt(sMatch[1]);
+                                        if (fileSeason !== parseInt(season)) return false;
+                                    }
+
+                                    const hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
+                                    if (!hasEp) return false;
+
+                                    return true;
+                                });
+
+                                if (validItems.length > 0) {
+                                    const matches = getBestMatches(validItems);
+                                    if (matches) {
+                                        const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
+                                        let selectedQuality = Object.keys(matches)[0];
+                                        for (let qQuality of qualityOrder) {
+                                            if (matches[qQuality]) {
+                                                selectedQuality = qQuality;
+                                                break;
+                                            }
+                                        }
+                                        const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                                        foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
                                     }
                                 }
-                                const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
-                                foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
                             }
                         }
-                    }
-                }
-            } else {
-                // Movie search (or series without season/episode specified)
-                let items = [];
-                if (bestMatch && bestMatch.id) {
-                    items = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
-                        [bestMatch.id, `%${searchName}%`, `%${q}%`]
-                    ).catch(() => []);
-                }
+                    } else {
+                        // Movie search (or items without season/episode specified)
+                        let items = [];
+                        if (bestMatch && bestMatch.id) {
+                            items = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (tmdb_id = ? OR title LIKE ? OR title LIKE ?)`,
+                                [bestMatch.id, `%${searchName}%`, `%${q}%`]
+                            ).catch(() => []);
+                        }
 
-                if (!items || items.length === 0) {
-                    items = await db.all(
-                        `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
-                        [`%${searchName}%`, `%${q}%`]
-                    ).catch(() => []);
-                }
+                        if (!items || items.length === 0) {
+                            items = await db.all(
+                                `SELECT id, title, telegram_message_id, status FROM sync_queue WHERE status = 'completed' AND (title LIKE ? OR title LIKE ?)`,
+                                [`%${searchName}%`, `%${q}%`]
+                            ).catch(() => []);
+                        }
 
-                if (items && items.length > 0) {
-                    const validItems = items.filter(i => {
-                        if (i.status !== 'completed' || !i.telegram_message_id) return false;
-                        return checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear);
-                    });
+                        if (items && items.length > 0) {
+                            const validItems = items.filter(i => {
+                                if (i.status !== 'completed' || !i.telegram_message_id) return false;
+                                return checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear);
+                            });
 
-                    if (validItems.length > 0) {
-                        const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
-                        if (matches) {
-                            const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
-                            let selectedQuality = Object.keys(matches)[0];
-                            for (let qQuality of qualityOrder) {
-                                if (matches[qQuality]) {
-                                    selectedQuality = qQuality;
-                                    break;
+                            if (validItems.length > 0) {
+                                const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
+                                if (matches) {
+                                    const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
+                                    let selectedQuality = Object.keys(matches)[0];
+                                    for (let qQuality of qualityOrder) {
+                                        if (matches[qQuality]) {
+                                            selectedQuality = qQuality;
+                                            break;
+                                        }
+                                    }
+                                    const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
+                                    foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
                                 }
                             }
-                            const itemResult = matches[selectedQuality].dub || matches[selectedQuality].leg;
-                            foundMsgId = typeof itemResult === 'object' ? itemResult.id : itemResult;
                         }
                     }
                 }
-            }
             }
 
             if (!fullTitle || fullTitle.startsWith('TMDB #')) {

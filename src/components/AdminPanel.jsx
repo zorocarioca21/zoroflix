@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
@@ -8,6 +8,7 @@ import AppUpdatePage from './AppUpdatePage';
 import AdminBotManager from './AdminBotManager';
 import AdminMangas from './AdminMangas';
 import AdminIptvLists from './AdminIptvLists';
+import AdminSystemUpdates from './AdminSystemUpdates';
 
 import './AdminPanel.css';
 
@@ -529,6 +530,9 @@ export default function AdminPanel() {
                             </button>
                             <button className={`admin-tab-btn ${activeTab === 'app-update' ? 'active' : ''}`} onClick={() => setActiveTab('app-update')}>
                                 <Smartphone size={16} /> App Mobile
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'system-updates' ? 'active' : ''}`} onClick={() => setActiveTab('system-updates')} style={{ border: '1px solid rgba(0, 255, 136, 0.4)' }}>
+                                <RefreshCw size={16} color="#00ff88" /> Atualizações VPS
                             </button>
                         </div>
                     </div>
@@ -1125,6 +1129,12 @@ export default function AdminPanel() {
                 {activeTab === 'app-update' && (
                     <div className="admin-app-update-wrapper" style={{ margin: '0' }}>
                         <AppUpdatePage />
+                    </div>
+                )}
+                {/* ABA SISTEMA & ATUALIZAÇÕES VPS */}
+                {activeTab === 'system-updates' && (
+                    <div className="admin-content-card">
+                        <AdminSystemUpdates />
                     </div>
                 )}
                 {/* ABA LISTAS M3U / CANAIS VIP */}

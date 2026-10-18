@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { invalidateTmdbKeysCache } from '../services/tmdbKeyService.js';
+
+const execAsync = promisify(exec);
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
@@ -759,6 +763,121 @@ Instrução de Resposta:
             res.json({ success: true });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao deletar API Key.' });
+        }
+    });
+
+    // ==========================================
+    // SISTEMA & ATUALIZAÇÕES AUTOMÁTICAS (VPS)
+    // ==========================================
+
+    // Atualizar Site Principal (Sem Quedas: git pull + npm run build)
+    router.post('/system/update-site', authMiddleware, async (req, res) => {
+        const logs = [];
+        try {
+            logs.push('🚀 Iniciando atualização do Site Principal...');
+            
+            // 1. Git pull
+            try {
+                const { stdout: pullOut } = await execAsync('git pull', { timeout: 60000 });
+                logs.push(`📥 Git Pull:\n${pullOut.trim()}`);
+            } catch (gitErr) {
+                logs.push(`⚠️ Aviso Git Pull: ${gitErr.message}`);
+            }
+
+            // 2. Build Frontend (Vite)
+            logs.push('📦 Compilando novos arquivos com Vite (npm run build)...');
+            const { stdout: buildOut } = await execAsync('npm run build', { timeout: 180000 });
+            logs.push(`✅ Build concluído com sucesso:\n${buildOut.trim()}`);
+            logs.push('🎉 O Site Principal foi atualizado e está ativo sem nenhuma queda na API!');
+
+            res.json({ success: true, logs });
+        } catch (err) {
+            logs.push(`❌ Erro durante o processo: ${err.message}`);
+            res.status(500).json({ success: false, error: err.message, logs });
+        }
+    });
+
+    // Atualizar Backend / API / Embed (git pull + pm2 reload)
+    router.post('/system/update-backend', authMiddleware, async (req, res) => {
+        const logs = [];
+        try {
+            logs.push('🚀 Iniciando atualização da API e Embed...');
+            
+            // 1. Git pull
+            try {
+                const { stdout: pullOut } = await execAsync('git pull', { timeout: 60000 });
+                logs.push(`📥 Git Pull:\n${pullOut.trim()}`);
+            } catch (gitErr) {
+                logs.push(`⚠️ Aviso Git Pull: ${gitErr.message}`);
+            }
+
+            // 2. PM2 Reload suave (Zero Downtime)
+            logs.push('⚡ Aplicando reload no servidor Node (Zero Downtime)...');
+            try {
+                const { stdout: pm2Out } = await execAsync('pm2 reload all || pm2 restart all', { timeout: 30000 });
+                logs.push(`✅ PM2 Reload executado:\n${pm2Out.trim()}`);
+            } catch (pm2Err) {
+                logs.push(`ℹ️ PM2 Reload: ${pm2Err.message}`);
+            }
+
+            logs.push('🎉 API e Rotas de Embed atualizadas com sucesso!');
+            res.json({ success: true, logs });
+        } catch (err) {
+            logs.push(`❌ Erro durante o processo: ${err.message}`);
+            res.status(500).json({ success: false, error: err.message, logs });
+        }
+    });
+
+    // Atualizar Tudo (Site + API + Embed)
+    router.post('/system/update-all', authMiddleware, async (req, res) => {
+        const logs = [];
+        try {
+            logs.push('🚀 Iniciando Atualização Geral (Site + API + Embed)...');
+            
+            // 1. Git pull
+            try {
+                const { stdout: pullOut } = await execAsync('git pull', { timeout: 60000 });
+                logs.push(`📥 Git Pull:\n${pullOut.trim()}`);
+            } catch (gitErr) {
+                logs.push(`⚠️ Aviso Git Pull: ${gitErr.message}`);
+            }
+
+            // 2. Build Frontend
+            logs.push('📦 Compilando Frontend (npm run build)...');
+            const { stdout: buildOut } = await execAsync('npm run build', { timeout: 180000 });
+            logs.push(`✅ Build concluído:\n${buildOut.trim()}`);
+
+            // 3. PM2 Reload
+            logs.push('⚡ Aplicando reload no backend...');
+            try {
+                const { stdout: pm2Out } = await execAsync('pm2 reload all || pm2 restart all', { timeout: 30000 });
+                logs.push(`✅ PM2 Reload executado:\n${pm2Out.trim()}`);
+            } catch (pm2Err) {
+                logs.push(`ℹ️ PM2 Reload: ${pm2Err.message}`);
+            }
+
+            logs.push('🎉 Atualização Geral concluída com sucesso!');
+            res.json({ success: true, logs });
+        } catch (err) {
+            logs.push(`❌ Erro durante o processo: ${err.message}`);
+            res.status(500).json({ success: false, error: err.message, logs });
+        }
+    });
+
+    // Reiniciar Processo Node/PM2 (Restart total)
+    router.post('/system/restart', authMiddleware, async (req, res) => {
+        const logs = [];
+        try {
+            logs.push('🔄 Solicitando reinicialização do servidor...');
+            res.json({ success: true, logs: ['🔄 Reinicialização iniciada. O servidor estará de volta em alguns segundos!'] });
+
+            setTimeout(() => {
+                exec('pm2 restart all', () => {
+                    process.exit(0);
+                });
+            }, 1000);
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
         }
     });
 
