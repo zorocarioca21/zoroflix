@@ -161,10 +161,10 @@ export default function EmbedPlayerPage() {
 
                     setDebugMatches(evaluatedItems);
 
-                        const matches = getBestMatches(evaluatedItems, type === 'filme' ? releaseYear : null);
+                    const matches = getBestMatches(validItems, type === 'filme' ? releaseYear : null);
 
-                        if (matches) {
-                            setLanguageOptions(matches);
+                    if (matches) {
+                        setLanguageOptions(matches);
                             const qualityOrder = ['4K', 'FHD', 'HD', 'SD', 'TS'];
                             let selectedQuality = Object.keys(matches)[0];
                             for (let q of qualityOrder) {

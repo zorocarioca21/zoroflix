@@ -179,7 +179,7 @@ export default function embedRoutes(db) {
                     const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
                     let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
                     token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-                    streamUrl = `https://www.cinegeek.shop/api/stream/s/${token}.mp4`;
+                    streamUrl = `/api/stream/s/${token}.mp4`;
                 }
                 const secureItem = { ...item, stream_url: streamUrl };
                 delete secureItem.telegram_message_id; // Remove o ID real do payload público
