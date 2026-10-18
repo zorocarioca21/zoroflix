@@ -33,7 +33,7 @@ export default function PlayerPage() {
     const [telegramMessageId, setTelegramMessageId] = useState(null);
     const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null); 
-    const [currentQuality, setCurrentQuality] = useState('Normal'); 
+    const [currentQuality, setCurrentQuality] = useState('HD'); 
     const [currentVersion, setCurrentVersion] = useState(1);
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const [downloadSelector, setDownloadSelector] = useState(false);
@@ -330,8 +330,8 @@ export default function PlayerPage() {
             const prefLang = localStorage.getItem('cinegeek_preferred_language') || 'dub';
             const autoLang = location.state?.autoPlayLanguage; // Passed when navigating to Next Episode
             
-            // Choose best default quality (FHD > Normal > 4K > TS)
-            const qualityOrder = ['FHD', 'Normal', '4K', 'TS'];
+            // Choose best default quality (4K > FHD > HD > SD > TS)
+            const qualityOrder = ['4K', 'FHD', 'HD', 'SD', 'TS'];
             let selectedQuality = Object.keys(matches)[0];
             for (let q of qualityOrder) {
                 if (matches[q]) {

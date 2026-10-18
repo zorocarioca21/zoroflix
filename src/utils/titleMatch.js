@@ -122,13 +122,14 @@ export const getBestMatches = (items, releaseYear = null) => {
     for (const i of targetItems) {
         if (!i.title) continue;
 
-        const isLeg = /leg|legendado/i.test(i.title);
+        const isLeg = /(?:\b(?:LEG|LEGENDADO)\b|\[LEG\]|\(LEG\))/i.test(i.title);
         const titleUpper = i.title.toUpperCase();
 
-        let version = 'Normal';
-        if (titleUpper.includes('FHD') || titleUpper.includes('1080P') || titleUpper.includes('1080')) version = 'FHD';
-        else if (titleUpper.includes('4K') || titleUpper.includes('2160P')) version = '4K';
+        let version = 'SD'; // Padrão Standard Definition (480p / resolução nativa da fonte)
+        if (titleUpper.includes('4K') || titleUpper.includes('2160P') || titleUpper.includes('2160')) version = '4K';
+        else if (titleUpper.includes('FHD') || titleUpper.includes('1080P') || titleUpper.includes('1080')) version = 'FHD';
         else if (titleUpper.includes('HD') || titleUpper.includes('720P') || titleUpper.includes('720')) version = 'HD';
+        else if (titleUpper.includes('SD') || titleUpper.includes('480P') || titleUpper.includes('480')) version = 'SD';
         else if (titleUpper.includes('TS') || titleUpper.includes('CAMRIP') || titleUpper.includes('CAM RIP')) version = 'TS';
 
         if (!versions[version]) versions[version] = { dub: null, leg: null, allDub: [], allLeg: [] };

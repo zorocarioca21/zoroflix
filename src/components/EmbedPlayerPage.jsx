@@ -16,7 +16,7 @@ export default function EmbedPlayerPage() {
     const [telegramMessageId, setTelegramMessageId] = useState(null);
     const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null);
-    const [currentQuality, setCurrentQuality] = useState('Normal');
+    const [currentQuality, setCurrentQuality] = useState('HD');
     const [currentVersion, setCurrentVersion] = useState(1);
     const [title, setTitle] = useState('');
     const [loading, setLoading] = useState(true);
@@ -165,7 +165,7 @@ export default function EmbedPlayerPage() {
 
                         if (matches) {
                             setLanguageOptions(matches);
-                            const qualityOrder = ['FHD', 'HD', 'Normal', '4K', 'TS'];
+                            const qualityOrder = ['4K', 'FHD', 'HD', 'SD', 'TS'];
                             let selectedQuality = Object.keys(matches)[0];
                             for (let q of qualityOrder) {
                                 if (matches[q]) {

@@ -10,6 +10,83 @@ const agent = new https.Agent({ family: 4 }); // Força IPv4 para evitar problem
 let tmdbDbInstance = null;
 let isAiMapperPaused = false;
 
+// Cache local de episódios de temporadas do TMDB para evitar requisições repetidas
+const seasonEpisodesCache = new Map();
+
+/**
+ * Busca a lista de episódios de uma temporada no TMDB (em pt-BR e en-US) e tenta
+ * identificar o episode_number correto a partir do nome do episódio contido no título.
+ * Ex: "Lanternas S01 Dirt and Stars HD" -> S1E8
+ */
+async function resolveEpisodeNumberFromSeason(tmdbId, seasonNum, candidateEpName, apiKey) {
+    if (!tmdbId || !seasonNum || !candidateEpName || candidateEpName.length < 2 || !apiKey) return null;
+
+    const cacheKey = `${tmdbId}_s${seasonNum}`;
+    let episodeList = seasonEpisodesCache.get(cacheKey);
+
+    const norm = (s) => (s || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/['’]/g, '')
+        .replace(/[^a-z0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (!episodeList) {
+        try {
+            const [ptRes, enRes] = await Promise.all([
+                axios.get(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNum}?api_key=${apiKey}&language=pt-BR`, { timeout: 8000, httpsAgent: agent }).catch(() => null),
+                axios.get(`https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNum}?api_key=${apiKey}&language=en-US`, { timeout: 8000, httpsAgent: agent }).catch(() => null)
+            ]);
+
+            const ptEps = ptRes?.data?.episodes || [];
+            const enEps = enRes?.data?.episodes || [];
+
+            if (ptEps.length === 0 && enEps.length === 0) return null;
+
+            episodeList = ptEps.map(ep => {
+                const enEp = enEps.find(e => e.episode_number === ep.episode_number);
+                return {
+                    episode_number: ep.episode_number,
+                    names: [norm(ep.name), norm(enEp?.name)].filter(Boolean)
+                };
+            });
+
+            // Se enEps tiver episódios que não vieram em ptEps
+            for (const enEp of enEps) {
+                if (!episodeList.some(e => e.episode_number === enEp.episode_number)) {
+                    episodeList.push({
+                        episode_number: enEp.episode_number,
+                        names: [norm(enEp.name)].filter(Boolean)
+                    });
+                }
+            }
+
+            seasonEpisodesCache.set(cacheKey, episodeList);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    if (!episodeList || episodeList.length === 0) return null;
+
+    const normCandidate = norm(candidateEpName);
+    if (!normCandidate || normCandidate.length < 2) return null;
+
+    // 1. Match exato de nome
+    let found = episodeList.find(e => e.names.some(n => n === normCandidate));
+    if (found) return found.episode_number;
+
+    // 2. Match parcial (conter substring com mais de 3 chars)
+    if (normCandidate.length >= 4) {
+        found = episodeList.find(e => e.names.some(n => n.length >= 4 && (n.includes(normCandidate) || normCandidate.includes(n))));
+        if (found) return found.episode_number;
+    }
+
+    return null;
+}
+
 export function setAiMapperPauseState(paused) {
     isAiMapperPaused = Boolean(paused);
     console.log(`[TMDB MAPPER] ⏸️ IA no mapeador automático de 10 em 10 ${isAiMapperPaused ? 'PAUSADA' : 'RETOMADA'}.`);
@@ -84,6 +161,8 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             const sMatch = q.match(/\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i);
             const epMatch = q.match(/\b(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
 
+            let candidateEpName = null;
+
             if (sEpCombinedMatch) {
                 season_number = parseInt(sEpCombinedMatch[1]);
                 episode_number = parseInt(sEpCombinedMatch[2]);
@@ -103,6 +182,22 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     q = beforeMatch;
                 } else {
                     q = q.replace(sMatch[0], '').replace(epMatch[0], '').trim();
+                }
+            } else if (sMatch && !epMatch) {
+                season_number = parseInt(sMatch[1]);
+                const beforeMatch = q.substring(0, sMatch.index).trim();
+                let afterSeason = q.substring(sMatch.index + sMatch[0].length).trim();
+                afterSeason = afterSeason.replace(/^[\s\-:|]+|[\s\-:|]+$/g, '').trim();
+
+                const tagsRegexEarly = /\b(DUBLADO|LEGENDADO|LEG|HD|FHD|4K|1080P|720P|2160P|CAMRIP|MP4|MKV|AVI)\b/i;
+                const earlyTag = afterSeason.match(tagsRegexEarly);
+                candidateEpName = earlyTag ? afterSeason.substring(0, earlyTag.index).trim() : afterSeason.trim();
+                candidateEpName = candidateEpName.replace(/^[\s\-:|]+|[\s\-:|]+$/g, '').trim();
+
+                if (beforeMatch.length > 1) {
+                    q = beforeMatch;
+                } else {
+                    q = q.replace(sMatch[0], '').trim();
                 }
             } else {
                 const epOnlyRegex = /\b(?:EPIS[OÓ]DIO|EP|E)\s*0?(\d{1,3})\b/i;
@@ -269,6 +364,17 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
         }
 
             if (tmdb_id) {
+                // Se temos uma temporada e um nome de episódio candidato, mas não tínhamos o número do episódio
+                if (media_type === 'tv' && season_number && !episode_number && candidateEpName) {
+                    try {
+                        const resolvedEp = await resolveEpisodeNumberFromSeason(tmdb_id, season_number, candidateEpName, apiKey);
+                        if (resolvedEp) {
+                            episode_number = resolvedEp;
+                            console.log(`[TMDB MAPPER] 🔎 Episódio identificado pelo nome: S${String(season_number).padStart(2, '0')}E${String(episode_number).padStart(2, '0')} ("${candidateEpName}")`);
+                        }
+                    } catch (epErr) {}
+                }
+
                 await db.run(
                     "UPDATE sync_queue SET tmdb_id = ?, media_type = ?, season_number = ?, episode_number = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     [tmdb_id, media_type, season_number, episode_number, item.id]
@@ -355,6 +461,8 @@ export async function mapSingleQueueItem(db, itemId) {
         const sMatch = q.match(/\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i);
         const epMatch = q.match(/\b(?:E|EP|EPIS[OÓ]DIO)\s*0?(\d{1,3})\b/i);
 
+        let candidateEpName = null;
+
         if (sEpCombinedMatch) {
             season_number = parseInt(sEpCombinedMatch[1], 10);
             episode_number = parseInt(sEpCombinedMatch[2], 10);
@@ -363,6 +471,16 @@ export async function mapSingleQueueItem(db, itemId) {
             season_number = parseInt(sMatch[1], 10);
             episode_number = parseInt(epMatch[1], 10);
             media_type = 'tv';
+        } else if (sMatch && !epMatch) {
+            season_number = parseInt(sMatch[1], 10);
+            media_type = 'tv';
+            let afterSeason = q.substring(sMatch.index + sMatch[0].length).trim();
+            afterSeason = afterSeason.replace(/^[\s\-:|]+|[\s\-:|]+$/g, '').trim();
+
+            const tagsRegexEarly = /\b(DUBLADO|LEGENDADO|LEG|HD|FHD|4K|1080P|720P|2160P|CAMRIP|MP4|MKV|AVI)\b/i;
+            const earlyTag = afterSeason.match(tagsRegexEarly);
+            candidateEpName = earlyTag ? afterSeason.substring(0, earlyTag.index).trim() : afterSeason.trim();
+            candidateEpName = candidateEpName.replace(/^[\s\-:|]+|[\s\-:|]+$/g, '').trim();
         }
 
         const isTvRegex = /\b(?:S\d{1,2}|T\d{1,2}|Temporada\s*\d{1,2}|Epis[oó]dio\s*\d{1,3}|E\d{1,3})\b/i;
@@ -412,6 +530,16 @@ export async function mapSingleQueueItem(db, itemId) {
 
         if (bestMatch && bestMatch.id) {
             tmdb_id = String(bestMatch.id);
+            if (media_type === 'tv' && season_number && !episode_number && candidateEpName) {
+                try {
+                    const resolvedEp = await resolveEpisodeNumberFromSeason(tmdb_id, season_number, candidateEpName, apiKey);
+                    if (resolvedEp) {
+                        episode_number = resolvedEp;
+                        console.log(`[TMDB MAPPER] 🔎 Episódio pontual identificado pelo nome: S${String(season_number).padStart(2, '0')}E${String(episode_number).padStart(2, '0')} ("${candidateEpName}")`);
+                    }
+                } catch (epErr) {}
+            }
+
             await db.run(`
                 UPDATE sync_queue 
                 SET tmdb_id = ?, media_type = ?, season_number = ?, episode_number = ?, updated_at = CURRENT_TIMESTAMP
