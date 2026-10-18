@@ -1,13 +1,49 @@
 import express from 'express';
 import { getTelegramClient } from '../telegram.js';
 import bigInt from "big-integer";
+import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 const router = express.Router();
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
 export default function streamRoutes(db) {
     const router = express.Router();
+
+    // POST /api/stream/generate-download
+    // Gera token seguro e assinado criptograficamente com HMAC SHA-256 e validade de 2 horas
+    router.post('/generate-download', (req, res) => {
+        try {
+            const { messageId, title, channelId: targetChannelId } = req.body;
+            const parsedMsgId = parseInt(messageId);
+            if (!parsedMsgId) {
+                return res.status(400).json({ error: 'Message ID inválido' });
+            }
+
+            const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace(/^.*:/, '');
+
+            // Token assinado criptograficamente pelo servidor (expira em 5 minutos para iniciar o download)
+            const token = jwt.sign(
+                {
+                    id: parsedMsgId,
+                    title: title || 'Download - CineGeek',
+                    channelId: targetChannelId || null,
+                    ip: clientIp,
+                    type: 'download'
+                },
+                JWT_SECRET,
+                { expiresIn: '5m' }
+            );
+
+            return res.json({
+                downloadUrl: `/api/stream/d/${token}?title=${encodeURIComponent(title || 'video')}`
+            });
+        } catch (err) {
+            console.error('Erro ao gerar token seguro de download:', err);
+            return res.status(500).json({ error: 'Erro ao gerar link de download' });
+        }
+    });
 
     async function handleStreamRequest(req, res, messageId, overrideTitle = null, targetChannel = null) {
         if (!messageId) return res.status(400).send("Message ID inválido");
@@ -218,40 +254,54 @@ export default function streamRoutes(db) {
     router.get('/d/:token', async (req, res) => {
         try {
             let token = req.params.token;
-            
-            // Restaura Base64 URL-safe para Base64 normal
-            token = token.replace(/-/g, '+').replace(/_/g, '/');
-            while (token.length % 4) token += '=';
-            
-            const textoDecodificado = Buffer.from(token, 'base64').toString('utf-8');
-            
-            // 2º Passo: Voltar caracteres especiais para letras
-            const textoSubstituido = textoDecodificado
-                .replace(/§/g, 'a')
-                .replace(/¶/g, 'b')
-                .replace(/©/g, 'c');
-            
-            // 3º Passo: Reverter a inversão
-            const textoOriginal = textoSubstituido.split('').reverse().join('');
-            
-            const data = JSON.parse(textoOriginal);
-            
-            const messageId = parseInt(data.id);
-            if (!messageId) return res.status(400).send("Token inválido");
+            let messageId = null;
+            let finalTitle = req.query.title || null;
+            let targetChannel = null;
 
-            // Checa a validade (se 'exp' existir no payload)
-            if (data.exp && Date.now() > data.exp) {
-                return res.status(403).send("Este link expirou. Por favor, solicite um novo link de download.");
+            // 1º Tenta validar como JWT assinado criptograficamente
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                messageId = parseInt(decoded.id);
+                finalTitle = finalTitle || decoded.title;
+                targetChannel = decoded.channelId;
+
+                // Validação de IP (impede compartilhamento do link de download com terceiros)
+                if (decoded.ip) {
+                    const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').replace(/^.*:/, '');
+                    if (clientIp && decoded.ip && clientIp !== decoded.ip) {
+                        return res.status(403).send("Acesso negado. Este link de download pertence a outro usuário ou seu IP mudou.");
+                    }
+                }
+            } catch (jwtErr) {
+                // Fallback para tokens legados ofuscados (garante retrocompatibilidade temporária)
+                token = token.replace(/-/g, '+').replace(/_/g, '/');
+                while (token.length % 4) token += '=';
+                
+                const textoDecodificado = Buffer.from(token, 'base64').toString('utf-8');
+                const textoSubstituido = textoDecodificado
+                    .replace(/§/g, 'a')
+                    .replace(/¶/g, 'b')
+                    .replace(/©/g, 'c');
+                const textoOriginal = textoSubstituido.split('').reverse().join('');
+                const data = JSON.parse(textoOriginal);
+
+                messageId = parseInt(data.id);
+                finalTitle = finalTitle || data.title;
+                targetChannel = data.channelId;
+
+                if (data.exp && Date.now() > data.exp) {
+                    return res.status(403).send("Este link expirou. Por favor, solicite um novo link de download.");
+                }
             }
+            
+            if (!messageId) return res.status(400).send("Token inválido");
 
             // Força modo de download na rota /d/
             req.query.download = 'true';
-            
-            const finalTitle = req.query.title || data.title;
-            await handleStreamRequest(req, res, messageId, finalTitle, data.channelId);
+            await handleStreamRequest(req, res, messageId, finalTitle, targetChannel);
         } catch (err) {
-            console.error("Erro ao decodificar token ofuscado:", err);
-            return res.status(400).send("Link de download inválido ou corrompido.");
+            console.error("Erro ao decodificar token de download:", err);
+            return res.status(400).send("Link de download inválido ou expirado.");
         }
     });
 

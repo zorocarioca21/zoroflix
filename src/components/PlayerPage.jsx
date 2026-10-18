@@ -68,6 +68,26 @@ export default function PlayerPage() {
         localStorage.setItem('cinegeek_preferred_language', lang);
     };
 
+    // Solicita URL de download assinada criptograficamente pelo servidor (HMAC SHA-256 com IP e Expiração)
+    const requestSecureDownload = async (targetMsgId, finalTitle) => {
+        try {
+            const res = await fetch('/api/stream/generate-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId: targetMsgId, title: finalTitle })
+            });
+            const data = await res.json();
+            if (data && data.downloadUrl) {
+                setConfirmDownloadUrl(data.downloadUrl);
+            } else {
+                window.alert('Erro ao gerar link de download seguro.');
+            }
+        } catch (err) {
+            console.error('Erro ao solicitar download seguro:', err);
+            window.alert('Falha ao comunicar com o servidor de download.');
+        }
+    };
+
     const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
         if (canalId) return false;
         return !!(user && (user.role === 'admin' || user.role === 'vip'));
@@ -915,23 +935,7 @@ export default function PlayerPage() {
                                         }
                                         let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
-                                        if (targetStreamUrl) {
-                                            const sToken = targetStreamUrl.split('/s/')[1]?.split('.mp4')[0];
-                                            if (sToken) {
-                                                setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
-                                                return;
-                                            }
-                                        }
-
-
-                                        
-                                        const payload = JSON.stringify({ id: targetMsgId, title: finalTitle });
-                                        const textoInvertido = payload.split('').reverse().join('');
-                                        const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
-                                        let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
-                                        token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-                                        setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
+                                        requestSecureDownload(targetMsgId, finalTitle);
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -1085,24 +1089,9 @@ export default function PlayerPage() {
                                 }
                                 let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
-                                const dubObj = languageOptions[currentQuality].dub;
-                                if (dubObj && dubObj.stream_url) {
-                                    const sToken = dubObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
-                                    if (sToken) {
-                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
-                                        return;
-                                    }
-                                }
-
-
-                                
-                                const payload = JSON.stringify({ id: dubObj?.id || dubObj, title: finalTitle });
-                                const textoInvertido = payload.split('').reverse().join('');
-                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
-                                let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
-                                token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-                                setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
+                                const dubObj = languageOptions[currentQuality]?.dub;
+                                const dubMsgId = dubObj?.id || dubObj;
+                                requestSecureDownload(dubMsgId, finalTitle);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
@@ -1113,24 +1102,9 @@ export default function PlayerPage() {
                                 }
                                 let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
-                                const legObj = languageOptions[currentQuality].leg;
-                                if (legObj && legObj.stream_url) {
-                                    const sToken = legObj.stream_url.split('/s/')[1]?.split('.mp4')[0];
-                                    if (sToken) {
-                                        setConfirmDownloadUrl(`/api/stream/d/${sToken}?title=${encodeURIComponent(finalTitle)}`);
-                                        return;
-                                    }
-                                }
-
-
-                                
-                                const payload = JSON.stringify({ id: legObj?.id || legObj, title: finalTitle });
-                                const textoInvertido = payload.split('').reverse().join('');
-                                const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
-                                let token = btoa(unescape(encodeURIComponent(textoSubstituido)));
-                                token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-                                setConfirmDownloadUrl(`/api/stream/d/${token}?title=${encodeURIComponent(finalTitle)}`);
+                                const legObj = languageOptions[currentQuality]?.leg;
+                                const legMsgId = legObj?.id || legObj;
+                                requestSecureDownload(legMsgId, finalTitle);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
