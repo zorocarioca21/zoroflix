@@ -130,17 +130,35 @@ export default function embedRoutes(db) {
     // Rota pública para o iframe buscar o telegram_message_id no banco
     router.get('/search', async (req, res) => {
         try {
-            const { q } = req.query;
-            if (!q) return res.json({ items: [] });
+            const { q, tmdb_id, season, episode } = req.query;
+            if (!q && !tmdb_id) return res.json({ items: [] });
 
-            const query = `
-                SELECT id, title, telegram_message_id, status 
+            let query = `
+                SELECT id, title, telegram_message_id, status, tmdb_id, season_number, episode_number 
                 FROM sync_queue 
-                WHERE status = 'completed' AND title LIKE ?
-                LIMIT -1
+                WHERE status = 'completed'
             `;
-            const searchParam = `%${q}%`;
-            const items = await db.all(query, [searchParam]);
+            const params = [];
+
+            if (tmdb_id) {
+                query += ` AND tmdb_id = ?`;
+                params.push(tmdb_id);
+
+                if (season !== undefined && season !== null && season !== '') {
+                    query += ` AND season_number = ?`;
+                    params.push(parseInt(season, 10));
+                }
+                if (episode !== undefined && episode !== null && episode !== '') {
+                    query += ` AND episode_number = ?`;
+                    params.push(parseInt(episode, 10));
+                }
+            } else if (q) {
+                query += ` AND title LIKE ?`;
+                params.push(`%${q}%`);
+            }
+
+            query += ` ORDER BY priority DESC, id DESC LIMIT -1`;
+            const items = await db.all(query, params);
             
             // Injeta stream_url e remove o ID real para proteger contra extração via F12
             const secureItems = items.map(item => {

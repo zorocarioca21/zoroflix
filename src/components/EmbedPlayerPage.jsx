@@ -82,33 +82,49 @@ export default function EmbedPlayerPage() {
                 let releaseYear = tmdbData.release_date ? tmdbData.release_date.split('-')[0] : (tmdbData.first_air_date ? tmdbData.first_air_date.split('-')[0] : null);
                 let baseName = searchName ? searchName.split(':')[0] : null;
 
-                if (!searchName) {
+                if (!searchName && !rawId) {
                     setError(true);
                     setLoading(false);
                     return;
                 }
 
-                setTitle(searchName);
+                if (searchName) setTitle(searchName);
 
-                const res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchName)}`, {
+                // 1. Tentar busca exata por TMDB ID no Embed (+ Temporada e Episódio se for série)
+                let embedUrl = `/api/embed/search?tmdb_id=${rawId}`;
+                if (type === 'serie' && season && episode) {
+                    embedUrl += `&season=${season}&episode=${episode}`;
+                }
+
+                let res = await fetch(embedUrl, {
                     headers: { 'Content-Type': 'application/json' }
                 });
+                let data = res.ok ? await res.json() : null;
 
-                if (res.ok) {
-                    const data = await res.json();
+                // 2. Fallback: Se não encontrou por tmdb_id, busca pelo nome do título
+                if (!data?.items || data.items.length === 0) {
+                    if (searchName) {
+                        res = await fetch(`/api/embed/search?q=${encodeURIComponent(searchName)}`, {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        data = res.ok ? await res.json() : null;
+                    }
+                }
 
-                    let foundMsgId = null;
-                    let foundLangOpts = null;
+                if (data?.items?.length > 0) {
                     const evaluatedItems = [];
+                    const validItems = data.items.filter(i => {
+                        if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
 
-                    if (data?.items?.length > 0) {
-                        const validItems = data.items.filter(i => {
-                            if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
+                        // Se veio direto do tmdb_id exato, já é válido
+                        const isDirectTmdbMatch = i.tmdb_id && String(i.tmdb_id) === String(rawId);
+                        const isTitleMatch = isDirectTmdbMatch || checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
+                        let hasEp = true;
 
-                            const isTitleMatch = checkTitleMatch(i.title, searchName, originalName, baseName, releaseYear, season);
-                            let hasEp = true;
-
-                            if (type === 'serie' && season && episode) {
+                        if (type === 'serie' && season && episode) {
+                            if (isDirectTmdbMatch && i.season_number !== null && i.episode_number !== null) {
+                                hasEp = parseInt(i.season_number, 10) === parseInt(season, 10) && parseInt(i.episode_number, 10) === parseInt(episode, 10);
+                            } else {
                                 const seasonRegex = /\b(?:S|T)(?:EMPORADA\s*)?0?(\d{1,2})\b/i;
                                 const sMatch = i.title.match(seasonRegex);
                                 if (sMatch) {
@@ -130,19 +146,20 @@ export default function EmbedPlayerPage() {
                                     hasEp = patterns.some(p => upperTitle.includes(p.toUpperCase()));
                                 }
                             }
+                        }
 
-                            const isValid = isTitleMatch && hasEp;
+                        const isValid = isTitleMatch && hasEp;
 
-                            evaluatedItems.push({
-                                title: i.title,
-                                isMatch: isValid,
-                                reason: !isTitleMatch ? 'Title Match Failed' : (!hasEp ? 'Episode Match Failed' : 'Matched')
-                            });
-
-                            return isValid;
+                        evaluatedItems.push({
+                            title: i.title,
+                            isMatch: isValid,
+                            reason: !isTitleMatch ? 'Title Match Failed' : (!hasEp ? 'Episode Match Failed' : 'Matched')
                         });
 
-                        setDebugMatches(evaluatedItems);
+                        return isValid;
+                    });
+
+                    setDebugMatches(evaluatedItems);
 
                         const matches = getBestMatches(evaluatedItems, type === 'filme' ? releaseYear : null);
 
@@ -175,9 +192,6 @@ export default function EmbedPlayerPage() {
                     } else {
                         setError(true);
                     }
-                } else {
-                    setError(true);
-                }
             } catch (err) {
                 console.error("Erro carregando embed:", err);
                 setError(true);

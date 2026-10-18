@@ -343,8 +343,8 @@ export default function PlayerPage() {
                     const s = String(season).padStart(2, '0');
                     const e = String(episode).padStart(2, '0');
                     
-                    // 1. Tentar por TMDB ID + Temporada + Episódio (Mais exato)
-                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&season_number=${season}&episode_number=${episode}&limit=10`, { headers });
+                    // 1. Tentar por TMDB ID + Temporada + Episódio (Mais exato e reúne todas as versões)
+                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&season_number=${season}&episode_number=${episode}&limit=50`, { headers });
                     let dataTmdb = await resTmdb.json();
                     
                     if (dataTmdb?.items?.length > 0) {
@@ -458,8 +458,8 @@ export default function PlayerPage() {
                     }
                 } else {
                     // Filmes
-                    // 1. Tentar por TMDB ID + Filme
-                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&limit=10`, { headers });
+                    // 1. Tentar por TMDB ID + Filme (Traz todas as versões: IPTV, upload manual, etc.)
+                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&limit=50`, { headers });
                     let dataTmdb = await resTmdb.json();
                     
                     if (dataTmdb?.items?.length > 0) {
