@@ -46,7 +46,7 @@ export default function ApiLandingPage() {
                             <Link to="/docs" className="api-btn-primary">
                                 <Code size={20} /> Ver Documentação
                             </Link>
-                            <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="api-btn-secondary">
+                            <a href="https://t.me/cinegeekapi" target="_blank" rel="noreferrer" className="api-btn-secondary">
                                 Adquira sua Key
                             </a>
                         </div>

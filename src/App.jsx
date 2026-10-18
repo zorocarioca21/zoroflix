@@ -555,13 +555,30 @@ function Home({ onOpenDetails }) {
                       <X size={14} strokeWidth={2.5} />
                     </button>
 
-                    {item.poster_path
-                      ? (item.poster_path === '/cinegeek-icon.png'
-                          ? <img src={item.poster_path} alt={item.title} className="row-poster-img" style={{ objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
-                          : <img src={resolveImageUrl(item.poster_path, 'w300')} alt={item.title} className="row-poster-img" />
-                        )
-                      : <div className="row-poster-img" style={{ background: '#1a1a2e', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
-                    }
+                    {(() => {
+                      const isChannel = item.media_type === 'canal' || (item.poster_path && (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'));
+                      if (!item.poster_path) {
+                        return (
+                          <div className="row-poster-img" style={{ background: '#09120c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: '#aaa', padding: '0.5rem', textAlign: 'center' }}>
+                            {item.title}
+                          </div>
+                        );
+                      }
+                      if (isChannel) {
+                        return (
+                          <div style={{ width: '100%', height: '100%', background: '#09120c', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.8rem' }}>
+                            <img
+                              src={item.poster_path === '/cinegeek-icon.png' ? item.poster_path : resolveImageUrl(item.poster_path, 'w300')}
+                              alt={item.title}
+                              style={{ maxWidth: '85%', maxHeight: '80%', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <img src={resolveImageUrl(item.poster_path, 'w300')} alt={item.title} className="row-poster-img" />
+                      );
+                    })()}
                     {item.season && item.episode && (
                       <span style={{
                         position: 'absolute', bottom: '6px', left: '6px',

@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast, Layers } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange, currentVersion, onVersionChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, isLive, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange, currentVersion, onVersionChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -337,15 +337,20 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                         hasAudio: true,
                         hasVideo: true
                     }, {
-                        enableStashBuffer: false,
-                        liveBufferLatencyChasing: true,
-                        liveBufferLatencyMaxLatency: 3,
-                        liveBufferLatencyMinRemain: 1,
-                        stashInitialSize: 128
+                        enableStashBuffer: true,
+                        stashInitialSize: 512, // Dá uma folga de buffer para não travar
+                        liveBufferLatencyChasing: false, // DESLIGADO: evita que o player acelere o vídeo (1.5x/2x) tentando alcançar o live
+                        liveSync: true,
+                        autoCleanupSourceBuffer: true,
+                        autoCleanupMaxBackwardDuration: 30,
+                        autoCleanupMinBackwardDuration: 15
                     });
                     mpegtsRef.current.attachMediaElement(videoRef.current);
                     mpegtsRef.current.load();
                     mpegtsRef.current.play().catch(() => {});
+                    if (videoRef.current) {
+                        videoRef.current.playbackRate = 1.0;
+                    }
                 } else {
                     // Fallback para iOS (Player Nativo com link direto)
                     videoRef.current.src = srcUrl;
@@ -910,7 +915,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
             )}
 
             {/* Skip Backward Button */}
-            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
+            {!isLive && showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(-10); }} style={{
                     position: 'absolute', top: '50%', left: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -940,7 +945,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
             )}
 
             {/* Skip Forward Button */}
-            {showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
+            {!isLive && showControls && !videoError && !showResumePopup && !isLoadingEpisode && (
                 <div onClick={(e) => { e.stopPropagation(); skipTime(10); }} style={{
                     position: 'absolute', top: '50%', right: '15%', transform: 'translateY(-50%)',
                     zIndex: 2, cursor: 'pointer', background: 'transparent',
@@ -1045,17 +1050,19 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 transition: 'opacity 0.3s ease',
                 display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 5
             }}>
-                {/* Timeline */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ color: '#fff', fontSize: '0.85rem', width: '50px', textAlign: 'right' }}>{formatTime(currentTime)}</span>
-                    <input 
-                        type="range" 
-                        min={0} max={duration || 100} value={currentTime}
-                        onChange={handleProgress}
-                        style={{ flex: 1, accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
-                    />
-                    <span style={{ color: '#888', fontSize: '0.85rem', width: '50px' }}>{formatTime(duration)}</span>
-                </div>
+                {/* Timeline (Oculta se for Transmissão Ao Vivo) */}
+                {!isLive && duration > 0 && isFinite(duration) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{ color: '#fff', fontSize: '0.85rem', width: '50px', textAlign: 'right' }}>{formatTime(currentTime)}</span>
+                        <input 
+                            type="range" 
+                            min={0} max={duration || 100} value={currentTime}
+                            onChange={handleProgress}
+                            style={{ flex: 1, accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
+                        />
+                        <span style={{ color: '#888', fontSize: '0.85rem', width: '50px' }}>{formatTime(duration)}</span>
+                    </div>
+                )}
 
                 {/* Bottom Buttons */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1074,6 +1081,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                                 style={{ width: '80px', accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
                             />
                         </div>
+
+                        {/* Badge AO VIVO */}
+                        {isLive && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', borderRadius: '4px', background: 'rgba(255, 0, 50, 0.2)', border: '1px solid rgba(255, 0, 50, 0.4)' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff0033', display: 'inline-block', boxShadow: '0 0 6px #ff0033' }}></span>
+                                <span style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>AO VIVO</span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>

@@ -105,13 +105,24 @@ export default function UserListPage({ type = 'favorites' }) {
                             >
                                 <X size={14} strokeWidth={2.5} />
                             </button>
-                            {item.poster_path
-                                ? (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'
-                                    ? <img src={item.poster_path} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '1rem', background: '#1a1a2e' }} />
-                                    : <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  )
-                                : <div style={{ background: '#1a1a2e', width: '100%', height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>
-                            }
+                            {(() => {
+                                const isChannel = item.media_type === 'canal' || (item.poster_path && (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'));
+                                if (!item.poster_path) {
+                                    return <div style={{ background: '#09120c', width: '100%', height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>;
+                                }
+                                if (isChannel) {
+                                    return (
+                                        <div style={{ width: '100%', height: '100%', background: '#09120c', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.8rem' }}>
+                                            <img
+                                                src={item.poster_path}
+                                                alt={item.title}
+                                                style={{ maxWidth: '85%', maxHeight: '80%', objectFit: 'contain', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}
+                                            />
+                                        </div>
+                                    );
+                                }
+                                return <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                            })()}
                             {item.season && item.episode && (
                                 <span style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.8)', color: '#00e676', fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px', padding: '2px 5px', letterSpacing: '0.05em' }}>
                                     T{String(item.season).padStart(2,'0')}E{String(item.episode).padStart(2,'0')}

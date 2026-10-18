@@ -122,7 +122,7 @@ export default function EmbedDocsPage() {
                     </div>
 
                     <div style={{ marginTop: '2rem' }}>
-                        <a href="https://t.me/seu_contato" target="_blank" rel="noreferrer" className="docs-btn">
+                        <a href="https://t.me/cinegeekapi" target="_blank" rel="noreferrer" className="docs-btn">
                             <Send size={18} /> Adquirir Chave VIP
                         </a>
                     </div>

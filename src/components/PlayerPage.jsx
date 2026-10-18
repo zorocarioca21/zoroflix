@@ -806,6 +806,7 @@ export default function PlayerPage() {
                             title={title}
                             isVip={state?.isVip}
                             isAdmin={user?.role === 'admin'}
+                            isLive={Boolean(canalId)}
                             isLoadingEpisode={isCheckingTelegram}
                             languageOptions={languageOptions ? languageOptions[currentQuality] : null}
                             onLanguageChange={(id, type, stream) => handleSetMessageId(id, type, stream)}
