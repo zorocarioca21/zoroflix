@@ -114,14 +114,14 @@ export default function PlayerPage() {
             .toLowerCase();
     };
 
-    // Detecção da qualidade pelo nome
+    // Detecção da qualidade pelo nome (se não tiver especificação, vem por padrão SD)
     const detectLiveQuality = (name) => {
-        if (!name) return 'HD';
+        if (!name) return 'SD';
         if (/\b(4k|uhd)\b/i.test(name)) return '4K';
         if (/\b(fhd|1080p)\b/i.test(name)) return 'FHD';
         if (/\b(hd|720p)\b/i.test(name)) return 'HD';
         if (/\b(sd|480p|360p)\b/i.test(name)) return 'SD';
-        return 'HD';
+        return 'SD';
     };
 
     // Resolvendo as informações do Canal (Nome e Logo_url)
