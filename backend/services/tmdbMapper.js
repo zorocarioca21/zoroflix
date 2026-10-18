@@ -111,8 +111,15 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
             SELECT id, title
             FROM sync_queue
             WHERE status = 'completed'
-              AND (tmdb_id IS NULL OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours')))
-            ORDER BY tmdb_id IS NULL DESC, updated_at ASC
+              AND (
+                tmdb_id IS NULL 
+                OR (tmdb_id = 'NOT_FOUND' AND updated_at < datetime('now', '-24 hours'))
+                OR (media_type = 'tv' AND season_number IS NOT NULL AND episode_number IS NULL)
+              )
+            ORDER BY 
+              (media_type = 'tv' AND season_number IS NOT NULL AND episode_number IS NULL) DESC,
+              tmdb_id IS NULL DESC, 
+              updated_at ASC
             LIMIT ?
         `, [batchSize]);
 
