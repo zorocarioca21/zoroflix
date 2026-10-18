@@ -7,6 +7,7 @@ import ManualUploadPage from './ManualUploadPage';
 import AppUpdatePage from './AppUpdatePage';
 import AdminBotManager from './AdminBotManager';
 import AdminMangas from './AdminMangas';
+import AdminIptvLists from './AdminIptvLists';
 
 import './AdminPanel.css';
 
@@ -480,6 +481,9 @@ export default function AdminPanel() {
                             </button>
                             <button className={`admin-tab-btn accent-mangas ${activeTab === 'mangas' ? 'active' : ''}`} onClick={() => setActiveTab('mangas')}>
                                 <BookOpen size={16} /> Mangás
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'iptv-lists' ? 'active' : ''}`} onClick={() => setActiveTab('iptv-lists')}>
+                                <Tv size={16} /> Canais M3U
                             </button>
                         </div>
                     </div>
@@ -1121,6 +1125,12 @@ export default function AdminPanel() {
                 {activeTab === 'app-update' && (
                     <div className="admin-app-update-wrapper" style={{ margin: '0' }}>
                         <AppUpdatePage />
+                    </div>
+                )}
+                {/* ABA LISTAS M3U / CANAIS VIP */}
+                {activeTab === 'iptv-lists' && (
+                    <div className="admin-app-update-wrapper" style={{ margin: '0' }}>
+                        <AdminIptvLists token={token} />
                     </div>
                 )}
                 {activeTab === 'bot-manager' && (

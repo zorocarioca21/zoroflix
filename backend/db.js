@@ -426,6 +426,34 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Listas IPTV M3U cadastradas pelo Admin
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS iptv_lists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            vip_badge TEXT NOT NULL DEFAULT 'VIP',
+            channel_count INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Tabela de Canais IPTV
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS iptv_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id INTEGER,
+            name TEXT NOT NULL,
+            category TEXT DEFAULT 'Geral',
+            logo_url TEXT,
+            stream_url TEXT NOT NULL,
+            vip_badge TEXT NOT NULL DEFAULT 'VIP',
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (list_id) REFERENCES iptv_lists(id) ON DELETE CASCADE
+        )
+    `);
+
     // Tabela de Recuperação de Senha
     await db.exec(`
         CREATE TABLE IF NOT EXISTS password_resets (

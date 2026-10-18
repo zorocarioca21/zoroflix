@@ -34,6 +34,7 @@ import botManagerRoutes from './backend/routes/botManager.js';
 import appUpdatesRoutes from './backend/routes/appUpdates.js';
 import tmdbRoutes from './backend/routes/tmdb.js';
 import mangasRoutes from './backend/routes/mangas.js';
+import iptvChannelsRoutes from './backend/routes/iptvChannels.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
@@ -78,6 +79,9 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
 
     // Rotas de Mangás
     app.use('/api/mangas', mangasRoutes(db));
+
+    // Rotas de Canais IPTV (M3U VIP e VIP2)
+    app.use('/api/iptv', iptvChannelsRoutes(db));
 
     // Serve public APK downloads
     app.use('/downloads/app', express.static(path.join(__dirname, 'backend', 'uploads', 'app')));
@@ -161,8 +165,19 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
         let targetUrl = req.query.url;
         if (!targetUrl) return res.status(400).send('Missing url param');
         
-        // Converte URL relativa para absoluta local pro FFmpeg conseguir baixar
-        if (targetUrl.startsWith('/')) {
+        // Se targetUrl for apenas um número ou ID de canal do banco
+        if (/^\d+$/.test(targetUrl.trim())) {
+            const ch = await db.get(`SELECT stream_url FROM iptv_channels WHERE id = ?`, [targetUrl.trim()]);
+            if (ch && ch.stream_url) {
+                targetUrl = ch.stream_url;
+            }
+        } else if (targetUrl.startsWith('/api/iptv/stream/')) {
+            const chId = targetUrl.replace('/api/iptv/stream/', '');
+            const ch = await db.get(`SELECT stream_url FROM iptv_channels WHERE id = ?`, [chId]);
+            if (ch && ch.stream_url) {
+                targetUrl = ch.stream_url;
+            }
+        } else if (targetUrl.startsWith('/')) {
             targetUrl = `http://127.0.0.1:${PORT}${targetUrl}`;
         }
         

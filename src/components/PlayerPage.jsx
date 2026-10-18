@@ -646,6 +646,9 @@ export default function PlayerPage() {
     if (canalId) {
         if (state.isVip) {
             playerUrl = state.embed_url;
+            if (!streamUrl && state.embed_url) {
+                setStreamUrl(state.embed_url);
+            }
         } else {
             playerUrl = (state.embed_url || `https://superflixapi.beer/canal/${canalId}`) + '#noEpList';
         }
