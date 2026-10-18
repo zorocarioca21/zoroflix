@@ -59,7 +59,7 @@ export default function ApiLandingPage() {
                                 { label: 'ANIMES', count: stats.animes },
                                 { label: 'DORAMAS', count: stats.doramas },
                                 { label: 'EPISÓDIOS', count: stats.episodes },
-                                { label: 'CANAIS VIP', count: stats.channels || 0 }
+                                { label: 'CANAIS', count: stats.channels || 0 }
                             ].map((stat, i) => (
                                 <div key={i} className="api-stat-card">
                                     <div className="api-stat-number">{stat.count.toLocaleString('pt-BR')}</div>
