@@ -219,20 +219,14 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
                 'Cache-Control': 'no-cache'
             });
 
-            // FFmpeg vai regenerar a linha do tempo (+genpts+igndts) e forçar o envio de pacotes logo
+            // FFmpeg com User-Agent VLC (essencial para servidores de IPTV não bloquearem)
             const ffmpegArgs = [
                 '-hide_banner',
                 '-loglevel', 'error',
-                '-reconnect', '1',
-                '-reconnect_at_eof', '1',
-                '-reconnect_streamed', '1',
-                '-reconnect_delay_max', '2',
-                '-headers', 'Referer: https://cinegeek.shop\r\n',
                 '-user_agent', 'VLC/3.0.9 LibVLC/3.0.9',
+                '-headers', 'Referer: https://cinegeek.shop\r\n',
                 '-i', targetUrl,
                 '-c', 'copy',
-                '-fflags', '+genpts+igndts+flush_packets',
-                '-muxdelay', '0.1',
                 '-f', 'mpegts',
                 'pipe:1'
             ];

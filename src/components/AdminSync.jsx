@@ -205,7 +205,9 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
         if (loading) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/sync/queue?filter=${filter}&search=${encodeURIComponent(searchQuery)}&sortSize=${sortSize}&page=${pageNum}&limit=30`);
+            const token = localStorage.getItem('cinegeek_token');
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const res = await fetch(`/api/sync/queue?filter=${filter}&search=${encodeURIComponent(searchQuery)}&sortSize=${sortSize}&page=${pageNum}&limit=30`, { headers });
             if (res.ok) {
                 const data = await res.json();
                 if (pageNum === 1) setItems(data.items || []);
@@ -354,7 +356,9 @@ export default function AdminSync() {
     const fetchQueue = async (currentFilter = filterRef.current, currentSearch = searchRef.current, currentSort = sortRef.current) => {
         const currentFetchId = ++fetchCounterRef.current;
         try {
-            const res = await fetch(`/api/sync/queue?filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}&sortSize=${currentSort}`);
+            const token = localStorage.getItem('cinegeek_token');
+            const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const res = await fetch(`/api/sync/queue?filter=${currentFilter}&search=${encodeURIComponent(currentSearch)}&sortSize=${currentSort}`, { headers });
             const data = await res.json();
             
             // Ignora a resposta se um fetch mais recente já foi disparado

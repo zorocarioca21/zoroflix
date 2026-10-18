@@ -34,8 +34,10 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     const [isCastAvailable, setIsCastAvailable] = useState(false);
     const [isAirPlayAvailable, setIsAirPlayAvailable] = useState(false);
     const prevMessageId = useRef(messageId);
+    const prevSrcUrl = useRef(srcUrl);
     const prevEpisode = useRef(episode);
     const prevContentId = useRef(contentId);
+    const savedSwitchTimeRef = useRef(null);
 
     // Debug State for Admins
     const [debugLogs, setDebugLogs] = useState([]);
@@ -228,35 +230,26 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         }
     };
 
-    // Seamlessly handle messageId changes (language swap or next episode)
+    // Seamlessly handle messageId / srcUrl changes (mudança de versão, qualidade ou idioma)
     useEffect(() => {
-        if (prevMessageId.current !== messageId && videoRef.current) {
+        const isMsgChanged = prevMessageId.current !== messageId;
+        const isSrcChanged = prevSrcUrl.current !== srcUrl;
+
+        if ((isMsgChanged || isSrcChanged) && videoRef.current) {
             const isSameEpisode = prevEpisode.current === episode && prevContentId.current === contentId;
-            const timeToRestore = isSameEpisode ? videoRef.current.currentTime : 0;
-            const wasPlaying = !videoRef.current.paused;
-            
+            // Salva o tempo atual se ainda estivermos no mesmo episódio/filme
+            if (isSameEpisode && videoRef.current.currentTime > 0) {
+                savedSwitchTimeRef.current = videoRef.current.currentTime;
+            } else if (!isSameEpisode) {
+                savedSwitchTimeRef.current = null;
+            }
+
             prevMessageId.current = messageId;
+            prevSrcUrl.current = srcUrl;
             prevEpisode.current = episode;
             prevContentId.current = contentId;
-            
-            if (!srcUrl) {
-                videoRef.current.load();
-                
-                const handleLoadedData = () => {
-                    if (isSameEpisode) {
-                        videoRef.current.currentTime = timeToRestore;
-                    }
-                    
-                    if (wasPlaying || !isSameEpisode) {
-                        videoRef.current.play().catch(() => {});
-                    }
-                    videoRef.current.removeEventListener('loadeddata', handleLoadedData);
-                };
-                
-                videoRef.current.addEventListener('loadeddata', handleLoadedData);
-            }
         }
-    }, [messageId, episode, contentId, srcUrl]);
+    }, [messageId, srcUrl, episode, contentId]);
 
     // HLS.js Integration for Live Streams (.m3u8) & Telegram MP4
     useEffect(() => {
@@ -312,18 +305,27 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
 
                 } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
                     videoRef.current.src = srcUrl;
-                    videoRef.current.addEventListener('loadedmetadata', () => {
+                    const onMeta = () => {
+                        if (savedSwitchTimeRef.current !== null) {
+                            videoRef.current.currentTime = savedSwitchTimeRef.current;
+                            savedSwitchTimeRef.current = null;
+                        }
                         videoRef.current.play().catch(() => {});
-                    });
+                        videoRef.current.removeEventListener('loadedmetadata', onMeta);
+                    };
+                    videoRef.current.addEventListener('loadedmetadata', onMeta);
                 }
             } else if (srcUrl.includes('.mp4')) {
-                // Como a API (stream.js) agora lida perfeitamente com Range requests (e arrumamos o Referer),
-                // o player nativo do navegador consegue pular pro final do arquivo, ler o moov atom,
-                // descobrir a duração (Duration) e permitir avançar/voltar no tempo sem depender de proxy!
                 videoRef.current.src = srcUrl;
-                videoRef.current.addEventListener('loadedmetadata', () => {
+                const onMeta = () => {
+                    if (savedSwitchTimeRef.current !== null) {
+                        videoRef.current.currentTime = savedSwitchTimeRef.current;
+                        savedSwitchTimeRef.current = null;
+                    }
                     videoRef.current.play().catch(() => {});
-                });
+                    videoRef.current.removeEventListener('loadedmetadata', onMeta);
+                };
+                videoRef.current.addEventListener('loadedmetadata', onMeta);
             } else {
                 // MPEG-TS (Stream direto do provedor de IPTV/Live) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
@@ -347,16 +349,30 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 } else {
                     // Fallback para iOS (Player Nativo com link direto)
                     videoRef.current.src = srcUrl;
-                    videoRef.current.addEventListener('loadedmetadata', () => {
+                    const onMeta = () => {
+                        if (savedSwitchTimeRef.current !== null) {
+                            videoRef.current.currentTime = savedSwitchTimeRef.current;
+                            savedSwitchTimeRef.current = null;
+                        }
                         videoRef.current.play().catch(() => {});
-                    });
+                        videoRef.current.removeEventListener('loadedmetadata', onMeta);
+                    };
+                    videoRef.current.addEventListener('loadedmetadata', onMeta);
                 }
             }
         } else if (messageId) {
             // Telegram Video Injection via JS (Evita bug do Safari com a tag <source>)
             videoRef.current.src = `/api/stream/telegram/${messageId}`;
             videoRef.current.load();
-            videoRef.current.play().catch(() => {});
+            const onMeta = () => {
+                if (savedSwitchTimeRef.current !== null) {
+                    videoRef.current.currentTime = savedSwitchTimeRef.current;
+                    savedSwitchTimeRef.current = null;
+                }
+                videoRef.current.play().catch(() => {});
+                videoRef.current.removeEventListener('loadedmetadata', onMeta);
+            };
+            videoRef.current.addEventListener('loadedmetadata', onMeta);
         }
 
         return () => {

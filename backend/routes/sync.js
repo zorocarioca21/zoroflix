@@ -708,7 +708,8 @@ export default function syncRoutes(db, io) {
                 const authHeader = req.headers.authorization;
                 if (authHeader && authHeader.startsWith('Bearer ')) {
                     const tokenStr = authHeader.split(' ')[1];
-                    const decoded = jwt.verify(tokenStr, process.env.JWT_SECRET);
+                    const secret = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
+                    const decoded = jwt.verify(tokenStr, secret);
                     if (decoded) {
                         if (decoded.role === 'admin') isAdmin = true;
                         clientKey = `user_${decoded.id}`;
@@ -716,14 +717,15 @@ export default function syncRoutes(db, io) {
                 }
             } catch (e) { }
 
-            // Rate Limit: máximo 5 buscas/resoluções de conteúdo a cada 30 segundos
-            // Não bloqueia o admin no painel de controle
-            if (!isAdmin) {
+            // Rate Limit: protege apenas consultas de player de usuários não-admin
+            // NÃO bloqueia navegação do painel admin (quando vem página, sort, filtros do painel ou usuário admin)
+            const isDashboardQuery = req.query.page || req.query.sortSize || req.query.filter;
+            if (!isAdmin && !isDashboardQuery) {
                 const now = Date.now();
                 const timestamps = contentRateLimitMap.get(clientKey) || [];
                 const recent = timestamps.filter(t => now - t < 30000);
 
-                if (recent.length >= 5) {
+                if (recent.length >= 10) {
                     return res.status(429).json({
                         error: 'rate_limit',
                         message: 'Muitas requisições. Aguarde alguns segundos para acessar outro conteúdo.'

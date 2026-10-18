@@ -102,6 +102,37 @@ export default function PlayerPage() {
     useEffect(() => {
         if (!canalId) return;
 
+        // Se for canal VIP do Banco de Dados (vip-db-...)
+        if (String(canalId).startsWith('vip-db-')) {
+            const dbId = String(canalId).replace('vip-db-', '');
+            const channelStream = `/api/stream/proxy?url=${encodeURIComponent(dbId)}`;
+            setStreamUrl(channelStream);
+
+            fetch('/api/iptv/all')
+                .then(r => r.json())
+                .then(d => {
+                    const found = d.channels?.find(c => String(c.id) === String(canalId) || String(c.db_id) === dbId);
+                    if (found) {
+                        setResolvedChannel({
+                            name: found.name,
+                            logo_url: found.logo_url || '/cinegeek-icon.png'
+                        });
+                    } else {
+                        setResolvedChannel({
+                            name: state.title || `Canal VIP`,
+                            logo_url: '/cinegeek-icon.png'
+                        });
+                    }
+                })
+                .catch(() => {
+                    setResolvedChannel({
+                        name: state.title || `Canal VIP`,
+                        logo_url: '/cinegeek-icon.png'
+                    });
+                });
+            return;
+        }
+
         // Se for canal customizado (Esportes rde-...)
         if (String(canalId).startsWith('rde-')) {
             setResolvedChannel({
@@ -670,10 +701,12 @@ export default function PlayerPage() {
         : (state.title || (resolvedMediaName ? (season && episode ? `${resolvedMediaName} - T${season} E${episode}` : resolvedMediaName) : 'Vídeo'));
 
     if (canalId) {
-        if (state.isVip) {
-            playerUrl = state.embed_url;
-            if (!streamUrl && state.embed_url) {
-                setStreamUrl(state.embed_url);
+        if (state.isVip || String(canalId).startsWith('vip-db-')) {
+            const dbId = String(canalId).replace('vip-db-', '');
+            const vipStream = state.embed_url || `/api/stream/proxy?url=${encodeURIComponent(dbId)}`;
+            playerUrl = vipStream;
+            if (!streamUrl) {
+                setStreamUrl(vipStream);
             }
         } else {
             playerUrl = (state.embed_url || `https://superflixapi.beer/canal/${canalId}`) + '#noEpList';
