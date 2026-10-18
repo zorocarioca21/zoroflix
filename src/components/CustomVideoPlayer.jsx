@@ -641,6 +641,18 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         }
     };
 
+    const [switchLoadingMessage, setSwitchLoadingMessage] = useState(null);
+    const switchTimeoutRef = useRef(null);
+
+    const triggerSwitchLoading = (msg) => {
+        if (switchTimeoutRef.current) clearTimeout(switchTimeoutRef.current);
+        setSwitchLoadingMessage(msg);
+        // Fallback de segurança para esconder o aviso caso o evento de playing/loaded não dispare
+        switchTimeoutRef.current = setTimeout(() => {
+            setSwitchLoadingMessage(null);
+        }, 5000);
+    };
+
     const handleLanguageSelect = (e, id, type) => {
         e.stopPropagation();
         setShowLanguageMenu(false);
@@ -657,6 +669,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         setShowLanguageMenu(false);
         setShowVersionMenu(false);
         if (onQualityChange && newQuality !== currentQuality) {
+            triggerSwitchLoading(`Carregando qualidade ${newQuality}...`);
             onQualityChange(newQuality);
         }
     };
@@ -667,6 +680,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         setShowQualityMenu(false);
         setShowLanguageMenu(false);
         if (onVersionChange) {
+            const vLabel = versionItem?.displayIndex ? `V${versionItem.displayIndex}` : 'nova versão';
+            triggerSwitchLoading(`Carregando ${vLabel}...`);
             onVersionChange(versionItem);
         }
     };
@@ -756,16 +771,27 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 preload="auto"
                 controlsList="nodownload"
                 onContextMenu={(e) => e.preventDefault()}
-                onPlay={() => setIsPlaying(true)}
+                onPlay={() => {
+                    setIsPlaying(true);
+                    setSwitchLoadingMessage(null);
+                }}
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+                onLoadedData={() => {
+                    // Se o buffer do novo vídeo já estiver pronto, tira a mensagem de troca
+                    setSwitchLoadingMessage(null);
+                }}
                 onWaiting={() => setIsBuffering(true)}
-                onPlaying={() => setIsBuffering(false)}
+                onPlaying={() => {
+                    setIsBuffering(false);
+                    setSwitchLoadingMessage(null);
+                }}
                 onError={(e) => {
                     const err = e.target.error;
                     if (err && err.code === 4) {
                         setVideoError(true);
+                        setSwitchLoadingMessage(null);
                     }
                 }}
             >
@@ -776,6 +802,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 onClick={handleVideoClick} 
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, cursor: showControls ? 'pointer' : 'none', WebkitTapHighlightColor: 'transparent' }} 
             />
+
+            {/* Switch Quality / Version Loading Overlay */}
+            {switchLoadingMessage && !isLoadingEpisode && !videoError && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', zIndex: 25, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', backdropFilter: 'blur(6px)', pointerEvents: 'none' }}>
+                    <Loader size={48} className="spin-anim" style={{ color: '#00ff88', marginBottom: '1rem' }} />
+                    <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '1.2rem', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{switchLoadingMessage}</span>
+                </div>
+            )}
 
             {/* Error Message */}
             {videoError && !isLoadingEpisode && !isVip && (
