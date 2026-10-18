@@ -69,12 +69,16 @@ export default function PlayerPage() {
     };
 
     // Solicita URL de download assinada criptograficamente pelo servidor (HMAC SHA-256 com IP e Expiração)
-    const requestSecureDownload = async (targetMsgId, finalTitle) => {
+    const requestSecureDownload = async (targetMsgId, finalTitle, targetStream) => {
         try {
             const res = await fetch('/api/stream/generate-download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messageId: targetMsgId, title: finalTitle })
+                body: JSON.stringify({ 
+                    messageId: targetMsgId, 
+                    title: finalTitle,
+                    streamUrl: targetStream || streamUrl 
+                })
             });
             const data = await res.json();
             if (data && data.downloadUrl) {
@@ -935,7 +939,7 @@ export default function PlayerPage() {
                                         }
                                         let finalTitle = `www.cinegeek.shop - ${mediaName}`;
 
-                                        requestSecureDownload(targetMsgId, finalTitle);
+                                        requestSecureDownload(targetMsgId, finalTitle, targetStreamUrl);
                                     }} 
                                     style={{ color: '#00ff88', borderColor: '#00ff88' }}
                                 >
@@ -1091,7 +1095,7 @@ export default function PlayerPage() {
 
                                 const dubObj = languageOptions[currentQuality]?.dub;
                                 const dubMsgId = dubObj?.id || dubObj;
-                                requestSecureDownload(dubMsgId, finalTitle);
+                                requestSecureDownload(dubMsgId, finalTitle, dubObj?.stream_url);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
                             
                             <button onClick={() => {
@@ -1104,7 +1108,7 @@ export default function PlayerPage() {
 
                                 const legObj = languageOptions[currentQuality]?.leg;
                                 const legMsgId = legObj?.id || legObj;
-                                requestSecureDownload(legMsgId, finalTitle);
+                                requestSecureDownload(legMsgId, finalTitle, legObj?.stream_url);
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>

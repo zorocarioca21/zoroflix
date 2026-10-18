@@ -12,11 +12,31 @@ export default function streamRoutes(db) {
     const router = express.Router();
 
     // POST /api/stream/generate-download
-    // Gera token seguro e assinado criptograficamente com HMAC SHA-256 e validade de 2 horas
+    // Gera token seguro e assinado criptograficamente com HMAC SHA-256 e validade de 5 minutos
     router.post('/generate-download', (req, res) => {
         try {
-            const { messageId, title, channelId: targetChannelId } = req.body;
-            const parsedMsgId = parseInt(messageId);
+            let { messageId, streamUrl, title, channelId: targetChannelId } = req.body;
+            let parsedMsgId = parseInt(messageId);
+
+            // Se messageId não veio direto (comum para usuários não-admins), extrai do streamUrl
+            if (!parsedMsgId && streamUrl) {
+                try {
+                    let sToken = streamUrl.split('/s/')[1]?.split('.')[0] || streamUrl;
+                    sToken = sToken.replace(/-/g, '+').replace(/_/g, '/');
+                    while (sToken.length % 4) sToken += '=';
+                    const textoDecodificado = Buffer.from(sToken, 'base64').toString('utf-8');
+                    const textoSubstituido = textoDecodificado.replace(/§/g, 'a').replace(/¶/g, 'b').replace(/©/g, 'c');
+                    const textoOriginal = textoSubstituido.split('').reverse().join('');
+                    const streamData = JSON.parse(textoOriginal);
+                    parsedMsgId = parseInt(streamData.id);
+                    if (!targetChannelId && streamData.channelId) {
+                        targetChannelId = streamData.channelId;
+                    }
+                } catch (e) {
+                    console.error('Erro ao extrair messageId de streamUrl:', e);
+                }
+            }
+
             if (!parsedMsgId) {
                 return res.status(400).json({ error: 'Message ID inválido' });
             }

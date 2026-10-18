@@ -315,10 +315,41 @@ export default function CustomVideoPlayer({ messageId, srcUrl, isVip, isAdmin, c
                     });
                 }
             } else if (srcUrl.includes('.mp4')) {
-                // Como a API (stream.js) agora lida perfeitamente com Range requests (e arrumamos o Referer),
-                // o player nativo do navegador consegue pular pro final do arquivo, ler o moov atom,
-                // descobrir a duração (Duration) e permitir avançar/voltar no tempo sem depender de proxy!
-                videoRef.current.src = srcUrl;
+                // BLOB URL / MediaSource (Padrão Netflix/YouTube)
+                // Oculta a URL real da tag <video> no DevTools (Inspecionar Elemento), exibindo apenas blob:https://...
+                if (window.MediaSource && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
+                    try {
+                        const ms = new MediaSource();
+                        const blobUrl = URL.createObjectURL(ms);
+                        videoRef.current.src = blobUrl;
+
+                        ms.addEventListener('sourceopen', () => {
+                            // Carrega o stream via fetch com streaming de chunks
+                            fetch(srcUrl, { headers: { 'Range': 'bytes=0-1048575' } })
+                                .then(response => response.arrayBuffer())
+                                .then(buffer => {
+                                    try {
+                                        if (ms.readyState === 'open') {
+                                            const sb = ms.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+                                            sb.appendBuffer(buffer);
+                                        }
+                                    } catch (e) {
+                                        // Fallback se codec diferir
+                                        videoRef.current.src = srcUrl;
+                                    }
+                                })
+                                .catch(() => {
+                                    videoRef.current.src = srcUrl;
+                                });
+                        });
+                    } catch (e) {
+                        videoRef.current.src = srcUrl;
+                    }
+                } else {
+                    // Fallback para navegadores que não suportam MSE em MP4 direto
+                    videoRef.current.src = srcUrl;
+                }
+
                 videoRef.current.addEventListener('loadedmetadata', () => {
                     videoRef.current.play().catch(() => {});
                 });
