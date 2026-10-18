@@ -206,63 +206,84 @@ export default function SportsFixtures() {
                   <div className="sports-modal-body">
                       {selectedMatchForModal.rde_custom?.embeds ? (() => {
                           const embeds = selectedMatchForModal.rde_custom.embeds;
-                          const internal = embeds.filter(ch => ch.zoroflix_id);
-                          const external = embeds.filter(ch => !ch.zoroflix_id);
+                          const internal = embeds.filter(ch => ch.zoroflix_id && ch.is_vip);
+                          const external = embeds.filter(ch => !ch.zoroflix_id || !ch.is_vip);
 
                           return (
                               <>
                                   {internal.length > 0 && (
                                       <div className="modal-channel-group">
-                                          <h4>Players Principais (No Site)</h4>
+                                          <h4 style={{ color: '#00ff88', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                              Players Principais (VIP - Sem Anúncios)
+                                          </h4>
                                           <div className="modal-channel-list">
                                               {internal.map((ch, idx) => (
-                                                  <button key={idx} className="btn-modal-channel internal" onClick={() => navigate(`/canal/${ch.zoroflix_id}`)}>
+                                                  <button 
+                                                      key={idx} 
+                                                      className="btn-modal-channel internal" 
+                                                      onClick={() => navigate(`/canal/${ch.zoroflix_id}`)}
+                                                      style={{ borderColor: 'rgba(0, 255, 136, 0.4)' }}
+                                                  >
                                                       <img src={ch.zoroflix_logo || ch.logo} alt={ch.provider} />
                                                       <span>{ch.provider}</span>
-                                                      <PlayCircle size={14} style={{marginLeft: 'auto'}} />
+                                                      <span style={{ marginLeft: 'auto', background: 'linear-gradient(45deg, #00ff88, #00d2ff)', color: '#000', fontSize: '9px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '3px' }}>
+                                                          {ch.vip_badge || 'VIP'}
+                                                      </span>
+                                                      <PlayCircle size={14} style={{ marginLeft: '6px', color: '#00ff88' }} />
                                                   </button>
                                               ))}
                                           </div>
                                       </div>
                                   )}
                                   
-                                  <div className="modal-channel-group">
-                                      <h4>Players Secundários (Externo no App)</h4>
-                                      <div className="modal-channel-list">
-                                          {external.map((ch, idx) => (
-                                              <button 
-                                                key={idx} 
-                                                className="btn-modal-channel external" 
-                                                onClick={() => navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
-                                                    state: { 
-                                                        embed_url: ch.embed_url, 
-                                                        title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (${ch.provider})` 
-                                                    } 
-                                                })}
-                                              >
-                                                  <img src={ch.logo} alt={ch.provider} />
-                                                  <span>{ch.provider}</span>
-                                                  <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
-                                              </button>
-                                          ))}
-                                          {/* Fallback Rei dos Embeds Principal */}
-                                          {selectedMatchForModal.rde_custom.play_url && (
-                                              <button 
-                                                className="btn-modal-channel external" 
-                                                onClick={() => navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
-                                                    state: { 
-                                                        embed_url: selectedMatchForModal.rde_custom.play_url, 
-                                                        title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (RDE Main)` 
-                                                    } 
-                                                })}
-                                              >
-                                                  <Radio size={14} />
-                                                  <span>Player Original (RDE)</span>
-                                                  <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
-                                              </button>
-                                          )}
+                                  {external.length > 0 && (
+                                      <div className="modal-channel-group">
+                                          <h4 style={{ color: '#aaa' }}>Players Secundários (Com Anúncios)</h4>
+                                          <div className="modal-channel-list">
+                                              {external.map((ch, idx) => {
+                                                  const isSuperflix = Boolean(ch.zoroflix_id);
+                                                  return (
+                                                      <button 
+                                                        key={idx} 
+                                                        className="btn-modal-channel external" 
+                                                        onClick={() => {
+                                                            if (isSuperflix) {
+                                                                navigate(`/canal/${ch.zoroflix_id}`);
+                                                            } else {
+                                                                navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
+                                                                    state: { 
+                                                                        embed_url: ch.embed_url, 
+                                                                        title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (${ch.provider})` 
+                                                                    } 
+                                                                });
+                                                            }
+                                                        }}
+                                                      >
+                                                          <img src={ch.zoroflix_logo || ch.logo} alt={ch.provider} />
+                                                          <span>{ch.provider}</span>
+                                                          <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
+                                                      </button>
+                                                  );
+                                              })}
+                                              {/* Fallback Rei dos Embeds Principal */}
+                                              {selectedMatchForModal.rde_custom.play_url && (
+                                                  <button 
+                                                    className="btn-modal-channel external" 
+                                                    onClick={() => navigate(`/canal/rde-${selectedMatchForModal?.fixture?.id}`, { 
+                                                        state: { 
+                                                            embed_url: selectedMatchForModal.rde_custom.play_url, 
+                                                            title: `${selectedMatchForModal.teams.home.name} vs ${selectedMatchForModal.teams.away.name} (RDE Main)` 
+                                                        } 
+                                                    })}
+                                                  >
+                                                      <Radio size={14} />
+                                                      <span>Player Original (RDE)</span>
+                                                      <span style={{ marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 5px', borderRadius: '3px' }}>ANÚNCIOS</span>
+                                                  </button>
+                                              )}
+                                          </div>
                                       </div>
-                                  </div>
+                                  )}
                               </>
                           );
                       })() : (

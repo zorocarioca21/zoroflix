@@ -114,6 +114,21 @@ export default function PlayerPage() {
             .toLowerCase();
     };
 
+    // Limpa o nome do canal para visualização limpa e premium
+    const cleanDisplayName = (raw) => {
+        if (!raw) return '';
+        let name = raw
+            .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+            .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+            .replace(/\s*\(.*?cdn.*?\)/gi, '')
+            .replace(/\s*\(band.*?\)/gi, '')
+            .replace(/\s*\(globo.*?\)/gi, '')
+            .replace(/\s*\[.*?\]/gi, '')
+            .replace(/\s*\)+/g, '')
+            .trim();
+        return name || raw;
+    };
+
     // Detecção da qualidade pelo nome (se não tiver especificação, vem por padrão SD)
     const detectLiveQuality = (name) => {
         if (!name) return 'SD';
@@ -155,11 +170,12 @@ export default function PlayerPage() {
                             const q = detectLiveQuality(c.name);
                             // Extrai detalhes do parênteses se houver (ex: Opção 01, Band SP, etc)
                             const parenMatch = c.name.match(/\((.*?)\)/);
-                            const optText = parenMatch ? parenMatch[1] : `Opção ${idx + 1}`;
+                            const optDetails = parenMatch ? parenMatch[1].trim() : `Opção ${idx + 1}`;
+                            const cleanName = cleanDisplayName(c.name);
                             return {
                                 ...c,
                                 detectedQuality: q,
-                                displayOptionName: `${c.name} • ${c.vip_badge || 'VIP'}`
+                                displayOptionName: `${cleanName} (${optDetails})`
                             };
                         });
                         setLiveChannelVariants(withDetails);
@@ -252,9 +268,9 @@ export default function PlayerPage() {
     useEffect(() => {
         if (canalId) {
             if (resolvedChannel) {
-                document.title = `${resolvedChannel.name} - CineGeek`;
+                document.title = `${cleanDisplayName(resolvedChannel.name)} - CineGeek`;
             } else if (state.title) {
-                document.title = `${state.title} - CineGeek`;
+                document.title = `${cleanDisplayName(state.title)} - CineGeek`;
             }
         } else if (state.title) {
             document.title = `${state.title} - CineGeek`;
@@ -743,7 +759,7 @@ export default function PlayerPage() {
     let playerUrl = '';
     const resolvedMediaName = seriesDetail?.name || seriesDetail?.title || (rawId ? rawId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : null);
     let title = canalId
-        ? (resolvedChannel?.name || state.title || 'Canal Ao Vivo')
+        ? (cleanDisplayName(resolvedChannel?.name || state.title || 'Canal Ao Vivo'))
         : (state.title || (resolvedMediaName ? (season && episode ? `${resolvedMediaName} - T${season} E${episode}` : resolvedMediaName) : 'Vídeo'));
 
     if (canalId) {

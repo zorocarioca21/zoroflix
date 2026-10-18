@@ -257,12 +257,26 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         
         // Limpa players anteriores
         if (hlsRef.current) {
-            hlsRef.current.destroy();
+            try {
+                hlsRef.current.destroy();
+            } catch (e) {}
             hlsRef.current = null;
         }
         if (mpegtsRef.current) {
-            mpegtsRef.current.destroy();
+            try {
+                mpegtsRef.current.pause();
+                mpegtsRef.current.unload();
+                mpegtsRef.current.detachMediaElement();
+                mpegtsRef.current.destroy();
+            } catch (e) {}
             mpegtsRef.current = null;
+        }
+        if (videoRef.current) {
+            try {
+                videoRef.current.pause();
+                videoRef.current.removeAttribute('src');
+                videoRef.current.load();
+            } catch (e) {}
         }
 
         if (srcUrl) {
@@ -302,7 +316,6 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                             }
                         }
                     });
-
                 } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
                     videoRef.current.src = srcUrl;
                     const onMeta = () => {
@@ -329,7 +342,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
             } else {
                 // MPEG-TS (Stream direto do provedor de IPTV/Live) via mpegts.js e Proxy do Backend
                 if (mpegts.getFeatureList().mseLivePlayback) {
-                    const proxyUrl = `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
+                    const proxyUrl = srcUrl.startsWith('/api/stream/proxy')
+                        ? srcUrl 
+                        : `/api/stream/proxy?url=${encodeURIComponent(srcUrl)}`;
                     mpegtsRef.current = mpegts.createPlayer({
                         type: 'mse',
                         isLive: true,
@@ -382,11 +397,18 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
 
         return () => {
             if (hlsRef.current) {
-                hlsRef.current.destroy();
+                try {
+                    hlsRef.current.destroy();
+                } catch (e) {}
                 hlsRef.current = null;
             }
             if (mpegtsRef.current) {
-                mpegtsRef.current.destroy();
+                try {
+                    mpegtsRef.current.pause();
+                    mpegtsRef.current.unload();
+                    mpegtsRef.current.detachMediaElement();
+                    mpegtsRef.current.destroy();
+                } catch (e) {}
                 mpegtsRef.current = null;
             }
         };
@@ -1152,7 +1174,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                             >
                                 <Settings size={22} color={showQualityMenu ? '#00ff88' : '#fff'} />
                                 <span style={{ color: showQualityMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                    {currentQuality || 'HD'}
+                                    {liveOptions ? (liveOptions.currentQuality || 'SD') : (currentQuality || 'HD')}
                                 </span>
                             </button>
                             

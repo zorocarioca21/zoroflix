@@ -65,7 +65,7 @@ async function fetchInternalChannels() {
     }
 }
 
-export default function sportsRoutes() {
+export default function sportsRoutes(db) {
 
     router.get('/fixtures', async (req, res) => {
         const now = Date.now();
@@ -81,11 +81,21 @@ export default function sportsRoutes() {
         try {
             console.log(`Buscando jogos e canais para Smart Linking...`);
             
-            // 1. Busca Canais Internos (se não tiver em cache ou se expirou)
+            // 1. Busca Canais Internos (Superflix)
             let internalChannels = sportsCache.channels;
             if (!internalChannels || (now - sportsCache.lastUpdate > CACHE_DURATION * 4)) {
                 internalChannels = await fetchInternalChannels();
                 sportsCache.channels = internalChannels;
+            }
+
+            // 1.1 Busca Canais VIP do Banco de Dados
+            let vipChannels = [];
+            if (db) {
+                try {
+                    vipChannels = await db.all(`SELECT id, name, logo_url, vip_badge FROM iptv_channels WHERE active = 1`);
+                } catch (dbErr) {
+                    console.error("Erro ao buscar canais VIP para esportes:", dbErr.message);
+                }
             }
 
             // 2. Busca Eventos (Primary: Superflix / Secondary: RDE)
@@ -126,16 +136,42 @@ export default function sportsRoutes() {
                 const updatedEmbeds = (event.embeds || []).map(embed => {
                     const normProvider = normalizeName(embed.provider);
                     
-                    // Tenta encontrar o canal correspondente no Zoroflix
-                    const match = internalChannels.find(ch => {
+                    // Prioridade 1: Match com canal VIP do Banco de Dados
+                    const vipMatch = vipChannels.find(ch => {
+                        const normVip = normalizeName(ch.name);
+                        return normVip.includes(normProvider) || normProvider.includes(normVip);
+                    });
+
+                    // Prioridade 2: Match com canal Superflix
+                    const sfMatch = internalChannels.find(ch => {
                         const normInternal = normalizeName(ch.name);
                         return normInternal.includes(normProvider) || normProvider.includes(normInternal);
                     });
 
+                    if (vipMatch) {
+                        return {
+                            ...embed,
+                            zoroflix_id: `vip-db-${vipMatch.id}`,
+                            zoroflix_logo: vipMatch.logo_url || embed.logo,
+                            is_vip: true,
+                            vip_badge: vipMatch.vip_badge || 'VIP'
+                        };
+                    } else if (sfMatch) {
+                        return {
+                            ...embed,
+                            zoroflix_id: sfMatch.id,
+                            zoroflix_logo: sfMatch.logo_url || embed.logo,
+                            is_vip: false,
+                            has_ads: true
+                        };
+                    }
+
                     return {
                         ...embed,
-                        zoroflix_id: match ? match.id : null,
-                        zoroflix_logo: match ? match.logo_url : embed.logo
+                        zoroflix_id: null,
+                        zoroflix_logo: embed.logo,
+                        is_vip: false,
+                        has_ads: true
                     };
                 });
 

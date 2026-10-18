@@ -230,12 +230,37 @@ export default function TvGuideModal({ isOpen, onClose }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null); // { channels, byChannel }
   const [logoMap, setLogoMap] = useState({});
+  const [vipChannels, setVipChannels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [now, setNow] = useState(() => nowSP());
   const [search, setSearch] = useState('');
   const timerRef = useRef(null);
   const fetchedRef = useRef(false);
+
+  // Normaliza nomes de canal para match prioritário (VIP > Superflix > RDE)
+  const normalizeChannelName = (name) => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/\(.*?\)/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/\b(sd|hd|fhd|4k|uhd|h265|hevc|cdn\s*\d*|opção\s*\d*|opcao\s*\d*|\d+p)\b/gi, '')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .trim();
+  };
+
+  // Carrega canais VIP do banco para priorizar na reprodução
+  const fetchVipChannels = useCallback(async () => {
+    try {
+      const res = await fetch('/api/iptv/all');
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json && Array.isArray(json.channels)) {
+        setVipChannels(json.channels);
+      }
+    } catch (_) {}
+  }, []);
 
   // Tick every second
   useEffect(() => {
@@ -355,9 +380,10 @@ export default function TvGuideModal({ isOpen, onClose }) {
       fetchedRef.current = true;
       fetchGuide();
       fetchLogos();
+      fetchVipChannels();
     }
     if (!isOpen) fetchedRef.current = false;
-  }, [isOpen, fetchGuide, fetchLogos]);
+  }, [isOpen, fetchGuide, fetchLogos, fetchVipChannels]);
 
   // Keyboard close
   useEffect(() => {
@@ -476,7 +502,22 @@ export default function TvGuideModal({ isOpen, onClose }) {
                       programmes={data.byChannel[ch.id] || []}
                       now={now}
                       logoMap={logoMap}
-                      onWatch={(id) => { onClose(); navigate(`/canal/${id}`); }}
+                      onWatch={(id) => {
+                        onClose();
+                        const normGuide = normalizeChannelName(ch.name);
+                        // Prioridade 1: Match com canal VIP do Banco de Dados
+                        const vipMatch = vipChannels.find(v => {
+                          const normV = normalizeChannelName(v.name);
+                          return normV && (normV.includes(normGuide) || normGuide.includes(normV));
+                        });
+
+                        if (vipMatch) {
+                          navigate(`/canal/${vipMatch.id}`);
+                        } else {
+                          // Fallback: Canal do Superflix / ID do Guia
+                          navigate(`/canal/${id}`);
+                        }
+                      }}
                     />
                   )}
                 />
