@@ -83,6 +83,37 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
     // Rotas de Canais IPTV (M3U VIP e VIP2)
     app.use('/api/iptv', iptvChannelsRoutes(db));
 
+    // Validação do Cloudflare Turnstile no servidor
+    app.post('/api/turnstile/verify', async (req, res) => {
+        try {
+            const { token } = req.body;
+            if (!token) {
+                return res.status(400).json({ success: false, error: 'Token não fornecido' });
+            }
+
+            const secretKey = process.env.TURNSTILE_SECRET_KEY || '0x4AAAAAAFZ5HyBPIN0MI2iiLpRRvf7Mlng';
+            const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+            const params = new URLSearchParams();
+            params.append('secret', secretKey);
+            params.append('response', token);
+            if (clientIp) params.append('remoteip', clientIp);
+
+            const verifyRes = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', params, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+
+            if (verifyRes.data && verifyRes.data.success) {
+                return res.json({ success: true });
+            } else {
+                return res.status(403).json({ success: false, error: 'Falha na validação do Turnstile', details: verifyRes.data });
+            }
+        } catch (err) {
+            console.error('Erro na validação do Turnstile:', err);
+            return res.status(500).json({ success: false, error: 'Erro ao validar Turnstile' });
+        }
+    });
+
     // Serve public APK downloads
     app.use('/downloads/app', express.static(path.join(__dirname, 'backend', 'uploads', 'app')));
 

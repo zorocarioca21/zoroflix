@@ -23,6 +23,7 @@ import EmbedPlayerPage from './components/EmbedPlayerPage'
 import ApiLandingPage from './components/ApiLandingPage'
 import EmbedDocsPage from './components/EmbedDocsPage'
 import AppUpdatePage from './components/AppUpdatePage'
+import TurnstileGatekeeper from './components/TurnstileGatekeeper'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -624,7 +625,9 @@ function Home({ onOpenDetails }) {
 export default function App() {
     return (
         <AuthProvider>
-            <AppContent />
+            <TurnstileGatekeeper>
+                <AppContent />
+            </TurnstileGatekeeper>
         </AuthProvider>
     );
 }
