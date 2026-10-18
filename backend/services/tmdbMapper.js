@@ -84,6 +84,46 @@ async function resolveEpisodeNumberFromSeason(tmdbId, seasonNum, candidateEpName
         if (found) return found.episode_number;
     }
 
+    // 3. Fallback inteligente com IA (Gemini 3.5 Flash) se a comparação direta não encontrar
+    if (!isAiMapperPaused && episodeList.length > 0) {
+        try {
+            console.log(`[TMDB MAPPER] 🤖 Tentando identificar episódio com IA para "${candidateEpName}" (T${seasonNum})...`);
+            const ZOROBOT_API_KEY = process.env.ZOROBOT_API_KEY || '21santoryu21';
+            const episodeCandidatesStr = episodeList.map(e => `Episódio ${e.episode_number}: ${e.names.join(' / ')}`).join('\n');
+            const prompt = `Analise o nome do arquivo/episódio e identifique a qual número de episódio ele corresponde nesta lista de episódios da temporada.\n` +
+                `Nome do arquivo/episódio a identificar: "${candidateEpName}"\n\n` +
+                `Lista de episódios da temporada:\n${episodeCandidatesStr}\n\n` +
+                `Retorne estritamente um JSON com a chave episode_number (número inteiro). Exemplo: {"episode_number": 3}`;
+
+            const aiResp = await axios.post(`https://api.zorobot.shop/api/ai/chat?apiKey=${ZOROBOT_API_KEY}`, {
+                prompt: prompt,
+                model: 'gemini-3.5-flash',
+                systemInstruction: 'Você é um assistente de identificação de episódios de séries. Responda estritamente com o objeto JSON contendo episode_number.',
+                temperature: 0.1,
+                maxTokens: 100
+            }, {
+                headers: { 'Content-Type': 'application/json' },
+                httpsAgent: agent,
+                timeout: 15000
+            });
+
+            const rawAi = aiResp.data?.resposta || (typeof aiResp.data === 'string' ? aiResp.data : JSON.stringify(aiResp.data));
+            if (rawAi) {
+                const clean = rawAi.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const match = clean.match(/\{[\s\S]*\}/);
+                const jsonStr = match ? match[0] : clean;
+                const parsed = JSON.parse(jsonStr);
+                const epNum = parseInt(parsed.episode_number, 10);
+                if (!isNaN(epNum) && episodeList.some(e => e.episode_number === epNum)) {
+                    console.log(`[TMDB MAPPER] 🎯 IA identificou o episódio com sucesso: Ep ${epNum} para "${candidateEpName}"!`);
+                    return epNum;
+                }
+            }
+        } catch (aiErr) {
+            console.warn(`[TMDB MAPPER] Falha no fallback de IA para episódio:`, aiErr.message);
+        }
+    }
+
     return null;
 }
 

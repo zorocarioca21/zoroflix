@@ -30,8 +30,10 @@ Instruções:
   "original_title": "título original ou null",
   "parent_series": "nome da franquia/anime caso seja só nome de episódio ou null",
   "media_type": "tv",
+  "year": 2024,
   "season": 1,
-  "episode": 1
+  "episode": 1,
+  "language": "Dublado ou Legendado ou Nacional"
 }`;
 
     try {
@@ -63,8 +65,10 @@ Instruções:
             original_title: parsed.original_title || null,
             parent_series: parsed.parent_series || null,
             media_type: (parsed.media_type === 'movie' || parsed.media_type === 'tv') ? parsed.media_type : 'tv',
+            year: typeof parsed.year === 'number' ? parsed.year : (parsed.year ? parseInt(parsed.year) : null),
             season: typeof parsed.season === 'number' ? parsed.season : (parsed.season ? parseInt(parsed.season) : null),
-            episode: typeof parsed.episode === 'number' ? parsed.episode : (parsed.episode ? parseInt(parsed.episode) : null)
+            episode: typeof parsed.episode === 'number' ? parsed.episode : (parsed.episode ? parseInt(parsed.episode) : null),
+            language: parsed.language || null
         };
     } catch (e) {
         const errorData = e.response?.data || {};

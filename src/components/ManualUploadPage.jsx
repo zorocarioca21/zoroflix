@@ -10,25 +10,26 @@ export default function ManualUploadPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [loadingAiId, setLoadingAiId] = useState(null);
 
-    // Update generated titles whenever queue items change
+    // Update generated titles whenever queue items change (Qualidade é detectada automaticamente pelo backend/ffprobe)
     useEffect(() => {
         setUploadQueue(prevQueue => prevQueue.map(item => {
             let generated = '';
+            const langSuffix = item.language ? ` ${item.language}` : '';
             if (item.type === 'filme') {
                 const yearStr = item.movieYear ? ` (${item.movieYear})` : '';
                 if (item.movieTitle) {
-                    generated = `${item.movieTitle.trim()}${yearStr} ${item.quality} ${item.language}`;
+                    generated = `${item.movieTitle.trim()}${yearStr}${langSuffix}`.trim();
                 }
             } else {
                 if (item.serieTitle) {
                     const s = item.season ? item.season.toString().padStart(2, '0') : '01';
                     const e = item.episode ? item.episode.toString().padStart(2, '0') : '01';
-                    generated = `${item.serieTitle.trim()} S${s} E${e} ${item.quality} ${item.language}`;
+                    generated = `${item.serieTitle.trim()} S${s} E${e}${langSuffix}`.trim();
                 }
             }
             return { ...item, generatedTitle: generated };
         }));
-    }, [JSON.stringify(uploadQueue.map(i => ({t: i.type, mt: i.movieTitle, my: i.movieYear, st: i.serieTitle, s: i.season, e: i.episode, q: i.quality, l: i.language})))]);
+    }, [JSON.stringify(uploadQueue.map(i => ({t: i.type, mt: i.movieTitle, my: i.movieYear, st: i.serieTitle, s: i.season, e: i.episode, l: i.language})))]);
 
     const addFilesToQueue = (files) => {
         const newItems = Array.from(files).filter(file => file.type.startsWith('video/') || file.name.endsWith('.mkv') || file.name.endsWith('.ts')).map(file => {
@@ -60,7 +61,6 @@ export default function ManualUploadPage() {
                 serieTitle: defaultType === 'serie' ? defaultTitle : '',
                 season: defaultSeason,
                 episode: defaultEpisode,
-                quality: 'FHD',
                 language: 'Dublado',
                 status: 'idle', // idle, uploading, success, error
                 progress: 0,
@@ -120,7 +120,7 @@ export default function ManualUploadPage() {
                 body: JSON.stringify({ fileName: item.file.name })
             });
             const data = await res.json();
-            if (data.success && data.data) {
+            if (data.success && data.data && !data.data.is_rate_limit) {
                 const ai = data.data;
                 const isMovie = ai.media_type === 'movie';
                 setUploadQueue(prev => prev.map(qItem => {
@@ -129,14 +129,21 @@ export default function ManualUploadPage() {
                         ...qItem,
                         type: isMovie ? 'filme' : 'serie',
                         movieTitle: isMovie ? (ai.search_query || ai.original_title || qItem.movieTitle) : '',
+                        movieYear: isMovie && ai.year ? String(ai.year) : qItem.movieYear,
                         serieTitle: !isMovie ? (ai.parent_series || ai.search_query || qItem.serieTitle) : '',
                         season: ai.season ? String(ai.season) : (isMovie ? '' : (qItem.season || '1')),
-                        episode: ai.episode ? String(ai.episode) : (isMovie ? '' : (qItem.episode || '1'))
+                        episode: ai.episode ? String(ai.episode) : (isMovie ? '' : (qItem.episode || '1')),
+                        language: ai.language || qItem.language || 'Dublado'
                     };
                 }));
+            } else if (data.data?.is_rate_limit) {
+                alert('Limite temporário da IA atingido. Tente novamente em alguns segundos.');
+            } else {
+                alert('A IA não conseguiu identificar os dados com precisão para este arquivo. Preencha manualmente.');
             }
         } catch (e) {
             console.error("Erro ao auto-preencher com IA:", e);
+            alert('Falha ao comunicar com o serviço de IA. Verifique sua conexão.');
         } finally {
             setLoadingAiId(null);
         }
@@ -399,15 +406,6 @@ export default function ManualUploadPage() {
                                                 </>
                                             )}
                                             
-                                            <div className="form-group">
-                                                <label>Qualidade</label>
-                                                <select className="title-input" value={item.quality} onChange={(e) => updateItem(item.id, 'quality', e.target.value)} disabled={item.status === 'uploading'}>
-                                                    <option value="SD">SD</option>
-                                                    <option value="HD">HD</option>
-                                                    <option value="FHD">FHD</option>
-                                                    <option value="4K">4K</option>
-                                                </select>
-                                            </div>
                                             <div className="form-group">
                                                 <label>Idioma</label>
                                                 <select className="title-input" value={item.language} onChange={(e) => updateItem(item.id, 'language', e.target.value)} disabled={item.status === 'uploading'}>
