@@ -8,9 +8,17 @@ import { useAuth } from '../context/AuthContext';
 function ChannelCard({ ch, onClick }) {
   const [imgError, setImgError] = useState(!ch.logo_url);
 
-  const isVip2 = (ch.vip_badge || ch.category || '').toUpperCase().includes('VIP 2') || (ch.vip_badge || ch.category || '').toUpperCase().includes('VIP2');
+  const badgeUpper = (ch.vip_badge || ch.category || '').toUpperCase();
+  const isVip2 = badgeUpper.includes('VIP 2') || badgeUpper.includes('VIP2');
+  const isVip3 = badgeUpper.includes('VIP 3') || badgeUpper.includes('VIP3');
   const badgeText = ch.vip_badge || (ch.isVip ? 'VIP' : null);
-  const badgeBg = isVip2 ? 'linear-gradient(45deg, #00ff88, #00d2ff)' : 'linear-gradient(45deg, #ffd700, #ff8c00)';
+  
+  let badgeBg = 'linear-gradient(45deg, #ffd700, #ff8c00)';
+  if (isVip2) {
+    badgeBg = 'linear-gradient(45deg, #00ff88, #00d2ff)';
+  } else if (isVip3) {
+    badgeBg = 'linear-gradient(45deg, #a855f7, #ec4899)';
+  }
 
   return (
     <div className="search-card channel-card-item" onClick={onClick} style={{ position: 'relative' }}>
@@ -68,11 +76,15 @@ export default function ChannelsPage() {
   const [selectedCategory, setSelectedCategory] = useState(() => isPop ? (sessionStorage.getItem(`${storageKey}-category`) || 'Todos') : 'Todos');
   const [showVipPopup, setShowVipPopup] = useState(false);
   const [displayCount, setDisplayCount] = useState(20);
-  const [dynamicVipBadges, setDynamicVipBadges] = useState([]);
+  const [dynamicVipBadges, setDynamicVipBadges] = useState(() => {
+    if (!isPop) return [];
+    const cached = sessionStorage.getItem(`${storageKey}-badges`);
+    return cached ? JSON.parse(cached) : [];
+  });
   const isFirstMount = React.useRef(true);
   const observerRef = React.useRef(null);
 
-  // Salva o estado dos filtros
+  // Salva o estado dos filtros e badges
   useEffect(() => {
     sessionStorage.setItem(`${storageKey}-search`, searchTerm);
     sessionStorage.setItem(`${storageKey}-category`, selectedCategory);
@@ -86,14 +98,18 @@ export default function ChannelsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const baseCategories = ['Todos', 'VIPs'];
   const otherCategories = ['Canais Abertos', 'Esportes', 'Filmes e Séries', 'Documentários', 'Infantil', '24 horas', 'Adulto'];
   
-  // Lista unificada de categorias com os selos dinâmicos (VIP 2, VIP 3...)
+  // Categorias de VIP dinâmicas baseadas nas listas cadastradas no Painel (ex: VIP 2, VIP 3)
+  const normalizedVipBadges = dynamicVipBadges && dynamicVipBadges.length > 0
+    ? dynamicVipBadges
+    : ['VIP 2', 'VIP 3'];
+
+  // Lista unificada de categorias com os selos das listas (VIPs geral, VIP 2, VIP 3...)
   const categories = [
     'Todos',
     'VIPs',
-    ...dynamicVipBadges.filter(b => b.toUpperCase() !== 'VIP' && b.toUpperCase() !== 'VIPS'),
+    ...normalizedVipBadges,
     ...otherCategories
   ];
 
@@ -114,46 +130,27 @@ export default function ChannelsPage() {
 
     setLoading(true);
     const superflixUrl = 'https://superflixapi.beer/lista?category=canais&format=json';
-    const vipLegacyUrl = '/api/canais/vip';
     const iptvAllUrl = '/api/iptv/all';
     
     Promise.allSettled([
       fetchWithProxy(superflixUrl).then(data => data && data.data ? data.data : []),
-      fetch(vipLegacyUrl).then(async r => {
-        const text = await r.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          return [];
-        }
-      }).catch(() => []),
       fetch(iptvAllUrl).then(r => r.json()).catch(() => ({ channels: [], badges: [] }))
     ]).then(results => {
       const superflixData = results[0].status === 'fulfilled' ? results[0].value : [];
-      const vipLegacyData = results[1].status === 'fulfilled' ? results[1].value : [];
-      const iptvDbData = results[2].status === 'fulfilled' ? results[2].value : { channels: [], badges: [] };
-
-      const formattedLegacyVip = (vipLegacyData || []).map((v, index) => ({
-        id: v.id || `vip-leg-${index}`,
-        name: v.name,
-        category: 'VIPs',
-        vip_badge: 'VIP',
-        logo_url: v.logo,
-        embed_url: v.url,
-        isVip: true
-      }));
+      const iptvDbData = results[1].status === 'fulfilled' ? results[1].value : { channels: [], badges: [] };
 
       const formattedDbVip = (iptvDbData.channels || []).map((v) => ({
         ...v,
         isVip: true
       }));
 
-      if (iptvDbData.badges) {
+      if (iptvDbData.badges && iptvDbData.badges.length > 0) {
         setDynamicVipBadges(iptvDbData.badges);
+        sessionStorage.setItem(`${storageKey}-badges`, JSON.stringify(iptvDbData.badges));
       }
 
-      // Prioridade: DB VIP (VIP 2, etc), depois VIP antigo, depois Superflix
-      const combined = [...formattedDbVip, ...formattedLegacyVip, ...superflixData];
+      // Prioridade: canais cadastrados no banco pelo Painel ADM, depois canais públicos Superflix
+      const combined = [...formattedDbVip, ...superflixData];
       setChannels(combined);
       sessionStorage.setItem(`${storageKey}-items`, JSON.stringify(combined));
       setLoading(false);
