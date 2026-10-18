@@ -353,7 +353,7 @@ export default function AppUpdatePage() {
 
                         <div className="app-history-list">
                             <h3>Histórico de Lançamentos</h3>
-                            {history.map(item => (
+                            {history.map((item, idx) => (
                                 <div key={item.id} className="history-item">
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                                         <div className="history-version">v{item.version_name} <small>(Code: {item.version_code})</small></div>
@@ -364,28 +364,34 @@ export default function AppUpdatePage() {
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                         <div className="history-filename"><FileArchive size={14}/> {item.apk_filename}</div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <a 
-                                                href={`/downloads/app/${item.apk_filename}`}
-                                                download={item.apk_filename}
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    background: 'rgba(0, 255, 136, 0.15)',
-                                                    border: '1px solid rgba(0, 255, 136, 0.4)',
-                                                    color: '#00ff88',
-                                                    padding: '5px 12px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.8rem',
-                                                    fontWeight: '600',
-                                                    textDecoration: 'none',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.3)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.15)'}
-                                            >
-                                                <Download size={14} /> Baixar APK
-                                            </a>
+                                            {idx === 0 ? (
+                                                <a 
+                                                    href={`/downloads/app/${item.apk_filename}`}
+                                                    download={item.apk_filename}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        background: 'rgba(0, 255, 136, 0.15)',
+                                                        border: '1px solid rgba(0, 255, 136, 0.4)',
+                                                        color: '#00ff88',
+                                                        padding: '5px 12px',
+                                                        borderRadius: '6px',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '600',
+                                                        textDecoration: 'none',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.3)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(0, 255, 136, 0.15)'}
+                                                >
+                                                    <Download size={14} /> Baixar APK
+                                                </a>
+                                            ) : (
+                                                <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
+                                                    Substituído
+                                                </span>
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => handleDeleteUpdate(item.id, item.version_name)}
