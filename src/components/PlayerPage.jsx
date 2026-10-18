@@ -663,9 +663,10 @@ export default function PlayerPage() {
     };
 
     let playerUrl = '';
+    const resolvedMediaName = seriesDetail?.name || seriesDetail?.title || (rawId ? rawId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : null);
     let title = canalId
-        ? (resolvedChannel?.name || state.title || 'Carregando Canal...')
-        : (state.title || 'Carregando...');
+        ? (resolvedChannel?.name || state.title || 'Canal Ao Vivo')
+        : (state.title || (resolvedMediaName ? (season && episode ? `${resolvedMediaName} - T${season} E${episode}` : resolvedMediaName) : 'Vídeo'));
 
     if (canalId) {
         if (state.isVip) {

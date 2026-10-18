@@ -795,6 +795,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                             <a
                                 href="/vip"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 style={{
                                     background: '#00ff88',
                                     color: '#000',
