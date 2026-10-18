@@ -131,12 +131,17 @@ export const getBestMatches = (items, releaseYear = null) => {
         else if (titleUpper.includes('HD') || titleUpper.includes('720P') || titleUpper.includes('720')) version = 'HD';
         else if (titleUpper.includes('TS') || titleUpper.includes('CAMRIP') || titleUpper.includes('CAM RIP')) version = 'TS';
 
-        if (!versions[version]) versions[version] = { dub: null, leg: null };
+        if (!versions[version]) versions[version] = { dub: null, leg: null, allDub: [], allLeg: [] };
 
-        const itemData = i.stream_url ? { id: i.telegram_message_id || i.id, stream_url: i.stream_url } : i.telegram_message_id;
+        const itemData = i.stream_url ? { id: i.telegram_message_id || i.id, stream_url: i.stream_url, title: i.title } : { id: i.telegram_message_id, title: i.title };
 
-        if (isLeg && !versions[version].leg) versions[version].leg = itemData;
-        if (!isLeg && !versions[version].dub) versions[version].dub = itemData;
+        if (isLeg) {
+            if (!versions[version].leg) versions[version].leg = itemData;
+            versions[version].allLeg.push(itemData);
+        } else {
+            if (!versions[version].dub) versions[version].dub = itemData;
+            versions[version].allDub.push(itemData);
+        }
     }
 
     return Object.keys(versions).length > 0 ? versions : null;

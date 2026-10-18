@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader, RotateCcw, RotateCw, PictureInPicture, AlertTriangle, Headphones, Settings, Crop, Cast, Layers } from 'lucide-react';
 
-export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange }) {
+export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isAdmin, contentId, season, episode, onNextEpisode, isLoadingEpisode, languageOptions, onLanguageChange, videoQualities, currentQuality, onQualityChange, currentVersion, onVersionChange }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const hlsRef = useRef(null);
@@ -29,6 +29,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     // Detecta iOS para fallback
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const [showQualityMenu, setShowQualityMenu] = useState(false);
+    const [showVersionMenu, setShowVersionMenu] = useState(false);
     const [zoomMode, setZoomMode] = useState('contain'); // Novo estado de Zoom
     const [isCastAvailable, setIsCastAvailable] = useState(false);
     const [isAirPlayAvailable, setIsAirPlayAvailable] = useState(false);
@@ -598,6 +599,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     const handleVideoClick = (e) => {
         e.stopPropagation();
         lastClickTime.current = Date.now();
+        setShowQualityMenu(false);
+        setShowVersionMenu(false);
+        setShowLanguageMenu(false);
         setShowControls(prev => {
             const nextState = !prev;
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -624,6 +628,8 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     const handleLanguageSelect = (e, id, type) => {
         e.stopPropagation();
         setShowLanguageMenu(false);
+        setShowQualityMenu(false);
+        setShowVersionMenu(false);
         if (onLanguageChange && id !== messageId) {
             onLanguageChange(id, type);
         }
@@ -632,8 +638,20 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     const handleQualitySelect = (e, newQuality) => {
         e.stopPropagation();
         setShowQualityMenu(false);
+        setShowLanguageMenu(false);
+        setShowVersionMenu(false);
         if (onQualityChange && newQuality !== currentQuality) {
             onQualityChange(newQuality);
+        }
+    };
+
+    const handleVersionSelect = (e, versionItem) => {
+        e.stopPropagation();
+        setShowVersionMenu(false);
+        setShowQualityMenu(false);
+        setShowLanguageMenu(false);
+        if (onVersionChange) {
+            onVersionChange(versionItem);
         }
     };
 
@@ -1055,24 +1073,35 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                             </div>
                         )}
                         
-                        {/* Quality Selector */}
-                        {videoQualities && Object.keys(videoQualities).length > 1 && (
-                            <div style={{ position: 'relative' }}>
-                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} title="Qualidade" onClick={(e) => { e.stopPropagation(); setShowQualityMenu(!showQualityMenu); setShowLanguageMenu(false); }}>
-                                    <Settings size={24} color={showQualityMenu ? '#00ff88' : '#fff'} />
-                                    <span style={{ color: showQualityMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>{currentQuality}</span>
-                                </button>
-                                
-                                {showQualityMenu && (
-                                    <div style={{
-                                        position: 'absolute', bottom: '100%', right: '0',
-                                        marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
-                                        borderRadius: '8px', padding: '10px', minWidth: '120px',
-                                        border: '1px solid #333', display: 'flex', flexDirection: 'column',
-                                        gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
-                                    }}>
-                                        <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Qualidade</div>
-                                        {Object.keys(videoQualities).map((q) => (
+                        {/* Quality Selector (Sempre visível) */}
+                        <div style={{ position: 'relative' }}>
+                            <button 
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} 
+                                title="Qualidade de Reprodução" 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setShowQualityMenu(!showQualityMenu); 
+                                    setShowVersionMenu(false);
+                                    setShowLanguageMenu(false); 
+                                }}
+                            >
+                                <Settings size={22} color={showQualityMenu ? '#00ff88' : '#fff'} />
+                                <span style={{ color: showQualityMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                    {currentQuality || 'HD'}
+                                </span>
+                            </button>
+                            
+                            {showQualityMenu && (
+                                <div style={{
+                                    position: 'absolute', bottom: '100%', right: '0',
+                                    marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
+                                    borderRadius: '8px', padding: '10px', minWidth: '120px',
+                                    border: '1px solid #333', display: 'flex', flexDirection: 'column',
+                                    gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
+                                }}>
+                                    <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Qualidade</div>
+                                    {videoQualities && Object.keys(videoQualities).length > 0 ? (
+                                        Object.keys(videoQualities).map((q) => (
                                             <button 
                                                 key={q}
                                                 onClick={(e) => handleQualitySelect(e, q)}
@@ -1084,11 +1113,106 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                                             >
                                                 {q}
                                             </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                        ))
+                                    ) : (
+                                        <button 
+                                            onClick={(e) => handleQualitySelect(e, currentQuality || 'Auto')}
+                                            style={{
+                                                padding: '8px 12px', background: '#00ff88',
+                                                color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                            }}
+                                        >
+                                            {currentQuality || 'Auto'}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Version Selector (Sempre visível ao lado de Qualidade) */}
+                        <div style={{ position: 'relative' }}>
+                            <button 
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} 
+                                title="Versão do Arquivo" 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setShowVersionMenu(!showVersionMenu); 
+                                    setShowQualityMenu(false);
+                                    setShowLanguageMenu(false); 
+                                }}
+                            >
+                                <Layers size={22} color={showVersionMenu ? '#00ff88' : '#fff'} />
+                                <span style={{ color: showVersionMenu ? '#00ff88' : '#fff', marginLeft: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                    {currentVersion ? `V${currentVersion}` : 'Versão'}
+                                </span>
+                            </button>
+                            
+                            {showVersionMenu && (
+                                <div style={{
+                                    position: 'absolute', bottom: '100%', right: '0',
+                                    marginBottom: '15px', background: 'rgba(20,20,20,0.95)',
+                                    borderRadius: '8px', padding: '10px', minWidth: '160px',
+                                    border: '1px solid #333', display: 'flex', flexDirection: 'column',
+                                    gap: '5px', backdropFilter: 'blur(10px)', zIndex: 100
+                                }}>
+                                    <div style={{ color: '#aaa', fontSize: '0.8rem', padding: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>Versão</div>
+                                    {(() => {
+                                        const currentGroup = videoQualities && videoQualities[currentQuality];
+                                        const versionsList = [];
+                                        if (currentGroup) {
+                                            if (currentGroup.allDub && currentGroup.allDub.length > 0) {
+                                                currentGroup.allDub.forEach((item, idx) => {
+                                                    versionsList.push({ ...item, langType: 'dub', displayIndex: idx + 1 });
+                                                });
+                                            } else if (currentGroup.dub) {
+                                                versionsList.push({ ...(typeof currentGroup.dub === 'object' ? currentGroup.dub : { id: currentGroup.dub }), langType: 'dub', displayIndex: 1 });
+                                            }
+
+                                            if (currentGroup.allLeg && currentGroup.allLeg.length > 0) {
+                                                currentGroup.allLeg.forEach((item, idx) => {
+                                                    versionsList.push({ ...item, langType: 'leg', displayIndex: idx + 1 });
+                                                });
+                                            } else if (currentGroup.leg) {
+                                                versionsList.push({ ...(typeof currentGroup.leg === 'object' ? currentGroup.leg : { id: currentGroup.leg }), langType: 'leg', displayIndex: 1 });
+                                            }
+                                        }
+
+                                        if (versionsList.length === 0) {
+                                            return (
+                                                <button 
+                                                    style={{
+                                                        padding: '8px 12px', background: '#00ff88',
+                                                        color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    Versão 1 (Padrão)
+                                                </button>
+                                            );
+                                        }
+
+                                        return versionsList.map((ver, idx) => {
+                                            const isSelected = messageId === ver.id;
+                                            const label = `Versão ${idx + 1} (${ver.langType === 'leg' ? 'Leg' : 'Dub'})`;
+                                            return (
+                                                <button 
+                                                    key={`${ver.id}-${idx}`}
+                                                    onClick={(e) => handleVersionSelect(e, ver)}
+                                                    style={{
+                                                        padding: '8px 12px', 
+                                                        background: isSelected ? '#00ff88' : 'transparent',
+                                                        color: isSelected ? '#000' : '#fff',
+                                                        border: 'none', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold',
+                                                        fontSize: '0.85rem', whiteSpace: 'nowrap'
+                                                    }}
+                                                >
+                                                    {label}
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            )}
+                        </div>
 
                         {/* PiP & Fullscreen Buttons */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

@@ -34,6 +34,7 @@ export default function PlayerPage() {
     const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null); 
     const [currentQuality, setCurrentQuality] = useState('Normal'); 
+    const [currentVersion, setCurrentVersion] = useState(1);
     const [showLanguageSelector, setShowLanguageSelector] = useState(false);
     const [downloadSelector, setDownloadSelector] = useState(false);
     const [confirmDownloadUrl, setConfirmDownloadUrl] = useState(null);
@@ -777,7 +778,24 @@ export default function PlayerPage() {
                             onLanguageChange={(id, type, stream) => handleSetMessageId(id, type, stream)}
                             videoQualities={languageOptions}
                             currentQuality={currentQuality}
-                            onQualityChange={(newQuality) => setCurrentQuality(newQuality)}
+                            onQualityChange={(newQuality) => {
+                                setCurrentQuality(newQuality);
+                                setCurrentVersion(1);
+                                if (languageOptions && languageOptions[newQuality]) {
+                                    const prefLang = localStorage.getItem('cinegeek_preferred_language') || 'dub';
+                                    const opt = languageOptions[newQuality][prefLang] || languageOptions[newQuality].dub || languageOptions[newQuality].leg;
+                                    if (opt) {
+                                        handleSetMessageId(opt.id || opt, prefLang, opt.stream_url);
+                                    }
+                                }
+                            }}
+                            currentVersion={currentVersion}
+                            onVersionChange={(ver) => {
+                                if (ver) {
+                                    setCurrentVersion(ver.displayIndex || 1);
+                                    handleSetMessageId(ver.id, ver.langType || 'dub', ver.stream_url);
+                                }
+                            }}
                             contentId={id}
                             season={season}
                             episode={episode}

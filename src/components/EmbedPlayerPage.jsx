@@ -17,6 +17,7 @@ export default function EmbedPlayerPage() {
     const [streamUrl, setStreamUrl] = useState(null);
     const [languageOptions, setLanguageOptions] = useState(null);
     const [currentQuality, setCurrentQuality] = useState('Normal');
+    const [currentVersion, setCurrentVersion] = useState(1);
     const [title, setTitle] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -238,12 +239,21 @@ export default function EmbedPlayerPage() {
                 currentQuality={currentQuality}
                 onQualityChange={(q, isDub) => {
                     setCurrentQuality(q);
+                    setCurrentVersion(1);
                     if (languageOptions && languageOptions[q]) {
                         const opt = isDub ? languageOptions[q].dub || languageOptions[q].leg : languageOptions[q].leg || languageOptions[q].dub;
                         if (opt) {
                             setTelegramMessageId(opt.id || opt);
                             if (opt.stream_url) setStreamUrl(opt.stream_url);
                         }
+                    }
+                }}
+                currentVersion={currentVersion}
+                onVersionChange={(ver) => {
+                    if (ver) {
+                        setCurrentVersion(ver.displayIndex || 1);
+                        setTelegramMessageId(ver.id);
+                        if (ver.stream_url) setStreamUrl(ver.stream_url);
                     }
                 }}
                 onNextEpisode={() => {
