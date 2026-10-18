@@ -465,8 +465,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     useEffect(() => {
         if (isVip || isAdmin) return; // VIP e Admin têm telas simultâneas ilimitadas
 
-        const currentMediaId = String(contentId || messageId || srcUrl || 'video');
+        // Identificador único do conteúdo para não conflitar com episódios diferentes da mesma série
+        const currentMediaId = String(
+            (contentId && season && episode) ? `${contentId}_s${season}e${episode}` :
+            (contentId ? `${contentId}` : (messageId || srcUrl || 'video'))
+        );
         const mediaTitle = title || 'Conteúdo CineGeek';
+
+        let isBlocked = false;
 
         const sendHeartbeat = async () => {
             try {
@@ -481,13 +487,15 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 });
 
                 if (res.status === 409) {
-                    const data = await res.json().catch(() => ({}));
+                    isBlocked = true;
                     if (videoRef.current) {
                         videoRef.current.pause();
                         setIsPlaying(false);
                     }
+                    const data = await res.json().catch(() => ({}));
                     setConcurrencyError(data.message || 'Você já está assistindo a outro conteúdo. Seu plano permite 1 tela por vez.');
                 } else if (res.ok) {
+                    isBlocked = false;
                     setConcurrencyError(null);
                 }
             } catch (e) {
@@ -498,16 +506,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         // Envia o primeiro ping imediatamente ao montar o player
         sendHeartbeat();
 
-        // Heartbeat recorrente a cada 20 segundos
+        // Heartbeat recorrente a cada 15 segundos
         const pingInterval = setInterval(() => {
-            if (videoRef.current && !videoRef.current.paused) {
+            if (!isBlocked && videoRef.current && !videoRef.current.paused) {
                 sendHeartbeat();
             }
-        }, 20000);
+        }, 15000);
 
-        return () => {
-            clearInterval(pingInterval);
-            // Avisa o servidor ao sair da página para liberar a tela instantaneamente
+        const handleBeforeUnload = () => {
             try {
                 const token = localStorage.getItem('cinegeek_token');
                 const headers = { 'Content-Type': 'application/json' };
@@ -519,7 +525,14 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 }).catch(() => {});
             } catch (e) {}
         };
-    }, [contentId, messageId, srcUrl, title, isVip, isAdmin]);
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            clearInterval(pingInterval);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [contentId, season, episode, messageId, srcUrl, title, isVip, isAdmin]);
 
     // Auto-hide controls
     useEffect(() => {

@@ -764,7 +764,7 @@ export default function PlayerPage() {
                                 )}
                             </div>
                         </div>
-                    ) : (telegramMessageId || state?.isVip) ? (
+                    ) : (telegramMessageId || streamUrl || state?.isVip) ? (
                         <CustomVideoPlayer
                             messageId={telegramMessageId}
                             srcUrl={streamUrl}
