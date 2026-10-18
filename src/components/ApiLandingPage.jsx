@@ -79,21 +79,21 @@ export default function ApiLandingPage() {
                         <Zap size={32} />
                     </div>
                     <h3 className="api-feature-title">Alta Velocidade</h3>
-                    <p className="api-feature-desc">Nossos servidores em cluster são otimizados para streaming HLS de altíssima performance, com CDN distribuída garantindo zero buffering.</p>
+                    <p className="api-feature-desc">Streaming direto otimizado com entrega rápida de pacotes, garantindo carregamento ágil e reprodução fluida em qualquer dispositivo.</p>
                 </div>
                 <div className="api-feature-card">
                     <div className="api-feature-icon-wrap">
                         <Code size={32} />
                     </div>
                     <h3 className="api-feature-title">Fácil Integração</h3>
-                    <p className="api-feature-desc">Basta copiar um simples Iframe com o ID do TMDB e o player inteligente faz toda a mágica automaticamente no seu site.</p>
+                    <p className="api-feature-desc">Basta copiar um simples iframe com o ID do TMDB e o player inteligente faz toda a mágica automaticamente no seu site.</p>
                 </div>
                 <div className="api-feature-card">
                     <div className="api-feature-icon-wrap">
                         <CheckCircle size={32} />
                     </div>
-                    <h3 className="api-feature-title">Uptime de 99.9%</h3>
-                    <p className="api-feature-desc">Arquitetura baseada em redundância com múltiplos workers e nuvens descentralizadas para que o seu site nunca caia.</p>
+                    <h3 className="api-feature-title">Alta Disponibilidade</h3>
+                    <p className="api-feature-desc">Arquitetura com múltiplos workers e armazenamento distribuído para garantir estabilidade contínua e suporte a múltiplas requisições.</p>
                 </div>
             </div>
 

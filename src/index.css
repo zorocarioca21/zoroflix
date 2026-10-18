@@ -2158,30 +2158,46 @@ body.hide-body-texture::after {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end; /* Badges na parte de baixo da imagem */
-  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent 40%);
+  justify-content: flex-end;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 25%, transparent 50%);
+  z-index: 2;
 }
 
 .ep-lang-badges {
   display: flex;
-  gap: 5px;
-  margin-bottom: 5px;
+  align-items: center;
+  gap: 4px;
 }
 
 .badge-dub, .badge-leg {
-  background: rgba(0,0,0,0.7);
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 2px 6px;
+  background: rgba(10, 20, 15, 0.85);
+  border: 1px solid var(--primary, #00ff88);
+  padding: 2px 5px;
   border-radius: 4px;
-  font-size: 0.65rem;
-  font-weight: 900;
-  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--primary, #00ff88);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  line-height: 1;
 }
 
-.badge-dub { border-color: var(--primary); color: var(--primary); }
+.badge-dub {
+  border-color: var(--primary, #00ff88);
+  color: var(--primary, #00ff88);
+}
+
+.badge-leg {
+  border-color: rgba(0, 255, 136, 0.6);
+  color: #a3ffcb;
+  background: rgba(5, 25, 18, 0.85);
+}
 
 .ep-runtime-badge {
   position: absolute;

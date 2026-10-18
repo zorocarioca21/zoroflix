@@ -28,6 +28,41 @@ export default function tmdbRoutes(db, appDb) {
             const apiKey = await getNextTmdbKey(db);
             const data = await getOrFetchSeasonDetails(db, id, season, apiKey, mainDb);
             if (!data) return res.status(404).json({ error: 'Temporada não encontrada no TMDB' });
+
+            if (Array.isArray(data.episodes) && data.episodes.length > 0 && mainDb) {
+                try {
+                    const localItems = await mainDb.all(
+                        "SELECT episode_number, title FROM sync_queue WHERE tmdb_id = ? AND season_number = ? AND status = 'completed' AND telegram_message_id IS NOT NULL",
+                        [String(id), Number(season)]
+                    );
+
+                    const langMap = new Map();
+                    for (const row of localItems) {
+                        const epNum = Number(row.episode_number);
+                        if (!langMap.has(epNum)) {
+                            langMap.set(epNum, { hasDub: false, hasLeg: false });
+                        }
+                        const cur = langMap.get(epNum);
+                        const isLeg = /(?:\b(?:LEG|LEGENDADO)\b|\[LEG\]|\(LEG\))/i.test(row.title || '');
+                        if (isLeg) cur.hasLeg = true;
+                        else cur.hasDub = true;
+                    }
+
+                    for (const ep of data.episodes) {
+                        const info = langMap.get(Number(ep.episode_number));
+                        if (info) {
+                            ep.hasDub = info.hasDub;
+                            ep.hasLeg = info.hasLeg;
+                        } else {
+                            ep.hasDub = false;
+                            ep.hasLeg = false;
+                        }
+                    }
+                } catch (e) {
+                    console.error('[TMDB ROUTE] Erro ao mapear idiomas locais da temporada:', e);
+                }
+            }
+
             res.json(data);
         } catch (err) {
             console.error('[TMDB ROUTE] Erro ao buscar temporada:', err);
@@ -408,12 +443,30 @@ export default function tmdbRoutes(db, appDb) {
                     epMap.set(Number(row.episode_number), row);
                 }
 
-                // Mantém apenas os episódios baixados no Telegram e anexa stream_url
+                // Mantém apenas os episódios baixados no Telegram e anexa stream_url e tags de áudio
+                const epRowsByNumber = new Map();
+                for (const row of completedEps) {
+                    const n = Number(row.episode_number);
+                    if (!epRowsByNumber.has(n)) epRowsByNumber.set(n, []);
+                    epRowsByNumber.get(n).push(row);
+                }
+
                 data.episodes = data.episodes
                     .filter(ep => epMap.has(Number(ep.episode_number)))
                     .map(ep => {
                         const epMatch = epMap.get(Number(ep.episode_number));
                         ep.stream_url = buildStreamUrl(epMatch.telegram_message_id, epMatch.title || ep.name);
+                        
+                        const rows = epRowsByNumber.get(Number(ep.episode_number)) || [];
+                        let hasDub = false;
+                        let hasLeg = false;
+                        for (const r of rows) {
+                            const isLeg = /(?:\b(?:LEG|LEGENDADO)\b|\[LEG\]|\(LEG\))/i.test(r.title || '');
+                            if (isLeg) hasLeg = true;
+                            else hasDub = true;
+                        }
+                        ep.hasDub = hasDub;
+                        ep.hasLeg = hasLeg;
                         return ep;
                     });
             }

@@ -922,6 +922,12 @@ export default function PlayerPage() {
                                 >
                                     <span className="ep-num">{ep.episode_number}</span>
                                     <span className="ep-name">{ep.name}</span>
+                                    {(ep.hasDub || ep.hasLeg) && (
+                                        <div style={{ display: 'flex', gap: '3px', marginLeft: 'auto', flexShrink: 0 }}>
+                                            {ep.hasDub && <span className="badge-dub" style={{ fontSize: '0.55rem', padding: '1px 4px' }}>DUB</span>}
+                                            {ep.hasLeg && <span className="badge-leg" style={{ fontSize: '0.55rem', padding: '1px 4px' }}>LEG</span>}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

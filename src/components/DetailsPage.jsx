@@ -374,7 +374,12 @@ export default function DetailsPage() {
                     <div className="ep-image-wrap">
                       <img src={ep.still_path ? resolveImageUrl(ep.still_path, 'original') : resolveImageUrl(data.backdrop_path, 'original')} alt={ep.name} />
                       <div className="ep-badges-overlay">
-                        {/* Tags DUB e LEG foram removidas porque o TMDB não fornece essa informação, e verificar 20+ episódios na Superflix de uma vez deixaria o site muito lento. */}
+                        {(ep.hasDub || ep.hasLeg) && (
+                          <div className="ep-lang-badges">
+                            {ep.hasDub && <span className="badge-dub">DUB</span>}
+                            {ep.hasLeg && <span className="badge-leg">LEG</span>}
+                          </div>
+                        )}
                       </div>
                       <span className="ep-runtime-badge">{ep.runtime || '??'} min</span>
                       <div className="ep-play-overlay"><Play fill="currentColor" /></div>
