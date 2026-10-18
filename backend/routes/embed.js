@@ -15,6 +15,14 @@ export default function embedRoutes(db) {
             const seriesCount = Math.floor(episodesCount / 20); // Média de 20 eps por série
             const animesCount = Math.floor(seriesCount * 0.4); 
             const doramasCount = Math.floor(seriesCount * 0.15); 
+            // Buscar o total de canais VIP cadastrados no painel
+            let channelsCount = 0;
+            try {
+                const channelsResult = await db.get("SELECT COUNT(*) as count FROM iptv_channels WHERE active = 1");
+                channelsCount = channelsResult?.count || 0;
+            } catch (chErr) {
+                console.error("Erro ao contar canais para stats:", chErr.message);
+            }
 
             res.json({
                 movies: moviesCount,
@@ -22,7 +30,7 @@ export default function embedRoutes(db) {
                 animes: animesCount,
                 doramas: doramasCount,
                 episodes: episodesCount,
-                channels: 0
+                channels: channelsCount
             });
         } catch (error) {
             console.error("Erro ao buscar estatísticas do embed:", error);

@@ -4,7 +4,7 @@ import { Play, Code, CheckCircle, Zap } from 'lucide-react';
 import './ApiLandingPage.css'; // Importa o novo CSS premium
 
 export default function ApiLandingPage() {
-    const [stats, setStats] = useState({ movies: 0, series: 0, animes: 0, doramas: 0, episodes: 0 });
+    const [stats, setStats] = useState({ movies: 0, series: 0, animes: 0, doramas: 0, episodes: 0, channels: 0 });
 
     useEffect(() => {
         fetch('/api/embed/stats')
@@ -13,7 +13,7 @@ export default function ApiLandingPage() {
             .catch(e => console.error(e));
     }, []);
 
-    const totalVideos = stats.movies + stats.episodes;
+    const totalVideos = (stats.movies || 0) + (stats.episodes || 0) + (stats.channels || 0);
 
     return (
         <div className="api-landing-body">
@@ -39,7 +39,7 @@ export default function ApiLandingPage() {
                     <div className="api-hero-content">
                         <Play size={48} className="api-hero-icon" />
                         <h1 className="api-hero-title">
-                            Explore uma API com <span>{totalVideos.toLocaleString('pt-BR')}</span> vídeos gratuitos!
+                            Explore uma API com <span>{totalVideos.toLocaleString('pt-BR')}</span> vídeos e canais gratuitos!
                         </h1>
                         
                         <div className="api-hero-buttons">
@@ -58,7 +58,8 @@ export default function ApiLandingPage() {
                                 { label: 'SÉRIES', count: stats.series },
                                 { label: 'ANIMES', count: stats.animes },
                                 { label: 'DORAMAS', count: stats.doramas },
-                                { label: 'EPISÓDIOS', count: stats.episodes }
+                                { label: 'EPISÓDIOS', count: stats.episodes },
+                                { label: 'CANAIS VIP', count: stats.channels || 0 }
                             ].map((stat, i) => (
                                 <div key={i} className="api-stat-card">
                                     <div className="api-stat-number">{stat.count.toLocaleString('pt-BR')}</div>
