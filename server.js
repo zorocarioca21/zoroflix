@@ -91,7 +91,11 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
                 return res.status(400).json({ success: false, error: 'Token não fornecido' });
             }
 
-            const secretKey = process.env.TURNSTILE_SECRET_KEY || '0x4AAAAAAFZ5HyBPIN0MI2iiLpRRvf7Mlng';
+            const secretKey = process.env.TURNSTILE_SECRET_KEY;
+            if (!secretKey) {
+                console.error('[Turnstile] TURNSTILE_SECRET_KEY não configurada no .env');
+                return res.status(500).json({ success: false, error: 'Configuração do servidor incompleta' });
+            }
             const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
             const params = new URLSearchParams();
