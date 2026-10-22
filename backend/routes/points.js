@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
@@ -107,11 +108,9 @@ export default function pointsRoutes(db, tmdbDb) {
         }
     });
 
-    // Checar se lista de TMDB IDs já existe baixado no Telegram ou no catálogo do site
-    // Usado na barra de pesquisa para filtrar o que JÁ temos
-    router.post('/check-availability', async (req, res) => {
-        try {
-            const { tmdb_ids, items } = req.body || {};
+    // Helper: retorna Set com os TMDB IDs que o site já possui (Telegram/catálogo/título)
+    const computeAvailable = async (tmdb_ids, items) => {
+        {
             const cleanIds = Array.isArray(tmdb_ids) ? tmdb_ids.map(id => String(id)).filter(Boolean).slice(0, 50) : [];
             const availableSet = new Set();
 
@@ -174,10 +173,51 @@ export default function pointsRoutes(db, tmdbDb) {
                 }
             }
 
-            res.json({ available: Array.from(availableSet) });
+            return availableSet;
+        }
+    };
+
+    // Checar se lista de TMDB IDs já existe (usado pela barra de pesquisa do site)
+    router.post('/check-availability', async (req, res) => {
+        try {
+            const { tmdb_ids, items } = req.body || {};
+            const set = await computeAvailable(tmdb_ids, items);
+            res.json({ available: Array.from(set) });
         } catch (err) {
             console.error('Erro ao checar disponibilidade:', err);
             res.status(500).json({ error: 'Erro ao verificar disponibilidade.' });
+        }
+    });
+
+    // Busca TMDB já filtrada (somente o que AINDA NÃO temos) - ideal para o app
+    router.get('/search', authUser, async (req, res) => {
+        try {
+            const query = String(req.query.query || '').trim();
+            if (query.length < 2) return res.json({ results: [] });
+
+            const apiKey = await getNextTmdbKey(db);
+            const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=pt-BR&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+            const tmdbRes = await fetch(url);
+            const data = await tmdbRes.json();
+            const raw = (data.results || []).filter(i => i.media_type === 'movie' || i.media_type === 'tv');
+
+            const available = await computeAvailable(raw.map(i => i.id), raw);
+            const results = raw
+                .filter(i => !available.has(String(i.id)))
+                .map(i => ({
+                    tmdb_id: i.id,
+                    media_type: i.media_type,
+                    title: i.title || i.name,
+                    year: (i.release_date || i.first_air_date || '').split('-')[0],
+                    poster_path: i.poster_path,
+                    poster_url: i.poster_path ? `https://image.tmdb.org/t/p/w300${i.poster_path}` : null,
+                    is_anime: (i.genre_ids || []).includes(16) || i.original_language === 'ja'
+                }));
+
+            res.json({ results });
+        } catch (err) {
+            console.error('Erro na busca de pedidos:', err);
+            res.status(500).json({ error: 'Erro ao buscar títulos.' });
         }
     });
 

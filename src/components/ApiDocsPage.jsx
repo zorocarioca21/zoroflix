@@ -445,6 +445,127 @@ exoPlayer.play()`}</code></pre>
 }`}</code></pre>
                                 </div>
                             </div>
+
+                            {/* Sistema de Pontos & Pedidos */}
+                            <div className="api-endpoint-box">
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge get">GET</span>
+                                        <span className="api-path-badge">{baseUrl}/api/points/*</span>
+                                    </div>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🏆 PONTOS &amp; PEDIDOS</span>
+                                </div>
+                                <h3>Sistema de Pontos e Pedidos de Conteúdo</h3>
+                                <p>
+                                    Usuários <strong>logados</strong> ganham <strong>+20 pontos</strong> ao assistir pelo menos <strong>80%</strong> de um filme/episódio (1x por conteúdo) e gastam <strong>100 pontos</strong> para pedir um título que ainda não existe no catálogo. Todas as rotas exigem o header <code>Authorization: Bearer &lt;JWT&gt;</code> (exceto as listagens públicas marcadas).
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                                    <code className="api-code-pill">GET /api/points/balance (Saldo, histórico e meus pedidos)</code>
+                                    <code className="api-code-pill">POST /api/points/watch-reward (+20 pts ao atingir 80%)</code>
+                                    <code className="api-code-pill">GET /api/points/search?query=nome (Busca só do que NÃO temos)</code>
+                                    <code className="api-code-pill">POST /api/points/request-content (Pedir por 100 pts)</code>
+                                    <code className="api-code-pill">GET /api/points/requests?filter=all|movie|tv|anime (Mais pedidos - público)</code>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">1) GET /api/points/balance → Resposta</span>
+                                    </div>
+                                    <pre><code>{`{
+  "points": 140,                // Saldo atual do usuário
+  "history": [                  // Últimos ganhos por assistir
+    { "tmdb_id": "550", "media_type": "movie", "season": null,
+      "episode": null, "points": 20, "source": "app_player",
+      "created_at": "2026-10-22 18:00:00" }
+  ],
+  "myRequests": [               // Pedidos que o usuário já fez
+    { "id": 7, "title": "Dexter", "media_type": "tv", "votes": 12,
+      "status": "pending", "points_spent": 100, "poster_path": "/abc.jpg" }
+  ]
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">2) POST /api/points/watch-reward → Chamar UMA vez quando currentPosition/duration ≥ 0.80</span>
+                                        <button
+                                            className={`api-copy-btn ${copiedIndex === 'points-reward' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "tmdb_id": "1416",\n  "media_type": "tv",\n  "season": 2,\n  "episode": 4,\n  "source": "app_player"\n}`, 'points-reward')}
+                                        >
+                                            {copiedIndex === 'points-reward' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'points-reward' ? 'Copiado!' : 'Copiar JSON'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`// Body (filmes: omita season/episode)
+{
+  "tmdb_id": "1416",
+  "media_type": "tv",     // "movie" | "tv"
+  "season": 2,
+  "episode": 4,
+  "source": "app_player"
+}
+
+// Resposta - ganhou:
+{ "success": true, "pointsAwarded": 20, "totalPoints": 160 }
+// Resposta - já ganhou antes por este conteúdo:
+{ "success": false, "alreadyAwarded": true }`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">3) GET /api/points/search?query=one piece → Resposta (já sem o que temos)</span>
+                                    </div>
+                                    <pre><code>{`{
+  "results": [
+    { "tmdb_id": 37854, "media_type": "tv", "title": "One Piece",
+      "year": "1999", "poster_url": "https://image.tmdb.org/t/p/w300/abc.jpg",
+      "poster_path": "/abc.jpg", "is_anime": true }
+  ]
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">4) POST /api/points/request-content → Fazer pedido (-100 pts)</span>
+                                        <button
+                                            className={`api-copy-btn ${copiedIndex === 'points-request' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "tmdb_id": "37854",\n  "media_type": "tv",\n  "season": 1,\n  "episode": 5,\n  "title": "One Piece",\n  "poster_path": "/abc.jpg",\n  "year": "1999",\n  "is_anime": 1\n}`, 'points-request')}
+                                        >
+                                            {copiedIndex === 'points-request' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'points-request' ? 'Copiado!' : 'Copiar JSON'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`// Body (season/episode opcionais: use para pedir temporada ou episódio específico)
+{
+  "tmdb_id": "37854",
+  "media_type": "tv",
+  "season": 1,
+  "episode": 5,
+  "title": "One Piece",
+  "poster_path": "/abc.jpg",
+  "year": "1999",
+  "is_anime": 1
+}
+
+// Sucesso: { "success": true, "remainingPoints": 60, "message": "..." }
+// Erro (400): { "error": "Pontos insuficientes..." } ou { "error": "Você já fez ou votou neste pedido!" }`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">5) GET /api/points/requests?filter=all&amp;limit=50 → Ranking "Mais pedidos"</span>
+                                    </div>
+                                    <pre><code>{`[
+  { "id": 7, "tmdb_id": "37854", "media_type": "tv", "season": null,
+    "episode": null, "title": "One Piece", "poster_path": "/abc.jpg",
+    "year": "1999", "is_anime": 1, "votes": 8387, "status": "pending" }
+]
+// status: "pending" | "completed" (já adicionado) | "rejected"
+// Ordenado por votos (#1, #2, #3...). Cada item = "N Solicitações".`}</code></pre>
+                                </div>
+                            </div>
+
                             {/* Catálogo TMDB Proxy do Servidor */}
                             <div className="api-endpoint-box">
                                 <div className="api-endpoint-box-header">
