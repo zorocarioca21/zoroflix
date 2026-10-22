@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
     ArrowLeft, Key, Code, Database, Shield, BookOpen, Terminal, 
     Smartphone, Copy, Check, Tv, Play, ExternalLink, Zap, 
-    Layers, Cpu, Server, CheckCircle2, AlertTriangle, Info, Globe
+    Layers, Cpu, Server, CheckCircle2, AlertTriangle, Info, Globe, Bug
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './ApiDocsPage.css';
@@ -628,6 +628,158 @@ exoPlayer.play()`}</code></pre>
                                         <li><strong>Desative Cleartext Traffic:</strong> Defina <code>android:usesCleartextTraffic="false"</code> no <code>AndroidManifest.xml</code> para forçar conexões HTTPS seguras e prevenir ataques MitM.</li>
                                         <li><strong>Validação de Planos no Servidor:</strong> Nunca decida acesso VIP através de flags locais editáveis em <code>SharedPreferences</code>. Envie o JWT do usuário autenticado no header <code>Authorization: Bearer &lt;token&gt;</code> para validação no backend.</li>
                                     </ul>
+                                </div>
+                            </div>
+
+                            {/* Reporte Automático de Erros / Falhas do App */}
+                            <div className="api-endpoint-box" style={{ border: '1px solid rgba(255, 153, 0, 0.4)', background: 'rgba(255, 153, 0, 0.03)' }}>
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge post" style={{ background: '#ff9900', color: '#000', fontWeight: '900' }}>POST</span>
+                                        <span className="api-path-badge">{baseUrl}/api/app-reports</span>
+                                    </div>
+                                    <span style={{ color: '#ff9900', fontSize: '0.8rem', fontWeight: 'bold' }}>🐛 REPORTAR ERRO / CRASH (1 CLIQUE)</span>
+                                </div>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Bug size={18} color="#ff9900" /> Relatório Automático de Erros, Reprodução & Crashes
+                                </h3>
+                                <p>
+                                    Permite que o aplicativo envie automaticamente para o servidor qualquer erro ou falha que ocorra no dispositivo 
+                                    (falha de reprodução no ExoPlayer, erro 404, falha de conexão de rede, clique com erro, etc.). 
+                                    O usuário <strong>não precisa digitar nada</strong>: basta clicar em <em>"Reportar Erro"</em> e o app dispara o relatório com o modelo do celular, versão do Android, log da falha e horário oficial de São Paulo.
+                                </p>
+
+                                <div className="api-callout tip" style={{ background: 'rgba(0, 255, 136, 0.08)', borderColor: '#00ff88', marginBottom: '1rem' }}>
+                                    <CheckCircle2 size={20} color="#00ff88" style={{ flexShrink: 0 }} />
+                                    <div style={{ fontSize: '0.88rem' }}>
+                                        <strong>Dica de Integração:</strong> Esse endpoint aceita tanto requisições de usuários logados (via <code>Authorization: Bearer &lt;token&gt;</code>) 
+                                        quanto anônimas/com API Key (<code>x-api-key</code>). Possui proteção anti-flood no servidor para não sobrecarregar com cliques repetidos.
+                                    </div>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Headers da Requisição</span>
+                                    </div>
+                                    <pre><code>{`Content-Type: application/json
+Authorization: Bearer <SEU_JWT_SE_LOGADO>   // Opcional se logado
+x-api-key: <CHAVE_API_MOBILE>               // Opcional`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Payload JSON Enviado pelo App (Body)</span>
+                                        <button 
+                                            className="api-copy-code-btn"
+                                            onClick={() => handleCopy(`{\n  "app_version": "1.0.4",\n  "device_model": "Xiaomi Redmi Note 12",\n  "android_version": "13",\n  "error_type": "playback_error",\n  "error_message": "ExoPlayer failed: BehindLiveWindowException",\n  "error_stack": "com.google.android.exoplayer2.ExoPlaybackException: BehindLiveWindowException\\n    at com.cinegeek.player.PlayerEngine.onPlayerError(PlayerEngine.kt:89)",\n  "content_id": "94605",\n  "content_title": "Arcane",\n  "season": 2,\n  "episode": 1\n}`, 'app-report-body')}
+                                        >
+                                            {copiedIndex === 'app-report-body' ? <Check size={14} color="#00ff88"/> : <Copy size={14}/>}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`{
+  "app_version": "1.0.4",                   // Versão atual do aplicativo
+  "device_model": "Xiaomi Redmi Note 12",   // Modelo do aparelho (ex: Build.MODEL)
+  "android_version": "13",                  // Versão do Android (Build.VERSION.RELEASE)
+  "error_type": "playback_error",           // "playback_error" | "network_error" | "crash" | "ui_error"
+  "error_message": "ExoPlayer Source Error", // Resumo legível da falha (obrigatório)
+  "error_stack": "ExoPlaybackException...",  // Stack trace completo do Kotlin/Java para depuração
+  "content_id": "94605",                    // TMDB ID do filme ou série em reprodução
+  "content_title": "Arcane",                // Nome do filme/série no momento do erro
+  "season": 2,                              // Opcional (se for série)
+  "episode": 1                              // Opcional (se for série)
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Exemplo de Resposta do Servidor (HTTP 201)</span>
+                                    </div>
+                                    <pre><code>{`{
+  "success": true,
+  "message": "Relatório de erro registrado com sucesso.",
+  "report_id": 42
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Implementação Prática no App (Kotlin / Android)</span>
+                                        <button 
+                                            className="api-copy-code-btn"
+                                            onClick={() => handleCopy(`fun sendErrorReport(
+    errorMessage: String,
+    errorStack: String? = null,
+    errorType: String = "playback_error",
+    contentId: String? = null,
+    contentTitle: String? = null,
+    season: Int? = null,
+    episode: Int? = null
+) {
+    val json = JSONObject().apply {
+        put("app_version", BuildConfig.VERSION_NAME)
+        put("device_model", "\${Build.MANUFACTURER} \${Build.MODEL}")
+        put("android_version", Build.VERSION.RELEASE)
+        put("error_type", errorType)
+        put("error_message", errorMessage)
+        put("error_stack", errorStack ?: "")
+        put("content_id", contentId)
+        put("content_title", contentTitle)
+        put("season", season)
+        put("episode", episode)
+    }
+
+    val request = Request.Builder()
+        .url("${baseUrl}/api/app-reports")
+        .addHeader("Content-Type", "application/json")
+        .post(json.toString().toRequestBody("application/json".toMediaType()))
+        .build()
+
+    httpClient.newCall(request).enqueue(object : Callback {
+        override fun onResponse(call: Call, response: Response) {
+            // Sucesso silencioso ou exibir Toast rápido: "Erro reportado com sucesso!"
+        }
+        override fun onFailure(call: Call, e: IOException) {}
+    })
+}`, 'app-report-code')}
+                                        >
+                                            {copiedIndex === 'app-report-code' ? <Check size={14} color="#00ff88"/> : <Copy size={14}/>}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`fun sendErrorReport(
+    errorMessage: String,
+    errorStack: String? = null,
+    errorType: String = "playback_error",
+    contentId: String? = null,
+    contentTitle: String? = null,
+    season: Int? = null,
+    episode: Int? = null
+) {
+    val json = JSONObject().apply {
+        put("app_version", BuildConfig.VERSION_NAME)
+        put("device_model", "\${Build.MANUFACTURER} \${Build.MODEL}")
+        put("android_version", Build.VERSION.RELEASE)
+        put("error_type", errorType)
+        put("error_message", errorMessage)
+        put("error_stack", errorStack ?: "")
+        put("content_id", contentId)
+        put("content_title", contentTitle)
+        put("season", season)
+        put("episode", episode)
+    }
+
+    val request = Request.Builder()
+        .url("${baseUrl}/api/app-reports")
+        .addHeader("Content-Type", "application/json")
+        .post(json.toString().toRequestBody("application/json".toMediaType()))
+        .build()
+
+    httpClient.newCall(request).enqueue(object : Callback {
+        override fun onResponse(call: Call, response: Response) {
+            // Sucesso silencioso ou exibir Toast: "Erro reportado com sucesso aos administradores!"
+        }
+        override fun onFailure(call: Call, e: IOException) {}
+    })
+}`}</code></pre>
                                 </div>
                             </div>
 
