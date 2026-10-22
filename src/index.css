@@ -1807,6 +1807,85 @@ body.hide-body-texture::after {
   background: rgba(0, 230, 118, 0.1);
 }
 
+.anime-studio-badge {
+  background: rgba(0, 230, 118, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+.anime-episodes-total {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ddd;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.anime-relations-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(8px);
+}
+
+.anime-relations-box .relations-header h4 {
+  margin: 0 0 0.8rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+}
+
+.relations-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.relation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.relation-chip:hover {
+  background: rgba(0, 230, 118, 0.15);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.relation-chip .rel-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: rgba(0, 230, 118, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.relation-chip .rel-name {
+  font-size: 0.85rem;
+  color: #fff;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .details-overview {
   font-size: 1.1rem;
   line-height: 1.8;

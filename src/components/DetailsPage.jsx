@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart } from 'lucide-react';
+import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart, Layers, Sparkles } from 'lucide-react';
 import AdBanner from './AdBanner';
 import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
@@ -28,6 +28,7 @@ export default function DetailsPage() {
   const [showTrailer, setShowTrailer] = useState(false);
   const [watchedEpisodes, setWatchedEpisodes] = useState([]);
   const [episodeGroup, setEpisodeGroup] = useState(null);
+  const [anilistData, setAnilistData] = useState(null);
   const { user, uuid, loading: authLoading } = useAuth();
 
 
@@ -174,6 +175,25 @@ export default function DetailsPage() {
           const isAnimeOrAnimation = detailsData.genres?.some(g => g.id === 16 || g.name?.toLowerCase().includes('anima'))
             || detailsData.original_language === 'ja';
 
+          // Integração AniList para animes
+          if (isAnimeOrAnimation) {
+            fetch(`/api/anilist/mapping/${id}?title=${encodeURIComponent(detailsData.original_name || detailsData.name || title)}`)
+              .then(r => r.json())
+              .then(mapping => {
+                if (isCurrent && mapping?.found && mapping.anilistId) {
+                  fetch(`/api/anilist/details/${mapping.anilistId}`)
+                    .then(r => r.json())
+                    .then(aniData => {
+                      if (isCurrent && aniData && !aniData.error) {
+                        setAnilistData(aniData);
+                      }
+                    })
+                    .catch(() => {});
+                }
+              })
+              .catch(() => {});
+          }
+
           fetchEpisodes(1, null);
 
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
@@ -302,13 +322,63 @@ export default function DetailsPage() {
                 <span className="meta-item"><Calendar size={16} /> {new Date(data.release_date || data.first_air_date).getFullYear()}</span>
                 {data.runtime && <span className="meta-item"><Clock size={16} /> {data.runtime} min</span>}
                 <span className="meta-item status-badge">{statusMap[data.status] || data.status}</span>
+                {anilistData?.studios?.nodes?.[0]?.name && (
+                  <span className="meta-item anime-studio-badge">
+                    <Sparkles size={14} style={{ marginRight: 4, color: 'var(--primary)' }} />
+                    {anilistData.studios.nodes[0].name}
+                  </span>
+                )}
+                {anilistData?.episodes && (
+                  <span className="meta-item anime-episodes-total">
+                    {anilistData.episodes} episódios no total
+                  </span>
+                )}
               </div>
 
               <div className="details-genres">
                 {data.genres?.map(g => <span key={g.id} className="genre-tag">{g.name}</span>)}
               </div>
 
-              <p className="details-overview">{data.overview || "Sinopse não disponível em português."}</p>
+              <p className="details-overview">{data.overview || (anilistData?.description ? anilistData.description.replace(/<[^>]*>?/gm, '') : "Sinopse não disponível em português.")}</p>
+
+              {/* Seções Relacionadas AniList (Sequências, Prelúdios, Filmes) */}
+              {anilistData?.relations?.edges?.length > 0 && (
+                <div className="anime-relations-box">
+                  <div className="relations-header">
+                    <h4><Layers size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Conteúdos Relacionados</h4>
+                  </div>
+                  <div className="relations-chips">
+                    {anilistData.relations.edges
+                      .filter(edge => ['SEQUEL', 'PREQUEL', 'SIDE_STORY', 'ALTERNATIVE'].includes(edge.relationType) || edge.node?.format === 'MOVIE')
+                      .slice(0, 6)
+                      .map((edge, rIdx) => {
+                        const relTitle = edge.node?.title?.english || edge.node?.title?.romaji;
+                        const relTypeMap = {
+                          'SEQUEL': 'Sequência / Próx. Temp',
+                          'PREQUEL': 'Prelúdio',
+                          'SIDE_STORY': 'História Paralela',
+                          'ALTERNATIVE': 'Versão Alternativa'
+                        };
+                        const typeLabel = edge.node?.format === 'MOVIE' ? 'Filme' : (relTypeMap[edge.relationType] || edge.relationType);
+                        return (
+                          <div 
+                            key={rIdx} 
+                            className="relation-chip"
+                            onClick={() => {
+                              const targetSlug = getSlug(relTitle);
+                              const targetPath = edge.node?.format === 'MOVIE' ? `/filme/${targetSlug}` : `/serie/${targetSlug}`;
+                              navigate(targetPath);
+                            }}
+                            title={`Ver ${relTitle}`}
+                          >
+                            <span className="rel-tag">{typeLabel}</span>
+                            <span className="rel-name">{relTitle}</span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               <div className="details-cast-section">
                 <div className="section-header">

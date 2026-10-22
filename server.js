@@ -35,6 +35,7 @@ import appUpdatesRoutes from './backend/routes/appUpdates.js';
 import tmdbRoutes from './backend/routes/tmdb.js';
 import mangasRoutes from './backend/routes/mangas.js';
 import iptvChannelsRoutes from './backend/routes/iptvChannels.js';
+import anilistRoutes from './backend/routes/anilist.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
@@ -82,6 +83,9 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
 
     // Rotas de Canais IPTV (M3U VIP e VIP2)
     app.use('/api/iptv', iptvChannelsRoutes(db));
+
+    // Rotas de Animes (AniList API + Mapeamento Híbrido)
+    app.use('/api/anilist', anilistRoutes(db, tmdbDb));
 
     // Validação do Cloudflare Turnstile no servidor
     app.post('/api/turnstile/verify', async (req, res) => {
