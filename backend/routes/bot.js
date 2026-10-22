@@ -415,24 +415,41 @@ export default function botRoutes(db) {
                 let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
                 token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-                return res.json({
-                    found: true,
+                const streamUrl = `https://www.cinegeek.shop/api/stream/s/${token}.mp4`;
+                const directDownloadUrl = `https://www.cinegeek.shop/api/stream/d/${token}`;
+
+                const streamItem = {
+                    id: foundMsgId,
                     title: fullTitle,
                     type: type,
+                    status: 'completed',
+                    found: true,
                     telegram_message_id: foundMsgId,
-                    stream_url: `https://www.cinegeek.shop/api/stream/s/${token}.mp4`,
-                    direct_download_url: `https://www.cinegeek.shop/api/stream/d/${token}`,
+                    stream_url: streamUrl,
+                    direct_download_url: directDownloadUrl,
                     site_url: siteUrl
+                };
+
+                return res.json({
+                    ...streamItem,
+                    items: [streamItem]
                 });
             } else {
-                return res.json({
-                    found: false,
+                const emptyItem = {
+                    id: null,
                     title: fullTitle,
                     type: type,
+                    status: 'not_found',
+                    found: false,
                     telegram_message_id: null,
                     stream_url: null,
                     direct_download_url: null,
                     site_url: siteUrl
+                };
+
+                return res.json({
+                    ...emptyItem,
+                    items: []
                 });
             }
 
