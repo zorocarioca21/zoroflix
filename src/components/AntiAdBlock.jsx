@@ -7,38 +7,64 @@ export default function AntiAdBlock() {
     const checkAdBlock = async () => {
       let isBlocked = false;
 
-      // 1. Checagem de Sandbox (iframe restrito)
+      // 1. Checagem de Sandbox Restrito (Apps que colocam iframe com sandbox="allow-scripts" sem allow-same-origin / allow-popups / allow-forms)
       try {
-        // Tentar acessar o localStorage falha se estiver em iframe sandbox restrito
         localStorage.getItem('test_sandbox');
       } catch (e) {
-        if (e.name === 'SecurityError') {
-          isBlocked = true; // Bloqueado por Sandbox
-        }
-      }
-
-      // 2. Checagem de Rede (Pega AdGuard DNS e outros bloqueadores de rede)
-      if (!isBlocked) {
-        try {
-          const testRequest = new Request('https://pl29672000.effectivecpmnetwork.com/favicon.ico', {
-            method: 'HEAD',
-            mode: 'no-cors'
-          });
-          await fetch(testRequest);
-        } catch (error) {
+        if (e.name === 'SecurityError' || e.message?.includes('denied')) {
           isBlocked = true;
         }
       }
 
-      // 3. Checagem Visual (Pega extensões como uBlock, AdBlock Plus)
+      // 1.1 Checagem se popups ou navegação foram desabilitadas por sandbox de terceiros
+      try {
+        if (window.self !== window.top) {
+          // Se estiver dentro de iframe, verifica se window.open foi anulado ou bloqueado por sandbox
+          if (typeof window.open !== 'function') {
+            isBlocked = true;
+          }
+        }
+      } catch (e) {
+        // Bloqueio de acesso entre origens normal em iframes, ignora
+      }
+
+      // 2. Checagem de Rede Robusta (Pega AdGuard DNS, NextDNS, PiHole e bloqueadores no Android)
+      if (!isBlocked) {
+        const adEndpoints = [
+          'https://pl30899842.effectivecpmnetwork.com/d9/5e/5e/d95e5e5709de2783f6993047886330c8.js',
+          'https://pl29672000.effectivecpmnetwork.com/favicon.ico',
+          'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+        ];
+
+        let failedCount = 0;
+        await Promise.all(
+          adEndpoints.map(async (url) => {
+            try {
+              const testRequest = new Request(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+              await fetch(testRequest);
+            } catch (error) {
+              failedCount++;
+            }
+          })
+        );
+
+        // Se o DNS ou bloqueador de rede derrubar os domínios de anúncios
+        if (failedCount >= 2) {
+          isBlocked = true;
+        }
+      }
+
+      // 3. Checagem Visual (Pega uBlock Origin, AdBlock Plus, Brave Shields)
       if (!isBlocked) {
         const dummy = document.createElement('div');
         dummy.id = 'ad-detection-box';
         dummy.innerHTML = '&nbsp;';
-        dummy.className = 'adsbox ad-zone ad-space';
+        dummy.className = 'adsbox ad-zone ad-space banner-ad text-ad sponsor-ad';
         dummy.style.position = 'absolute';
         dummy.style.left = '-9999px';
         dummy.style.top = '-9999px';
+        dummy.style.width = '1px';
+        dummy.style.height = '1px';
         document.body.appendChild(dummy);
 
         await new Promise(resolve => setTimeout(resolve, 150));
@@ -46,7 +72,9 @@ export default function AntiAdBlock() {
         if (dummy.offsetHeight === 0 || dummy.style.display === 'none' || !document.getElementById('ad-detection-box')) {
           isBlocked = true;
         }
-        document.body.removeChild(dummy);
+        try {
+          document.body.removeChild(dummy);
+        } catch (e) {}
       }
 
       if (isBlocked) {
@@ -56,6 +84,9 @@ export default function AntiAdBlock() {
     };
 
     checkAdBlock();
+    // Repete a checagem após 2 segundos para capturar bloqueadores lentos ou injeções pós-carregamento
+    const timer = setTimeout(checkAdBlock, 2500);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!isAdBlockActive) return null;

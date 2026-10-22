@@ -52,6 +52,8 @@ export default function EmbedPlayerPage() {
         verifyKey();
     }, [apikey]);
 
+    const [adBlockDetected, setAdBlockDetected] = useState(false);
+
     // Injeção de anúncios se for Free (não validou VIP)
     useEffect(() => {
         if (checkingKey) return;
@@ -61,6 +63,13 @@ export default function EmbedPlayerPage() {
         const script = document.createElement('script');
         script.src = "//pl30899842.effectivecpmnetwork.com/d9/5e/5e/d95e5e5709de2783f6993047886330c8.js";
         script.async = true;
+        
+        // Se o AdGuard DNS, Pi-hole ou bloqueador do WebView impedir o carregamento do script de anúncio:
+        script.onerror = () => {
+            console.warn("[Embed] Script de anúncios bloqueado por DNS ou AdBlock.");
+            setAdBlockDetected(true);
+        };
+
         document.body.appendChild(script);
 
         return () => {
@@ -228,6 +237,14 @@ export default function EmbedPlayerPage() {
             <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#ff4444', fontFamily: 'Inter, sans-serif', zIndex: 9999 }}>
                 <AntiDevTools />
                 <h2>O vídeo ainda não está disponível ou não foi encontrado.</h2>
+            </div>
+        );
+    }
+
+    if (adBlockDetected && !isVipKey) {
+        return (
+            <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
+                <AntiAdBlock />
             </div>
         );
     }
