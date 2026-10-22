@@ -477,9 +477,11 @@ export async function initDB() {
             release_notes TEXT,
             force_update INTEGER DEFAULT 0,
             apk_filename TEXT NOT NULL,
+            signature_hash TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+    try { await db.exec(`ALTER TABLE app_updates ADD COLUMN signature_hash TEXT`); } catch(e) {}
 
     // Tabela de Notificações Push / Notificações do Aplicativo Mobile
     await db.exec(`

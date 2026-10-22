@@ -4,8 +4,66 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
+
+/**
+ * Extrai o hash SHA-256 do Certificado de Assinatura do APK (v2 / v3 Signing Block)
+ */
+function extractApkSignatureHash(filePath) {
+    try {
+        const fd = fs.openSync(filePath, 'r');
+        const stat = fs.fstatSync(fd);
+        const buffer = Buffer.alloc(Math.min(stat.size, 65536));
+        fs.readSync(fd, buffer, 0, buffer.length, Math.max(0, stat.size - buffer.length));
+
+        let eocdOffset = -1;
+        for (let i = buffer.length - 22; i >= 0; i--) {
+            if (buffer.readUInt32LE(i) === 0x06054b50) {
+                eocdOffset = i;
+                break;
+            }
+        }
+        if (eocdOffset === -1) { fs.closeSync(fd); return null; }
+
+        const cdOffset = buffer.readUInt32LE(eocdOffset + 16);
+        const magicBuf = Buffer.alloc(24);
+        fs.readSync(fd, magicBuf, 0, 24, cdOffset - 24);
+        const magic = magicBuf.slice(8).toString('utf-8');
+        if (magic !== 'APK Sig Block 42') { fs.closeSync(fd); return null; }
+
+        const blockSize = magicBuf.readBigUInt64LE(0);
+        const blockStart = cdOffset - Number(blockSize) - 8;
+        const blockData = Buffer.alloc(Number(blockSize));
+        fs.readSync(fd, blockData, 0, blockData.length, blockStart);
+        fs.closeSync(fd);
+
+        let pos = 8;
+        while (pos < blockData.length - 24) {
+            const idSize = Number(blockData.readBigUInt64LE(pos));
+            const id = blockData.readUInt32LE(pos + 8);
+            if (id === 0x7109871a || id === 0xf05368c0) {
+                const signerData = blockData.slice(pos + 12, pos + 8 + idSize);
+                const signersLen = signerData.readUInt32LE(0);
+                const firstSigner = signerData.slice(4, 4 + signersLen);
+                const signedDataLen = firstSigner.readUInt32LE(0);
+                const signedData = firstSigner.slice(4, 4 + signedDataLen);
+                const digestsLen = signedData.readUInt32LE(0);
+                let p2 = 4 + digestsLen;
+                p2 += 4;
+                const firstCertLen = signedData.readUInt32LE(p2);
+                const certBytes = signedData.slice(p2 + 4, p2 + 4 + firstCertLen);
+                const sha256 = crypto.createHash('sha256').update(certBytes).digest('hex').match(/.{2}/g).join(':').toUpperCase();
+                return sha256;
+            }
+            pos += 8 + idSize;
+        }
+    } catch (e) {
+        console.warn('[APK Signature Extractor] Erro ao extrair hash:', e.message);
+    }
+    return null;
+}
 
 const requireAdmin = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -127,6 +185,12 @@ export default function appUpdatesRoutes(db) {
                 console.error('[APK Rename] Falha ao renomear, mantendo original:', renameErr.message);
             }
 
+            // Extrai a impressão digital da assinatura do APK (SHA-256 da Keystore)
+            const signatureHash = extractApkSignatureHash(fs.existsSync(finalPath) ? finalPath : originalSavedPath);
+            if (signatureHash) {
+                console.log(`[APK Signature] Impressão digital extraída com sucesso: ${signatureHash}`);
+            }
+
             const apkFilenameToSave = fs.existsSync(finalPath) ? finalApkFilename : req.file.filename;
             const isForceUpdate = force_update === 'true' || force_update === true ? 1 : 0;
 
@@ -146,15 +210,16 @@ export default function appUpdatesRoutes(db) {
             }
 
             await db.run(
-                `INSERT INTO app_updates (version_name, version_code, release_notes, force_update, apk_filename) VALUES (?, ?, ?, ?, ?)`,
-                [version_name, parseInt(version_code, 10), release_notes || '', isForceUpdate, apkFilenameToSave]
+                `INSERT INTO app_updates (version_name, version_code, release_notes, force_update, apk_filename, signature_hash) VALUES (?, ?, ?, ?, ?, ?)`,
+                [version_name, parseInt(version_code, 10), release_notes || '', isForceUpdate, apkFilenameToSave, signatureHash || null]
             );
 
             res.json({ 
                 success: true, 
-                message: `Atualização v${version_name} (Code: ${version_code}) detectada e cadastrada com sucesso!`,
+                message: `Atualização v${version_name} (Code: ${version_code}) cadastrada! Assinatura APK vinculada: ${signatureHash || 'N/A'}`,
                 version_name,
-                version_code
+                version_code,
+                signature_hash: signatureHash
             });
         } catch (err) {
             console.error('Erro ao fazer upload da atualização:', err);

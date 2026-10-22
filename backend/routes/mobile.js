@@ -58,6 +58,19 @@ export default function mobileRoutes(db) {
                 return res.status(403).json({ error: 'Assinatura criptográfica do aplicativo inválida ou corrompida.' });
             }
 
+            // 4. Validação da Impressão Digital do APK (se houver APK oficial cadastrado com signature_hash)
+            if (signature_hash) {
+                const latestApk = await db.get(`SELECT signature_hash FROM app_updates WHERE signature_hash IS NOT NULL ORDER BY version_code DESC, id DESC LIMIT 1`);
+                if (latestApk && latestApk.signature_hash) {
+                    const cleanExpected = latestApk.signature_hash.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    const cleanReceived = signature_hash.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    if (cleanExpected !== cleanReceived) {
+                        console.warn(`[SEGURANÇA] Bloqueio de APK Modificado! Hash recebido: ${cleanReceived} != Esperado: ${cleanExpected}`);
+                        return res.status(403).json({ error: 'APK não oficial ou modificado. Baixe a versão oficial no site.' });
+                    }
+                }
+            }
+
             // 4. Emissão de Token de Sessão Efêmero (duração de 12 horas)
             const sessionToken = jwt.sign(
                 {
