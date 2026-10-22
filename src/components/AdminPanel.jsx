@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
