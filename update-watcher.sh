@@ -24,7 +24,7 @@ while true; do
 
   if [ "$LOCAL" != "$REMOTE" ]; then
     log "Atualização detectada. Atualizando..."
-    git pull origin "$BRANCH"
+    git reset --hard "origin/$BRANCH" || git pull origin "$BRANCH" --force
     if [ $? -ne 0 ]; then
       log "Falha ao fazer git pull. Ignorando esta verificação."
       sleep 10
