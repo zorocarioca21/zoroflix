@@ -82,6 +82,12 @@ export default function botRoutes(db) {
             let foundMsgId = null;
             let fullTitle = q || `TMDB #${targetTmdbId}`;
             let type = (season !== null && episode !== null) ? 'serie' : 'filme';
+            let searchName = q || null;
+            let originalName = null;
+            let releaseYear = null;
+            let baseName = q ? q.split(':')[0] : null;
+            let slug = q ? q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : 'item';
+            let siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
             if (targetTmdbId) {
                 if (season !== null && episode !== null) {
@@ -123,11 +129,6 @@ export default function botRoutes(db) {
                 const BASE_URL = 'https://api.themoviedb.org/3';
 
                 // 2. Fetch TMDB API para descobrir dados da obra caso 'q' seja textual ou tmdb_id foi passado
-                let searchName = q;
-                let originalName = null;
-                let releaseYear = null;
-                let baseName = q ? q.split(':')[0] : null;
-                let slug = q ? q.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : 'item';
                 let bestMatch = null;
 
                 try {
@@ -209,7 +210,7 @@ export default function botRoutes(db) {
                     }
                 }
 
-                const siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
+                siteUrl = `https://www.cinegeek.shop/${type}/${slug}`;
 
                 // 3. Fallback: Se não encontrou pelo mapeamento direto, roda a lógica textual por compatibilidade
                 if (!foundMsgId) {
