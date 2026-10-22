@@ -293,7 +293,120 @@ export default function ApiDocsPage() {
                             </p>
                         </div>
 
+                        {/* NOVO BLOCO: BLINDAGEM DE SEGURANÇA E ZERO CHAVES NO CÓDIGO */}
+                        <div className="api-callout alert" style={{ background: 'rgba(0, 255, 136, 0.05)', borderColor: '#00ff88', marginBottom: '1.5rem', display: 'block' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                <Shield size={24} color="#00ff88" />
+                                <h3 style={{ margin: 0, color: '#00ff88', fontSize: '1.1rem' }}>
+                                    NOVA DIRETRIZ DE SEGURANÇA: REMOÇÃO DE API KEYS E SESSÃO SEGURA (HMAC)
+                                </h3>
+                            </div>
+                            <p style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.6', margin: '0 0 10px 0' }}>
+                                <strong>Atenção Desenvolvedor:</strong> Não mantenha strings de API Keys estáticas (como <code>zfx_...</code>) gravadas no código Kotlin/Java do app, pois ferramentas de descompilação (JADX) e sniffers extraem facilmente.
+                                Em vez disso, o app deve inicializar com o <strong>Handshake Criptográfico HMAC</strong> abaixo para receber um Token de Sessão temporário e dinâmico.
+                            </p>
+                        </div>
+
                         <div className="api-endpoints-stack">
+                            {/* PASSO ZERO: Handshake de Sessão Criptográfica */}
+                            <div className="api-endpoint-box" style={{ border: '1px solid rgba(0, 255, 136, 0.3)', background: 'rgba(0, 255, 136, 0.02)' }}>
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge post" style={{ background: '#00ff88', color: '#000', fontWeight: 'bold' }}>POST</span>
+                                        <span className="api-path-badge">{baseUrl}/api/mobile/session</span>
+                                    </div>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>🛡️ HANDSHAKE DE INICIALIZAÇÃO</span>
+                                </div>
+                                <h3>1. Obter Token de Sessão Efêmero (Sem API Key Exposta)</h3>
+                                <p>
+                                    Ao abrir o aplicativo, execute esta chamada para validar a integridade do app e receber um token JWT com validade de 12 horas.
+                                    Todas as requisições seguintes devem enviar <code>Authorization: Bearer &lt;session_token&gt;</code>.
+                                </p>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Body JSON Enviado no Handshake</span>
+                                        <button 
+                                            className="api-copy-code-btn"
+                                            onClick={() => handleCopy(`{\n  "device_id": "8a3f912c4b78e100",\n  "timestamp": 1729638400000,\n  "nonce": "k92mZb81A9sL0x91",\n  "signature": "c88f12b694f4a3e79...",\n  "app_version": "1.0.4"\n}`, 'hmac-body')}
+                                        >
+                                            {copiedIndex === 'hmac-body' ? <Check size={14} color="#00ff88"/> : <Copy size={14}/>}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`{
+  "device_id": "8a3f912c4b78e100",    // Settings.Secure.ANDROID_ID
+  "timestamp": 1729638400000,          // System.currentTimeMillis() (Janela de 60s)
+  "nonce": "k92mZb81A9sL0x91",          // String aleatória de 16 caracteres únicos
+  "signature": "c88f12b694f4a3e79...",  // HMAC-SHA256("\${device_id}:\${timestamp}:\${nonce}")
+  "app_version": "1.0.4"
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Resposta da Sessão (HTTP 200)</span>
+                                    </div>
+                                    <pre><code>{`{
+  "success": true,
+  "session_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 43200, // 12 horas
+  "issued_at": "2026-10-22T23:15:00.000Z"
+}`}</code></pre>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Implementação em Kotlin (OkHttp / Interceptor Automático)</span>
+                                        <button 
+                                            className="api-copy-code-btn"
+                                            onClick={() => handleCopy(`object SecurityManager {
+    // Segredo fatiado em runtime para impedir busca por strings puras no DEX
+    private val PART_A = "cg_mob_sec_"
+    private val PART_B = "99a8f27e61b44c8da09d85421"
+    private fun getSecret(): String = PART_A + PART_B
+
+    fun generateHmac(message: String): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(javax.crypto.spec.SecretKeySpec(getSecret().toByteArray(), "HmacSHA256"))
+        return mac.doFinal(message.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+}
+
+// Ao abrir o app:
+val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+val timestamp = System.currentTimeMillis()
+val nonce = UUID.randomUUID().toString().replace("-", "").take(16)
+val signature = SecurityManager.generateHmac("\$deviceId:\$timestamp:\$nonce")
+
+// Chame POST /api/mobile/session e salve o session_token no SharedPreferences / DataStore!`, 'sec-kotlin')}
+                                        >
+                                            {copiedIndex === 'sec-kotlin' ? <Check size={14} color="#00ff88"/> : <Copy size={14}/>}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`object SecurityManager {
+    // Segredo fatiado em runtime para impedir busca simples de strings no DEX
+    private val PART_A = "cg_mob_sec_"
+    private val PART_B = "99a8f27e61b44c8da09d85421"
+    private fun getSecret(): String = PART_A + PART_B
+
+    fun generateHmac(message: String): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(javax.crypto.spec.SecretKeySpec(getSecret().toByteArray(), "HmacSHA256"))
+        return mac.doFinal(message.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+}
+
+// No onCreate / SplashScreen:
+val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+val timestamp = System.currentTimeMillis()
+val nonce = java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+val signature = SecurityManager.generateHmac("\$deviceId:\$timestamp:\$nonce")
+
+// POST /api/mobile/session -> Salve session_token e use em todas as requisições:
+// Request Header: Authorization: Bearer <session_token>`}</code></pre>
+                                </div>
+                            </div>
+
                             {/* PASSO 1: Obter Vídeo por TMDB ID sem errar episódios */}
                             <div className="api-endpoint-box">
                                 <div className="api-endpoint-box-header">

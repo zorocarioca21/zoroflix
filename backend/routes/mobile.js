@@ -1,45 +1,145 @@
 import express from 'express';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
+const APP_HMAC_SECRET = process.env.APP_HMAC_SECRET || 'cg_mob_sec_99a8f27e61b44c8da09d85421';
+
+// Armazena nonces usados recentemente na memória para prevenir ataques de replay
+const usedNonces = new Map(); // nonce -> timestamp
+setInterval(() => {
+    const now = Date.now();
+    for (const [nonce, ts] of usedNonces.entries()) {
+        if (now - ts > 120000) { // Limpa nonces com mais de 2 minutos
+            usedNonces.delete(nonce);
+        }
+    }
+}, 60000);
 
 export default function mobileRoutes(db) {
 
-    // Middleware de autenticação por API Key (valida contra o banco)
-    async function authApiKey(req, res, next) {
+    // ============================================================
+    //  🛡️ POST /session — Handshake Seguro de Inicialização do App
+    // ============================================================
+    // O app envia timestamp, nonce, device_id e uma assinatura HMAC-SHA256.
+    // O backend valida a janela de tempo e a integridade antes de emitir um Token de Sessão JWT.
+    router.post('/session', async (req, res) => {
+        try {
+            const { timestamp, nonce, device_id, signature, app_version, signature_hash } = req.body;
+
+            if (!timestamp || !nonce || !device_id || !signature) {
+                return res.status(400).json({ error: 'Parâmetros incompletos para handshake de segurança.' });
+            }
+
+            const now = Date.now();
+            const reqTime = parseInt(timestamp, 10);
+
+            // 1. Janela de tempo de 60 segundos (previne ataques de repetição)
+            if (isNaN(reqTime) || Math.abs(now - reqTime) > 60000) {
+                return res.status(401).json({ error: 'Handshake expirado ou relógio dessincronizado. Ajuste o horário do aparelho.' });
+            }
+
+            // 2. Prevenção de Replay (Nonce único)
+            if (usedNonces.has(nonce)) {
+                return res.status(401).json({ error: 'Requisição duplicada (replay attack detectado).' });
+            }
+            usedNonces.set(nonce, now);
+
+            // 3. Validação da Assinatura HMAC-SHA256
+            // A assinatura esperada é: HMAC_SHA256(APP_HMAC_SECRET, `${device_id}:${timestamp}:${nonce}`)
+            const expectedSignature = crypto
+                .createHmac('sha256', APP_HMAC_SECRET)
+                .update(`${device_id}:${timestamp}:${nonce}`)
+                .digest('hex');
+
+            if (signature.toLowerCase() !== expectedSignature.toLowerCase()) {
+                console.warn(`[SEGURANÇA] Tentativa de handshake com assinatura HMAC inválida do device: ${device_id}`);
+                return res.status(403).json({ error: 'Assinatura criptográfica do aplicativo inválida ou corrompida.' });
+            }
+
+            // 4. Emissão de Token de Sessão Efêmero (duração de 12 horas)
+            const sessionToken = jwt.sign(
+                {
+                    device_id,
+                    type: 'mobile_session',
+                    app_version: app_version || '1.0.0',
+                    sig_hash: signature_hash || null
+                },
+                JWT_SECRET,
+                { expiresIn: '12h' }
+            );
+
+            res.json({
+                success: true,
+                session_token: sessionToken,
+                expires_in: 43200, // 12h em segundos
+                issued_at: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('Erro no handshake mobile:', err);
+            res.status(500).json({ error: 'Erro interno no handshake de segurança.' });
+        }
+    });
+
+    // Middleware de autenticação: aceita tanto o novo Token de Sessão Seguro (ou JWT do usuário)
+    // quanto mantém compatibilidade com x-api-key durante a fase de transição
+    async function authMobile(req, res, next) {
+        // 1. Verifica se foi enviado Bearer token (Token de Sessão Seguro do App ou JWT de Usuário)
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                req.sessionInfo = decoded;
+                return next();
+            } catch (err) {
+                // Se falhou o JWT, tenta verificar se era uma API Key passada no Bearer (compatibilidade)
+            }
+        }
+
+        // 2. Verifica se foi enviado Session Token via header dedicado x-session-token
+        const sessionHeader = req.headers['x-session-token'];
+        if (sessionHeader) {
+            try {
+                const decoded = jwt.verify(sessionHeader, JWT_SECRET);
+                req.sessionInfo = decoded;
+                return next();
+            } catch (err) {
+                return res.status(401).json({ error: 'Sessão expirada. Realize novo handshake em /api/mobile/session.' });
+            }
+        }
+
+        // 3. Fallback: API Key tradicional (x-api-key ou query)
         const key = req.headers['x-api-key'] ||
                     req.headers['x-apikey'] ||
                     req.query.apikey ||
                     req.query.apiKey ||
-                    req.query.api_key ||
-                    (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null);
+                    req.query.api_key;
 
-        if (!key) {
-            return res.status(401).json({ error: 'API Key é obrigatória. Envie o header x-api-key ou o parâmetro ?apikey=.' });
-        }
+        if (key) {
+            try {
+                const apiKey = await db.get(
+                    "SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [key]
+                );
 
-        try {
-            const apiKey = await db.get(
-                "SELECT * FROM api_keys WHERE key = ? AND (active = 1 OR active IS NULL)", [key]
-            );
-
-            if (!apiKey) {
-                return res.status(401).json({ error: 'API Key inválida ou desativada.' });
+                if (apiKey) {
+                    await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = datetime('now') WHERE id = ?", [apiKey.id]);
+                    req.apiKeyInfo = apiKey;
+                    return next();
+                }
+            } catch (err) {
+                console.error("Erro ao validar API Key na rota mobile:", err);
             }
-
-            // Atualiza o last_used e incrementa usage_count
-            await db.run("UPDATE api_keys SET usage_count = COALESCE(usage_count, 0) + 1, last_used = datetime('now') WHERE id = ?", [apiKey.id]);
-
-            // Salva no request pra uso posterior
-            req.apiKeyInfo = apiKey;
-            next();
-        } catch (err) {
-            console.error("Erro ao validar API Key na rota mobile:", err);
-            return res.status(500).json({ error: 'Erro interno ao validar API Key: ' + err.message });
         }
+
+        return res.status(401).json({ 
+            error: 'Não autorizado. Envie o token de sessão seguro (Authorization: Bearer <session_token>) obtido em /api/mobile/session ou x-api-key.' 
+        });
     }
 
-    // Aplica autenticação em TODAS as rotas
-    router.use(authApiKey);
+    // Aplica autenticação em TODAS as rotas seguintes
+    router.use(authMobile);
 
     // ============================================================
     //  📋 GET /tables — Lista tabelas públicas/permitidas do banco
