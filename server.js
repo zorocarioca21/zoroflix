@@ -37,6 +37,7 @@ import mangasRoutes from './backend/routes/mangas.js';
 import iptvChannelsRoutes from './backend/routes/iptvChannels.js';
 import anilistRoutes from './backend/routes/anilist.js';
 import contentReportsRoutes from './backend/routes/contentReports.js';
+import appReportsRoutes from './backend/routes/appReports.js';
 import pointsRoutes from './backend/routes/points.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
@@ -91,6 +92,9 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
 
     // Reportes de Conteúdo (Problemas no Player)
     app.use('/api/content-reports', contentReportsRoutes(db));
+
+    // Reportes de Falhas e Erros do App Mobile
+    app.use('/api/app-reports', appReportsRoutes(db));
 
     // Sistema de Pontos e Pedidos de Conteúdo
     app.use('/api/points', pointsRoutes(db, tmdbDb));

@@ -312,6 +312,30 @@ export async function initDB() {
         CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_episodes_uuid ON watched_episodes (uuid, content_id, season, episode) WHERE user_id IS NULL AND uuid IS NOT NULL;
     `);
 
+    // Tabela de Erros e Falhas do App Mobile (Crash / Playback / Network Reports)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS app_crash_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            user_nick TEXT,
+            app_version TEXT,
+            device_model TEXT,
+            android_version TEXT,
+            error_type TEXT DEFAULT 'playback_error',
+            error_message TEXT NOT NULL,
+            error_stack TEXT,
+            content_id TEXT,
+            content_title TEXT,
+            season INTEGER,
+            episode INTEGER,
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+    try { await db.exec(`CREATE INDEX IF NOT EXISTS idx_app_crash_created_at ON app_crash_reports (created_at)`); } catch(e) {}
+    try { await db.exec(`CREATE INDEX IF NOT EXISTS idx_app_crash_status ON app_crash_reports (status)`); } catch(e) {}
+
     // Limpar duplicados do watch_history antes de criar o index
     try {
         await db.exec(`

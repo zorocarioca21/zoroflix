@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award, Bug, Code } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
@@ -113,6 +113,12 @@ export default function AdminPanel() {
     const [searchContentRequests, setSearchContentRequests] = useState('');
     const [filterContentRequestStatus, setFilterContentRequestStatus] = useState('all');
 
+    // Estados de Erros do App (Mobile Crashes & Reports)
+    const [appCrashReportsList, setAppCrashReportsList] = useState([]);
+    const [searchAppCrash, setSearchAppCrash] = useState('');
+    const [filterAppCrashStatus, setFilterAppCrashStatus] = useState('pending');
+    const [selectedCrashStack, setSelectedCrashStack] = useState(null);
+
     const LIMIT_INITIAL = 5;
     const LIMIT_MORE = 10;
 
@@ -121,6 +127,7 @@ export default function AdminPanel() {
         if (activeTab === 'reports') fetchReports(true);
         if (activeTab === 'content-reports') fetchContentReports();
         if (activeTab === 'content-requests') fetchContentRequests();
+        if (activeTab === 'app-crashes') fetchAppCrashReports();
         if (activeTab === 'comments') fetchComments(true);
         if (activeTab === 'moderated') fetchModerated(true);
         if (activeTab === 'hidden') fetchHidden(true);
@@ -261,6 +268,56 @@ export default function AdminPanel() {
             }
         } catch (e) {
             alert('Erro ao apagar pedido.');
+        }
+    };
+
+    const fetchAppCrashReports = async () => {
+        setLoading(true);
+        try {
+            const resp = await fetch(`/api/admin/app-crash-reports?limit=100&status=${filterAppCrashStatus}&search=${encodeURIComponent(searchAppCrash)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setAppCrashReportsList(data.reports || []);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar erros do app:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateAppCrashStatus = async (reportId, newStatus) => {
+        try {
+            const resp = await fetch(`/api/admin/app-crash-reports/${reportId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (resp.ok) {
+                fetchAppCrashReports();
+            }
+        } catch (e) {
+            alert('Erro ao atualizar status do reporte do app.');
+        }
+    };
+
+    const handleDeleteAppCrashReport = async (reportId) => {
+        if (!confirm('Deseja realmente excluir este reporte de erro do app?')) return;
+        try {
+            const resp = await fetch(`/api/admin/app-crash-reports/${reportId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                fetchAppCrashReports();
+            }
+        } catch (e) {
+            alert('Erro ao excluir reporte do app.');
         }
     };
 
@@ -625,6 +682,14 @@ export default function AdminPanel() {
                                     </span>
                                 )}
                             </button>
+                            <button className={`admin-tab-btn ${activeTab === 'app-crashes' ? 'active' : ''}`} onClick={() => setActiveTab('app-crashes')} style={{ border: activeTab === 'app-crashes' ? '1px solid #ff9900' : '' }}>
+                                <Bug size={16} color="#ff9900" /> Erros do App (Mobile)
+                                {appCrashReportsList?.filter(r => r.status === 'pending')?.length > 0 && (
+                                    <span className="admin-tab-badge" style={{ background: '#ff9900', color: '#000' }}>
+                                        {appCrashReportsList.filter(r => r.status === 'pending').length}
+                                    </span>
+                                )}
+                            </button>
                             <button className={`admin-tab-btn ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>
                                 <MessageSquare size={16} /> Comentários
                             </button>
@@ -922,6 +987,171 @@ export default function AdminPanel() {
                                     </div>
                                 );
                             })
+                        )}
+                    </div>
+                )}
+
+                {/* ABA ERROS DO APP (MOBILE CRASHES & REPORTS) */}
+                {activeTab === 'app-crashes' && (
+                    <div className="admin-card-list">
+                        <div className="admin-tab-header">
+                            <div>
+                                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Bug color="#ff9900" size={24} /> Relatórios de Erros do Aplicativo (Mobile)
+                                </h2>
+                                <p style={{ color: '#888', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+                                    Logs capturados automaticamente pelo botão "Reportar Erro" do app com horário oficial de Brasília/São Paulo.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <select
+                                    value={filterAppCrashStatus}
+                                    onChange={(e) => {
+                                        setFilterAppCrashStatus(e.target.value);
+                                        setTimeout(() => fetchAppCrashReports(), 50);
+                                    }}
+                                    style={{
+                                        background: '#1a1a24',
+                                        color: '#fff',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.8rem',
+                                        fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <option value="pending">Pendentes</option>
+                                    <option value="resolved">Resolvidos</option>
+                                    <option value="dismissed">Dispensados</option>
+                                    <option value="all">Todos os Status</option>
+                                </select>
+                                <div className="admin-search-bar">
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por erro, modelo, usuário ou título..."
+                                        value={searchAppCrash}
+                                        onChange={e => setSearchAppCrash(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && fetchAppCrashReports()}
+                                    />
+                                    <button onClick={fetchAppCrashReports}><Search size={18}/></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {appCrashReportsList.length === 0 ? (
+                            <p className="no-data">Nenhum relatório de erro do aplicativo encontrado.</p>
+                        ) : (
+                            appCrashReportsList.map(cr => (
+                                <div
+                                    key={cr.id}
+                                    className="admin-row-card report"
+                                    style={{
+                                        borderLeft: cr.status === 'pending'
+                                            ? '4px solid #ff9900'
+                                            : (cr.status === 'resolved' ? '4px solid #00ff88' : '4px solid #666')
+                                    }}
+                                >
+                                    <div className="card-header-admin">
+                                        <span className="reporter">
+                                            Usuário: <b>{cr.user_nick || 'Anônimo'}</b> {cr.user_email && `(${cr.user_email})`}
+                                            {cr.created_at && (
+                                                <span style={{ color: '#ff9900', marginLeft: '12px', fontWeight: 'bold' }}>
+                                                    🕒 {new Date(cr.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Horário de SP)
+                                                </span>
+                                            )}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            {cr.app_version && (
+                                                <span style={{ background: '#222', color: '#00ff88', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid #333' }}>
+                                                    App v{cr.app_version}
+                                                </span>
+                                            )}
+                                            {cr.device_model && (
+                                                <span style={{ background: '#222', color: '#60a5fa', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid #333' }}>
+                                                    📱 {cr.device_model} {cr.android_version && `(Android ${cr.android_version})`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Informações do Conteúdo se houver */}
+                                    {(cr.content_title || cr.content_id) && (
+                                        <div style={{ margin: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#eee', fontSize: '0.95rem' }}>
+                                            <Film size={16} color="#00ff88" />
+                                            <span>Conteúdo: <b>{cr.content_title || `ID ${cr.content_id}`}</b></span>
+                                            {cr.season && <span style={{ color: '#aaa', fontSize: '0.85rem' }}>T{cr.season}</span>}
+                                            {cr.episode && <span style={{ color: '#aaa', fontSize: '0.85rem' }}>E{cr.episode}</span>}
+                                        </div>
+                                    )}
+
+                                    {/* Detalhe do Erro */}
+                                    <div style={{ margin: '0.5rem 0' }}>
+                                        <span style={{
+                                            background: 'rgba(255, 153, 0, 0.15)',
+                                            color: '#ff9900',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 'bold',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            textTransform: 'uppercase'
+                                        }}>
+                                            Tipo: {cr.error_type || 'Exceção'}
+                                        </span>
+                                    </div>
+
+                                    <div className="comment-preview" style={{ background: 'rgba(255, 153, 0, 0.08)', border: '1px solid rgba(255, 153, 0, 0.25)', color: '#fff', padding: '0.8rem', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                        {cr.error_message || 'Sem mensagem descritiva de erro.'}
+                                    </div>
+
+                                    <div className="card-actions-admin" style={{ marginTop: '0.8rem', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.8rem', color: '#888', marginRight: 'auto' }}>
+                                            Status: <b style={{ color: cr.status === 'pending' ? '#ff9900' : (cr.status === 'resolved' ? '#00ff88' : '#888') }}>{cr.status.toUpperCase()}</b>
+                                        </span>
+
+                                        {cr.error_stack && (
+                                            <button
+                                                className="btn-adm-safe"
+                                                onClick={() => setSelectedCrashStack({
+                                                    title: `${cr.error_type || 'Erro'} - ${cr.device_model || 'Dispositivo'}`,
+                                                    message: cr.error_message,
+                                                    stack: cr.error_stack,
+                                                    date: new Date(cr.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+                                                })}
+                                                style={{ background: '#252535', color: '#fff', border: '1px solid #444', fontSize: '0.8rem' }}
+                                            >
+                                                <Code size={14} style={{ marginRight: '4px' }} /> Ver Stack Trace Completo
+                                            </button>
+                                        )}
+
+                                        {cr.status !== 'resolved' && (
+                                            <button
+                                                className="btn-adm-safe"
+                                                onClick={() => handleUpdateAppCrashStatus(cr.id, 'resolved')}
+                                                style={{ background: '#00ff88', color: '#000', fontWeight: 'bold', fontSize: '0.8rem' }}
+                                            >
+                                                <CheckCircle size={14} style={{ marginRight: '4px' }} /> Marcar Resolvido
+                                            </button>
+                                        )}
+
+                                        {cr.status !== 'dismissed' && (
+                                            <button
+                                                className="btn-adm-safe"
+                                                onClick={() => handleUpdateAppCrashStatus(cr.id, 'dismissed')}
+                                                style={{ fontSize: '0.8rem' }}
+                                            >
+                                                Dispensar
+                                            </button>
+                                        )}
+
+                                        <button
+                                            className="btn-adm-delete"
+                                            onClick={() => handleDeleteAppCrashReport(cr.id)}
+                                            style={{ fontSize: '0.8rem' }}
+                                        >
+                                            <Trash2 size={14} style={{ marginRight: '4px' }} /> Excluir
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 )}
@@ -1844,6 +2074,88 @@ export default function AdminPanel() {
                                 </div>
                             </>
                         ) : null}
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL PARA VISUALIZAR STACK TRACE DO ERRO DO APP */}
+            {selectedCrashStack && (
+                <div className="admin-modal-overlay" onClick={() => setSelectedCrashStack(null)}>
+                    <div
+                        className="admin-modal-content"
+                        style={{ maxWidth: '800px', width: '90%', maxHeight: '85vh', overflowY: 'auto' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '0.8rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Bug color="#ff9900" size={22} />
+                                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem' }}>
+                                    {selectedCrashStack.title}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setSelectedCrashStack(null)}
+                                style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '4px' }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div style={{ marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.85rem', color: '#ff9900' }}>
+                                🕒 Data / Hora (São Paulo): <b>{selectedCrashStack.date}</b>
+                            </span>
+                        </div>
+
+                        {selectedCrashStack.message && (
+                            <div style={{ marginBottom: '1rem', background: '#1c1c28', padding: '0.8rem', borderRadius: '6px', border: '1px solid #333' }}>
+                                <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '4px', textTransform: 'uppercase' }}>Mensagem do Erro:</div>
+                                <div style={{ color: '#ff6b6b', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                    {selectedCrashStack.message}
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ color: '#888', fontSize: '0.75rem', marginBottom: '6px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Stack Trace Técnico:</span>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(selectedCrashStack.stack);
+                                    alert('Stack trace copiado para a área de transferência!');
+                                }}
+                                style={{ background: '#333', color: '#fff', border: 'none', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                                <Copy size={12} /> Copiar Stack
+                            </button>
+                        </div>
+
+                        <pre
+                            style={{
+                                background: '#0e0e15',
+                                color: '#a6e22e',
+                                padding: '1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.82rem',
+                                overflowX: 'auto',
+                                border: '1px solid #2a2a3a',
+                                lineHeight: '1.5',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                maxHeight: '400px'
+                            }}
+                        >
+                            {selectedCrashStack.stack}
+                        </pre>
+
+                        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+                            <button
+                                className="btn-adm-safe"
+                                onClick={() => setSelectedCrashStack(null)}
+                                style={{ padding: '0.5rem 1.2rem' }}
+                            >
+                                Fechar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

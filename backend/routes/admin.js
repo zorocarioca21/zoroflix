@@ -363,6 +363,67 @@ Instrução de Resposta:
     });
 
     // ========================================================
+    // REPORTES DE ERROS E CRASHES DO APP MOBILE
+    // ========================================================
+    router.get('/app-crash-reports', async (req, res) => {
+        const { limit = 50, offset = 0, search = '', status = 'pending' } = req.query;
+        try {
+            let whereClause = "1=1";
+            const params = [];
+
+            if (status && status !== 'all') {
+                whereClause += " AND acr.status = ?";
+                params.push(status);
+            }
+
+            if (search) {
+                whereClause += " AND (acr.user_nick LIKE ? OR acr.content_title LIKE ? OR acr.error_message LIKE ? OR acr.device_model LIKE ? OR acr.error_type LIKE ?)";
+                params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            }
+
+            const rows = await db.all(`
+                SELECT acr.*, u.email as user_email, u.role as user_role
+                FROM app_crash_reports acr
+                LEFT JOIN users u ON acr.user_id = u.id
+                WHERE ${whereClause}
+                ORDER BY acr.created_at DESC
+                LIMIT ? OFFSET ?
+            `, [...params, parseInt(limit, 10), parseInt(offset, 10)]);
+
+            const total = await db.get(`
+                SELECT COUNT(*) as count
+                FROM app_crash_reports acr
+                LEFT JOIN users u ON acr.user_id = u.id
+                WHERE ${whereClause}
+            `, params);
+
+            res.json({ reports: rows, total: total ? total.count : 0 });
+        } catch (err) {
+            console.error('Erro ao buscar reportes de erros do app:', err);
+            res.status(500).json({ error: 'Erro ao buscar reportes do app.' });
+        }
+    });
+
+    router.post('/app-crash-reports/:id/status', async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body; // 'resolved', 'dismissed', 'pending'
+        try {
+            await db.run('UPDATE app_crash_reports SET status = ? WHERE id = ?', [status, id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao atualizar status do reporte do app.' });
+        }
+    });
+
+    router.delete('/app-crash-reports/:id', async (req, res) => {
+        const { id } = req.params;
+        try {
+            await db.run('DELETE FROM app_crash_reports WHERE id = ?', [id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao excluir reporte do app.' });
+        }
+    });
     // GERENCIAMENTO DE PEDIDOS E PONTOS
     // ========================================================
     router.get('/content-requests', async (req, res) => {
