@@ -451,6 +451,25 @@ export default function PlayerPage() {
                         }
                     }
 
+                    // 1.1 Suporte inteligente a animes contínuos: se não achou com season_number=${season}, tenta com season_number=1 (caso o arquivo tenha sido salvo como S01 E60)
+                    if (parseInt(season, 10) > 1 || parseInt(episode, 10) > 24) {
+                        try {
+                            const altSeason = parseInt(season, 10) > 1 ? 1 : season;
+                            let resAlt = await fetch(`/api/sync/queue?tmdb_id=${id}&season_number=${altSeason}&episode_number=${episode}&limit=50`, { headers });
+                            let dataAlt = await resAlt.json();
+                            if (dataAlt?.items?.length > 0) {
+                                const validAltItems = dataAlt.items.filter(i => i.status === 'completed' && (i.telegram_message_id || i.stream_url));
+                                if (validAltItems.length > 0) {
+                                    const matches = getBestMatches(validAltItems);
+                                    if (matches) {
+                                        handleMatches(matches);
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
                     // 2. Fallback: Busca por nome específico S00 E00
                     const specificSearch = `${seriesName} S${s} E${e}`;
 
