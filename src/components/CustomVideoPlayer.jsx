@@ -805,7 +805,15 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 onPause={() => setIsPlaying(false)}
                 onTimeUpdate={() => setCurrentTime(videoRef.current.currentTime)}
                 onLoadedMetadata={() => setDuration(videoRef.current.duration)}
+                onDurationChange={() => {
+                    if (videoRef.current && isFinite(videoRef.current.duration)) {
+                        setDuration(videoRef.current.duration);
+                    }
+                }}
                 onLoadedData={() => {
+                    if (videoRef.current && isFinite(videoRef.current.duration)) {
+                        setDuration(videoRef.current.duration);
+                    }
                     // Se o buffer do novo vídeo já estiver pronto, tira a mensagem de troca
                     setSwitchLoadingMessage(null);
                 }}
@@ -1073,16 +1081,16 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 5
             }}>
                 {/* Timeline (Oculta se for Transmissão Ao Vivo) */}
-                {!isLive && duration > 0 && isFinite(duration) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {!isLive && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minHeight: '24px' }}>
                         <span style={{ color: '#fff', fontSize: '0.85rem', width: '50px', textAlign: 'right' }}>{formatTime(currentTime)}</span>
                         <input 
                             type="range" 
-                            min={0} max={duration || 100} value={currentTime}
+                            min={0} max={duration > 0 && isFinite(duration) ? duration : 100} value={currentTime}
                             onChange={handleProgress}
                             style={{ flex: 1, accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
                         />
-                        <span style={{ color: '#888', fontSize: '0.85rem', width: '50px' }}>{formatTime(duration)}</span>
+                        <span style={{ color: '#888', fontSize: '0.85rem', width: '50px' }}>{duration > 0 && isFinite(duration) ? formatTime(duration) : '00:00'}</span>
                     </div>
                 )}
 
