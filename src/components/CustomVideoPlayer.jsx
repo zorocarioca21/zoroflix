@@ -43,6 +43,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     const [debugLogs, setDebugLogs] = useState([]);
     const [showDebug, setShowDebug] = useState(isAdmin);
     const seekStartTimeRef = useRef(0);
+    const pointsAwardedRef = useRef(false);
 
     const addDebugLog = (msg) => {
         if (!isAdmin) return;
@@ -248,6 +249,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
             prevSrcUrl.current = srcUrl;
             prevEpisode.current = episode;
             prevContentId.current = contentId;
+            if (!isSameEpisode) {
+                pointsAwardedRef.current = false;
+            }
         }
     }, [messageId, srcUrl, episode, contentId]);
 
@@ -480,6 +484,29 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                         resume_time: Math.floor(videoRef.current.currentTime)
                     })
                 }).catch(err => console.error("Erro ping progresso:", err));
+
+                // Sistema de Pontos: Concede 20 pontos ao assistir pelo menos 80% do conteúdo
+                if (!pointsAwardedRef.current && token && duration > 0 && !isLive) {
+                    const ratio = videoRef.current.currentTime / duration;
+                    if (ratio >= 0.8) {
+                        pointsAwardedRef.current = true;
+                        fetch('/api/points/watch-reward', {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify({
+                                tmdb_id: String(contentId),
+                                media_type: season ? 'tv' : 'movie',
+                                season: season ? parseInt(season, 10) : null,
+                                episode: episode ? parseInt(episode, 10) : null,
+                                source: 'native_player'
+                            })
+                        }).then(r => r.json()).then(data => {
+                            if (data && data.success) {
+                                console.log('[Pontos] Recompensa de 80% concedida:', data.pointsAwarded);
+                            }
+                        }).catch(e => console.error('Erro ao conceder pontos:', e));
+                    }
+                }
             }
         };
 

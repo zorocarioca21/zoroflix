@@ -104,6 +104,70 @@ export async function initDB() {
         )
     `);
 
+    // Reportes de Conteúdo (problemas no player)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS content_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            tmdb_id TEXT,
+            media_type TEXT,
+            season INTEGER,
+            episode INTEGER,
+            title TEXT,
+            description TEXT,
+            source TEXT,
+            page_url TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Sistema de Pontos
+    try { await db.exec(`ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 0`); } catch (e) {}
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS watch_rewards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            content_key TEXT,
+            tmdb_id TEXT,
+            media_type TEXT,
+            season INTEGER,
+            episode INTEGER,
+            points INTEGER,
+            source TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, content_key)
+        )
+    `);
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS content_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_key TEXT UNIQUE,
+            tmdb_id TEXT,
+            media_type TEXT,
+            season INTEGER,
+            episode INTEGER,
+            title TEXT,
+            poster_path TEXT,
+            year TEXT,
+            is_anime INTEGER DEFAULT 0,
+            votes INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS content_request_votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id INTEGER,
+            user_id INTEGER,
+            points_spent INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(request_id, user_id)
+        )
+    `);
+
     // Tabela de Favoritos
     await db.exec(`
         CREATE TABLE IF NOT EXISTS favorites (

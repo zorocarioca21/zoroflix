@@ -299,6 +299,144 @@ Instrução de Resposta:
         }
     });
 
+    // ========================================================
+    // REPORTES DE CONTEÚDO (Problemas no Player)
+    // ========================================================
+    router.get('/content-reports', async (req, res) => {
+        const { limit = 50, offset = 0, search = '', status = 'pending' } = req.query;
+        try {
+            let whereClause = "1=1";
+            const params = [];
+
+            if (status && status !== 'all') {
+                whereClause += " AND cr.status = ?";
+                params.push(status);
+            }
+
+            if (search) {
+                whereClause += " AND (u.nick LIKE ? OR cr.title LIKE ? OR cr.description LIKE ? OR cr.tmdb_id LIKE ?)";
+                params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            }
+
+            const rows = await db.all(`
+                SELECT cr.*, u.nick as reporter_nick, u.email as reporter_email, u.role as reporter_role
+                FROM content_reports cr
+                LEFT JOIN users u ON cr.user_id = u.id
+                WHERE ${whereClause}
+                ORDER BY cr.created_at DESC
+                LIMIT ? OFFSET ?
+            `, [...params, parseInt(limit, 10), parseInt(offset, 10)]);
+
+            const total = await db.get(`
+                SELECT COUNT(*) as count
+                FROM content_reports cr
+                LEFT JOIN users u ON cr.user_id = u.id
+                WHERE ${whereClause}
+            `, params);
+
+            res.json({ reports: rows, total: total ? total.count : 0 });
+        } catch (err) {
+            console.error('Erro ao buscar reportes de conteúdo:', err);
+            res.status(500).json({ error: 'Erro ao buscar reportes de conteúdo.' });
+        }
+    });
+
+    router.post('/content-reports/:id/status', async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body; // 'resolved', 'dismissed', 'pending'
+        try {
+            await db.run('UPDATE content_reports SET status = ? WHERE id = ?', [status, id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao atualizar status do reporte.' });
+        }
+    });
+
+    router.delete('/content-reports/:id', async (req, res) => {
+        const { id } = req.params;
+        try {
+            await db.run('DELETE FROM content_reports WHERE id = ?', [id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao excluir reporte de conteúdo.' });
+        }
+    });
+
+    // ========================================================
+    // GERENCIAMENTO DE PEDIDOS E PONTOS
+    // ========================================================
+    router.get('/content-requests', async (req, res) => {
+        const { limit = 100, offset = 0, search = '', status = 'all' } = req.query;
+        try {
+            let whereClause = "1=1";
+            const params = [];
+
+            if (status && status !== 'all') {
+                whereClause += " AND cr.status = ?";
+                params.push(status);
+            }
+
+            if (search) {
+                whereClause += " AND (cr.title LIKE ? OR cr.tmdb_id LIKE ?)";
+                params.push(`%${search}%`, `%${search}%`);
+            }
+
+            const rows = await db.all(`
+                SELECT cr.*,
+                    (SELECT COUNT(*) FROM content_request_votes v WHERE v.request_id = cr.id) as vote_count,
+                    (SELECT GROUP_CONCAT(u.nick, ', ') FROM content_request_votes v JOIN users u ON v.user_id = u.id WHERE v.request_id = cr.id) as requested_by_users
+                FROM content_requests cr
+                WHERE ${whereClause}
+                ORDER BY cr.votes DESC, cr.updated_at DESC
+                LIMIT ? OFFSET ?
+            `, [...params, parseInt(limit, 10), parseInt(offset, 10)]);
+
+            res.json(rows);
+        } catch (err) {
+            console.error('Erro ao buscar pedidos no admin:', err);
+            res.status(500).json({ error: 'Erro ao buscar pedidos.' });
+        }
+    });
+
+    router.post('/content-requests/:id/status', async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body; // 'pending', 'completed', 'rejected'
+        try {
+            await db.run('UPDATE content_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao atualizar pedido.' });
+        }
+    });
+
+    router.delete('/content-requests/:id', async (req, res) => {
+        const { id } = req.params;
+        try {
+            await db.run('DELETE FROM content_request_votes WHERE request_id = ?', [id]);
+            await db.run('DELETE FROM content_requests WHERE id = ?', [id]);
+            res.json({ success: true });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao excluir pedido.' });
+        }
+    });
+
+    // Ajustar pontos de um usuário diretamente pelo painel
+    router.post('/users/:id/adjust-points', async (req, res) => {
+        const { id } = req.params;
+        const { delta, exact } = req.body;
+        try {
+            if (exact !== undefined) {
+                await db.run('UPDATE users SET points = ? WHERE id = ?', [parseInt(exact, 10), id]);
+            } else if (delta !== undefined) {
+                await db.run('UPDATE users SET points = COALESCE(points, 0) + ? WHERE id = ?', [parseInt(delta, 10), id]);
+            }
+            const updated = await db.get('SELECT id, nick, points FROM users WHERE id = ?', [id]);
+            res.json({ success: true, user: updated });
+        } catch (err) {
+            res.status(500).json({ error: 'Erro ao alterar pontos do usuário.' });
+        }
+    });
+
     // Ver denúncias com suporte a paginação e busca
     router.get('/reports', async (req, res) => {
         const { limit = 5, offset = 0, search = '' } = req.query;
@@ -317,6 +455,7 @@ Instrução de Resposta:
             res.status(500).json({ error: 'Erro ao buscar denúncias.' });
         }
     });
+
 
     // Ver comentários com suporte a paginação, busca e status (active, moderated, hidden)
     router.get('/comments', async (req, res) => {

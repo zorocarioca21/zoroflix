@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck, ChevronLeft, ChevronRight, Award } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -23,6 +23,7 @@ import EmbedPlayerPage from './components/EmbedPlayerPage'
 import ApiLandingPage from './components/ApiLandingPage'
 import EmbedDocsPage from './components/EmbedDocsPage'
 import AppUpdatePage from './components/AppUpdatePage'
+import PointsPage from './components/PointsPage'
 import TurnstileGatekeeper from './components/TurnstileGatekeeper'
 
 // Auth & User Components
@@ -371,6 +372,9 @@ function AppContent() {
                     <Link to="/perfil" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                       <UserIcon size={16} /> Meu Perfil
                     </Link>
+                    <Link to="/pontos" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#00ff88' }}>
+                      <Award size={16} /> Pontos & Pedidos
+                    </Link>
                     {user.role === 'admin' && (
                         <Link to="/downloads" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                         <Download size={16} /> Meus Downloads
@@ -418,6 +422,8 @@ function AppContent() {
         <Route path="/serie/:id/:season/:episode/player" element={<PlayerPage />} />
         <Route path="/canal/:canalId" element={<PlayerPage />} />
         <Route path="/perfil" element={<UserProfile />} />
+        <Route path="/pontos" element={<PointsPage />} />
+        <Route path="/pedidos" element={<PointsPage />} />
         <Route path="/downloads" element={<DownloadsPage />} />
         <Route path="/paineladm" element={<AdminPanel />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />

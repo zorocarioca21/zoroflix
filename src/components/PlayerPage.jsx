@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles, Flag, AlertCircle } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
 import CustomVideoPlayer from './CustomVideoPlayer';
@@ -41,6 +41,16 @@ export default function PlayerPage() {
     const [adTimer, setAdTimer] = useState(10);
     const [debugMatches, setDebugMatches] = useState(null);
     const prevLanguageType = useRef(null); 
+
+    // Estado do Modal de Reporte de Conteúdo
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportDescription, setReportDescription] = useState('');
+    const [reportSubmitting, setReportSubmitting] = useState(false);
+    const [reportFeedback, setReportFeedback] = useState(null);
+
+    // Sistema de Pontos no SuperFlix (tempo na página >= 80% do conteúdo)
+    const superflixPointsAwardedRef = useRef(false);
+    const superflixTimeSpentRef = useRef(0); 
 
     useEffect(() => {
         if (!confirmDownloadUrl) return;
@@ -92,6 +102,116 @@ export default function PlayerPage() {
             window.alert('Falha ao comunicar com o servidor de download.');
         }
     };
+
+    // Submissão do Reporte de Conteúdo
+    const handleSubmitReport = async (e) => {
+        if (e) e.preventDefault();
+        if (!user) {
+            setReportFeedback({ type: 'error', message: 'Você precisa estar logado para enviar um reporte.' });
+            return;
+        }
+        if (!reportDescription || !reportDescription.trim()) {
+            setReportFeedback({ type: 'error', message: 'Por favor, descreva o que está acontecendo.' });
+            return;
+        }
+
+        setReportSubmitting(true);
+        setReportFeedback(null);
+
+        const token = localStorage.getItem('cinegeek_token');
+        try {
+            const res = await fetch('/api/content-reports', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    tmdb_id: id ? String(id) : null,
+                    media_type: canalId ? 'canal' : (season ? 'tv' : 'movie'),
+                    season: season ? parseInt(season, 10) : null,
+                    episode: episode ? parseInt(episode, 10) : null,
+                    title: state.title || document.title || 'Conteúdo',
+                    description: reportDescription.trim(),
+                    source: telegramMessageId ? 'telegram_player' : (canalId ? 'iptv' : 'superflix'),
+                    page_url: window.location.href
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setReportFeedback({ type: 'success', message: data.message || 'Reporte enviado com sucesso!' });
+                setReportDescription('');
+                setTimeout(() => {
+                    setReportModalOpen(false);
+                    setReportFeedback(null);
+                }, 2200);
+            } else {
+                setReportFeedback({ type: 'error', message: data.error || 'Erro ao enviar reporte.' });
+            }
+        } catch (err) {
+            console.error('Erro ao enviar reporte:', err);
+            setReportFeedback({ type: 'error', message: 'Falha de comunicação com o servidor.' });
+        } finally {
+            setReportSubmitting(false);
+        }
+    };
+
+    // Reseta flags de pontos ao mudar de episódio/conteúdo
+    useEffect(() => {
+        superflixPointsAwardedRef.current = false;
+        superflixTimeSpentRef.current = 0;
+    }, [id, season, episode, canalId]);
+
+    // Timer do SuperFlix: concede 20 pontos ao ficar 80% da duração na página
+    useEffect(() => {
+        if (canalId) return; // Não concede pontos para TV ao vivo contínua
+        if (telegramMessageId) return; // Nosso player nativo já faz a contagem exata no CustomVideoPlayer
+        const token = localStorage.getItem('cinegeek_token');
+        if (!token || !user) return; // Apenas para usuários logados
+
+        // Determina a duração estimada em segundos (do TMDB ou padrão 45min séries / 100min filmes)
+        let runtimeMinutes = 45;
+        if (seriesDetail) {
+            if (seriesDetail.runtime) {
+                runtimeMinutes = seriesDetail.runtime;
+            } else if (Array.isArray(seriesDetail.episode_run_time) && seriesDetail.episode_run_time.length > 0) {
+                runtimeMinutes = seriesDetail.episode_run_time[0];
+            } else if (!season) {
+                runtimeMinutes = 100;
+            }
+        }
+        const targetSeconds = Math.max(120, Math.floor((runtimeMinutes * 60) * 0.8));
+
+        const interval = setInterval(() => {
+            if (superflixPointsAwardedRef.current) return;
+            superflixTimeSpentRef.current += 5;
+
+            if (superflixTimeSpentRef.current >= targetSeconds) {
+                superflixPointsAwardedRef.current = true;
+                fetch('/api/points/watch-reward', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        tmdb_id: String(id),
+                        media_type: season ? 'tv' : 'movie',
+                        season: season ? parseInt(season, 10) : null,
+                        episode: episode ? parseInt(episode, 10) : null,
+                        source: 'superflix_time'
+                    })
+                }).then(r => r.json()).then(data => {
+                    if (data && data.success) {
+                        console.log('[Pontos SuperFlix] 80% atingido e pontos concedidos:', data.pointsAwarded);
+                    }
+                }).catch(e => console.error('Erro ao conceder pontos SuperFlix:', e));
+            }
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [id, season, episode, canalId, telegramMessageId, user, seriesDetail]);
 
     const [isCheckingTelegram, setIsCheckingTelegram] = useState(() => {
         if (canalId) return false;
@@ -1117,6 +1237,30 @@ export default function PlayerPage() {
                                     Baixar
                                 </button>
                             )}
+
+                            {/* Botão de Reporte de Conteúdo (abre pop-up) */}
+                            <button
+                                className="action-btn report-btn"
+                                onClick={() => {
+                                    if (!user) {
+                                        window.alert('Você precisa estar logado na sua conta (Free ou VIP) para reportar um erro!');
+                                        return;
+                                    }
+                                    setReportModalOpen(true);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    color: '#ff4444',
+                                    borderColor: 'rgba(255, 68, 68, 0.5)',
+                                    background: 'rgba(255, 68, 68, 0.08)'
+                                }}
+                                title="Reportar problema neste conteúdo"
+                            >
+                                <Flag size={18} />
+                                Reportar Erro
+                            </button>
                         </div>
                     )}
                 </div>
@@ -1449,6 +1593,144 @@ export default function PlayerPage() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+            {/* Modal de Reporte de Erro no Conteúdo */}
+            {reportModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 99999,
+                    padding: '1rem'
+                }} onClick={() => !reportSubmitting && setReportModalOpen(false)}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid rgba(255, 68, 68, 0.35)',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        maxWidth: '520px',
+                        width: '100%',
+                        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 68, 68, 0.15)',
+                        position: 'relative'
+                    }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+                            <div style={{
+                                width: '42px', height: '42px', borderRadius: '12px',
+                                background: 'rgba(255, 68, 68, 0.15)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#ff4444'
+                            }}>
+                                <Flag size={22} />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 'bold' }}>
+                                    Reportar Problema no Conteúdo
+                                </h3>
+                                <p style={{ margin: '3px 0 0 0', color: '#888', fontSize: '0.85rem' }}>
+                                    {state.title || 'Este conteúdo'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <p style={{ color: '#bbb', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '1.2rem' }}>
+                            Encontrou áudio fora de sincronia, link quebrado, episódio errado ou travando? Descreva detalhadamente abaixo para corrigirmos o mais rápido possível:
+                        </p>
+
+                        <form onSubmit={handleSubmitReport}>
+                            <textarea
+                                value={reportDescription}
+                                onChange={(e) => setReportDescription(e.target.value)}
+                                placeholder="Ex: O áudio está adiantado em relação ao vídeo a partir do minuto 15 / Episódio está sem áudio / Link não carrega..."
+                                rows={5}
+                                disabled={reportSubmitting}
+                                style={{
+                                    width: '100%',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid #333',
+                                    borderRadius: '12px',
+                                    padding: '0.9rem',
+                                    color: '#fff',
+                                    fontSize: '0.95rem',
+                                    resize: 'vertical',
+                                    outline: 'none',
+                                    fontFamily: 'inherit',
+                                    boxSizing: 'border-box',
+                                    marginBottom: '1rem'
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = '#ff4444'}
+                                onBlur={(e) => e.target.style.borderColor = '#333'}
+                            />
+
+                            {reportFeedback && (
+                                <div style={{
+                                    padding: '0.8rem 1rem',
+                                    borderRadius: '10px',
+                                    marginBottom: '1rem',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    background: reportFeedback.type === 'success' ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)',
+                                    color: reportFeedback.type === 'success' ? '#00ff88' : '#ff4444',
+                                    border: `1px solid ${reportFeedback.type === 'success' ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`
+                                }}>
+                                    {reportFeedback.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+                                    <span>{reportFeedback.message}</span>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setReportModalOpen(false)}
+                                    disabled={reportSubmitting}
+                                    style={{
+                                        background: 'transparent',
+                                        color: '#888',
+                                        border: '1px solid #333',
+                                        borderRadius: '10px',
+                                        padding: '0.7rem 1.4rem',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.9rem'
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={reportSubmitting}
+                                    style={{
+                                        background: '#ff4444',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        padding: '0.7rem 1.6rem',
+                                        cursor: reportSubmitting ? 'not-allowed' : 'pointer',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.9rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        boxShadow: '0 4px 15px rgba(255, 68, 68, 0.3)'
+                                    }}
+                                >
+                                    {reportSubmitting ? (
+                                        <>
+                                            <Loader size={16} className="spin-anim" /> Enviando...
+                                        </>
+                                    ) : (
+                                        'Enviar Reporte'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

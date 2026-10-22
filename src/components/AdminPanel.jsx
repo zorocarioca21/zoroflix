@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
@@ -103,12 +102,24 @@ export default function AdminPanel() {
     const [offsetHidden, setOffsetHidden] = useState(0);
     const [offsetUsers, setOffsetUsers] = useState(0);
 
+    // Estados de Reportes de Conteúdo (Player)
+    const [contentReportsList, setContentReportsList] = useState([]);
+    const [searchContentReports, setSearchContentReports] = useState('');
+    const [filterContentReportStatus, setFilterContentReportStatus] = useState('pending');
+
+    // Estados de Pedidos & Pontos
+    const [contentRequestsList, setContentRequestsList] = useState([]);
+    const [searchContentRequests, setSearchContentRequests] = useState('');
+    const [filterContentRequestStatus, setFilterContentRequestStatus] = useState('all');
+
     const LIMIT_INITIAL = 5;
     const LIMIT_MORE = 10;
 
     useEffect(() => {
         if (!isAuthorized) return;
         if (activeTab === 'reports') fetchReports(true);
+        if (activeTab === 'content-reports') fetchContentReports();
+        if (activeTab === 'content-requests') fetchContentRequests();
         if (activeTab === 'comments') fetchComments(true);
         if (activeTab === 'moderated') fetchModerated(true);
         if (activeTab === 'hidden') fetchHidden(true);
@@ -150,6 +161,106 @@ export default function AdminPanel() {
         setReports(reset ? data : [...reports, ...data]);
         setOffsetReports(currentOffset + data.length);
         setLoading(false);
+    };
+
+    const fetchContentReports = async () => {
+        setLoading(true);
+        try {
+            const resp = await fetch(`/api/admin/content-reports?limit=100&status=${filterContentReportStatus}&search=${encodeURIComponent(searchContentReports)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setContentReportsList(data.reports || []);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar reportes de conteúdo:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateContentReportStatus = async (reportId, newStatus) => {
+        try {
+            const resp = await fetch(`/api/admin/content-reports/${reportId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (resp.ok) {
+                fetchContentReports();
+            }
+        } catch (e) {
+            alert('Erro ao atualizar status do reporte.');
+        }
+    };
+
+    const handleDeleteContentReport = async (reportId) => {
+        if (!confirm('Deseja excluir este reporte?')) return;
+        try {
+            const resp = await fetch(`/api/admin/content-reports/${reportId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                fetchContentReports();
+            }
+        } catch (e) {
+            alert('Erro ao excluir reporte.');
+        }
+    };
+
+    const fetchContentRequests = async () => {
+        setLoading(true);
+        try {
+            const resp = await fetch(`/api/admin/content-requests?limit=100&status=${filterContentRequestStatus}&search=${encodeURIComponent(searchContentRequests)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                setContentRequestsList(data || []);
+            }
+        } catch (e) {
+            console.error('Erro ao buscar pedidos:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateContentRequestStatus = async (reqId, newStatus) => {
+        try {
+            const resp = await fetch(`/api/admin/content-requests/${reqId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (resp.ok) {
+                fetchContentRequests();
+            }
+        } catch (e) {
+            alert('Erro ao atualizar status do pedido.');
+        }
+    };
+
+    const handleDeleteContentRequest = async (reqId) => {
+        if (!confirm('Deseja realmente apagar este pedido da lista?')) return;
+        try {
+            const resp = await fetch(`/api/admin/content-requests/${reqId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (resp.ok) {
+                fetchContentRequests();
+            }
+        } catch (e) {
+            alert('Erro ao apagar pedido.');
+        }
     };
 
     const fetchNotFound = async () => {
@@ -497,6 +608,22 @@ export default function AdminPanel() {
                                 <AlertTriangle size={16} /> Denúncias
                                 {reports?.length > 0 && <span className="admin-tab-badge">{reports.length}</span>}
                             </button>
+                            <button className={`admin-tab-btn ${activeTab === 'content-reports' ? 'active' : ''}`} onClick={() => setActiveTab('content-reports')} style={{ border: activeTab === 'content-reports' ? '1px solid #ff4444' : '' }}>
+                                <Flag size={16} color="#ff4444" /> Reportes Player
+                                {contentReportsList?.filter(r => r.status === 'pending')?.length > 0 && (
+                                    <span className="admin-tab-badge" style={{ background: '#ff4444', color: '#fff' }}>
+                                        {contentReportsList.filter(r => r.status === 'pending').length}
+                                    </span>
+                                )}
+                            </button>
+                            <button className={`admin-tab-btn ${activeTab === 'content-requests' ? 'active' : ''}`} onClick={() => setActiveTab('content-requests')} style={{ border: activeTab === 'content-requests' ? '1px solid #00ff88' : '' }}>
+                                <Award size={16} color="#00ff88" /> Pedidos & Pontos
+                                {contentRequestsList?.filter(r => r.status === 'pending')?.length > 0 && (
+                                    <span className="admin-tab-badge" style={{ background: '#00ff88', color: '#000' }}>
+                                        {contentRequestsList.filter(r => r.status === 'pending').length}
+                                    </span>
+                                )}
+                            </button>
                             <button className={`admin-tab-btn ${activeTab === 'comments' ? 'active' : ''}`} onClick={() => setActiveTab('comments')}>
                                 <MessageSquare size={16} /> Comentários
                             </button>
@@ -567,6 +694,234 @@ export default function AdminPanel() {
                             </div>
                         ))}
                         {reports.length >= LIMIT_INITIAL && <button className="admin-pagination-btn" onClick={() => fetchReports()}>Ver Mais</button>}
+                    </div>
+                )}
+
+                {/* ABA REPORTES DE CONTEÚDO (PLAYER) */}
+                {activeTab === 'content-reports' && (
+                    <div className="admin-card-list">
+                        <div className="admin-tab-header">
+                            <div>
+                                <h2>Reportes de Conteúdo (Player)</h2>
+                                <p style={{ color: '#888', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+                                    Problemas de reprodução, áudio dessincronizado ou links quebrados reportados por usuários logados.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <select
+                                    value={filterContentReportStatus}
+                                    onChange={(e) => {
+                                        setFilterContentReportStatus(e.target.value);
+                                        setTimeout(() => fetchContentReports(), 50);
+                                    }}
+                                    style={{
+                                        background: '#1a1a24',
+                                        color: '#fff',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.8rem',
+                                        fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <option value="pending">Pendentes</option>
+                                    <option value="resolved">Resolvidos</option>
+                                    <option value="dismissed">Dispensados</option>
+                                    <option value="all">Todos</option>
+                                </select>
+                                <div className="admin-search-bar">
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por título, usuário ou descrição..."
+                                        value={searchContentReports}
+                                        onChange={e => setSearchContentReports(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && fetchContentReports()}
+                                    />
+                                    <button onClick={fetchContentReports}><Search size={18}/></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {contentReportsList.length === 0 ? (
+                            <p className="no-data">Nenhum reporte de conteúdo encontrado.</p>
+                        ) : (
+                            contentReportsList.map(r => (
+                                <div key={r.id} className="admin-row-card report" style={{ borderLeft: r.status === 'pending' ? '4px solid #ff4444' : (r.status === 'resolved' ? '4px solid #00ff88' : '4px solid #666') }}>
+                                    <div className="card-header-admin">
+                                        <span className="reporter">
+                                            Usuário: <b>{r.reporter_nick || 'Anônimo'}</b> ({r.reporter_role || 'free'})
+                                            {r.created_at && <span style={{ color: '#777', marginLeft: '10px' }}>{new Date(r.created_at).toLocaleString('pt-BR')}</span>}
+                                        </span>
+                                        <span className="reason" style={{ color: '#00ff88', fontWeight: 'bold' }}>
+                                            {r.media_type ? r.media_type.toUpperCase() : 'MÍDIA'} {r.season && `• T${r.season}`} {r.episode && `E${r.episode}`} • Fonte: {r.source || 'player'}
+                                        </span>
+                                    </div>
+
+                                    <div style={{ margin: '0.6rem 0', fontWeight: 'bold', color: '#fff', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Flag size={16} color="#ff4444" />
+                                        <span>{r.title || 'Conteúdo Sem Título'}</span>
+                                        {r.page_url && (
+                                            <a href={r.page_url} target="_blank" rel="noopener noreferrer" style={{ color: '#00ff88', fontSize: '0.8rem', marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                                Abrir Player <ExternalLink size={12} />
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    <div className="comment-preview" style={{ background: 'rgba(255, 68, 68, 0.06)', border: '1px solid rgba(255, 68, 68, 0.2)', color: '#eee', padding: '0.9rem', borderRadius: '8px' }}>
+                                        "{r.description}"
+                                    </div>
+
+                                    <div className="card-actions-admin" style={{ marginTop: '0.8rem' }}>
+                                        <span style={{ fontSize: '0.8rem', color: '#888', marginRight: 'auto' }}>
+                                            Status: <b style={{ color: r.status === 'pending' ? '#ff4444' : '#00ff88' }}>{r.status.toUpperCase()}</b>
+                                        </span>
+
+                                        {r.status !== 'resolved' && (
+                                            <button
+                                                className="btn-adm-safe"
+                                                onClick={() => handleUpdateContentReportStatus(r.id, 'resolved')}
+                                                style={{ background: '#00ff88', color: '#000', fontWeight: 'bold' }}
+                                            >
+                                                <CheckCircle size={14} style={{ marginRight: '4px' }} /> Marcar como Resolvido
+                                            </button>
+                                        )}
+                                        {r.status !== 'dismissed' && (
+                                            <button
+                                                className="btn-adm-safe"
+                                                onClick={() => handleUpdateContentReportStatus(r.id, 'dismissed')}
+                                            >
+                                                Dispensar
+                                            </button>
+                                        )}
+                                        <button
+                                            className="btn-adm-delete"
+                                            onClick={() => handleDeleteContentReport(r.id)}
+                                        >
+                                            <Trash2 size={14} style={{ marginRight: '4px' }} /> Excluir
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* ABA PEDIDOS E PONTOS DA COMUNIDADE */}
+                {activeTab === 'content-requests' && (
+                    <div className="admin-card-list">
+                        <div className="admin-tab-header">
+                            <div>
+                                <h2>Pedidos de Conteúdo (Sistema de Pontos)</h2>
+                                <p style={{ color: '#888', margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+                                    Acompanhe os filmes, séries e animes mais pedidos pelos usuários para adicionar ao servidor.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <select
+                                    value={filterContentRequestStatus}
+                                    onChange={(e) => {
+                                        setFilterContentRequestStatus(e.target.value);
+                                        setTimeout(() => fetchContentRequests(), 50);
+                                    }}
+                                    style={{
+                                        background: '#1a1a24',
+                                        color: '#fff',
+                                        border: '1px solid #333',
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.8rem',
+                                        fontSize: '0.85rem'
+                                    }}
+                                >
+                                    <option value="all">Todos os Status</option>
+                                    <option value="pending">Pendentes</option>
+                                    <option value="completed">Concluídos/Adicionados</option>
+                                    <option value="rejected">Rejeitados</option>
+                                </select>
+                                <div className="admin-search-bar">
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar pedidos por título..."
+                                        value={searchContentRequests}
+                                        onChange={e => setSearchContentRequests(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && fetchContentRequests()}
+                                    />
+                                    <button onClick={fetchContentRequests}><Search size={18}/></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {contentRequestsList.length === 0 ? (
+                            <p className="no-data">Nenhum pedido de conteúdo registrado.</p>
+                        ) : (
+                            contentRequestsList.map((cr, idx) => {
+                                const poster = cr.poster_path ? `https://image.tmdb.org/t/p/w200${cr.poster_path}` : '/placeholder-poster.png';
+                                return (
+                                    <div key={cr.id} className="admin-row-card" style={{ display: 'flex', gap: '15px', alignItems: 'center', borderLeft: cr.status === 'completed' ? '4px solid #00ff88' : '4px solid #ff4444' }}>
+                                        <div style={{ width: '50px', height: '70px', borderRadius: '6px', overflow: 'hidden', background: '#000', flexShrink: 0 }}>
+                                            <img src={poster} alt={cr.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                                                <span style={{ color: '#ff4444', fontWeight: '900', fontSize: '0.9rem' }}>#{idx + 1}</span>
+                                                <span style={{
+                                                    background: cr.is_anime ? 'rgba(245, 158, 11, 0.2)' : (cr.media_type === 'movie' ? 'rgba(0, 255, 136, 0.2)' : 'rgba(59, 130, 246, 0.2)'),
+                                                    color: cr.is_anime ? '#fbbf24' : (cr.media_type === 'movie' ? '#00ff88' : '#60a5fa'),
+                                                    fontSize: '0.7rem', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px'
+                                                }}>
+                                                    {cr.is_anime ? 'ANIME' : (cr.media_type === 'movie' ? 'FILME' : 'SÉRIE')}
+                                                </span>
+                                                {cr.year && <span style={{ color: '#888', fontSize: '0.8rem' }}>({cr.year})</span>}
+                                                <span style={{
+                                                    background: cr.status === 'completed' ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)',
+                                                    color: cr.status === 'completed' ? '#00ff88' : '#ff4444',
+                                                    fontSize: '0.7rem', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px'
+                                                }}>
+                                                    {cr.status.toUpperCase()}
+                                                </span>
+                                            </div>
+
+                                            <h4 style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '1.05rem' }}>
+                                                {cr.title} {cr.season && `(T${cr.season}${cr.episode ? `E${cr.episode}` : ''})`}
+                                            </h4>
+
+                                            <div style={{ fontSize: '0.82rem', color: '#aaa', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                                                <span>🔥 <b>{cr.votes || 0}</b> votos / solicitações</span>
+                                                <span>TMDB ID: <b>{cr.tmdb_id}</b></span>
+                                                {cr.requested_by_users && <span>Solicitado por: <i style={{ color: '#ddd' }}>{cr.requested_by_users}</i></span>}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                                            {cr.status !== 'completed' && (
+                                                <button
+                                                    className="btn-adm-safe"
+                                                    onClick={() => handleUpdateContentRequestStatus(cr.id, 'completed')}
+                                                    style={{ background: '#00ff88', color: '#000', fontWeight: 'bold', padding: '0.45rem 0.8rem', fontSize: '0.8rem' }}
+                                                >
+                                                    <CheckCircle size={14} style={{ marginRight: '4px' }} /> Marcar Adicionado
+                                                </button>
+                                            )}
+                                            {cr.status === 'completed' && (
+                                                <button
+                                                    className="btn-adm-safe"
+                                                    onClick={() => handleUpdateContentRequestStatus(cr.id, 'pending')}
+                                                    style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem' }}
+                                                >
+                                                    Reabrir Pedido
+                                                </button>
+                                            )}
+                                            <button
+                                                className="btn-adm-delete"
+                                                onClick={() => handleDeleteContentRequest(cr.id)}
+                                                style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem' }}
+                                            >
+                                                <Trash2 size={14} style={{ marginRight: '4px' }} /> Apagar
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 )}
 

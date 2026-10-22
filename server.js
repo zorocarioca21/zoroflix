@@ -36,6 +36,8 @@ import tmdbRoutes from './backend/routes/tmdb.js';
 import mangasRoutes from './backend/routes/mangas.js';
 import iptvChannelsRoutes from './backend/routes/iptvChannels.js';
 import anilistRoutes from './backend/routes/anilist.js';
+import contentReportsRoutes from './backend/routes/contentReports.js';
+import pointsRoutes from './backend/routes/points.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
@@ -86,6 +88,12 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
 
     // Rotas de Animes (AniList API + Mapeamento Híbrido)
     app.use('/api/anilist', anilistRoutes(db, tmdbDb));
+
+    // Reportes de Conteúdo (Problemas no Player)
+    app.use('/api/content-reports', contentReportsRoutes(db));
+
+    // Sistema de Pontos e Pedidos de Conteúdo
+    app.use('/api/points', pointsRoutes(db, tmdbDb));
 
     // Validação do Cloudflare Turnstile no servidor
     app.post('/api/turnstile/verify', async (req, res) => {
