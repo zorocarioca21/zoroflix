@@ -107,28 +107,74 @@ export default function pointsRoutes(db, tmdbDb) {
         }
     });
 
-    // Checar se lista de TMDB IDs já existe baixado no Telegram (sync_queue status='completed')
+    // Checar se lista de TMDB IDs já existe baixado no Telegram ou no catálogo do site
     // Usado na barra de pesquisa para filtrar o que JÁ temos
     router.post('/check-availability', async (req, res) => {
         try {
-            const { tmdb_ids } = req.body || {};
-            if (!Array.isArray(tmdb_ids) || tmdb_ids.length === 0) {
-                return res.json({ available: [] });
+            const { tmdb_ids, items } = req.body || {};
+            const cleanIds = Array.isArray(tmdb_ids) ? tmdb_ids.map(id => String(id)).filter(Boolean).slice(0, 50) : [];
+            const availableSet = new Set();
+
+            if (cleanIds.length > 0) {
+                const placeholders = cleanIds.map(() => '?').join(',');
+
+                // 1. Checa por tmdb_id direto na sync_queue (itens completados)
+                try {
+                    const rowsQueue = await db.all(`
+                        SELECT DISTINCT tmdb_id FROM sync_queue
+                        WHERE tmdb_id IN (${placeholders})
+                        AND (status = 'completed' OR telegram_message_id IS NOT NULL OR stream_url IS NOT NULL)
+                    `, cleanIds);
+                    rowsQueue.forEach(r => {
+                        if (r.tmdb_id) availableSet.add(String(r.tmdb_id));
+                    });
+                } catch (qErr) {}
+
+                // 2. Checa no banco de catálogo TMDB (tmdb_media_cache)
+                const targetTmdbDb = tmdbDb || db;
+                if (targetTmdbDb) {
+                    try {
+                        const rowsCache = await targetTmdbDb.all(`
+                            SELECT DISTINCT tmdb_id FROM tmdb_media_cache
+                            WHERE tmdb_id IN (${placeholders})
+                        `, cleanIds);
+                        rowsCache.forEach(r => {
+                            if (r.tmdb_id) availableSet.add(String(r.tmdb_id));
+                        });
+                    } catch (cErr) {}
+                }
             }
 
-            // Sanitiza os ids
-            const cleanIds = tmdb_ids.map(id => String(id)).slice(0, 50);
-            const placeholders = cleanIds.map(() => '?').join(',');
+            // 3. Fallback inteligente por Título / Nome original (para itens ainda sem tmdb_id na sync_queue)
+            if (Array.isArray(items) && items.length > 0) {
+                for (const item of items.slice(0, 30)) {
+                    const itemId = String(item.id);
+                    if (availableSet.has(itemId)) continue;
 
-            const rows = await db.all(`
-                SELECT DISTINCT tmdb_id FROM sync_queue
-                WHERE tmdb_id IN (${placeholders})
-                AND status = 'completed'
-                AND (telegram_message_id IS NOT NULL OR stream_url IS NOT NULL)
-            `, cleanIds);
+                    const titles = [item.title, item.name, item.original_title, item.original_name].filter(Boolean);
+                    for (const t of titles) {
+                        const cleanTitle = t.trim();
+                        if (cleanTitle.length < 3) continue;
 
-            const availableSet = rows.map(r => String(r.tmdb_id));
-            res.json({ available: availableSet });
+                        try {
+                            const found = await db.get(`
+                                SELECT id, tmdb_id FROM sync_queue
+                                WHERE status = 'completed'
+                                AND (telegram_message_id IS NOT NULL OR stream_url IS NOT NULL)
+                                AND title LIKE ?
+                                LIMIT 1
+                            `, [`%${cleanTitle}%`]);
+
+                            if (found) {
+                                availableSet.add(itemId);
+                                break;
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+
+            res.json({ available: Array.from(availableSet) });
         } catch (err) {
             console.error('Erro ao checar disponibilidade:', err);
             res.status(500).json({ error: 'Erro ao verificar disponibilidade.' });

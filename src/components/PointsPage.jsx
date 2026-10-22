@@ -91,18 +91,27 @@ export default function PointsPage() {
                 const rawItems = (data.results || []).filter(item => item.media_type === 'movie' || item.media_type === 'tv');
 
                 if (rawItems.length > 0) {
-                    // Checa quais destes já existem baixados no nosso Telegram
+                    // Checa quais destes já existem baixados no nosso Telegram ou no catálogo
                     const tmdbIds = rawItems.map(i => i.id);
                     const checkRes = await fetch('/api/points/check-availability', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tmdb_ids: tmdbIds })
+                        body: JSON.stringify({
+                            tmdb_ids: tmdbIds,
+                            items: rawItems.map(i => ({
+                                id: i.id,
+                                title: i.title,
+                                name: i.name,
+                                original_title: i.original_title,
+                                original_name: i.original_name
+                            }))
+                        })
                     });
                     const checkData = await checkRes.json();
                     const downloadedSet = new Set((checkData.available || []).map(id => String(id)));
                     setExistingTmdbIds(downloadedSet);
 
-                    // Filtra para exibir apenas os que ainda NÃO temos no Telegram
+                    // Filtra para exibir apenas os que ainda NÃO temos
                     const missingItems = rawItems.filter(item => !downloadedSet.has(String(item.id)));
                     setSearchResults(missingItems);
                 } else {
@@ -181,6 +190,37 @@ export default function PointsPage() {
             setIsSubmitting(false);
         }
     };
+
+    if (!authLoading && !user) {
+        return (
+            <div className="points-page-container" style={{ minHeight: '65vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                <div style={{
+                    width: '80px', height: '80px', borderRadius: '50%',
+                    background: 'rgba(0, 255, 136, 0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '1.5rem', color: '#00ff88', border: '1px solid rgba(0, 255, 136, 0.3)'
+                }}>
+                    <Award size={40} />
+                </div>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '0.8rem', color: '#fff' }}>
+                    Área Exclusiva para Membros
+                </h2>
+                <p style={{ color: '#aaa', maxWidth: '460px', lineHeight: '1.6', marginBottom: '2rem' }}>
+                    O sistema de pontos e pedidos é exclusivo para usuários com conta no CineGeek. Crie sua conta gratuita ou faça login para acumular pontos assistindo conteúdos e solicitar filmes, séries ou animes!
+                </p>
+                <Link
+                    to="/"
+                    style={{
+                        background: '#00ff88', color: '#000', fontWeight: 'bold',
+                        padding: '0.9rem 2rem', borderRadius: '12px', textDecoration: 'none',
+                        boxShadow: '0 4px 15px rgba(0, 255, 136, 0.4)'
+                    }}
+                >
+                    Voltar para o Início
+                </Link>
+            </div>
+        );
+    }
 
     return (
         <div className="points-page-container">
