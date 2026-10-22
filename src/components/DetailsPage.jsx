@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart, Layers, Sparkles } from 'lucide-react';
+import { Star, Clock, Calendar, Play, List, ChevronRight, ChevronLeft, Heart, Layers, Sparkles, Film } from 'lucide-react';
 import AdBanner from './AdBanner';
 import { RatingCircle, AgeBadge } from './Badges';
 import CommentSection from './CommentSection';
@@ -194,7 +194,35 @@ export default function DetailsPage() {
               .catch(() => {});
           }
 
-          fetchEpisodes(1, null);
+          // Para animes, buscamos os Episode Groups (Seasons) oficiais do TMDB para organizar as temporadas corretamente no dropdown
+          if (isAnimeOrAnimation) {
+            fetch(`${BASE_URL}/tv/${id}/episode_groups?api_key=${API_KEY}`)
+              .then(r => r.json())
+              .then(async gData => {
+                const groups = gData.results || [];
+                const targetGroup = groups.find(g => g.name && g.name.toLowerCase() === 'seasons')
+                  || groups.find(g => g.type === 6)
+                  || groups.find(g => g.type === 1);
+
+                if (targetGroup && isCurrent) {
+                  try {
+                    const detResp = await fetch(`${BASE_URL}/tv/episode_group/${targetGroup.id}?api_key=${API_KEY}&language=pt-BR`);
+                    const detData = await detResp.json();
+                    if (isCurrent && Array.isArray(detData.groups) && detData.groups.length > 0) {
+                      setEpisodeGroup(detData);
+                      fetchEpisodes(1, detData);
+                      return;
+                    }
+                  } catch (e) {}
+                }
+                if (isCurrent) fetchEpisodes(1, null);
+              })
+              .catch(() => {
+                if (isCurrent) fetchEpisodes(1, null);
+              });
+          } else {
+            fetchEpisodes(1, null);
+          }
 
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();
@@ -238,8 +266,17 @@ export default function DetailsPage() {
 
   const fetchEpisodes = async (seasonNumber, groupObj = episodeGroup) => {
     const sNum = parseInt(seasonNumber, 10);
-    // Removemos o bypass do frontend para que ele sempre bata no backend
-    // e o backend faça o merge com os episódios locais (sync_queue)
+    
+    // Se temos um episodeGroup (ex: temporadas organizadas para animes)
+    if (groupObj && Array.isArray(groupObj.groups) && groupObj.groups.length > 0) {
+      const targetGroup = groupObj.groups.find(g => (g.order !== undefined && g.order !== 0 ? g.order : groupObj.groups.indexOf(g) + 1) === sNum)
+        || groupObj.groups[sNum - 1]
+        || groupObj.groups[0];
+      if (targetGroup && Array.isArray(targetGroup.episodes)) {
+        setEpisodes(targetGroup.episodes);
+        return;
+      }
+    }
     
     try {
       let data = null;
@@ -328,11 +365,6 @@ export default function DetailsPage() {
                     {anilistData.studios.nodes[0].name}
                   </span>
                 )}
-                {anilistData?.episodes && (
-                  <span className="meta-item anime-episodes-total">
-                    {anilistData.episodes} episódios no total
-                  </span>
-                )}
               </div>
 
               <div className="details-genres">
@@ -341,33 +373,26 @@ export default function DetailsPage() {
 
               <p className="details-overview">{data.overview || (anilistData?.description ? anilistData.description.replace(/<[^>]*>?/gm, '') : "Sinopse não disponível em português.")}</p>
 
-              {/* Seções Relacionadas AniList (Sequências, Prelúdios, Filmes) */}
-              {anilistData?.relations?.edges?.length > 0 && (
+              {/* Seção de Filmes e Especiais da Franquia (AniList) */}
+              {anilistData?.relations?.edges?.some(edge => edge.node?.format === 'MOVIE' || edge.relationType === 'SIDE_STORY' || edge.node?.format === 'OVA') && (
                 <div className="anime-relations-box">
                   <div className="relations-header">
-                    <h4><Layers size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Conteúdos Relacionados</h4>
+                    <h4><Film size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} /> Filmes da Franquia</h4>
                   </div>
                   <div className="relations-chips">
                     {anilistData.relations.edges
-                      .filter(edge => ['SEQUEL', 'PREQUEL', 'SIDE_STORY', 'ALTERNATIVE'].includes(edge.relationType) || edge.node?.format === 'MOVIE')
+                      .filter(edge => edge.node?.format === 'MOVIE' || (edge.relationType === 'SIDE_STORY' && edge.node?.format !== 'TV') || edge.node?.format === 'OVA')
                       .slice(0, 6)
                       .map((edge, rIdx) => {
                         const relTitle = edge.node?.title?.english || edge.node?.title?.romaji;
-                        const relTypeMap = {
-                          'SEQUEL': 'Sequência / Próx. Temp',
-                          'PREQUEL': 'Prelúdio',
-                          'SIDE_STORY': 'História Paralela',
-                          'ALTERNATIVE': 'Versão Alternativa'
-                        };
-                        const typeLabel = edge.node?.format === 'MOVIE' ? 'Filme' : (relTypeMap[edge.relationType] || edge.relationType);
+                        const typeLabel = edge.node?.format === 'MOVIE' ? 'Filme' : 'Especial';
                         return (
                           <div 
                             key={rIdx} 
                             className="relation-chip"
                             onClick={() => {
                               const targetSlug = getSlug(relTitle);
-                              const targetPath = edge.node?.format === 'MOVIE' ? `/filme/${targetSlug}` : `/serie/${targetSlug}`;
-                              navigate(targetPath);
+                              navigate(`/filme/${targetSlug}`);
                             }}
                             title={`Ver ${relTitle}`}
                           >
@@ -411,18 +436,21 @@ export default function DetailsPage() {
                   onChange={(e) => handleSeasonChange(e.target.value)}
                 >
                   {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
-                    episodeGroup.groups.map((g, idx) => {
-                      const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
-                      const rawName = g.name || `Temporada ${sNum}`;
-                      const displayName = rawName
-                        .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
-                        .replace(/\bSpecials?\b/gi, 'Especiais');
-                      return (
-                        <option key={g.id || sNum} value={sNum}>
-                          {displayName} ({g.episodes?.length || 0} eps)
-                        </option>
-                      );
-                    })
+                    episodeGroup.groups
+                      .filter(g => g.order !== 0 && !/specials?/i.test(g.name || ''))
+                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                      .map((g, idx) => {
+                        const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
+                        const rawName = g.name || `Temporada ${sNum}`;
+                        const displayName = rawName
+                          .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
+                          .replace(/\bSpecials?\b/gi, 'Especiais');
+                        return (
+                          <option key={g.id || sNum} value={sNum}>
+                            {displayName} ({g.episodes?.length || 0} eps)
+                          </option>
+                        );
+                      })
                   ) : (
                     data.seasons?.filter(s => s.season_number > 0).map(s => (
                       <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
