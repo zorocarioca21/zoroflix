@@ -4,17 +4,23 @@ import jwt from 'jsonwebtoken';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
-// Middleware idêntico ao do favorites (authOrUuid)
+// Middleware idêntico ao do favorites (authOrUuid) + suporte a session_token e device_id do app
 const authOrUuid = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const uuid = req.query.uuid || req.body.uuid || req.headers['x-device-uuid'];
+    let uuid = req.query.uuid || req.body.uuid || req.headers['x-device-uuid'] || req.headers['x-device-id'];
 
     if (authHeader) {
-        const token = authHeader.split(' ')[1];
+        const token = authHeader.replace(/^Bearer\s+/i, '').trim();
         if (token && token !== 'null') {
             try {
                 const decoded = jwt.verify(token, JWT_SECRET);
-                req.user_id = decoded.id;
+                if (decoded.id) {
+                    req.user_id = decoded.id; // Usuário logado
+                }
+                // Se for um session_token do app mobile, usa o device_id como identificador único (uuid)
+                if (decoded.device_id && !uuid) {
+                    uuid = decoded.device_id;
+                }
             } catch (e) {
                 // Token inválido — cai pro UUID
             }
@@ -158,12 +164,20 @@ export default function recentsRoutes(db) {
 
             if (existing) {
                 await db.run(
-                    'UPDATE watch_history SET resume_time = ?, season = ?, episode = ? WHERE id = ?',
+                    'UPDATE watch_history SET resume_time = ?, season = ?, episode = ?, watched_at = CURRENT_TIMESTAMP WHERE id = ?',
                     [finalTime, season || null, episode || null, existing.id]
                 );
                 res.json({ success: true, message: 'Progresso salvo.' });
             } else {
-                res.status(404).json({ error: 'Item não encontrado no histórico.' });
+                // Se ainda não existia o registro inicial, cria automaticamente agora (Upsert transparente)
+                const media_type = req.body.media_type || req.body.type || (season || episode ? 'serie' : 'filme');
+                const title = req.body.title || 'Conteúdo';
+                const poster_path = req.body.poster_path || null;
+                await db.run(
+                    'INSERT INTO watch_history (uuid, user_id, content_id, media_type, title, poster_path, season, episode, resume_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [req.uuid || null, req.user_id || null, content_id, media_type, title, poster_path, season || null, episode || null, finalTime]
+                );
+                res.json({ success: true, message: 'Progresso inicial registrado com sucesso.' });
             }
         } catch (e) {
             console.error(e);

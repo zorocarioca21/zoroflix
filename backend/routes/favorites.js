@@ -4,17 +4,22 @@ import jwt from 'jsonwebtoken';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
-// Middleware to conditionally parse token or UUID
+// Middleware to conditionally parse token or UUID + mobile session token
 const authOrUuid = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const uuid = req.query.uuid || req.body.uuid || req.headers['x-device-uuid'];
+    let uuid = req.query.uuid || req.body.uuid || req.headers['x-device-uuid'] || req.headers['x-device-id'];
 
     if (authHeader) {
-        const token = authHeader.split(' ')[1];
+        const token = authHeader.replace(/^Bearer\s+/i, '').trim();
         if (token && token !== 'null') {
             try {
                 const decoded = jwt.verify(token, JWT_SECRET);
-                req.user_id = decoded.id; // Logged in user
+                if (decoded.id) {
+                    req.user_id = decoded.id; // Logged in user
+                }
+                if (decoded.device_id && !uuid) {
+                    uuid = decoded.device_id;
+                }
             } catch (e) {
                 // Token expirado ou inválido. Cai silenciosamente para usar o UUID anônimo
             }
