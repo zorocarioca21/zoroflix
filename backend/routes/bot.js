@@ -12,15 +12,22 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 export default function botRoutes(db) {
     // API Key / Session Token Verification Middleware
     const verifyKey = async (req, res, next) => {
-        // 1. Verifica se foi enviado Bearer token (Token de Sessão Seguro do App ou JWT de Usuário)
+        // 1. Verifica se foi enviado Bearer token (Token de Sessão Criptográfica do App)
         const authHeader = req.headers['authorization'];
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.replace(/^Bearer\s+/i, '').trim();
             try {
                 const decoded = jwt.verify(token, JWT_SECRET);
-                req.sessionInfo = decoded;
-                req.isAppClient = true;
-                return next();
+                // SEGURANÇA MÁXIMA: Só concede status de app legítimo se o token veio do handshake oficial
+                if (decoded && decoded.type === 'mobile_session') {
+                    req.sessionInfo = decoded;
+                    req.isAppClient = true;
+                    return next();
+                } else if (decoded && decoded.id) {
+                    // É um JWT de usuário logado
+                    req.userInfo = decoded;
+                    return next();
+                }
             } catch (err) {
                 // Se falhar a verificação JWT, continua para checar se é uma API Key no formato Bearer
             }
@@ -31,15 +38,17 @@ export default function botRoutes(db) {
         if (sessionHeader) {
             try {
                 const decoded = jwt.verify(sessionHeader, JWT_SECRET);
-                req.sessionInfo = decoded;
-                req.isAppClient = true;
-                return next();
+                if (decoded && decoded.type === 'mobile_session') {
+                    req.sessionInfo = decoded;
+                    req.isAppClient = true;
+                    return next();
+                }
             } catch (err) {
                 return res.status(401).json({ error: 'Sessão expirada. Realize novo handshake em /api/mobile/session.' });
             }
         }
 
-        // 3. Fallback: API Key tradicional
+        // 3. Fallback: API Key tradicional (apenas chaves ativas do banco)
         const apikey = req.query.apikey ||
                        req.query.apiKey ||
                        req.query.api_key ||
@@ -436,7 +445,7 @@ export default function botRoutes(db) {
                 const expiration = Date.now() + 14400000;
                 
                 const payloadData = { id: foundMsgId, title: downloadFileName, exp: expiration };
-                if (req.query.app === 'true' || req.isAppClient || req.headers['x-package-name'] || (req.headers['user-agent'] && req.headers['user-agent'].includes('CineGeek'))) {
+                if (req.isAppClient || (req.query.app === 'true' && req.apiKeyInfo)) {
                     payloadData.app = true;
                 }
                 const payload = JSON.stringify(payloadData);
