@@ -1,24 +1,54 @@
 import express from 'express';
 import axios from 'axios';
 import https from 'https';
+import jwt from 'jsonwebtoken';
 import { checkTitleMatch, getBestMatches } from '../../src/utils/titleMatch.js';
 import { getNextTmdbKey } from '../services/tmdbKeyService.js';
 
 const agent = new https.Agent({ family: 4 });
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 
 export default function botRoutes(db) {
-    // API Key Verification Middleware (reused from embed logic)
+    // API Key / Session Token Verification Middleware
     const verifyKey = async (req, res, next) => {
+        // 1. Verifica se foi enviado Bearer token (Token de Sessão Seguro do App ou JWT de Usuário)
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                req.sessionInfo = decoded;
+                req.isAppClient = true;
+                return next();
+            } catch (err) {
+                // Se falhar a verificação JWT, continua para checar se é uma API Key no formato Bearer
+            }
+        }
+
+        // 2. Verifica se foi enviado Session Token via header dedicado x-session-token
+        const sessionHeader = req.headers['x-session-token'];
+        if (sessionHeader) {
+            try {
+                const decoded = jwt.verify(sessionHeader, JWT_SECRET);
+                req.sessionInfo = decoded;
+                req.isAppClient = true;
+                return next();
+            } catch (err) {
+                return res.status(401).json({ error: 'Sessão expirada. Realize novo handshake em /api/mobile/session.' });
+            }
+        }
+
+        // 3. Fallback: API Key tradicional
         const apikey = req.query.apikey ||
                        req.query.apiKey ||
                        req.query.api_key ||
                        req.headers['x-api-key'] ||
                        req.headers['x-apikey'] ||
-                       (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null);
+                       (authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null);
 
         if (!apikey) {
-            return res.status(401).json({ error: "Missing API Key" });
+            return res.status(401).json({ error: "Missing API Key or Session Token" });
         }
 
         try {
@@ -406,7 +436,7 @@ export default function botRoutes(db) {
                 const expiration = Date.now() + 14400000;
                 
                 const payloadData = { id: foundMsgId, title: downloadFileName, exp: expiration };
-                if (req.query.app === 'true') {
+                if (req.query.app === 'true' || req.isAppClient || req.headers['x-package-name'] || (req.headers['user-agent'] && req.headers['user-agent'].includes('CineGeek'))) {
                     payloadData.app = true;
                 }
                 const payload = JSON.stringify(payloadData);
