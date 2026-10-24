@@ -151,5 +151,42 @@ export default function hybridWorkerRoutes(db, io) {
         }
     });
 
+    // 5. Inserir Conteúdo Concluído Diretamente (ex: Animes & Doramas Scraper)
+    router.post('/insert-custom', async (req, res) => {
+        const { title, url, telegram_message_id, file_size, tmdb_id, media_type, season_number, episode_number } = req.body;
+        
+        if (!title || !telegram_message_id || !tmdb_id) {
+            return res.status(400).json({ error: 'Faltam campos obrigatórios (title, telegram_message_id, tmdb_id).' });
+        }
+
+        try {
+            // Verifica se já existe por url ou tmdb + temporada + episódio
+            const existing = await db.get(
+                "SELECT id, telegram_message_id FROM sync_queue WHERE url = ? OR (tmdb_id = ? AND season_number = ? AND episode_number = ? AND (media_type = ? OR media_type IS NULL))",
+                [url || `custom://${tmdb_id}/${season_number || 1}/${episode_number || 1}`, String(tmdb_id), season_number || null, episode_number || null, media_type || 'tv']
+            );
+
+            if (existing) {
+                // Atualiza o registro existente
+                await db.run(
+                    "UPDATE sync_queue SET status = 'completed', telegram_message_id = ?, file_size = COALESCE(?, file_size), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    [telegram_message_id, file_size || 0, existing.id]
+                );
+                return res.json({ success: true, updated: true, id: existing.id });
+            } else {
+                // Insere novo registro já como completed
+                const safeUrl = url || `custom://${tmdb_id}/${season_number || 1}/${episode_number || 1}`;
+                const insertRes = await db.run(
+                    "INSERT INTO sync_queue (title, url, status, file_size, telegram_message_id, tmdb_id, media_type, season_number, episode_number, priority) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, 0)",
+                    [title, safeUrl, file_size || 0, telegram_message_id, String(tmdb_id), media_type || 'tv', season_number || null, episode_number || null]
+                );
+                return res.json({ success: true, inserted: true, id: insertRes.lastID });
+            }
+        } catch (err) {
+            console.error('Erro ao inserir custom sync_queue:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     return router;
 }
