@@ -36,11 +36,13 @@ const stringSession = new StringSession(sessionStr);
         entityId = '-100' + entityId.replace('-', '');
     }
 
+    const customCaption = process.argv[3] || `**Upload Manual**\n${filePath}`;
+
     try {
-        await client.sendFile(entityId, {
+        const sentMsg = await client.sendFile(entityId, {
             file: filePath,
             workers: 1, // Usando 1 worker para garantir 100% de estabilidade no teste
-            caption: `**Upload Manual**\n${filePath}`,
+            caption: customCaption,
             parseMode: "markdown",
             forceDocument: false,
             attributes: [
@@ -55,7 +57,7 @@ const stringSession = new StringSession(sessionStr);
         });
         
         process.stdout.write('\n');
-        console.log("Upload concluído com sucesso pro Canal!");
+        console.log(`Upload concluído com sucesso pro Canal! MessageID: ${sentMsg.id}`);
     } catch (err) {
         console.error("Erro no upload:", err);
     } finally {
