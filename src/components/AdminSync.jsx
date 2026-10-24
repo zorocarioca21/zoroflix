@@ -673,6 +673,40 @@ export default function AdminSync() {
         fetchQueue();
     };
 
+    const startAnimeWorker = async () => {
+        setIsTogglingAnimeWorker(true);
+        try {
+            const res = await fetch('/api/hybrid/anime-worker/start', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setAnimeWorkerState(prev => ({ ...prev, isRunning: true, paused: false }));
+                dialog.alert('Worker de Animes iniciado no servidor com sucesso!', { variant: 'success', title: 'Worker Ativado' });
+            } else {
+                dialog.alert(data.error || 'Erro ao iniciar worker no servidor', { variant: 'error', title: 'Erro' });
+            }
+        } catch (e) {
+            dialog.alert('Erro ao comunicar com o servidor', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsTogglingAnimeWorker(false);
+        }
+    };
+
+    const stopAnimeWorker = async () => {
+        setIsTogglingAnimeWorker(true);
+        try {
+            const res = await fetch('/api/hybrid/anime-worker/stop', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                setAnimeWorkerState(prev => ({ ...prev, isRunning: false }));
+                dialog.alert('Worker de Animes finalizado com sucesso!', { variant: 'info', title: 'Worker Parado' });
+            }
+        } catch (e) {
+            dialog.alert('Erro ao parar worker', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsTogglingAnimeWorker(false);
+        }
+    };
+
     const toggleAnimeWorker = async (pause) => {
         setIsTogglingAnimeWorker(true);
         try {
@@ -1342,34 +1376,69 @@ export default function AdminSync() {
                                 {/* Botões Anime & Dorama Worker */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(234, 88, 12, 0.08)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
                                     <span style={{ fontSize: '0.72rem', color: '#fb923c', fontWeight: 800, marginRight: '4px' }}>ANIMES/DORAMAS:</span>
-                                    <button 
-                                        onClick={() => toggleAnimeWorker(false)}
-                                        disabled={!animeWorkerState.paused || isTogglingAnimeWorker}
-                                        className="sync-btn-primary"
-                                        style={{ 
-                                            padding: '0.4rem 0.8rem', 
-                                            fontSize: '0.78rem', 
-                                            background: '#f97316', 
-                                            color: '#fff', 
-                                            opacity: (!animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
-                                        }}
-                                        title="Iniciar / Retomar Download de Animes & Doramas"
-                                    >
-                                        <Play size={13} /> Retomar
-                                    </button>
-                                    <button 
-                                        onClick={() => toggleAnimeWorker(true)}
-                                        disabled={animeWorkerState.paused || isTogglingAnimeWorker}
-                                        className="sync-btn-secondary sync-btn-danger"
-                                        style={{ 
-                                            padding: '0.4rem 0.8rem', 
-                                            fontSize: '0.78rem', 
-                                            opacity: (animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
-                                        }}
-                                        title="Pausar Download de Animes & Doramas"
-                                    >
-                                        <Pause size={13} /> Pausar
-                                    </button>
+                                    
+                                    {!animeWorkerState.isRunning ? (
+                                        <button 
+                                            onClick={startAnimeWorker}
+                                            disabled={isTogglingAnimeWorker}
+                                            className="sync-btn-primary"
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                fontSize: '0.78rem', 
+                                                background: '#f97316', 
+                                                color: '#fff', 
+                                                opacity: isTogglingAnimeWorker ? 0.4 : 1 
+                                            }}
+                                            title="Iniciar Worker de Animes diretamente pelo Servidor"
+                                        >
+                                            <Play size={13} /> Iniciar
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <button 
+                                                onClick={() => toggleAnimeWorker(false)}
+                                                disabled={!animeWorkerState.paused || isTogglingAnimeWorker}
+                                                className="sync-btn-primary"
+                                                style={{ 
+                                                    padding: '0.4rem 0.8rem', 
+                                                    fontSize: '0.78rem', 
+                                                    background: '#10b981', 
+                                                    color: '#fff', 
+                                                    opacity: (!animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
+                                                }}
+                                                title="Retomar Download de Animes"
+                                            >
+                                                <Play size={13} /> Retomar
+                                            </button>
+                                            <button 
+                                                onClick={() => toggleAnimeWorker(true)}
+                                                disabled={animeWorkerState.paused || isTogglingAnimeWorker}
+                                                className="sync-btn-secondary sync-btn-danger"
+                                                style={{ 
+                                                    padding: '0.4rem 0.8rem', 
+                                                    fontSize: '0.78rem', 
+                                                    opacity: (animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
+                                                }}
+                                                title="Pausar Download de Animes"
+                                            >
+                                                <Pause size={13} /> Pausar
+                                            </button>
+                                            <button 
+                                                onClick={stopAnimeWorker}
+                                                disabled={isTogglingAnimeWorker}
+                                                className="sync-btn-secondary"
+                                                style={{ 
+                                                    padding: '0.4rem 0.6rem', 
+                                                    fontSize: '0.75rem', 
+                                                    color: '#94a3b8',
+                                                    borderColor: 'rgba(255,255,255,0.1)'
+                                                }}
+                                                title="Finalizar Processo do Worker de Animes"
+                                            >
+                                                Parar
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>

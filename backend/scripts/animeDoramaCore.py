@@ -36,7 +36,10 @@ TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH')
 TELEGRAM_SESSION = os.getenv('TELEGRAM_SESSION')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID', '-1003839496993')
 
-TEMP_DOWNLOAD_DIR = Path('D:/cinegeek downloads/animes_doramas')
+if os.name == 'nt' and Path('D:/').exists():
+    TEMP_DOWNLOAD_DIR = Path('D:/cinegeek downloads/animes_doramas')
+else:
+    TEMP_DOWNLOAD_DIR = ROOT_DIR / 'temp_animes_doramas'
 TEMP_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 STATE_FILE = ROOT_DIR / 'anime_dorama_state.json'

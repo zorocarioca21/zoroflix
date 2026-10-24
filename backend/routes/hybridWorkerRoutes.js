@@ -116,16 +116,81 @@ export default function hybridWorkerRoutes(db, io) {
         res.json({ success: true });
     });
 
-    // 2.6 Estado de Pausa do Worker de Animes & Doramas
+    // 2.6 Gerenciamento e Execução do Worker de Animes & Doramas diretamente pelo Painel
     let animeWorkerPaused = false;
+    let animeWorkerProcess = null;
 
     router.get('/anime-worker/status', (req, res) => {
         const activeState = remoteWorkersState['ANIME_WORKER'] || null;
         res.json({
+            isRunning: !!animeWorkerProcess && !animeWorkerProcess.killed,
             paused: animeWorkerPaused,
             active: !!activeState,
             currentTask: activeState
         });
+    });
+
+    router.post('/anime-worker/start', async (req, res) => {
+        try {
+            animeWorkerPaused = false;
+            io.emit('anime_worker_pause_state', { paused: false });
+
+            if (animeWorkerProcess && !animeWorkerProcess.killed) {
+                return res.json({ success: true, message: 'Worker já está em execução no servidor.', isRunning: true });
+            }
+
+            const { spawn } = await import('child_process');
+            const path = await import('path');
+            const scriptPath = path.resolve('backend/scripts/animeDoramaWorker.py');
+
+            console.log(`[Anime Worker] 🚀 Iniciando processo Python no servidor: ${scriptPath}`);
+            animeWorkerProcess = spawn('python3', [scriptPath], {
+                cwd: path.resolve('.'),
+                env: { ...process.env, PYTHONUNBUFFERED: '1' }
+            });
+
+            animeWorkerProcess.stdout.on('data', (d) => {
+                const line = d.toString().trim();
+                if (line) console.log(`[Anime Worker] ${line}`);
+            });
+
+            animeWorkerProcess.stderr.on('data', (d) => {
+                const line = d.toString().trim();
+                if (line) console.error(`[Anime Worker ERR] ${line}`);
+            });
+
+            animeWorkerProcess.on('close', (code) => {
+                console.log(`[Anime Worker] 🛑 Processo finalizado com código ${code}`);
+                animeWorkerProcess = null;
+                if (remoteWorkersState['ANIME_WORKER']) {
+                    delete remoteWorkersState['ANIME_WORKER'];
+                    broadcastRemoteStates();
+                }
+            });
+
+            res.json({ success: true, message: 'Worker de Animes iniciado com sucesso!', isRunning: true });
+        } catch (err) {
+            console.error('[Anime Worker] Erro ao iniciar processo:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    router.post('/anime-worker/stop', (req, res) => {
+        try {
+            if (animeWorkerProcess && !animeWorkerProcess.killed) {
+                console.log('[Anime Worker] 🛑 Encerrando processo Python do worker...');
+                animeWorkerProcess.kill('SIGTERM');
+                animeWorkerProcess = null;
+            }
+            if (remoteWorkersState['ANIME_WORKER']) {
+                delete remoteWorkersState['ANIME_WORKER'];
+                broadcastRemoteStates();
+            }
+            res.json({ success: true, message: 'Worker de Animes parado com sucesso.', isRunning: false });
+        } catch (err) {
+            console.error('[Anime Worker] Erro ao parar processo:', err);
+            res.status(500).json({ error: err.message });
+        }
     });
 
     router.post('/anime-worker/toggle', (req, res) => {
