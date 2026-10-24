@@ -305,6 +305,8 @@ const FullListModal = ({ isOpen, onClose, filter, searchQuery, sortSize, deleteI
 export default function AdminSync() {
     const [state, setState] = useState({ isRunning: false, isPaused: false, downloadTask: null, uploadTaskDocker: null, uploadTaskPython: null });
     const [hybridWorkers, setHybridWorkers] = useState({});
+    const [animeWorkerState, setAnimeWorkerState] = useState({ paused: false, active: false, currentTask: null });
+    const [isTogglingAnimeWorker, setIsTogglingAnimeWorker] = useState(false);
     const [socket, setSocket] = useState(null);
     const [queue, setQueue] = useState({ items: [], pending: 0, completed: 0, total: 0, error: null, skipped: 0, error_count: 0, prioritized_count: 0, total_size_saved: 0, completed_today: 0, added_today: 0 });
     const [filter, setFilter] = useState('all');
@@ -398,11 +400,27 @@ export default function AdminSync() {
             setHybridWorkers(data);
         });
 
+        newSocket.on('anime_worker_pause_state', (data) => {
+            setAnimeWorkerState(prev => ({ ...prev, paused: data.paused }));
+        });
+
         setSocket(newSocket);
         fetchQueue();
 
+        const fetchAnimeWorkerStatus = async () => {
+            try {
+                const res = await fetch('/api/hybrid/anime-worker/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    setAnimeWorkerState(data);
+                }
+            } catch (e) {}
+        };
+        fetchAnimeWorkerStatus();
+
         const autoRefreshInterval = setInterval(() => {
             fetchQueue(filterRef.current, searchRef.current, sortRef.current);
+            fetchAnimeWorkerStatus();
         }, 10000);
 
         return () => {
@@ -653,6 +671,25 @@ export default function AdminSync() {
         const endpoint = pause ? '/api/sync/pause' : '/api/sync/resume';
         await fetch(endpoint, { method: 'POST' });
         fetchQueue();
+    };
+
+    const toggleAnimeWorker = async (pause) => {
+        setIsTogglingAnimeWorker(true);
+        try {
+            const res = await fetch('/api/hybrid/anime-worker/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pause })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAnimeWorkerState(prev => ({ ...prev, paused: data.paused }));
+            }
+        } catch (e) {
+            dialog.alert('Erro ao alterar status do Worker de Animes', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsTogglingAnimeWorker(false);
+        }
     };
 
     const deleteItem = async (item) => {
@@ -1278,28 +1315,67 @@ export default function AdminSync() {
                             </div>
 
                             {/* Controles rápidos do worker */}
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button 
-                                    onClick={() => toggleWorker(false)}
-                                    disabled={state.isRunning && !state.isPaused}
-                                    className="sync-btn-primary"
-                                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', opacity: (state.isRunning && !state.isPaused) ? 0.4 : 1 }}
-                                >
-                                    <Play size={14} /> Retomar
-                                </button>
-                                <button 
-                                    onClick={() => toggleWorker(true)}
-                                    disabled={!state.isRunning || state.isPaused}
-                                    className="sync-btn-secondary sync-btn-danger"
-                                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', opacity: (!state.isRunning || state.isPaused) ? 0.4 : 1 }}
-                                >
-                                    <Pause size={14} /> Pausar
-                                </button>
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                {/* Botões IPTV */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, marginRight: '4px' }}>IPTV:</span>
+                                    <button 
+                                        onClick={() => toggleWorker(false)}
+                                        disabled={state.isRunning && !state.isPaused}
+                                        className="sync-btn-primary"
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem', opacity: (state.isRunning && !state.isPaused) ? 0.4 : 1 }}
+                                        title="Retomar Download IPTV"
+                                    >
+                                        <Play size={13} /> Retomar
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleWorker(true)}
+                                        disabled={!state.isRunning || state.isPaused}
+                                        className="sync-btn-secondary sync-btn-danger"
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.78rem', opacity: (!state.isRunning || state.isPaused) ? 0.4 : 1 }}
+                                        title="Pausar Download IPTV"
+                                    >
+                                        <Pause size={13} /> Pausar
+                                    </button>
+                                </div>
+
+                                {/* Botões Anime & Dorama Worker */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(234, 88, 12, 0.08)', padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(234, 88, 12, 0.25)' }}>
+                                    <span style={{ fontSize: '0.72rem', color: '#fb923c', fontWeight: 800, marginRight: '4px' }}>ANIMES/DORAMAS:</span>
+                                    <button 
+                                        onClick={() => toggleAnimeWorker(false)}
+                                        disabled={!animeWorkerState.paused || isTogglingAnimeWorker}
+                                        className="sync-btn-primary"
+                                        style={{ 
+                                            padding: '0.4rem 0.8rem', 
+                                            fontSize: '0.78rem', 
+                                            background: '#f97316', 
+                                            color: '#fff', 
+                                            opacity: (!animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
+                                        }}
+                                        title="Iniciar / Retomar Download de Animes & Doramas"
+                                    >
+                                        <Play size={13} /> Retomar
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleAnimeWorker(true)}
+                                        disabled={animeWorkerState.paused || isTogglingAnimeWorker}
+                                        className="sync-btn-secondary sync-btn-danger"
+                                        style={{ 
+                                            padding: '0.4rem 0.8rem', 
+                                            fontSize: '0.78rem', 
+                                            opacity: (animeWorkerState.paused || isTogglingAnimeWorker) ? 0.4 : 1 
+                                        }}
+                                        title="Pausar Download de Animes & Doramas"
+                                    >
+                                        <Pause size={13} /> Pausar
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
                         {/* Card do que está baixando/enviando agora (se houver atividade) */}
-                        {(state.downloadTask || state.uploadTaskDocker || state.uploadTaskPython || Object.keys(hybridWorkers).length > 0) && (
+                        {(state.downloadTask || state.uploadTaskDocker || state.uploadTaskPython || hybridWorkers['ANIME_WORKER'] || Object.keys(hybridWorkers).length > 0) && (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
                                 {state.downloadTask && (
                                     <div className="pipeline-card active">
@@ -1316,6 +1392,37 @@ export default function AdminSync() {
                                         </div>
                                         <div className="pipeline-progress-track">
                                             <div className="pipeline-progress-bar" style={{ width: `${typeof state.downloadTask.progress === 'number' ? state.downloadTask.progress : 100}%`, background: '#00d2ff' }} />
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Card Ativo do Worker de Animes & Doramas */}
+                                {hybridWorkers['ANIME_WORKER'] && (
+                                    <div className="pipeline-card active" style={{ borderColor: 'rgba(249, 115, 22, 0.4)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fb923c', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {hybridWorkers['ANIME_WORKER'].status === 'Enviando_Telegram_Anime' ? (
+                                                    <><Send size={14} /> ENVIANDO ANIME / TELEGRAM</>
+                                                ) : hybridWorkers['ANIME_WORKER'].status === 'Pausado' ? (
+                                                    <><Pause size={14} /> ANIME WORKER (PAUSADO)</>
+                                                ) : (
+                                                    <><HardDriveDownload size={14} /> BAIXANDO ANIME / DORAMA</>
+                                                )}
+                                            </span>
+                                            <span style={{ fontSize: '0.78rem', color: '#fff', fontWeight: 800 }}>
+                                                {hybridWorkers['ANIME_WORKER'].status === 'Pausado' ? 'Pausado' : `${Number(hybridWorkers['ANIME_WORKER'].progress || 0).toFixed(1)}%`}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={hybridWorkers['ANIME_WORKER'].title}>
+                                            {hybridWorkers['ANIME_WORKER'].title}
+                                        </div>
+                                        <div className="pipeline-progress-track">
+                                            <div 
+                                                className="pipeline-progress-bar" 
+                                                style={{ 
+                                                    width: `${Number(hybridWorkers['ANIME_WORKER'].progress || 0)}%`, 
+                                                    background: hybridWorkers['ANIME_WORKER'].status === 'Enviando_Telegram_Anime' ? '#10b981' : '#f97316' 
+                                                }} 
+                                            />
                                         </div>
                                     </div>
                                 )}

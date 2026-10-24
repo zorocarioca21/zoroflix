@@ -6,6 +6,10 @@ export default function hybridWorkerRoutes(db, io) {
     
     // Middleware de autenticação básica para o worker remoto
     const authMiddleware = (req, res, next) => {
+        // Rotas públicas ou do painel admin frontend (anime-worker status/toggle)
+        if (req.path.startsWith('/anime-worker')) {
+            return next();
+        }
         const apiKey = req.headers['x-api-key'];
         // Em um sistema real, validaríamos essa chave com o banco ou .env
         if (!apiKey) {
@@ -82,13 +86,57 @@ export default function hybridWorkerRoutes(db, io) {
 
     // 2. Reportar Progresso
     router.post('/progress', (req, res) => {
-        const { workerId, taskId, status, progress } = req.body;
-        if (remoteWorkersState[workerId] && remoteWorkersState[workerId].id === taskId) {
+        const { workerId, taskId, title, status, progress } = req.body;
+        if (!remoteWorkersState[workerId]) {
+            remoteWorkersState[workerId] = {
+                id: taskId || workerId,
+                title: title || workerId,
+                status: status || 'Processando',
+                progress: progress || 0,
+                updatedAt: Date.now()
+            };
+        } else {
+            if (taskId) remoteWorkersState[workerId].id = taskId;
+            if (title) remoteWorkersState[workerId].title = title;
             remoteWorkersState[workerId].status = status;
             remoteWorkersState[workerId].progress = progress;
+            remoteWorkersState[workerId].updatedAt = Date.now();
+        }
+        broadcastRemoteStates();
+        res.json({ success: true });
+    });
+
+    // 2.5 Limpar status de worker
+    router.post('/clear-status', (req, res) => {
+        const { workerId } = req.body;
+        if (workerId && remoteWorkersState[workerId]) {
+            delete remoteWorkersState[workerId];
             broadcastRemoteStates();
         }
         res.json({ success: true });
+    });
+
+    // 2.6 Estado de Pausa do Worker de Animes & Doramas
+    let animeWorkerPaused = false;
+
+    router.get('/anime-worker/status', (req, res) => {
+        const activeState = remoteWorkersState['ANIME_WORKER'] || null;
+        res.json({
+            paused: animeWorkerPaused,
+            active: !!activeState,
+            currentTask: activeState
+        });
+    });
+
+    router.post('/anime-worker/toggle', (req, res) => {
+        const { pause } = req.body;
+        if (typeof pause === 'boolean') {
+            animeWorkerPaused = pause;
+        } else {
+            animeWorkerPaused = !animeWorkerPaused;
+        }
+        io.emit('anime_worker_pause_state', { paused: animeWorkerPaused });
+        res.json({ success: true, paused: animeWorkerPaused });
     });
 
     // 3. Concluir Tarefa

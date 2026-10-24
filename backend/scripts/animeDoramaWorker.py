@@ -10,6 +10,11 @@ from animeDoramaCore import (
     extract_episode_meta,
     resolve_video_stream,
     download_video_file,
+    detect_video_quality,
+    format_title_with_quality,
+    report_hybrid_progress,
+    clear_hybrid_progress,
+    is_worker_paused,
     register_on_vps,
     TEMP_DOWNLOAD_DIR,
     ROOT_DIR
@@ -39,6 +44,7 @@ def run_worker():
     print("🚀 WORKER PARALELO: ANIMES & DORAMAS (GOOGLE VIDEO CDN)")
     print("   Total de Sitemaps: 46 (aprox. 46.000 a 50.000 episódios)")
     print("   Trabalha 100% em paralelo com o download da IPTV!")
+    print("   Qualidade: Detectada automaticamente via ffprobe (4K, FHD, HD, SD)")
     print("=" * 65)
     
     state = load_state()
@@ -57,6 +63,12 @@ def run_worker():
         print(f"[Worker] Encontrados {len(urls)} episódios no sitemap {current_sitemap}. Processando...")
         
         for idx, page_url in enumerate(urls):
+            # 1. Verifica se foi pausado pelo botão do painel admin
+            while is_worker_paused():
+                report_hybrid_progress("Pausado pelo Painel Admin", "Pausado", 0)
+                print("\r[Worker] ⏸️ Worker pausado pelo painel admin. Aguardando retomada...", end='', flush=True)
+                time.sleep(5)
+
             if page_url in processed_urls:
                 continue
                 
@@ -89,9 +101,19 @@ def run_worker():
                     processed_urls[page_url] = {'status': 'error', 'reason': 'file_too_small'}
                     save_state(state)
                     continue
-                    
+                
+                # 2. Detecção Real de Resolução via ffprobe (igual IPTV / upload manual)
+                quality_tag, height = detect_video_quality(temp_file)
+                final_title = format_title_with_quality(meta['title'], quality_tag)
+                meta['title'] = final_title
+                print(f"   🎬 Resolução detectada: {height}p -> Tag: [{quality_tag or 'SD'}]")
+                print(f"   🏷️ Título final formatado: \"{final_title}\"")
+                
+                # 3. Reporta início do upload no painel admin
+                report_hybrid_progress(final_title, 'Enviando_Telegram_Anime', 50.0)
                 print(f"   ⬆️ Enviando para o canal do Telegram...")
-                msg_id = upload_via_node(str(temp_file), f"**{meta['title']}**\nCineGeek Animes")
+                
+                msg_id = upload_via_node(str(temp_file), f"**{final_title}**\nCineGeek Animes")
                 
                 # Deleta o arquivo temporário do PC
                 if temp_file.exists():
@@ -111,7 +133,8 @@ def run_worker():
                         'telegram_message_id': msg_id,
                         'file_size': file_size,
                         'tmdb_id': meta['tmdb_id'],
-                        'title': meta['title']
+                        'title': final_title,
+                        'quality': quality_tag
                     }
                     save_state(state)
                 else:
@@ -122,6 +145,8 @@ def run_worker():
                 if temp_file.exists():
                     try: temp_file.unlink()
                     except: pass
+            finally:
+                clear_hybrid_progress()
                     
             # Pequeno intervalo para gentileza com o servidor
             time.sleep(1)

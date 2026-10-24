@@ -170,6 +170,105 @@ def resolve_video_stream(tmdb_id, season, episode):
         print(f"[StreamResolver] Erro ao resolver stream TMDb {tmdb_id} S{season}E{episode}: {e}")
     return None
 
+import subprocess
+
+def detect_video_quality(video_path):
+    """Detecta altura do vídeo via ffprobe e retorna a tag (4K, FHD, HD, SD)"""
+    try:
+        cmd = [
+            'ffprobe',
+            '-v', 'error',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=height',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            str(video_path)
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
+        output = res.stdout.strip()
+        height = int(output) if output.isdigit() else 0
+        
+        if height >= 2000:
+            return '4K', height
+        elif height >= 1000:
+            return 'FHD', height
+        elif height >= 700:
+            return 'HD', height
+        elif height > 0:
+            return 'SD', height
+    except Exception as e:
+        print(f"[ffprobe] ⚠️ Erro ao verificar resolução: {e}")
+    return '', 0
+
+def format_title_with_quality(title, quality_tag):
+    """Limpa tags antigas de qualidade e anexa a correta detectada via ffprobe"""
+    quality_regex = r'\s*[\[\(]?\s*(4K|UHD|2160p|FHD|1080p|FULLHD|FULL HD|HD|720p|SD|480p|360p)\s*[\]\)]?\s*'
+    cleaned = re.sub(quality_regex, ' ', title, flags=re.I)
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
+    if quality_tag:
+        cleaned = f"{cleaned} {quality_tag}"
+    return cleaned
+
+def report_hybrid_progress(title, status, progress, task_id='ANIME_WORKER'):
+    """Envia o progresso em tempo real para a VPS transmitir ao painel via WebSocket"""
+    try:
+        url = f"{VPS_URL}/api/hybrid/progress"
+        payload = {
+            'workerId': 'ANIME_WORKER',
+            'taskId': task_id,
+            'title': title,
+            'status': status,
+            'progress': round(float(progress), 1)
+        }
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': HEADERS_DEFAULT['User-Agent'],
+                'Content-Type': 'application/json',
+                'x-api-key': HYBRID_API_KEY
+            },
+            data=json.dumps(payload).encode('utf-8')
+        )
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=5):
+            pass
+    except Exception:
+        pass
+
+def clear_hybrid_progress():
+    """Remove o status do worker de animes da tela do painel quando ocioso"""
+    try:
+        url = f"{VPS_URL}/api/hybrid/clear-status"
+        payload = {'workerId': 'ANIME_WORKER'}
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': HEADERS_DEFAULT['User-Agent'],
+                'Content-Type': 'application/json',
+                'x-api-key': HYBRID_API_KEY
+            },
+            data=json.dumps(payload).encode('utf-8')
+        )
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=5):
+            pass
+    except Exception:
+        pass
+
+def is_worker_paused():
+    """Verifica se o usuário pausou o worker pelo botão no painel admin"""
+    try:
+        url = f"{VPS_URL}/api/hybrid/anime-worker/status"
+        req = urllib.request.Request(
+            url,
+            headers={
+                'User-Agent': HEADERS_DEFAULT['User-Agent'],
+                'x-api-key': HYBRID_API_KEY
+            }
+        )
+        with urllib.request.urlopen(req, context=SSL_CTX, timeout=5) as res:
+            data = json.loads(res.read().decode('utf-8'))
+            return bool(data.get('paused'))
+    except Exception:
+        return False
+
 def download_video_file(stream_info, output_path, title):
     stream_url = stream_info['stream_url']
     headers = stream_info['headers']
@@ -179,6 +278,7 @@ def download_video_file(stream_info, output_path, title):
         total_size = int(res.headers.get('Content-Length') or 0)
         downloaded = 0
         last_print = 0
+        last_report = 0
         
         with open(output_path, 'wb') as f:
             while True:
@@ -189,13 +289,21 @@ def download_video_file(stream_info, output_path, title):
                 downloaded += len(chunk)
                 
                 now = time.time()
+                pct = (downloaded / total_size * 100) if total_size > 0 else 0
+                
+                # Reporta para o terminal
                 if now - last_print > 1 or downloaded == total_size:
                     last_print = now
-                    pct = (downloaded / total_size * 100) if total_size > 0 else 0
                     mb_cur = downloaded / (1024 * 1024)
                     mb_tot = total_size / (1024 * 1024)
                     sys.stdout.write(f"\r[⬇️ Download] {title[:35]} | {pct:.1f}% ({mb_cur:.1f}/{mb_tot:.1f} MB)")
                     sys.stdout.flush()
+                
+                # Reporta para a VPS / Painel Web em tempo real a cada 2.5s
+                if now - last_report > 2.5 or downloaded == total_size:
+                    last_report = now
+                    report_hybrid_progress(title, 'Baixando_Anime', pct)
+
     sys.stdout.write('\n')
     return downloaded
 
