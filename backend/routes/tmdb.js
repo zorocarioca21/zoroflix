@@ -134,29 +134,114 @@ export default function tmdbRoutes(db, appDb) {
         return url;
     }
 
+    // Organiza múltiplas versões do mesmo conteúdo por Qualidade (4K, FHD, HD, SD) e Idioma (dub, leg)
+    function organizeMediaSources(dbRows, defaultTitle = '') {
+        if (!dbRows || !Array.isArray(dbRows) || dbRows.length === 0) {
+            return {
+                hasDub: false,
+                hasLeg: false,
+                available_qualities: [],
+                default_stream_url: null,
+                media_sources: {}
+            };
+        }
+
+        let hasDub = false;
+        let hasLeg = false;
+        const mediaSources = {}; // '4K' | 'FHD' | 'HD' | 'SD' | 'TS'
+
+        for (const row of dbRows) {
+            const rawTitle = row.title || defaultTitle || '';
+            const isLeg = /(?:\b(?:LEG|LEGENDADO)\b|\[LEG\]|\(LEG\))/i.test(rawTitle);
+            const titleUpper = rawTitle.toUpperCase();
+
+            if (isLeg) hasLeg = true;
+            else hasDub = true;
+
+            let quality = 'SD';
+            if (titleUpper.includes('4K') || titleUpper.includes('2160P') || titleUpper.includes('2160')) quality = '4K';
+            else if (titleUpper.includes('FHD') || titleUpper.includes('1080P') || titleUpper.includes('1080')) quality = 'FHD';
+            else if (titleUpper.includes('HD') || titleUpper.includes('720P') || titleUpper.includes('720')) quality = 'HD';
+            else if (titleUpper.includes('SD') || titleUpper.includes('480P') || titleUpper.includes('480')) quality = 'SD';
+            else if (titleUpper.includes('TS') || titleUpper.includes('CAMRIP') || titleUpper.includes('CAM RIP')) quality = 'TS';
+
+            if (!mediaSources[quality]) {
+                mediaSources[quality] = { dub: [], leg: [] };
+            }
+
+            const streamUrl = buildStreamUrl(row.telegram_message_id, rawTitle);
+            const langKey = isLeg ? 'leg' : 'dub';
+            const versionIndex = mediaSources[quality][langKey].length + 1;
+
+            mediaSources[quality][langKey].push({
+                version: versionIndex,
+                title: rawTitle,
+                quality,
+                language: isLeg ? 'Legendado' : 'Dublado',
+                audio: isLeg ? 'leg' : 'dub',
+                stream_url: streamUrl,
+                file_size: row.file_size || 0
+            });
+        }
+
+        // Ordena as qualidades disponíveis por resolução decrescente
+        const qualityRank = ['4K', 'FHD', 'HD', 'SD', 'TS'];
+        const availableQualities = qualityRank.filter(q => !!mediaSources[q]);
+
+        // Define a melhor URL padrão (prioriza 4K/FHD dublado)
+        let defaultStreamUrl = null;
+        for (const q of availableQualities) {
+            const dubArr = mediaSources[q].dub;
+            const legArr = mediaSources[q].leg;
+            if (dubArr && dubArr.length > 0) {
+                defaultStreamUrl = dubArr[0].stream_url;
+                break;
+            } else if (legArr && legArr.length > 0 && !defaultStreamUrl) {
+                defaultStreamUrl = legArr[0].stream_url;
+            }
+        }
+
+        return {
+            hasDub,
+            hasLeg,
+            available_qualities: availableQualities,
+            default_stream_url: defaultStreamUrl,
+            media_sources: mediaSources
+        };
+    }
+
     // Filtra lista de itens do TMDB mantendo apenas os que foram baixados no Telegram
     async function filterAvailableInTelegram(items, defaultMediaType = null) {
         if (!items || !Array.isArray(items) || items.length === 0) return [];
         try {
             // Busca todos os tmdb_ids com download concluído no Telegram
             const completedRows = await mainDb.all(
-                "SELECT tmdb_id, media_type, telegram_message_id, title FROM sync_queue WHERE status = 'completed' AND telegram_message_id IS NOT NULL AND tmdb_id IS NOT NULL"
+                "SELECT tmdb_id, media_type, telegram_message_id, title, file_size FROM sync_queue WHERE status = 'completed' AND telegram_message_id IS NOT NULL AND tmdb_id IS NOT NULL"
             );
 
+            // Agrupa todas as linhas por tmdb_id (para identificar Dub/Leg e múltiplas qualidades)
             const completedMap = new Map();
             for (const row of completedRows) {
                 const key = `${row.tmdb_id}`;
-                completedMap.set(key, row);
+                if (!completedMap.has(key)) completedMap.set(key, []);
+                completedMap.get(key).push(row);
             }
 
             const filtered = [];
             for (const item of items) {
                 const itemKey = String(item.id);
                 if (completedMap.has(itemKey)) {
-                    const matched = completedMap.get(itemKey);
+                    const rows = completedMap.get(itemKey);
+                    const matched = rows[0];
                     item.media_type = item.media_type || defaultMediaType || matched.media_type || 'movie';
-                    item.stream_url = buildStreamUrl(matched.telegram_message_id, matched.title || item.title || item.name);
-                    
+
+                    // Agrupamento completo de fontes, áudios e qualidades
+                    const organized = organizeMediaSources(rows, item.title || item.name);
+                    item.hasDub = organized.hasDub;
+                    item.hasLeg = organized.hasLeg;
+                    item.available_qualities = organized.available_qualities;
+                    item.stream_url = organized.default_stream_url || buildStreamUrl(matched.telegram_message_id, matched.title || item.title || item.name);
+
                     // Sanitiza caminhos de imagem caso o app use Glide com prefixo tmdb
                     if (item.poster_path) item.poster_path = sanitizeForMobile(item.poster_path);
                     if (item.backdrop_path) item.backdrop_path = sanitizeForMobile(item.backdrop_path);
@@ -314,14 +399,18 @@ export default function tmdbRoutes(db, appDb) {
             const data = await getOrFetchMediaDetails(db, id, 'movie', apiKey);
             if (!data) return res.status(404).json({ error: 'Filme não encontrado no TMDB' });
 
-            // Anexa stream_url se existir no Telegram
-            const tgRow = await mainDb.get(
-                "SELECT telegram_message_id, title FROM sync_queue WHERE tmdb_id = ? AND status = 'completed' AND telegram_message_id IS NOT NULL",
+            // Busca TODAS as versões baixadas deste filme no Telegram (IPTV, manual, etc.)
+            const tgRows = await mainDb.all(
+                "SELECT telegram_message_id, title, file_size FROM sync_queue WHERE tmdb_id = ? AND status = 'completed' AND telegram_message_id IS NOT NULL",
                 [String(id)]
             );
-            if (tgRow) {
-                data.stream_url = buildStreamUrl(tgRow.telegram_message_id, tgRow.title || data.title);
-            }
+
+            const organized = organizeMediaSources(tgRows, data.title);
+            data.hasDub = organized.hasDub;
+            data.hasLeg = organized.hasLeg;
+            data.available_qualities = organized.available_qualities;
+            data.media_sources = organized.media_sources;
+            data.stream_url = organized.default_stream_url || (tgRows.length > 0 ? buildStreamUrl(tgRows[0].telegram_message_id, tgRows[0].title || data.title) : null);
 
             if (data.poster_path) data.poster_path = sanitizeForMobile(data.poster_path);
             if (data.backdrop_path) data.backdrop_path = sanitizeForMobile(data.backdrop_path);
@@ -455,18 +544,15 @@ export default function tmdbRoutes(db, appDb) {
                     .filter(ep => epMap.has(Number(ep.episode_number)))
                     .map(ep => {
                         const epMatch = epMap.get(Number(ep.episode_number));
-                        ep.stream_url = buildStreamUrl(epMatch.telegram_message_id, epMatch.title || ep.name);
-                        
                         const rows = epRowsByNumber.get(Number(ep.episode_number)) || [];
-                        let hasDub = false;
-                        let hasLeg = false;
-                        for (const r of rows) {
-                            const isLeg = /(?:\b(?:LEG|LEGENDADO)\b|\[LEG\]|\(LEG\))/i.test(r.title || '');
-                            if (isLeg) hasLeg = true;
-                            else hasDub = true;
-                        }
-                        ep.hasDub = hasDub;
-                        ep.hasLeg = hasLeg;
+                        const organized = organizeMediaSources(rows, epMatch.title || ep.name);
+
+                        ep.hasDub = organized.hasDub;
+                        ep.hasLeg = organized.hasLeg;
+                        ep.available_qualities = organized.available_qualities;
+                        ep.media_sources = organized.media_sources;
+                        ep.stream_url = organized.default_stream_url || buildStreamUrl(epMatch.telegram_message_id, epMatch.title || ep.name);
+
                         return ep;
                     });
             }

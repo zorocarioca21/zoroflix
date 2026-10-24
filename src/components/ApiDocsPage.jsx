@@ -700,9 +700,11 @@ exoPlayer.play()`}</code></pre>
                                     <code className="api-code-pill">GET /api/tmdb/movie/popular (Filmes Populares)</code>
                                     <code className="api-code-pill">GET /api/tmdb/discover/movie (Destaques)</code>
                                     <code className="api-code-pill">GET /api/tmdb/search?query=nome (Busca TMDB)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/movie/:id (Detalhes, Áudios, Qualidades e Versões)</code>
                                     <code className="api-code-pill">GET /api/tmdb/movie/:id/credits (Elenco do Filme)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id (Detalhes da Série)</code>
                                     <code className="api-code-pill">GET /api/tmdb/tv/:id/credits (Elenco da Série)</code>
-                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/season/:season_number (Episódios da Temporada)</code>
+                                    <code className="api-code-pill">GET /api/tmdb/tv/:id/season/:season_number (Episódios, Áudios e Fontes)</code>
                                     <code className="api-code-pill">GET /api/tmdb/movie/:id/recommendations (Talvez você goste - Filme)</code>
                                     <code className="api-code-pill">GET /api/tmdb/tv/:id/recommendations (Talvez você goste - Série)</code>
                                     <code className="api-code-pill">GET /api/tmdb/movie/:id/videos (Trailers do Filme)</code>
@@ -711,21 +713,36 @@ exoPlayer.play()`}</code></pre>
 
                                 <div className="api-modern-code">
                                     <div className="api-code-bar">
-                                        <span className="api-code-label">Exemplo de Resposta (JSON Padrão TMDB)</span>
+                                        <span className="api-code-label">Exemplo de Resposta: GET /api/tmdb/movie/:id (com Suporte a Áudios, Qualidades e Versões)</span>
                                     </div>
                                     <pre><code>{`{
-  "page": 1,
-  "results": [
-    {
-      "id": 550,
-      "title": "Clube da Luta",
-      "overview": "Um homem deprimido...",
-      "poster_path": "/mCICnh7QBH0gzYaTQChBDDVIKdm.jpg",
-      "backdrop_path": "/hZkgoQYus5vegHoetLkCJzb17zJ.jpg",
-      "vote_average": 8.4,
-      "release_date": "1999-10-15"
+  "id": 634649,
+  "title": "Homem-Aranha: Sem Volta Para Casa",
+  "overview": "Peter Parker tem a sua identidade secreta revelada...",
+  "poster_path": "/fVzXp3NwM04n1wh5f4Tj0b9wA6P.jpg",
+  "backdrop_path": "/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg",
+  "vote_average": 8.0,
+  "hasDub": true,
+  "hasLeg": true,
+  "available_qualities": ["4K", "FHD", "HD"],
+  "stream_url": "https://www.cinegeek.shop/api/stream/s/token_padrao.mp4",
+  "media_sources": {
+    "4K": {
+      "dub": [
+        { "version": 1, "title": "Homem-Aranha 4K Dublado", "quality": "4K", "language": "Dublado", "audio": "dub", "stream_url": "https://www.cinegeek.shop/api/stream/s/..." }
+      ],
+      "leg": [
+        { "version": 1, "title": "Homem-Aranha 4K Legendado", "quality": "4K", "language": "Legendado", "audio": "leg", "stream_url": "https://www.cinegeek.shop/api/stream/s/..." }
+      ]
+    },
+    "FHD": {
+      "dub": [
+        { "version": 1, "title": "Homem-Aranha FHD Dublado (Opção 1)", "quality": "FHD", "language": "Dublado", "audio": "dub", "stream_url": "https://www.cinegeek.shop/api/stream/s/..." },
+        { "version": 2, "title": "Homem-Aranha FHD Dublado (Opção 2 - Versão Estendida)", "quality": "FHD", "language": "Dublado", "audio": "dub", "stream_url": "https://www.cinegeek.shop/api/stream/s/..." }
+      ],
+      "leg": []
     }
-  ]
+  }
 }`}</code></pre>
                                 </div>
                             </div>
