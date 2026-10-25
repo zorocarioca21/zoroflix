@@ -77,11 +77,27 @@ export default function EmbedPlayerPage() {
         };
     }, [checkingKey, isVipKey]);
 
-    // Busca de título TMDB e Sync Telegram
+    // Busca de título TMDB ou Canal e Sync Telegram / Stream
     useEffect(() => {
         const fetchInfo = async () => {
             try {
-                // 1. Pega nome oficial do TMDB para facilitar busca
+                // Caso seja CANAL AO VIVO
+                if (type === 'canal') {
+                    const chRes = await fetch(`/api/embed/canal/${rawId}`);
+                    if (!chRes.ok) {
+                        setError(true);
+                        setLoading(false);
+                        return;
+                    }
+                    const chData = await chRes.json();
+                    setTitle(chData.name || 'Canal Ao Vivo');
+                    setStreamUrl(chData.stream_url);
+                    setIsValidEmbed(true);
+                    setLoading(false);
+                    return;
+                }
+
+                // 1. Pega nome oficial do TMDB para filmes e séries
                 const mediaType = type === 'filme' ? 'movie' : 'tv';
                 const tmdbRes = await fetch(`${BASE_URL}/${mediaType}/${rawId}?api_key=${API_KEY}&language=pt-BR`);
                 const tmdbData = await tmdbRes.json();

@@ -925,6 +925,62 @@ x-api-key: <CHAVE_API_MOBILE>               // Opcional`}</code></pre>
                                 <h3>Verificação Automática de Versão do APK</h3>
                                 <p>Consulte essa rota na inicialização do aplicativo para notificar o usuário sobre novas versões disponíveis para download direto.</p>
                             </div>
+
+                            {/* Canais Ao Vivo (Catálogo JSON do Painel) */}
+                            <div className="api-endpoint-box" style={{ border: '1px solid rgba(0, 255, 136, 0.3)', background: 'rgba(0, 255, 136, 0.02)' }}>
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge get">GET</span>
+                                        <span className="api-path-badge">{baseUrl}/api/embed/canais</span>
+                                    </div>
+                                    <span style={{ color: '#00ff88', fontSize: '0.8rem', fontWeight: 'bold' }}>📺 CANAIS AO VIVO (JSON)</span>
+                                </div>
+                                <h3>Catálogo de Canais de TV Cadastrados no Painel</h3>
+                                <p>
+                                    Retorna a lista completa dos canais de televisão ativos salvos nas listas M3U do nosso painel administrativo. 
+                                    Cada canal contém seu identificador único, nome, categoria, selo VIP (se aplicável), URL do logotipo e a URL segura de reprodução para o aplicativo.
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem', marginTop: '0.5rem' }}>
+                                    <code className="api-code-pill">GET /api/embed/canais (Todos os canais)</code>
+                                    <code className="api-code-pill">GET /api/embed/canais?category=Esportes (Filtro por categoria)</code>
+                                    <code className="api-code-pill">GET /api/embed/canal/:id (Detalhes e stream seguro do canal)</code>
+                                </div>
+
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Exemplo de Resposta JSON (HTTP 200)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'channels-json' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "total": 486,\n  "channels": [\n    {\n      "id": 1,\n      "name": "ESPN Brasil HD",\n      "category": "Esportes",\n      "badge": "VIP",\n      "logo": "https://.../espn.png",\n      "embed_url": "${baseUrl}/embed/canal/1"\n    }\n  ]\n}`, 'channels-json')}
+                                        >
+                                            {copiedIndex === 'channels-json' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'channels-json' ? 'Copiado!' : 'Copiar Resposta'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`{
+  "total": 486,
+  "channels": [
+    {
+      "id": 1,
+      "name": "ESPN Brasil HD",
+      "category": "Esportes",
+      "badge": "VIP",
+      "logo": "https://.../espn.png",
+      "embed_url": "${baseUrl}/embed/canal/1"
+    },
+    {
+      "id": 2,
+      "name": "HBO Plus FHD",
+      "category": "Filmes e Séries",
+      "badge": "VIP",
+      "logo": "https://.../hbo.png",
+      "embed_url": "${baseUrl}/embed/canal/2"
+    }
+  ]
+}`}</code></pre>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

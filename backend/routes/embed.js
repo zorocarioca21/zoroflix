@@ -38,6 +38,83 @@ export default function embedRoutes(db) {
         }
     });
 
+    // ============================================================
+    // 📺 GET /canais — Lista pública de canais cadastrados no painel
+    // ============================================================
+    router.get('/canais', async (req, res) => {
+        try {
+            const { category } = req.query;
+            let query = `
+                SELECT id, name, category, logo_url, vip_badge
+                FROM iptv_channels
+                WHERE active = 1
+            `;
+            const params = [];
+
+            if (category && category !== 'Todos') {
+                query += ` AND (LOWER(category) = LOWER(?) OR LOWER(vip_badge) = LOWER(?))`;
+                params.push(category);
+                params.push(category);
+            }
+
+            query += ` ORDER BY vip_badge ASC, name ASC`;
+            const rows = await db.all(query, params);
+
+            const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+            const host = req.get('host');
+            const baseUrl = `${protocol}://${host}`;
+
+            const channels = rows.map(ch => ({
+                id: ch.id,
+                name: ch.name,
+                category: ch.category || 'Geral',
+                badge: ch.vip_badge || null,
+                logo: ch.logo_url || null,
+                embed_url: `${baseUrl}/embed/canal/${ch.id}`
+            }));
+
+            res.json({
+                total: channels.length,
+                channels
+            });
+        } catch (err) {
+            console.error("Erro ao listar canais no embed:", err);
+            res.status(500).json({ error: "Erro interno ao listar canais." });
+        }
+    });
+
+    // ============================================================
+    // 📺 GET /canal/:id — Informações e resolução segura do stream do canal
+    // ============================================================
+    router.get('/canal/:id', async (req, res) => {
+        try {
+            const id = req.params.id;
+            const channel = await db.get(
+                `SELECT id, name, category, logo_url, vip_badge FROM iptv_channels WHERE id = ? AND active = 1`,
+                [id]
+            );
+
+            if (!channel) {
+                return res.status(404).json({ error: 'Canal não encontrado ou inativo.' });
+            }
+
+            // O stream real é resolvido através do proxy com segurança
+            const streamUrl = `/api/stream/proxy?url=${encodeURIComponent(channel.id)}`;
+
+            res.json({
+                id: channel.id,
+                name: channel.name,
+                category: channel.category,
+                badge: channel.vip_badge,
+                logo: channel.logo_url,
+                stream_url: streamUrl
+            });
+        } catch (err) {
+            console.error("Erro ao carregar canal:", err);
+            res.status(500).json({ error: "Erro interno ao obter canal." });
+        }
+    });
+
     // Rota GET para validar a API Key do Embed (usada pelo EmbedPlayerPage.jsx)
     router.get('/validate-key', async (req, res) => {
         const apikey = req.query.key || req.query.apikey || req.query.apiKey || req.headers['x-api-key'];

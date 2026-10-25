@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, MonitorPlay, Tv, Key, ArrowLeft, Send } from 'lucide-react';
+import { BookOpen, MonitorPlay, Tv, Radio, Key, ArrowLeft, Send } from 'lucide-react';
 import './EmbedDocsPage.css';
 
 export default function EmbedDocsPage() {
@@ -28,6 +28,9 @@ export default function EmbedDocsPage() {
                     <a href="#series" className="docs-nav-link">
                         <Tv size={18} /> Séries/Animes/Doramas
                     </a>
+                    <a href="#canais" className="docs-nav-link">
+                        <Radio size={18} /> Canais Ao Vivo
+                    </a>
 
                     <div className="docs-section-title">Avançado</div>
                     <a href="#premium" className="docs-nav-link">
@@ -46,7 +49,7 @@ export default function EmbedDocsPage() {
                 <div className="docs-card" id="inicio">
                     <h1>Documentação Técnica</h1>
                     <p>
-                        A API do <strong>CINEGEEK</strong> foi projetada para facilitar a integração de conteúdo multimídia em qualquer plataforma. Nossa solução oferece um iframe simples, rápido e otimizado para acesso a todo o nosso acervo de filmes e séries.
+                        A API do <strong>CINEGEEK</strong> foi projetada para facilitar a integração de conteúdo multimídia em qualquer plataforma. Nossa solução oferece um iframe simples, rápido e otimizado para acesso a todo o nosso acervo de filmes, séries e canais de TV ao vivo.
                     </p>
                     
                     <div className="docs-alert" style={{ marginTop: '2rem' }}>
@@ -92,6 +95,40 @@ export default function EmbedDocsPage() {
 <pre>
 <span style={{ color: '#fca5a5' }}>&lt;iframe</span> 
   <span style={{ color: '#93c5fd' }}>src=</span><span style={{ color: '#a78bfa' }}>"{baseUrl}/embed/serie/1399/1/1"</span> 
+  <span style={{ color: '#93c5fd' }}>width=</span><span style={{ color: '#a78bfa' }}>"100%"</span> 
+  <span style={{ color: '#93c5fd' }}>height=</span><span style={{ color: '#a78bfa' }}>"100%"</span> 
+  <span style={{ color: '#93c5fd' }}>frameborder=</span><span style={{ color: '#a78bfa' }}>"0"</span> 
+  <span style={{ color: '#93c5fd' }}>allowfullscreen</span>
+<span style={{ color: '#fca5a5' }}>&gt;&lt;/iframe&gt;</span>
+</pre>
+                    </div>
+                </div>
+
+                {/* Canais Ao Vivo Card */}
+                <div className="docs-card" id="canais">
+                    <h2><Radio size={24} color="#00FF88" /> Canais Ao Vivo</h2>
+                    <p>
+                        Como canais ao vivo de TV não possuem TMDB ID, você pode obter a lista completa dos nossos canais disponíveis via JSON e em seguida incorporá-los usando o <strong>ID do canal</strong>.
+                    </p>
+
+                    <p><strong>1. Rota de Listagem de Canais (JSON):</strong></p>
+                    <div className="docs-code-url">
+                        {baseUrl}/api/embed/canais
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: '#aaa', marginTop: '-0.5rem' }}>
+                        * Suporta filtro opcional por categoria: <code>?category=Esportes</code>, <code>?category=Filmes</code>, etc.
+                    </p>
+
+                    <p style={{ marginTop: '1.25rem' }}><strong>2. URL do Iframe do Canal:</strong></p>
+                    <div className="docs-code-url">
+                        {baseUrl}/embed/canal/{"{id_do_canal}"}
+                    </div>
+
+                    <p><strong>Exemplo de Integração HTML:</strong></p>
+                    <div className="docs-code-block">
+<pre>
+<span style={{ color: '#fca5a5' }}>&lt;iframe</span> 
+  <span style={{ color: '#93c5fd' }}>src=</span><span style={{ color: '#a78bfa' }}>"{baseUrl}/embed/canal/1"</span> 
   <span style={{ color: '#93c5fd' }}>width=</span><span style={{ color: '#a78bfa' }}>"100%"</span> 
   <span style={{ color: '#93c5fd' }}>height=</span><span style={{ color: '#a78bfa' }}>"100%"</span> 
   <span style={{ color: '#93c5fd' }}>frameborder=</span><span style={{ color: '#a78bfa' }}>"0"</span> 
