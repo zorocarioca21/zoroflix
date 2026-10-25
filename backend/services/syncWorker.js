@@ -628,17 +628,87 @@ async function downloadFile(url, destPath, dbId) {
             } else {
                 // FFmpeg falhou genuinamente (ex: codec não suportado, timeout do watchdog, etc)
                 // Nesse caso sim, tenta o fallback via fetch
-                console.warn(`[FFmpeg] Falhou com código ${code} / sinal ${signal}. Tentando via Node Fetch fallback...`);
+                console.warn(`[FFmpeg] Falhou com código ${code} / sinal ${signal}. Tentando acelerado via Aria2c...`);
                 if (fs.existsSync(destPath)) {
                     try { fs.unlinkSync(destPath); } catch (e) {}
                 }
-                fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
+                downloadWithAria2c(url, destPath).then(resolve).catch(reject);
             }
         });
 
         ffmpegProcess.on('error', (err) => {
             if (wasAborted) return; // Já tratado pelo close
-            console.warn(`[FFmpeg] Não instalado ou erro grave (${err.message}). Tentando fallback Fetch...`);
+            console.warn(`[FFmpeg] Não instalado ou erro grave (${err.message}). Tentando acelerado via Aria2c...`);
+            downloadWithAria2c(url, destPath).then(resolve).catch(reject);
+        });
+    });
+}
+// Download acelerado via Aria2c (Multi-Thread com Auto-Resume)
+async function downloadWithAria2c(url, destPath) {
+    return new Promise((resolve, reject) => {
+        const outDir = path.dirname(destPath);
+        const outFile = path.basename(destPath);
+
+        const ariaArgs = [
+            '-x', '4',
+            '-s', '4',
+            '-k', '1M',
+            '--file-allocation=none',
+            '--summary-interval=1',
+            '--auto-file-renaming=false',
+            '--allow-overwrite=true',
+            '--header=User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '-d', outDir,
+            '-o', outFile,
+            url
+        ];
+
+        console.log(`[Aria2c ⚡] Iniciando download multi-thread (4 conexões): ${url}`);
+        const ariaProc = spawn('aria2c', ariaArgs);
+        let wasAborted = false;
+
+        if (activeDownloadController) {
+            activeDownloadController.signal.addEventListener('abort', () => {
+                wasAborted = true;
+                ariaProc.kill('SIGKILL');
+                if (fs.existsSync(destPath)) {
+                    try { fs.unlinkSync(destPath); } catch (e) {}
+                }
+            });
+        }
+
+        let lastEmit = Date.now();
+
+        ariaProc.stdout.on('data', (data) => {
+            const str = data.toString();
+            // Formato do aria2c: (45%) ou [45%]
+            const match = str.match(/\((\d{1,3})%\)/);
+            if (match && downloadTask) {
+                const pct = parseFloat(match[1]);
+                const now = Date.now();
+                if (now - lastEmit > 500) {
+                    downloadTask.progress = pct;
+                    broadcastState();
+                    lastEmit = now;
+                }
+            }
+        });
+
+        ariaProc.on('close', (code) => {
+            if (wasAborted) {
+                return reject(new Error('Download cancelado pelo usuário.'));
+            }
+            if (code === 0 && fs.existsSync(destPath) && fs.statSync(destPath).size > 1024 * 1024) {
+                console.log(`[Aria2c ⚡] ✅ Download concluído com sucesso!`);
+                return resolve();
+            }
+            console.warn(`[Aria2c] ⚠️ Processo finalizou com código ${code}. Tentando fallback via Fetch...`);
+            fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
+        });
+
+        ariaProc.on('error', (err) => {
+            if (wasAborted) return;
+            console.warn(`[Aria2c] Não disponível ou erro (${err.message}). Tentando fallback Fetch...`);
             fallbackDownloadNodeFetch(url, destPath).then(resolve).catch(reject);
         });
     });

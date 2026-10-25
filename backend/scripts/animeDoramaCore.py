@@ -4,6 +4,8 @@ import re
 import time
 import json
 import ssl
+import shutil
+import subprocess
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -275,6 +277,55 @@ def is_worker_paused():
 def download_video_file(stream_info, output_path, title):
     stream_url = stream_info['stream_url']
     headers = stream_info['headers']
+    
+    # 🚀 Tenta baixar acelerado com aria2c (4 conexões simultâneas)
+    aria2_bin = shutil.which('aria2c')
+    if aria2_bin:
+        try:
+            out_dir = os.path.dirname(output_path)
+            out_file = os.path.basename(output_path)
+            cmd = [
+                aria2_bin,
+                '-x', '4',
+                '-s', '4',
+                '-k', '1M',
+                '--file-allocation=none',
+                '--summary-interval=1',
+                '--auto-file-renaming=false',
+                '--allow-overwrite=true',
+                '-d', out_dir,
+                '-o', out_file
+            ]
+            for h_key, h_val in headers.items():
+                cmd.extend(['--header', f"{h_key}: {h_val}"])
+            cmd.append(stream_url)
+            
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8', errors='ignore')
+            last_report = 0
+            
+            for line in proc.stdout:
+                line_str = line.strip()
+                # Extrai porcentagem ex: (45%) ou [45%]
+                pct_match = re.search(r'\((\d{1,3})%\)', line_str)
+                if pct_match:
+                    pct = float(pct_match.group(1))
+                    now = time.time()
+                    if now - last_report > 2.0 or pct >= 100:
+                        last_report = now
+                        report_hybrid_progress(title, 'Baixando_Anime (Aria2 ⚡)', pct)
+                        sys.stdout.write(f"\r[⚡ Aria2 Multi-Thread] {title[:35]} | {pct:.1f}%")
+                        sys.stdout.flush()
+            
+            proc.wait()
+            if proc.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 1024 * 1024:
+                sys.stdout.write('\n')
+                return os.path.getsize(output_path)
+            else:
+                print("\n[Aria2] ⚠️ Falha ou arquivo incompleto. Caindo para download normal...")
+        except Exception as e:
+            print(f"\n[Aria2 Error] {e}. Caindo para download normal...")
+
+    # Fallback normal via urllib
     req = urllib.request.Request(stream_url, headers=headers)
     
     with urllib.request.urlopen(req, context=SSL_CTX, timeout=30) as res:
