@@ -288,14 +288,13 @@ export default function PlayerPage() {
                         
                         const withDetails = (matched.length > 0 ? matched : [found]).map((c, idx) => {
                             const q = detectLiveQuality(c.name);
-                            // Extrai detalhes do parênteses se houver (ex: Opção 01, Band SP, etc)
-                            const parenMatch = c.name.match(/\((.*?)\)/);
-                            const optDetails = parenMatch ? parenMatch[1].trim() : `Opção ${idx + 1}`;
                             const cleanName = cleanDisplayName(c.name);
+                            // Se tiver mais de uma opção, identifica como "Opção 1", "Opção 2", etc
+                            const optionLabel = matched.length > 1 ? `${cleanName} - Opção ${idx + 1}` : cleanName;
                             return {
                                 ...c,
                                 detectedQuality: q,
-                                displayOptionName: `${cleanName} (${optDetails})`
+                                displayOptionName: optionLabel
                             };
                         });
                         setLiveChannelVariants(withDetails);

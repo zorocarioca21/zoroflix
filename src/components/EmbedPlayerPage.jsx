@@ -273,7 +273,7 @@ export default function EmbedPlayerPage() {
     }
 
     return (
-        <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999 }}>
+        <div onContextMenu={(e) => e.preventDefault()} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', background: '#000', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
             <AntiDevTools />
             {!isVipKey && <AntiAdBlock />}
             <CustomVideoPlayer
@@ -287,10 +287,10 @@ export default function EmbedPlayerPage() {
                     currentLabel: currentChannelBadge || 'VIP',
                     currentQuality: 'HD',
                     qualities: ['HD', 'SD'],
-                    channels: channelVariants.map(v => ({
+                    channels: channelVariants.map((v, idx) => ({
                         id: v.id,
                         name: v.name,
-                        displayOptionName: v.name,
+                        displayOptionName: channelVariants.length > 1 ? `${v.name} - Opção ${idx + 1}` : v.name,
                         vip_badge: v.label
                     })),
                     onQualitySelect: () => {},

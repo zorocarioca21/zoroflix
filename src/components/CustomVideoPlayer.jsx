@@ -426,9 +426,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         }
     }, [showControls]);
 
-    // Buscar o progresso (se tem resume_time salvo)
+    // Buscar o progresso (se tem resume_time salvo) - Somente para filmes e séries (nunca para canais ao vivo)
     useEffect(() => {
-        if (!contentId) return;
+        if (!contentId || isLive) return;
 
         const token = localStorage.getItem('cinegeek_token');
         const uuidVal = localStorage.getItem('cinegeek_uuid');
@@ -454,7 +454,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
                 }
             })
             .catch(err => console.error("Erro ao buscar histórico:", err));
-    }, [contentId, season, episode]);
+    }, [contentId, season, episode, isLive]);
 
     // Pausar o vídeo se o popup de resume aparecer (para o autoplay não tocar o áudio por baixo)
     useEffect(() => {
@@ -464,8 +464,9 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
         }
     }, [showResumePopup]);
 
-    // Timer para salvar o progresso a cada 10 segundos e ao sair
+    // Timer para salvar o progresso a cada 10 segundos e ao sair (apenas para VOD, não para live)
     useEffect(() => {
+        if (isLive) return;
         const saveProgress = () => {
             if (videoRef.current && videoRef.current.currentTime > 5 && !videoError) {
                 const token = localStorage.getItem('cinegeek_token');
@@ -815,7 +816,7 @@ export default function CustomVideoPlayer({ messageId, srcUrl, title, isVip, isA
     };
 
     return (
-        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ flex: 1, width: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: showControls ? 'default' : 'none' }}>
+        <div ref={containerRef} className={`custom-player-container ${showControls ? '' : 'hide-controls'}`} style={{ flex: 1, width: '100%', height: '100%', minHeight: '100%', position: 'relative', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: showControls ? 'default' : 'none' }}>
             <video
                 ref={videoRef}
                 autoPlay
