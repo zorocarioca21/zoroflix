@@ -125,12 +125,12 @@ export default function embedRoutes(db) {
             );
 
             const variants = allMatching.map((c, idx) => {
-                const parenMatch = c.name.match(/\((.*?)\)/);
-                const optDetails = parenMatch ? parenMatch[1].trim() : `Opção ${idx + 1}`;
+                const vClean = cleanChannelName(c.name);
                 return {
                     id: c.id,
-                    name: c.name,
-                    label: c.vip_badge || optDetails,
+                    name: vClean,
+                    raw_name: c.name,
+                    label: c.vip_badge || `VIP ${idx + 1}`,
                     stream_url: `/api/stream/proxy?url=${encodeURIComponent(c.id)}`
                 };
             });

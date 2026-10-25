@@ -287,12 +287,20 @@ export default function EmbedPlayerPage() {
                     currentLabel: currentChannelBadge || 'VIP',
                     currentQuality: 'HD',
                     qualities: ['HD', 'SD'],
-                    channels: channelVariants.map((v, idx) => ({
-                        id: v.id,
-                        name: v.name,
-                        displayOptionName: channelVariants.length > 1 ? `${v.name} - Opção ${idx + 1}` : v.name,
-                        vip_badge: v.label
-                    })),
+                    channels: channelVariants.map((v, idx) => {
+                        const cleanVName = (v.name || '')
+                            .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+                            .replace(/\s*\(.*?cdn.*?\)/gi, '')
+                            .replace(/\s*\[.*?\]/gi, '')
+                            .replace(/\s*\)+/g, '')
+                            .trim();
+                        return {
+                            id: v.id,
+                            name: cleanVName || v.name,
+                            displayOptionName: channelVariants.length > 1 ? `${cleanVName || v.name} - Opção ${idx + 1}` : (cleanVName || v.name),
+                            vip_badge: v.label
+                        };
+                    }),
                     onQualitySelect: () => {},
                     onChannelSelect: (ch) => {
                         const target = channelVariants.find(v => String(v.id) === String(ch.id));
