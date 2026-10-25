@@ -59,13 +59,46 @@ export default function createMangasRouter(db) {
         }
     });
 
-    // Deletar um mangá e seus capítulos
+    // Deletar um mangá e todos os seus capítulos (no Banco, no Cache e no Canal do Telegram)
     router.delete('/:id', async (req, res) => {
         try {
             const { id } = req.params;
+            
+            // Pega todos os telegram_message_id dos capítulos deste mangá
+            const chapters = await db.all("SELECT telegram_message_id FROM manga_chapters WHERE manga_id = ?", [id]);
+            const msgIds = chapters.map(c => c.telegram_message_id).filter(Boolean);
+
+            // 1. Apaga mensagens do Telegram via script Python
+            if (msgIds.length > 0) {
+                try {
+                    const pyScript = path.join(__dirname, '..', 'scripts', 'deleteMangaMessages.py');
+                    if (fs.existsSync(pyScript)) {
+                        const proc = spawn('python3', [pyScript, ...msgIds.map(String)]);
+                        proc.on('close', (code) => {
+                            console.log(`[Telegram Delete] Deletadas ${msgIds.length} mensagens com código: ${code}`);
+                        });
+                    }
+                } catch (tgErr) {
+                    console.warn(`[Telegram Delete] Falha ao acionar deleção no Telegram:`, tgErr.message);
+                }
+            }
+
+            // 2. Limpa cache local em disco de cada capítulo
+            try {
+                const cacheDir = path.join(__dirname, '..', 'temp_mangas', 'cache');
+                for (let mid of msgIds) {
+                    const chFolder = path.join(cacheDir, `ch_msg_${mid}`);
+                    if (fs.existsSync(chFolder)) {
+                        fs.rmSync(chFolder, { recursive: true, force: true });
+                    }
+                }
+            } catch (cacheErr) {}
+
+            // 3. Remove do banco de dados
             await db.run("DELETE FROM manga_chapters WHERE manga_id = ?", [id]);
             await db.run("DELETE FROM mangas WHERE id = ?", [id]);
-            res.json({ success: true, message: 'Mangá deletado com sucesso!' });
+
+            res.json({ success: true, message: 'Mangá e capítulos apagados com sucesso!' });
         } catch (e) {
             console.error('Erro ao deletar mangá:', e);
             res.status(500).json({ error: 'Erro interno ao deletar mangá' });
@@ -84,10 +117,36 @@ export default function createMangasRouter(db) {
         }
     });
 
-    // Deletar um capítulo específico
+    // Deletar um capítulo específico (no Banco, no Cache e no Canal do Telegram)
     router.delete('/chapters/:chapterId', async (req, res) => {
         try {
             const { chapterId } = req.params;
+            const chapter = await db.get("SELECT telegram_message_id FROM manga_chapters WHERE id = ?", [chapterId]);
+
+            if (chapter && chapter.telegram_message_id) {
+                // 1. Apaga a mensagem do Telegram
+                try {
+                    const pyScript = path.join(__dirname, '..', 'scripts', 'deleteMangaMessages.py');
+                    if (fs.existsSync(pyScript)) {
+                        const proc = spawn('python3', [pyScript, String(chapter.telegram_message_id)]);
+                        proc.on('close', (code) => {
+                            console.log(`[Telegram Delete] Mensagem ${chapter.telegram_message_id} deletada com código: ${code}`);
+                        });
+                    }
+                } catch (tgErr) {
+                    console.warn(`[Telegram Delete] Erro ao deletar no Telegram:`, tgErr.message);
+                }
+
+                // 2. Limpa cache local em disco do capítulo
+                try {
+                    const chFolder = path.join(__dirname, '..', 'temp_mangas', 'cache', `ch_msg_${chapter.telegram_message_id}`);
+                    if (fs.existsSync(chFolder)) {
+                        fs.rmSync(chFolder, { recursive: true, force: true });
+                    }
+                } catch (cacheErr) {}
+            }
+
+            // 3. Remove do banco de dados
             await db.run("DELETE FROM manga_chapters WHERE id = ?", [chapterId]);
             res.json({ success: true, message: 'Capítulo deletado com sucesso!' });
         } catch (e) {

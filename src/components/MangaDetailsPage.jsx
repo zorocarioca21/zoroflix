@@ -1,40 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Layers, CheckCircle, Clock, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Layers, CheckCircle, Clock, Sparkles, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function MangaDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [manga, setManga] = useState(null);
     const [chapters, setChapters] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const fetchDetails = async () => {
+        try {
+            const resManga = await fetch(`/api/mangas/${id}`);
+            const dataManga = await resManga.json();
+            if (dataManga.manga) {
+                setManga(dataManga.manga);
+                document.title = `${dataManga.manga.title} - Mangá CineGeek`;
+            }
+
+            const resCh = await fetch(`/api/mangas/${id}/chapters`);
+            const dataCh = await resCh.json();
+            if (dataCh.chapters) {
+                setChapters(dataCh.chapters);
+            }
+        } catch (err) {
+            console.error('Erro ao buscar detalhes da obra:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         window.scrollTo(0, 0);
-
-        const fetchDetails = async () => {
-            try {
-                const resManga = await fetch(`/api/mangas/${id}`);
-                const dataManga = await resManga.json();
-                if (dataManga.manga) {
-                    setManga(dataManga.manga);
-                    document.title = `${dataManga.manga.title} - Mangá CineGeek`;
-                }
-
-                const resCh = await fetch(`/api/mangas/${id}/chapters`);
-                const dataCh = await resCh.json();
-                if (dataCh.chapters) {
-                    setChapters(dataCh.chapters);
-                }
-            } catch (err) {
-                console.error('Erro ao buscar detalhes da obra:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchDetails();
     }, [id]);
+
+    const handleDeleteChapter = async (chapterId, capNum) => {
+        if (!window.confirm(`Tem certeza que deseja apagar o Capítulo ${capNum}? Ele será removido do site e do canal do Telegram.`)) return;
+        try {
+            const token = localStorage.getItem('cinegeek_token');
+            const res = await fetch(`/api/mangas/chapters/${chapterId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchDetails();
+            } else {
+                window.alert('Erro ao apagar capítulo');
+            }
+        } catch (e) {
+            window.alert('Falha na comunicação');
+        }
+    };
 
     if (loading) {
         return (
@@ -175,22 +194,9 @@ export default function MangaDetailsPage() {
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
                         {chapters.map(ch => (
-                            <Link 
-                                to={`/manga/${manga.id}/capitulo/${ch.id}`} 
+                            <div 
                                 key={ch.id}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.borderColor = '#00ff88';
-                                    e.currentTarget.style.background = 'rgba(0, 255, 136, 0.05)';
-                                    // Pré-carregamento invisível: já começa a sincronizar do Telegram enquanto o usuário olha o botão
-                                    fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                    e.currentTarget.style.background = 'rgba(21, 29, 38, 0.6)';
-                                }}
                                 style={{
-                                    textDecoration: 'none',
-                                    color: 'inherit',
                                     background: 'rgba(21, 29, 38, 0.6)',
                                     border: '1px solid rgba(255,255,255,0.06)',
                                     borderRadius: '12px',
@@ -198,21 +204,56 @@ export default function MangaDetailsPage() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    transition: 'all 0.2s ease'
+                                    transition: 'all 0.2s ease',
+                                    gap: '1rem'
                                 }}
                             >
-                                <div>
-                                    <h4 style={{ margin: '0 0 0.3rem 0', fontSize: '1rem', color: '#f8fafc' }}>
-                                        Capítulo {ch.chapter_number}
-                                    </h4>
-                                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                        {ch.pages_count} páginas • {(ch.file_size / 1024 / 1024).toFixed(1)} MB
+                                <Link
+                                    to={`/manga/${manga.id}/capitulo/${ch.id}`}
+                                    onMouseEnter={e => {
+                                        fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
+                                    }}
+                                    style={{
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <div>
+                                        <h4 style={{ margin: '0 0 0.3rem 0', fontSize: '1rem', color: '#f8fafc' }}>
+                                            Capítulo {ch.chapter_number}
+                                        </h4>
+                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                                            {ch.pages_count} páginas • {(ch.file_size / 1024 / 1024).toFixed(1)} MB
+                                        </div>
                                     </div>
-                                </div>
-                                <span style={{ color: '#00ff88', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                    Ler &rarr;
-                                </span>
-                            </Link>
+                                    <span style={{ color: '#00ff88', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                        Ler &rarr;
+                                    </span>
+                                </Link>
+
+                                {user?.role === 'admin' && (
+                                    <button 
+                                        onClick={() => handleDeleteChapter(ch.id, ch.chapter_number)}
+                                        title="Apagar Capítulo (Banco e Telegram)"
+                                        style={{
+                                            background: 'rgba(255, 51, 102, 0.1)',
+                                            border: '1px solid rgba(255, 51, 102, 0.3)',
+                                            color: '#ff3366',
+                                            padding: '0.5rem',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
                 )}
