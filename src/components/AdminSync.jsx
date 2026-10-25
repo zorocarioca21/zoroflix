@@ -522,33 +522,45 @@ export default function AdminSync() {
     const renderMarkdownContent = (content) => {
         if (!content || typeof content !== 'string') return content;
 
-        // Quebra em linhas para preservar estrutura
         const lines = content.split('\n');
 
         return lines.map((line, lIdx) => {
             let trimmed = line.trim();
 
-            // Identifica tópicos com * ou -
-            const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ');
-            if (isBullet) {
+            // Identifica tópicos com * ou - ou números
+            const isBullet = trimmed.startsWith('* ') || trimmed.startsWith('- ') || /^\d+\.\s/.test(trimmed);
+            let bulletPrefix = '•';
+            if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
                 trimmed = trimmed.substring(2);
+            } else if (/^\d+\.\s/.test(trimmed)) {
+                const match = trimmed.match(/^(\d+\.)\s/);
+                bulletPrefix = match[1];
+                trimmed = trimmed.substring(match[0].length);
             }
 
-            // Processa negrito (**texto**) e código (`código`)
+            // Processa negrito duplo (**texto**), negrito/itálico simples (*texto*), e código (`código`)
             const parts = [];
             // Regex que divide tokens mantendo delimitadores
-            const tokens = trimmed.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+            const tokens = trimmed.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
 
             tokens.forEach((token, tIdx) => {
-                if (token.startsWith('**') && token.endsWith('**')) {
+                if (!token) return;
+                if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
                     parts.push(
-                        <strong key={tIdx} style={{ color: '#00e1ff', fontWeight: '600' }}>
+                        <strong key={tIdx} style={{ color: '#38bdf8', fontWeight: '700' }}>
                             {token.slice(2, -2)}
                         </strong>
                     );
-                } else if (token.startsWith('`') && token.endsWith('`')) {
+                } else if (token.startsWith('*') && token.endsWith('*') && token.length > 2 && !token.startsWith('**')) {
+                    // Trata *texto* como negrito com destaque sutil
                     parts.push(
-                        <code key={tIdx} style={{ background: 'rgba(0, 204, 255, 0.15)', color: '#38bdf8', padding: '1px 5px', borderRadius: '4px', fontSize: '0.82em', fontFamily: 'monospace' }}>
+                        <strong key={tIdx} style={{ color: '#00e1ff', fontWeight: '600' }}>
+                            {token.slice(1, -1)}
+                        </strong>
+                    );
+                } else if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+                    parts.push(
+                        <code key={tIdx} style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '1px 5px', borderRadius: '4px', fontSize: '0.85em', fontFamily: 'monospace' }}>
                             {token.slice(1, -1)}
                         </code>
                     );
@@ -559,9 +571,9 @@ export default function AdminSync() {
 
             if (isBullet) {
                 return (
-                    <div key={lIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', margin: '3px 0 3px 6px' }}>
-                        <span style={{ color: '#00ccff', fontSize: '0.9rem', lineHeight: '1.2' }}>•</span>
-                        <div style={{ flex: 1 }}>{parts}</div>
+                    <div key={lIdx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '4px 0 4px 6px' }}>
+                        <span style={{ color: '#38bdf8', fontSize: '0.9rem', lineHeight: '1.4', fontWeight: 'bold' }}>{bulletPrefix}</span>
+                        <div style={{ flex: 1, lineHeight: '1.5' }}>{parts}</div>
                     </div>
                 );
             }
@@ -571,7 +583,7 @@ export default function AdminSync() {
             }
 
             return (
-                <p key={lIdx} style={{ margin: '3px 0' }}>
+                <p key={lIdx} style={{ margin: '4px 0', lineHeight: '1.55' }}>
                     {parts}
                 </p>
             );

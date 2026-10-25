@@ -207,10 +207,10 @@ Estatísticas Atuais em Tempo Real:
 - Stills de Episódios no Drive: ${catalogStats?.totalDriveStills || 0} de ${catalogStats?.totalEpisodes || 0}
 
 Instrução de Resposta:
-- Seja DIRETO AO PONTO. No início da resposta, dê um resumo claro em 1 ou 2 frases curtas.
-- Em seguida, explique os detalhes com tópicos (bullet points) objetivos e organizados.
-- Use negrito para dar ênfase a conceitos e termos importantes.
-- Evite blocos de texto gigantes e prolixos. Seja amigável, técnico e conciso em português do Brasil.`;
+- RESPONDA ESTRITAMENTE AO QUE FOI PERGUNTADO. Se a pergunta for simples e específica (ex: quantidade de itens mapeados), responda apenas o número e o que ele significa diretamente em 1 ou 2 frases curtas.
+- NÃO traga métricas ou explicações adicionais que o usuário não pediu (como explicar Gray's Anatomy, Telegram, Stills ou TMDB se a pergunta foi apenas sobre números da fila).
+- Seja DIRETO, CONCISO e SEM ENROLAÇÃO. Proibido textões desnecessários.
+- Para formatação: use asteriscos duplos (**termo**) para destacar termos-chave ou números importantes.`;
 
             const axios = (await import('axios')).default;
             const https = (await import('https')).default;
