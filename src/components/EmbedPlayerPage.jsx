@@ -77,6 +77,9 @@ export default function EmbedPlayerPage() {
         };
     }, [checkingKey, isVipKey]);
 
+    const [channelVariants, setChannelVariants] = useState([]);
+    const [currentChannelBadge, setCurrentChannelBadge] = useState('VIP');
+
     // Busca de título TMDB ou Canal e Sync Telegram / Stream
     useEffect(() => {
         const fetchInfo = async () => {
@@ -92,6 +95,10 @@ export default function EmbedPlayerPage() {
                     const chData = await chRes.json();
                     setTitle(chData.name || 'Canal Ao Vivo');
                     setStreamUrl(chData.stream_url);
+                    setCurrentChannelBadge(chData.badge || 'VIP');
+                    if (chData.variants && chData.variants.length > 0) {
+                        setChannelVariants(chData.variants);
+                    }
                     setIsValidEmbed(true);
                     setLoading(false);
                     return;
@@ -272,9 +279,31 @@ export default function EmbedPlayerPage() {
             <CustomVideoPlayer
                 messageId={telegramMessageId}
                 srcUrl={streamUrl}
-                title={type === 'serie' ? `${title} T${season}E${episode}` : title}
+                title={type === 'canal' ? title : (type === 'serie' ? `${title} T${season}E${episode}` : title)}
+                isLive={type === 'canal'}
+                isVip={type === 'canal' ? true : isVipKey}
+                liveOptions={type === 'canal' && channelVariants.length > 0 ? {
+                    currentChannelId: rawId,
+                    currentLabel: currentChannelBadge || 'VIP',
+                    currentQuality: 'HD',
+                    qualities: ['HD', 'SD'],
+                    channels: channelVariants.map(v => ({
+                        id: v.id,
+                        name: v.name,
+                        displayOptionName: v.name,
+                        vip_badge: v.label
+                    })),
+                    onQualitySelect: () => {},
+                    onChannelSelect: (ch) => {
+                        const target = channelVariants.find(v => String(v.id) === String(ch.id));
+                        if (target) {
+                            setStreamUrl(target.stream_url);
+                            setCurrentChannelBadge(target.label || 'VIP');
+                        }
+                    }
+                } : null}
                 contentId={rawId}
-                mediaType={type === 'filme' ? 'movie' : 'tv'}
+                mediaType={type === 'canal' ? 'canal' : (type === 'filme' ? 'movie' : 'tv')}
                 season={season}
                 episode={episode}
                 languageOptions={languageOptions ? languageOptions[currentQuality] : null}

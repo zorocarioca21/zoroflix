@@ -38,6 +38,21 @@ export default function embedRoutes(db) {
         }
     });
 
+    // Função auxiliar para higienizar nomes de canais (remove sufixos de CDN, opções, etc)
+    const cleanChannelName = (raw) => {
+        if (!raw) return '';
+        let name = raw
+            .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+            .replace(/\s*\([^)]*?(?:op[çc\?]+[ãa\?]*o|\bcdn\b|\d+p|\bsd\b|\bhd\b|\bfhd\b|\b4k\b)[^)]*?\)/gi, '')
+            .replace(/\s*\(.*?cdn.*?\)/gi, '')
+            .replace(/\s*\(band.*?\)/gi, '')
+            .replace(/\s*\(globo.*?\)/gi, '')
+            .replace(/\s*\[.*?\]/gi, '')
+            .replace(/\s*\)+/g, '')
+            .trim();
+        return name || raw;
+    };
+
     // ============================================================
     // 📺 GET /canais — Lista pública de canais cadastrados no painel
     // ============================================================
@@ -66,7 +81,8 @@ export default function embedRoutes(db) {
 
             const channels = rows.map(ch => ({
                 id: ch.id,
-                name: ch.name,
+                name: cleanChannelName(ch.name),
+                raw_name: ch.name,
                 category: ch.category || 'Geral',
                 badge: ch.vip_badge || null,
                 logo: ch.logo_url || null,
@@ -101,13 +117,38 @@ export default function embedRoutes(db) {
             // O stream real é resolvido através do proxy com segurança
             const streamUrl = `/api/stream/proxy?url=${encodeURIComponent(channel.id)}`;
 
+            // Busca variantes do mesmo canal para opções de qualidade/lista
+            const cleanName = cleanChannelName(channel.name);
+            const allMatching = await db.all(
+                `SELECT id, name, category, logo_url, vip_badge FROM iptv_channels WHERE active = 1 AND (name LIKE ? OR name = ?)`,
+                [`${cleanName}%`, channel.name]
+            );
+
+            const variants = allMatching.map((c, idx) => {
+                const parenMatch = c.name.match(/\((.*?)\)/);
+                const optDetails = parenMatch ? parenMatch[1].trim() : `Opção ${idx + 1}`;
+                return {
+                    id: c.id,
+                    name: c.name,
+                    label: c.vip_badge || optDetails,
+                    stream_url: `/api/stream/proxy?url=${encodeURIComponent(c.id)}`
+                };
+            });
+
             res.json({
                 id: channel.id,
-                name: channel.name,
+                name: cleanName,
+                raw_name: channel.name,
                 category: channel.category,
                 badge: channel.vip_badge,
                 logo: channel.logo_url,
-                stream_url: streamUrl
+                stream_url: streamUrl,
+                variants: variants.length > 0 ? variants : [{
+                    id: channel.id,
+                    name: channel.name,
+                    label: channel.vip_badge || 'Padrão',
+                    stream_url: streamUrl
+                }]
             });
         } catch (err) {
             console.error("Erro ao carregar canal:", err);
