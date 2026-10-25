@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import { getTelegramClient } from '../telegram.js';
 
 export default function hybridWorkerRoutes(db, io) {
@@ -297,6 +299,48 @@ export default function hybridWorkerRoutes(db, io) {
             }
         } catch (err) {
             console.error('Erro ao inserir custom sync_queue:', err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // 6. Upload de Anime/Dorama via instância única compartilhada do Telegram
+    router.post('/upload-anime', async (req, res) => {
+        const { filePath, caption } = req.body;
+        if (!filePath || !fs.existsSync(filePath)) {
+            return res.status(400).json({ error: 'Arquivo não encontrado na VPS' });
+        }
+
+        try {
+            const tgClient = await getTelegramClient();
+            if (!tgClient) {
+                return res.status(500).json({ error: 'TelegramClient indisponível' });
+            }
+
+            let entityId = process.env.TELEGRAM_CHANNEL_ID || '-1003839496993';
+            if (!entityId.startsWith('-100')) {
+                entityId = '-100' + entityId.replace('-', '');
+            }
+
+            console.log(`[Hybrid Anime Upload] ⬆️ Enviando para o canal: ${filePath}`);
+            const { Api } = await import('telegram');
+
+            const sentMsg = await tgClient.sendFile(entityId, {
+                file: filePath,
+                workers: 1,
+                caption: caption || `**Upload Anime**\n${path.basename(filePath)}`,
+                parseMode: "markdown",
+                forceDocument: false,
+                attributes: [
+                    new Api.DocumentAttributeVideo({
+                        supportsStreaming: true
+                    })
+                ]
+            });
+
+            console.log(`[Hybrid Anime Upload] ✅ Enviado com sucesso! ID: ${sentMsg.id}`);
+            res.json({ success: true, messageId: sentMsg.id });
+        } catch (err) {
+            console.error('[Hybrid Anime Upload] ❌ Erro ao enviar para o Telegram:', err);
             res.status(500).json({ error: err.message });
         }
     });

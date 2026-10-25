@@ -23,7 +23,28 @@ from animeDoramaCore import (
 UPLOADER_JS = ROOT_DIR / 'backend' / 'scripts' / 'telegramUploadOnly.js'
 
 def upload_via_node(file_path, caption):
-    """Executa o upload via telegramUploadOnly.js nativo"""
+    """Executa o upload usando a conexão ativa do Telegram do servidor Zoroflix"""
+    # 1. Tenta upload pelo servidor Zoroflix local (compartilha a mesma sessão sem duplicar AUTH_KEY)
+    try:
+        import urllib.request
+        upload_url = "http://127.0.0.1:4000/api/hybrid/upload-anime"
+        payload = json.dumps({'filePath': str(file_path), 'caption': str(caption)}).encode('utf-8')
+        req = urllib.request.Request(
+            upload_url,
+            headers={'Content-Type': 'application/json', 'x-api-key': 'cinegeek_hybrid_key_123'},
+            data=payload
+        )
+        with urllib.request.urlopen(req, timeout=3600) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            if data.get('success') and data.get('messageId'):
+                print(f"[Upload] ✅ Upload concluído via Server Telegram Client! MessageID: {data['messageId']}")
+                return int(data['messageId'])
+            else:
+                print(f"[Upload] ⚠️ Servidor retornou: {data}")
+    except Exception as server_err:
+        print(f"[Upload] ⚠️ Falha ao subir pelo servidor local ({server_err}). Tentando via script fallback...")
+
+    # 2. Fallback: telegramUploadOnly.js nativo
     cmd = ['node', str(UPLOADER_JS), str(file_path), str(caption)]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='ignore')
     msg_id = None
