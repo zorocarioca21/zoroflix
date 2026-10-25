@@ -562,7 +562,7 @@ function Home({ onOpenDetails }) {
                     </button>
 
                     {(() => {
-                      const isChannel = item.media_type === 'canal' || (item.poster_path && (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'));
+                      const isChannel = item.media_type === 'canal' || item.poster_path === '/cinegeek-icon.png';
                       if (!item.poster_path) {
                         return (
                           <div className="row-poster-img" style={{ background: '#09120c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: '#aaa', padding: '0.5rem', textAlign: 'center' }}>

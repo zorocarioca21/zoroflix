@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getSlug } from '../utils/slug';
+import { resolveImageUrl } from '../utils/imageUrl';
 import { X } from 'lucide-react';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
@@ -106,7 +107,7 @@ export default function UserListPage({ type = 'favorites' }) {
                                 <X size={14} strokeWidth={2.5} />
                             </button>
                             {(() => {
-                                const isChannel = item.media_type === 'canal' || (item.poster_path && (item.poster_path.startsWith('http') || item.poster_path === '/cinegeek-icon.png'));
+                                const isChannel = item.media_type === 'canal' || item.poster_path === '/cinegeek-icon.png';
                                 if (!item.poster_path) {
                                     return <div style={{ background: '#09120c', width: '100%', height: '100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', color:'#aaa', padding:'0.5rem', textAlign:'center' }}>{item.title}</div>;
                                 }
@@ -121,7 +122,7 @@ export default function UserListPage({ type = 'favorites' }) {
                                         </div>
                                     );
                                 }
-                                return <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                                return <img src={resolveImageUrl(item.poster_path, 'w300')} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
                             })()}
                             {item.season && item.episode && (
                                 <span style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.8)', color: '#00e676', fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px', padding: '2px 5px', letterSpacing: '0.05em' }}>
