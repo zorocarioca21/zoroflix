@@ -41,14 +41,16 @@ export default function MangaReaderPage() {
                     setChapterData(dataPages);
                     document.title = `Cap. ${dataPages.chapter_number} - ${dataManga.manga?.title || 'Mangá'} - CineGeek`;
 
-                    // Prefetch inteligente do próximo capítulo em segundo plano
+                    // Prefetch inteligente dos próximos 3 capítulos em segundo plano de forma escalonada
                     if (dataList?.chapters) {
                         const currentIdx = dataList.chapters.findIndex(c => String(c.id) === String(chapterId));
-                        if (currentIdx >= 0 && currentIdx < dataList.chapters.length - 1) {
-                            const nextCh = dataList.chapters[currentIdx + 1];
-                            setTimeout(() => {
-                                fetch(`/api/mangas/chapters/${nextCh.id}/pages`).catch(() => {});
-                            }, 3000); // 3 segundos após abrir o atual, já puxa o próximo
+                        if (currentIdx >= 0) {
+                            const nextChapters = dataList.chapters.slice(currentIdx + 1, currentIdx + 4);
+                            nextChapters.forEach((ch, i) => {
+                                setTimeout(() => {
+                                    fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
+                                }, (i + 1) * 2500); // Dispara em 2.5s, 5s e 7.5s suavemente
+                            });
                         }
                     }
                 }
