@@ -106,10 +106,21 @@ export default function MangaReaderPage() {
     if (!chapterData || !chapterData.pages || chapterData.pages.length === 0) {
         return (
             <div style={{ minHeight: '100vh', background: '#05070a', color: '#fff', padding: '120px 5%', textAlign: 'center' }}>
-                <h2>Não foi possível carregar as páginas deste capítulo.</h2>
-                <Link to={`/manga/${mangaId}`} style={{ color: '#ff3366', textDecoration: 'none', fontWeight: 'bold', marginTop: '1rem', display: 'inline-block' }}>
-                    &larr; Voltar para a obra
-                </Link>
+                <h2 style={{ color: '#f8fafc', marginBottom: '0.8rem' }}>Preparando as páginas do capítulo...</h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
+                    O arquivo ainda está sendo sincronizado do canal de armazenamento. Clique no botão abaixo para tentar abrir novamente.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button 
+                        onClick={() => window.location.reload()} 
+                        style={{ background: '#ff3366', color: '#fff', border: 'none', padding: '0.7rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        Tentar Novamente
+                    </button>
+                    <Link to={`/manga/${mangaId}`} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', textDecoration: 'none', padding: '0.7rem 1.5rem', borderRadius: '8px', fontWeight: 'bold' }}>
+                        Voltar para a obra
+                    </Link>
+                </div>
             </div>
         );
     }

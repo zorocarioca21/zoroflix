@@ -260,9 +260,10 @@ export default function createMangasRouter(db) {
 
             const fileName = `${manga.title.replace(/[^a-zA-Z0-9]/g, '_')}_Cap_${chapter_number}.cbz`;
             const tempDir = path.join(__dirname, '..', 'temp_mangas');
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir, { recursive: true });
-            }
+            const cacheDir = path.join(tempDir, 'cache');
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+            if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
             const tempFilePath = path.join(tempDir, fileName);
             zip.writeZip(tempFilePath);
             const fileSize = fs.statSync(tempFilePath).size;
@@ -324,6 +325,20 @@ export default function createMangasRouter(db) {
 
                 messageId = message.id;
                 console.log(`[GramJS] Enviado com sucesso. MessageID: ${messageId}`);
+            }
+
+            // Extrair direto no cache local para que a abertura pelo leitor seja INSTANTÂNEA
+            try {
+                if (messageId) {
+                    const chapterCacheDir = path.join(cacheDir, `ch_msg_${messageId}`);
+                    if (!fs.existsSync(chapterCacheDir)) {
+                        fs.mkdirSync(chapterCacheDir, { recursive: true });
+                        zip.extractAllTo(chapterCacheDir, true);
+                        console.log(`[Manga Cache] Capítulo extraído em cache instantâneo: ${chapterCacheDir}`);
+                    }
+                }
+            } catch (cacheErr) {
+                console.warn(`[Manga Cache] Aviso ao salvar pré-cache:`, cacheErr.message);
             }
 
             // Remove o arquivo temporário
