@@ -322,19 +322,13 @@ export default function hybridWorkerRoutes(db, io) {
             }
 
             console.log(`[Hybrid Anime Upload] ⬆️ Enviando para o canal: ${filePath}`);
-            const { Api } = await import('telegram');
 
             const sentMsg = await tgClient.sendFile(entityId, {
                 file: filePath,
                 workers: 1,
                 caption: caption || `**Upload Anime**\n${path.basename(filePath)}`,
                 parseMode: "markdown",
-                forceDocument: false,
-                attributes: [
-                    new Api.DocumentAttributeVideo({
-                        supportsStreaming: true
-                    })
-                ]
+                forceDocument: false
             });
 
             console.log(`[Hybrid Anime Upload] ✅ Enviado com sucesso! ID: ${sentMsg.id}`);
