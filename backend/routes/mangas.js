@@ -1,8 +1,15 @@
 import express from 'express';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { getTelegramClient } from '../telegram.js';
 import { CustomFile } from 'telegram/client/uploads.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default function createMangasRouter(db) {
     const router = express.Router();
@@ -153,36 +160,89 @@ export default function createMangasRouter(db) {
                 zip.addFile(paddedName, imgRes.data);
             }
 
-            const zipBuffer = zip.toBuffer();
             const fileName = `${manga.title.replace(/[^a-zA-Z0-9]/g, '_')}_Cap_${chapter_number}.cbz`;
+            const tempDir = path.join(__dirname, '..', 'temp_mangas');
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir, { recursive: true });
+            }
+            const tempFilePath = path.join(tempDir, fileName);
+            zip.writeZip(tempFilePath);
+            const fileSize = fs.statSync(tempFilePath).size;
 
-            // Enviar pro Telegram
-            const tgClient = await getTelegramClient();
-            if (!tgClient) return res.status(500).json({ error: 'Telegram não conectado' });
+            console.log(`[Manga Upload] Arquivo CBZ salvo: ${tempFilePath} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
-            console.log(`[Telegram] Enviando arquivo ${fileName} (${(zipBuffer.length / 1024 / 1024).toFixed(2)} MB)...`);
-            
-            const toEntity = await tgClient.getInputEntity(channelIdStr.includes('-100') ? parseInt(channelIdStr) : channelIdStr);
-            const customFile = new CustomFile(fileName, zipBuffer.length, "", zipBuffer);
-            
-            const message = await tgClient.sendFile(toEntity, {
-                file: customFile,
-                caption: `📚 **${manga.title}**\n\n📖 Capítulo: ${chapter_number}\n📝 Título: ${title || 'N/A'}\n📄 Páginas: ${pagesCount}`,
-                parseMode: 'markdown'
-            });
+            let messageId = null;
+            const caption = `📚 **${manga.title}**\n\n📖 Capítulo: ${chapter_number}\n📝 Título: ${title || 'N/A'}\n📄 Páginas: ${pagesCount}`;
 
-            console.log(`[Telegram] Enviado com sucesso. MessageID: ${message.id}`);
+            // 1. Tenta upload via Pyrogram primeiro (usa sessão oficial my_account já no canal)
+            try {
+                const pyScript = path.join(__dirname, '..', 'scripts', 'uploadMangaChapter.py');
+                if (fs.existsSync(pyScript)) {
+                    console.log(`[Manga Upload] Tentando envio via Pyrogram script...`);
+                    const pyResult = await new Promise((resolve) => {
+                        const proc = spawn('python3', [pyScript, tempFilePath, caption]);
+                        let stdout = '';
+                        let stderr = '';
+                        proc.stdout.on('data', d => { stdout += d.toString(); });
+                        proc.stderr.on('data', d => { stderr += d.toString(); });
+                        proc.on('close', code => {
+                            if (code === 0) {
+                                const match = stdout.match(/MESSAGE_ID:\s*(\d+)/i);
+                                resolve({ success: true, messageId: match ? parseInt(match[1]) : null, stdout });
+                            } else {
+                                resolve({ success: false, error: stderr || stdout });
+                            }
+                        });
+                    });
+
+                    if (pyResult.success && pyResult.messageId) {
+                        messageId = pyResult.messageId;
+                        console.log(`[Manga Upload] Upload via Pyrogram sucesso! MessageID: ${messageId}`);
+                    } else {
+                        console.warn(`[Manga Upload] Pyrogram falhou (${pyResult.error}), tentando GramJS fallback...`);
+                    }
+                }
+            } catch (pyErr) {
+                console.warn(`[Manga Upload] Erro no subprocesso Pyrogram:`, pyErr.message);
+            }
+
+            // 2. Se não foi pelo Pyrogram, tenta GramJS
+            if (!messageId) {
+                const tgClient = await getTelegramClient();
+                if (!tgClient) {
+                    throw new Error('Telegram não conectado');
+                }
+
+                console.log(`[GramJS] Enviando arquivo ${fileName}...`);
+                const zipBuffer = fs.readFileSync(tempFilePath);
+                const toEntity = await tgClient.getInputEntity(channelIdStr.includes('-100') ? parseInt(channelIdStr) : channelIdStr);
+                const customFile = new CustomFile(fileName, zipBuffer.length, "", zipBuffer);
+                
+                const message = await tgClient.sendFile(toEntity, {
+                    file: customFile,
+                    caption,
+                    parseMode: 'markdown'
+                });
+
+                messageId = message.id;
+                console.log(`[GramJS] Enviado com sucesso. MessageID: ${messageId}`);
+            }
+
+            // Remove o arquivo temporário
+            try {
+                if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+            } catch (cleanErr) {}
 
             // Salvar no DB
             await db.run(`
                 INSERT INTO manga_chapters (manga_id, chapter_number, title, telegram_message_id, file_size, pages_count)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `, [manga_id, chapter_number, title, message.id, zipBuffer.length, pagesCount]);
+            `, [manga_id, chapter_number, title, messageId, fileSize, pagesCount]);
 
-            res.json({ success: true, message_id: message.id });
+            res.json({ success: true, message_id: messageId });
         } catch (e) {
             console.error('Erro ao processar download do MangaDex:', e);
-            res.status(500).json({ error: 'Erro ao processar o capítulo' });
+            res.status(500).json({ error: e.message || 'Erro ao processar o capítulo' });
         }
     });
 
