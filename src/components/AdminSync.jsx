@@ -2265,227 +2265,100 @@ export default function AdminSync() {
             {dialog.DialogPortal}
 
             {/* BOTÃO FLUTUANTE DE IA E MODAL DE CHAT */}
-            <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
+            <div className="aic-root">
                 {!isAiChatOpen ? (
-                    <button
-                        onClick={() => setIsAiChatOpen(true)}
-                        style={{
-                            background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
-                            border: 'none',
-                            color: '#fff',
-                            width: '56px',
-                            height: '56px',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            boxShadow: '0 8px 24px rgba(0, 204, 255, 0.4), 0 0 15px rgba(123, 97, 255, 0.5)',
-                            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                            transform: 'scale(1)'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        title="Assistente de IA do Sync"
-                    >
-                        <Bot size={28} />
+                    <button className="aic-fab" onClick={() => setIsAiChatOpen(true)} title="Assistente de IA do Sync">
+                        <span className="aic-fab-ring" />
+                        <Sparkles size={24} />
                     </button>
                 ) : (
-                    <div style={{
-                        width: isAiExpanded ? 'min(680px, 92vw)' : 'min(440px, 92vw)',
-                        height: isAiExpanded ? 'min(720px, 85vh)' : '540px',
-                        background: 'linear-gradient(145deg, #161822 0%, #0d0e15 100%)',
-                        border: '1px solid rgba(0, 204, 255, 0.35)',
-                        borderRadius: '16px',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.7), 0 0 30px rgba(0, 204, 255, 0.15)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden',
-                        animation: 'fadeInUp 0.25s ease-out',
-                        transition: 'width 0.25s ease, height 0.25s ease'
-                    }}>
+                    <div className={`aic-panel ${isAiExpanded ? 'expanded' : ''}`}>
                         {/* Header */}
-                        <div style={{
-                            padding: '0.85rem 1.1rem',
-                            background: 'rgba(0, 204, 255, 0.08)',
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                <div style={{
-                                    background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
-                                    borderRadius: '50%',
-                                    width: '32px',
-                                    height: '32px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#fff'
-                                }}>
-                                    <Bot size={18} />
+                        <div className="aic-header">
+                            <div className="aic-header-info">
+                                <div className="aic-avatar lg">
+                                    <Sparkles size={18} />
+                                    <span className="aic-status-dot" />
                                 </div>
                                 <div>
-                                    <h4 style={{ margin: 0, fontSize: '0.92rem', color: '#fff', fontWeight: 'bold' }}>IA Especialista Sync</h4>
-                                    <span style={{ fontSize: '0.72rem', color: '#00ff88', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00ff88', display: 'inline-block' }} /> Online (Gemini 3.5 Flash)
-                                    </span>
+                                    <h4 className="aic-title">IA Especialista Sync</h4>
+                                    <span className="aic-subtitle">Gemini 3.5 Flash · dados em tempo real</span>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <button
-                                    onClick={clearAiChat}
-                                    title="Limpar histórico da conversa"
-                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                                >
-                                    <Trash size={16} />
+                            <div className="aic-header-actions">
+                                <button className="aic-icon-btn" onClick={clearAiChat} title="Limpar conversa"><Trash size={15} /></button>
+                                <button className="aic-icon-btn" onClick={() => setIsAiExpanded(!isAiExpanded)} title={isAiExpanded ? 'Reduzir' : 'Expandir'}>
+                                    {isAiExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                                 </button>
-                                <button
-                                    onClick={() => setIsAiExpanded(!isAiExpanded)}
-                                    title={isAiExpanded ? 'Reduzir janela' : 'Expandir janela'}
-                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                                >
-                                    {isAiExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                                </button>
-                                <button
-                                    onClick={() => setIsAiChatOpen(false)}
-                                    title="Fechar chat"
-                                    style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-                                >
-                                    <X size={19} />
-                                </button>
+                                <button className="aic-icon-btn" onClick={() => setIsAiChatOpen(false)} title="Fechar"><X size={17} /></button>
                             </div>
                         </div>
 
-                        {/* Sugestões Rápidas */}
-                        <div style={{ padding: '0.55rem 0.8rem', background: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '6px', overflowX: 'auto' }}>
-                            <button
-                                onClick={() => sendAiQuestion('O que representa o card Filmes e Séries e a Fila Mapeada?')}
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                            >
-                                💡 Fila Mapeada?
-                            </button>
-                            <button
-                                onClick={() => sendAiQuestion('O que são os Stills de episódios no Zoro Drive?')}
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                            >
-                                🖼️ Stills de Episódios?
-                            </button>
-                            <button
-                                onClick={() => sendAiQuestion('Vários episódios da mesma série têm o mesmo TMDB ID?')}
-                                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#00ccff', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', whiteSpace: 'nowrap', cursor: 'pointer' }}
-                            >
-                                🔢 Mesmo ID p/ Série?
-                            </button>
-                        </div>
-
-                        {/* Mensagens com Markdown & Botão Copiar */}
-                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                        {/* Mensagens */}
+                        <div className="aic-messages">
                             {aiMessages.map((msg, idx) => (
-                                <div
-                                    key={idx}
-                                    style={{
-                                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                                        maxWidth: '92%',
-                                        background: msg.sender === 'user' ? 'linear-gradient(135deg, #0077ff, #00ccff)' : 'rgba(255,255,255,0.05)',
-                                        border: msg.sender === 'user' ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                                        color: msg.sender === 'user' ? '#fff' : '#e2e8f0',
-                                        padding: '0.75rem 0.95rem',
-                                        borderRadius: msg.sender === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                                        fontSize: '0.86rem',
-                                        lineHeight: '1.5',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                                        position: 'relative',
-                                        group: 'msg-box'
-                                    }}
-                                >
-                                    {msg.sender === 'ai' ? (
-                                        <div>
-                                            <div style={{ wordBreak: 'break-word' }}>
-                                                {renderMarkdownContent(msg.text)}
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                                <div key={idx} className={`aic-row ${msg.sender === 'user' ? 'user' : 'ai'}`}>
+                                    {msg.sender === 'ai' && <div className="aic-avatar"><Sparkles size={13} /></div>}
+                                    <div className="aic-bubble">
+                                        {msg.sender === 'ai' ? (
+                                            <>
+                                                <div className="aic-md">{renderMarkdownContent(msg.text)}</div>
                                                 <button
+                                                    className={`aic-copy ${copiedIndex === idx ? 'done' : ''}`}
                                                     onClick={() => handleCopyAiMessage(msg.text, idx)}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: copiedIndex === idx ? '#00ff88' : '#64748b',
-                                                        fontSize: '0.72rem',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                        padding: '2px 4px'
-                                                    }}
                                                     title="Copiar resposta"
                                                 >
                                                     {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
-                                                    {copiedIndex === idx ? 'Copiado!' : 'Copiar'}
+                                                    {copiedIndex === idx ? 'Copiado' : 'Copiar'}
                                                 </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
-                                    )}
+                                            </>
+                                        ) : (
+                                            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
+
+                            {aiMessages.length <= 1 && !isAiTyping && (
+                                <div className="aic-suggestions">
+                                    <span className="aic-suggestions-label">Sugestões</span>
+                                    {[
+                                        { icon: <ListFilter size={14} />, label: 'O que é a Fila Mapeada?', q: 'O que representa o card Filmes e Séries e a Fila Mapeada?' },
+                                        { icon: <Film size={14} />, label: 'Stills de episódios no Drive', q: 'O que são os Stills de episódios no Zoro Drive?' },
+                                        { icon: <Database size={14} />, label: 'Séries usam o mesmo TMDB ID?', q: 'Vários episódios da mesma série têm o mesmo TMDB ID?' }
+                                    ].map((s, i) => (
+                                        <button key={i} className="aic-suggestion" onClick={() => sendAiQuestion(s.q)}>
+                                            <span className="aic-suggestion-icon">{s.icon}</span>
+                                            {s.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
                             {isAiTyping && (
-                                <div style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.06)', padding: '0.6rem 0.9rem', borderRadius: '14px 14px 14px 2px', display: 'flex', alignItems: 'center', gap: '6px', color: '#00ccff', fontSize: '0.8rem' }}>
-                                    <Loader2 size={14} className="spin" /> Pensando...
+                                <div className="aic-row ai">
+                                    <div className="aic-avatar"><Sparkles size={13} /></div>
+                                    <div className="aic-bubble aic-typing"><span /><span /><span /></div>
                                 </div>
                             )}
                             <div ref={aiMessagesEndRef} />
                         </div>
 
-                        {/* Input Footer */}
-                        <form
-                            onSubmit={(e) => { e.preventDefault(); sendAiQuestion(); }}
-                            style={{
-                                padding: '0.75rem 0.85rem',
-                                background: 'rgba(0,0,0,0.3)',
-                                borderTop: '1px solid rgba(255,255,255,0.08)',
-                                display: 'flex',
-                                gap: '0.5rem'
-                            }}
-                        >
-                            <input
-                                type="text"
-                                placeholder="Tire uma dúvida sobre o sync ou TMDB..."
-                                value={aiInput}
-                                onChange={(e) => setAiInput(e.target.value)}
-                                disabled={isAiTyping}
-                                style={{
-                                    flex: 1,
-                                    background: 'rgba(255,255,255,0.06)',
-                                    border: '1px solid rgba(255,255,255,0.12)',
-                                    borderRadius: '8px',
-                                    padding: '0.6rem 0.8rem',
-                                    color: '#fff',
-                                    fontSize: '0.85rem',
-                                    outline: 'none'
-                                }}
-                            />
-                            <button
-                                type="submit"
-                                disabled={isAiTyping || !aiInput.trim()}
-                                style={{
-                                    background: 'linear-gradient(135deg, #00ccff, #7b61ff)',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    width: '38px',
-                                    height: '38px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#fff',
-                                    cursor: isAiTyping || !aiInput.trim() ? 'not-allowed' : 'pointer',
-                                    opacity: isAiTyping || !aiInput.trim() ? 0.5 : 1
-                                }}
-                            >
-                                <Send size={16} />
-                            </button>
+                        {/* Composer */}
+                        <form className="aic-composer" onSubmit={(e) => { e.preventDefault(); sendAiQuestion(); }}>
+                            <div className="aic-input-wrap">
+                                <input
+                                    type="text"
+                                    placeholder="Pergunte sobre o sync, fila ou TMDB..."
+                                    value={aiInput}
+                                    onChange={(e) => setAiInput(e.target.value)}
+                                    disabled={isAiTyping}
+                                />
+                                <button type="submit" className="aic-send" disabled={isAiTyping || !aiInput.trim()}>
+                                    {isAiTyping ? <Loader2 size={16} className="spin" /> : <Send size={15} />}
+                                </button>
+                            </div>
+                            <span className="aic-footnote">As respostas usam estatísticas atuais do banco.</span>
                         </form>
                     </div>
                 )}
