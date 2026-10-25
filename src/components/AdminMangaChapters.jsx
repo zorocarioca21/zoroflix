@@ -82,6 +82,23 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
         return localChapters.some(lc => lc.chapter_number === chapter_number);
     };
 
+    const handleDeleteChapter = async (chapterId, capNum) => {
+        if (!window.confirm(`Tem certeza que deseja apagar o Capítulo ${capNum}?`)) return;
+        try {
+            const res = await fetch(`/api/mangas/chapters/${chapterId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchLocalChapters();
+            } else {
+                window.alert('Erro ao apagar capítulo');
+            }
+        } catch (e) {
+            window.alert('Falha na comunicação');
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '2rem', color: '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
@@ -109,7 +126,16 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
                                     <strong style={{ color: '#00ff88' }}>Cap. {lc.chapter_number}</strong>
                                     <div style={{ fontSize: '0.8rem', color: '#888' }}>{lc.pages_count} páginas • {(lc.file_size / 1024 / 1024).toFixed(1)} MB</div>
                                 </div>
-                                <CheckCircle size={18} color="#00ff88" />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                    <CheckCircle size={18} color="#00ff88" />
+                                    <button 
+                                        onClick={() => handleDeleteChapter(lc.id, lc.chapter_number)}
+                                        title="Apagar Capítulo"
+                                        style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

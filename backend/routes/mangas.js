@@ -46,6 +46,32 @@ export default function createMangasRouter(db) {
         }
     });
 
+    // Obter detalhes de um mangá
+    router.get('/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const manga = await db.get("SELECT * FROM mangas WHERE id = ?", [id]);
+            if (!manga) return res.status(404).json({ error: 'Mangá não encontrado' });
+            res.json({ manga });
+        } catch (e) {
+            console.error('Erro ao buscar detalhes do mangá:', e);
+            res.status(500).json({ error: 'Erro interno' });
+        }
+    });
+
+    // Deletar um mangá e seus capítulos
+    router.delete('/:id', async (req, res) => {
+        try {
+            const { id } = req.params;
+            await db.run("DELETE FROM manga_chapters WHERE manga_id = ?", [id]);
+            await db.run("DELETE FROM mangas WHERE id = ?", [id]);
+            res.json({ success: true, message: 'Mangá deletado com sucesso!' });
+        } catch (e) {
+            console.error('Erro ao deletar mangá:', e);
+            res.status(500).json({ error: 'Erro interno ao deletar mangá' });
+        }
+    });
+
     // Listar capítulos de um mangá
     router.get('/:id/chapters', async (req, res) => {
         try {
@@ -55,6 +81,78 @@ export default function createMangasRouter(db) {
         } catch (e) {
             console.error('Erro ao listar capítulos:', e);
             res.status(500).json({ error: 'Erro interno' });
+        }
+    });
+
+    // Deletar um capítulo específico
+    router.delete('/chapters/:chapterId', async (req, res) => {
+        try {
+            const { chapterId } = req.params;
+            await db.run("DELETE FROM manga_chapters WHERE id = ?", [chapterId]);
+            res.json({ success: true, message: 'Capítulo deletado com sucesso!' });
+        } catch (e) {
+            console.error('Erro ao deletar capítulo:', e);
+            res.status(500).json({ error: 'Erro interno ao deletar capítulo' });
+        }
+    });
+
+    // Obter páginas de um capítulo (baixando/extraindo do Telegram e servindo URLs)
+    router.get('/chapters/:chapterId/pages', async (req, res) => {
+        try {
+            const { chapterId } = req.params;
+            const chapter = await db.get("SELECT * FROM manga_chapters WHERE id = ?", [chapterId]);
+            if (!chapter) return res.status(404).json({ error: 'Capítulo não encontrado' });
+
+            const cacheDir = path.join(__dirname, '..', 'temp_mangas', 'cache');
+            const pyScript = path.join(__dirname, '..', 'scripts', 'getMangaChapterPages.py');
+
+            const pyResult = await new Promise((resolve) => {
+                const proc = spawn('python3', [pyScript, String(chapter.telegram_message_id), cacheDir]);
+                let stdout = '';
+                let stderr = '';
+                proc.stdout.on('data', d => { stdout += d.toString(); });
+                proc.stderr.on('data', d => { stderr += d.toString(); });
+                proc.on('close', code => {
+                    if (code === 0) {
+                        try {
+                            resolve(JSON.parse(stdout));
+                        } catch (err) {
+                            resolve({ error: stdout || 'Erro ao processar JSON' });
+                        }
+                    } else {
+                        resolve({ error: stderr || stdout });
+                    }
+                });
+            });
+
+            if (pyResult.error) {
+                return res.status(500).json({ error: pyResult.error });
+            }
+
+            const pages = pyResult.pages.map(img => `/api/mangas/pages/${chapter.telegram_message_id}/${img}`);
+            res.json({
+                chapter_id: chapter.id,
+                chapter_number: chapter.chapter_number,
+                title: chapter.title,
+                pages_count: pages.length,
+                pages
+            });
+        } catch (e) {
+            console.error('Erro ao obter páginas do capítulo:', e);
+            res.status(500).json({ error: 'Erro ao carregar páginas' });
+        }
+    });
+
+    // Rota para servir a imagem individual da página do mangá do cache local
+    router.get('/pages/:msgId/:filename', (req, res) => {
+        const { msgId, filename } = req.params;
+        const safeFilename = path.basename(filename);
+        const imgPath = path.join(__dirname, '..', 'temp_mangas', 'cache', `ch_msg_${msgId}`, safeFilename);
+        if (fs.existsSync(imgPath)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.sendFile(imgPath);
+        } else {
+            res.status(404).json({ error: 'Imagem não encontrada' });
         }
     });
 

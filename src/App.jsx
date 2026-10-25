@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck, ChevronLeft, ChevronRight, Award } from 'lucide-react'
+import { Home as HomeIcon, Film, MonitorPlay, Sword, Heart, Sparkles, Radio, Calendar, Search, LogOut, User as UserIcon, LogIn, Tv, X, Download, ShieldCheck, ChevronLeft, ChevronRight, Award, BookOpen } from 'lucide-react'
 import { Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom'
 
 // Layout/Page Components
@@ -25,6 +25,9 @@ import EmbedDocsPage from './components/EmbedDocsPage'
 import AppUpdatePage from './components/AppUpdatePage'
 import PointsPage from './components/PointsPage'
 import TurnstileGatekeeper from './components/TurnstileGatekeeper'
+import MangasPage from './components/MangasPage'
+import MangaDetailsPage from './components/MangaDetailsPage'
+import MangaReaderPage from './components/MangaReaderPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -329,6 +332,7 @@ function AppContent() {
           <Link to="/series" className="nav-item"><span className="nav-icon"><MonitorPlay size={20} /></span><span className="nav-label">Séries</span></Link>
           <Link to="/animes" className="nav-item"><span className="nav-icon"><Sword size={20} /></span><span className="nav-label">Animes</span></Link>
           <Link to="/doramas" className="nav-item"><span className="nav-icon"><Sparkles size={20} /></span><span className="nav-label">Doramas</span></Link>
+          <Link to="/mangas" className="nav-item"><span className="nav-icon"><BookOpen size={20} /></span><span className="nav-label">Mangás</span></Link>
           <Link to="/canais" className="nav-item nav-item-canais"><span className="nav-icon"><Radio size={20} /></span><span className="nav-label">Canais</span></Link>
           <button className="nav-item nav-item-btn" onClick={() => setIsTvGuideOpen(true)}><span className="nav-icon"><Tv size={20} /></span><span className="nav-label">Guia</span></button>
         </nav>
@@ -412,6 +416,9 @@ function AppContent() {
         <Route path="/series" element={<CatalogPage key="series" type="tv" title="Séries" />} />
         <Route path="/animes" element={<CatalogPage key="animes" type="tv" title="Animes" initialGenreId="16" />} />
         <Route path="/doramas" element={<CatalogPage key="doramas" type="tv" title="Doramas" initialGenreId="18" initialLanguage="ko" />} />
+        <Route path="/mangas" element={<MangasPage />} />
+        <Route path="/manga/:id" element={<MangaDetailsPage />} />
+        <Route path="/manga/:mangaId/capitulo/:chapterId" element={<MangaReaderPage />} />
         <Route path="/historico" element={<UserListPage type="history" />} />
         <Route path="/favoritos" element={<UserListPage type="favorites" />} />
         <Route path="/redefinir-senha" element={<ResetPasswordPage />} />

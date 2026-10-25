@@ -80,6 +80,25 @@ export default function AdminMangas({ token }) {
         }
     };
 
+    const handleDeleteManga = async (mangaId, mangaTitle) => {
+        if (!window.confirm(`Tem certeza que deseja apagar a obra "${mangaTitle}" e todos os seus capítulos?`)) return;
+        try {
+            const res = await fetch(`/api/mangas/${mangaId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.alert('Obra deletada com sucesso!');
+                fetchMangas();
+            } else {
+                window.alert(data.error || 'Erro ao deletar obra');
+            }
+        } catch (e) {
+            window.alert('Falha na comunicação com o servidor');
+        }
+    };
+
     if (selectedManga) {
         return (
             <AdminMangaChapters 
@@ -128,7 +147,11 @@ export default function AdminMangas({ token }) {
                                 <button onClick={() => setSelectedManga(manga)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>
                                     Capítulos
                                 </button>
-                                <button style={{ background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}>
+                                <button 
+                                    onClick={() => handleDeleteManga(manga.id, manga.title)}
+                                    title="Deletar Obra"
+                                    style={{ background: 'rgba(255,51,102,0.1)', border: '1px solid rgba(255,51,102,0.3)', color: '#ff3366', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                >
                                     <Trash2 size={16} />
                                 </button>
                             </div>
