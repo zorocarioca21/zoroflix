@@ -62,6 +62,20 @@ def main():
             pass
             
         files = sorted([f for f in os.listdir(chapter_cache_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))])
+        
+        # Gerenciamento de Espaço LRU: mantém no máximo 25 capítulos mais recentes em disco
+        try:
+            MAX_CACHED_CHAPTERS = 25
+            cached_dirs = [os.path.join(cache_dir, d) for d in os.listdir(cache_dir) if d.startswith('ch_msg_') and os.path.isdir(os.path.join(cache_dir, d))]
+            if len(cached_dirs) > MAX_CACHED_CHAPTERS:
+                cached_dirs.sort(key=lambda d: os.path.getmtime(d)) # Mais antigos primeiro
+                to_remove = cached_dirs[:len(cached_dirs) - MAX_CACHED_CHAPTERS]
+                for old_dir in to_remove:
+                    import shutil
+                    shutil.rmtree(old_dir, ignore_errors=True)
+        except Exception:
+            pass
+
         print(json.dumps({"pages": files, "dir": chapter_cache_dir}))
 
 if __name__ == "__main__":

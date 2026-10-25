@@ -40,6 +40,17 @@ export default function MangaReaderPage() {
                 if (dataPages.pages) {
                     setChapterData(dataPages);
                     document.title = `Cap. ${dataPages.chapter_number} - ${dataManga.manga?.title || 'Mangá'} - CineGeek`;
+
+                    // Prefetch inteligente do próximo capítulo em segundo plano
+                    if (dataList?.chapters) {
+                        const currentIdx = dataList.chapters.findIndex(c => String(c.id) === String(chapterId));
+                        if (currentIdx >= 0 && currentIdx < dataList.chapters.length - 1) {
+                            const nextCh = dataList.chapters[currentIdx + 1];
+                            setTimeout(() => {
+                                fetch(`/api/mangas/chapters/${nextCh.id}/pages`).catch(() => {});
+                            }, 3000); // 3 segundos após abrir o atual, já puxa o próximo
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Erro ao carregar leitor de mangá:', err);

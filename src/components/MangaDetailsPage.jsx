@@ -178,6 +178,16 @@ export default function MangaDetailsPage() {
                             <Link 
                                 to={`/manga/${manga.id}/capitulo/${ch.id}`} 
                                 key={ch.id}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = '#00ff88';
+                                    e.currentTarget.style.background = 'rgba(0, 255, 136, 0.05)';
+                                    // Pré-carregamento invisível: já começa a sincronizar do Telegram enquanto o usuário olha o botão
+                                    fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                    e.currentTarget.style.background = 'rgba(21, 29, 38, 0.6)';
+                                }}
                                 style={{
                                     textDecoration: 'none',
                                     color: 'inherit',
@@ -189,14 +199,6 @@ export default function MangaDetailsPage() {
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.borderColor = '#00ff88';
-                                    e.currentTarget.style.background = 'rgba(0, 255, 136, 0.05)';
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                                    e.currentTarget.style.background = 'rgba(21, 29, 38, 0.6)';
                                 }}
                             >
                                 <div>
