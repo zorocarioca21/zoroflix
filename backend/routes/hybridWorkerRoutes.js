@@ -303,39 +303,117 @@ export default function hybridWorkerRoutes(db, io) {
         }
     });
 
-    // 6. Upload de Anime/Dorama via instância única compartilhada do Telegram
+    // 6. Upload de Anime/Dorama idêntico ao Worker da IPTV (Local telegram-bot-api / Pyrogram)
     router.post('/upload-anime', async (req, res) => {
-        const { filePath, caption } = req.body;
+        const { filePath, caption, title } = req.body;
         if (!filePath || !fs.existsSync(filePath)) {
             return res.status(400).json({ error: 'Arquivo não encontrado na VPS' });
         }
 
+        const displayTitle = caption || title || path.basename(filePath);
+        console.log(`[Hybrid Anime Upload] ⬆️ Enviando: ${filePath} (${displayTitle})`);
+
+        // Método 1: Idêntico ao IPTV Worker (uploadViaDocker - telegram-bot-api local porta 8081)
+        const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+        const CHAT_ID = process.env.TELEGRAM_CHANNEL_ID;
+
+        if (BOT_TOKEN && CHAT_ID) {
+            try {
+                const LOCAL_API_URL = `http://127.0.0.1:8081/bot${BOT_TOKEN}/sendVideo`;
+                let duration = 0, width = 1280, height = 720;
+                try {
+                    const { spawn } = await import('child_process');
+                    const ffprobeResult = await new Promise((resolve) => {
+                        const proc = spawn('ffprobe', ['-v', 'error', '-show_entries', 'format=duration:stream=width,height', '-of', 'default=noprint_wrappers=1:nokey=1', filePath]);
+                        let output = '';
+                        proc.stdout.on('data', d => output += d.toString());
+                        proc.on('close', code => resolve(code === 0 ? output.trim().split('\n') : []));
+                        proc.on('error', () => resolve([]));
+                    });
+                    if (ffprobeResult.length >= 3) {
+                        width = parseInt(ffprobeResult[0]) || 1280;
+                        height = parseInt(ffprobeResult[1]) || 720;
+                        duration = parseInt(parseFloat(ffprobeResult[2])) || 0;
+                    } else if (ffprobeResult.length === 1) {
+                        duration = parseInt(parseFloat(ffprobeResult[0])) || 0;
+                    }
+                } catch (e) {}
+
+                const payload = {
+                    chat_id: CHAT_ID,
+                    video: `file://${filePath}`,
+                    caption: `<b>${displayTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</b>`,
+                    parse_mode: 'HTML',
+                    supports_streaming: true,
+                    duration: duration || undefined,
+                    width: width || undefined,
+                    height: height || undefined
+                };
+
+                const response = await fetch(LOCAL_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.result && data.result.message_id) {
+                        console.log(`[Hybrid Anime Upload] ✅ Enviado via Bot API Local! ID: ${data.result.message_id}`);
+                        return res.json({ success: true, messageId: data.result.message_id });
+                    }
+                } else {
+                    const errText = await response.text();
+                    console.warn(`[Hybrid Anime Upload] ⚠️ Bot API Local retornou ${response.status}: ${errText}`);
+                }
+            } catch (botApiErr) {
+                console.warn(`[Hybrid Anime Upload] ⚠️ Falha na Bot API Local: ${botApiErr.message}`);
+            }
+        }
+
+        // Método 2: Idêntico ao IPTV Worker secundário (uploadViaPython / telegramUploadOnly.py com Pyrogram)
+        try {
+            const { spawn } = await import('child_process');
+            const scriptPath = path.join(process.cwd(), 'backend', 'scripts', 'telegramUploadOnly.py');
+            if (fs.existsSync(scriptPath)) {
+                console.log(`[Hybrid Anime Upload] 🔄 Tentando upload via Pyrogram (telegramUploadOnly.py)...`);
+                const pyMsgId = await new Promise((resolve, reject) => {
+                    const pyProc = spawn('python3', [scriptPath, filePath, displayTitle]);
+                    let msgId = null;
+                    pyProc.stdout.on('data', d => {
+                        const m = d.toString().match(/MESSAGE_ID:\s*(\d+)/i);
+                        if (m) msgId = parseInt(m[1]);
+                    });
+                    pyProc.on('close', code => code === 0 ? resolve(msgId) : reject(new Error(`Pyrogram code ${code}`)));
+                    pyProc.on('error', reject);
+                });
+                if (pyMsgId) {
+                    console.log(`[Hybrid Anime Upload] ✅ Enviado via Pyrogram! ID: ${pyMsgId}`);
+                    return res.json({ success: true, messageId: pyMsgId });
+                }
+            }
+        } catch (pyErr) {
+            console.warn(`[Hybrid Anime Upload] ⚠️ Falha no Pyrogram: ${pyErr.message}`);
+        }
+
+        // Método 3: Fallback GramJS compartilhado
         try {
             const tgClient = await getTelegramClient();
-            if (!tgClient) {
-                return res.status(500).json({ error: 'TelegramClient indisponível' });
-            }
-
+            if (!tgClient) throw new Error('TelegramClient indisponível');
             let entityId = process.env.TELEGRAM_CHANNEL_ID || '-1003839496993';
-            if (!entityId.startsWith('-100')) {
-                entityId = '-100' + entityId.replace('-', '');
-            }
-
-            console.log(`[Hybrid Anime Upload] ⬆️ Enviando para o canal: ${filePath}`);
-
+            if (!entityId.startsWith('-100')) entityId = '-100' + entityId.replace('-', '');
             const sentMsg = await tgClient.sendFile(entityId, {
                 file: filePath,
                 workers: 1,
-                caption: caption || `**Upload Anime**\n${path.basename(filePath)}`,
+                caption: `**${displayTitle}**`,
                 parseMode: "markdown",
                 forceDocument: false
             });
-
-            console.log(`[Hybrid Anime Upload] ✅ Enviado com sucesso! ID: ${sentMsg.id}`);
-            res.json({ success: true, messageId: sentMsg.id });
-        } catch (err) {
-            console.error('[Hybrid Anime Upload] ❌ Erro ao enviar para o Telegram:', err);
-            res.status(500).json({ error: err.message });
+            console.log(`[Hybrid Anime Upload] ✅ Enviado via GramJS! ID: ${sentMsg.id}`);
+            return res.json({ success: true, messageId: sentMsg.id });
+        } catch (gramErr) {
+            console.error(`[Hybrid Anime Upload] ❌ Todos os métodos falharam:`, gramErr);
+            return res.status(500).json({ error: gramErr.message });
         }
     });
 
