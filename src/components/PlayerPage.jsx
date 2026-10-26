@@ -724,6 +724,11 @@ export default function PlayerPage() {
                         const debugLogs = [];
                         const validItems = data.items.filter(i => {
                             if (i.status !== 'completed' || (!i.telegram_message_id && !i.stream_url)) return false;
+                            // Ignora qualquer arquivo que pertença a série ou tenha marcação de temporada/episódio
+                            if (i.season_number !== null && i.season_number !== undefined) return false;
+                            if (i.media_type === 'tv') return false;
+                            if (/\b(?:S\d{1,2}|T\d{1,2}|EPIS[OÓ]DIO|EP\d{1,3}|E\d{1,3})\b/i.test(i.title)) return false;
+
                             if (!checkTitleMatch(i.title, seriesName, originalSeriesName, baseSeriesName, releaseYear, debugLogs)) return false;
                             return true;
                         });
