@@ -2,9 +2,11 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 import { UPLOADS_PATH } from '../db.js';
 import { uploadLocalFileToDrive } from '../services/zoroDriveService.js';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'cinegeek_secret_key_123';
 const router = express.Router();
 
 const storage = multer.diskStorage({
@@ -79,31 +81,74 @@ export default function commentRoutes(db) {
         }
     });
 
-    // POSTAR COMENTÁRIO / RESPOSTA
-    router.post('/', async (req, res) => {
-        const { userId, parentId, contentId, mediaType, episodeId, text } = req.body;
+    // Helper para extrair o usuário autenticado (JWT no header Authorization ou userId validado)
+    const getAuthenticatedUserId = async (req) => {
+        let userId = null;
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            try {
+                const token = req.headers.authorization.split(' ')[1];
+                const decoded = jwt.verify(token, JWT_SECRET);
+                if (decoded && decoded.id) {
+                    userId = decoded.id;
+                }
+            } catch (e) {
+                return null;
+            }
+        }
+        if (!userId && req.body.userId) {
+            userId = req.body.userId;
+        }
+        if (!userId) return null;
 
-        if (!userId || !text) return res.status(400).json({ error: 'Dados incompletos.' });
+        // Validar se o usuário realmente existe no banco
+        try {
+            const user = await db.get('SELECT id FROM users WHERE id = ?', [userId]);
+            return user ? user.id : null;
+        } catch (err) {
+            return null;
+        }
+    };
+
+    // POSTAR COMENTÁRIO / RESPOSTA (Apenas usuários logados)
+    router.post('/', async (req, res) => {
+        const authUserId = await getAuthenticatedUserId(req);
+        if (!authUserId) {
+            return res.status(401).json({ error: 'Você precisa estar logado para comentar.' });
+        }
+
+        const { parentId, contentId, mediaType, episodeId, text } = req.body;
+
+        if (!text || !contentId || !mediaType) {
+            return res.status(400).json({ error: 'Dados incompletos (text, contentId e mediaType são obrigatórios).' });
+        }
 
         try {
             const result = await db.run(
                 'INSERT INTO comments (user_id, parent_id, content_id, media_type, episode_id, text) VALUES (?, ?, ?, ?, ?, ?)',
-                [userId, parentId || null, contentId, mediaType, episodeId || null, text]
+                [authUserId, parentId || null, contentId, mediaType, episodeId || null, text]
             );
-            res.json({ id: result.lastID, message: 'Comentário postado!' });
+            res.json({ id: result.lastID, message: 'Comentário postado com sucesso!' });
         } catch (err) {
             res.status(500).json({ error: 'Erro ao postar comentário.' });
         }
     });
 
-    // REAGIR (LIKE/DISLIKE)
+    // REAGIR (LIKE/DISLIKE) (Apenas usuários logados)
     router.post('/react', async (req, res) => {
-        const { userId, commentId, type } = req.body;
+        const authUserId = await getAuthenticatedUserId(req);
+        if (!authUserId) {
+            return res.status(401).json({ error: 'Você precisa estar logado para reagir.' });
+        }
+
+        const { commentId, type } = req.body;
+        if (!commentId || !type) {
+            return res.status(400).json({ error: 'commentId e type são obrigatórios.' });
+        }
 
         try {
             await db.run(
                 'INSERT INTO reactions (user_id, comment_id, type) VALUES (?, ?, ?) ON CONFLICT(user_id, comment_id) DO UPDATE SET type = ?',
-                [userId, commentId, type, type]
+                [authUserId, commentId, type, type]
             );
             res.json({ message: 'Reação salva!' });
         } catch (err) {
@@ -111,14 +156,22 @@ export default function commentRoutes(db) {
         }
     });
 
-    // DENUNCIAR
+    // DENUNCIAR (Apenas usuários logados)
     router.post('/report', async (req, res) => {
-        const { userId, commentId, reason } = req.body;
+        const authUserId = await getAuthenticatedUserId(req);
+        if (!authUserId) {
+            return res.status(401).json({ error: 'Você precisa estar logado para denunciar.' });
+        }
+
+        const { commentId, reason } = req.body;
+        if (!commentId || !reason) {
+            return res.status(400).json({ error: 'commentId e reason são obrigatórios.' });
+        }
 
         try {
             await db.run(
                 'INSERT INTO reports (user_id, comment_id, reason) VALUES (?, ?, ?)',
-                [userId, commentId, reason]
+                [authUserId, commentId, reason]
             );
             res.json({ message: 'Denúncia enviada aos administradores.' });
         } catch (err) {

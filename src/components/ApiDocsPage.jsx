@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
     ArrowLeft, Key, Code, Database, Shield, BookOpen, Terminal, 
     Smartphone, Copy, Check, Tv, Play, ExternalLink, Zap, 
-    Layers, Cpu, Server, CheckCircle2, AlertTriangle, Info, Globe, Bug
+    Layers, Cpu, Server, CheckCircle2, AlertTriangle, Info, Globe, Bug,
+    MessageSquare, ThumbsUp
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './ApiDocsPage.css';
@@ -978,6 +979,192 @@ x-api-key: <CHAVE_API_MOBILE>               // Opcional`}</code></pre>
       "embed_url": "${baseUrl}/embed/canal/2"
     }
   ]
+}`}</code></pre>
+                                </div>
+                            </div>
+
+                            {/* Sistema de Comentários Sincronizados (Site & APK) */}
+                            <div className="api-endpoint-box" style={{ border: '1px solid rgba(168, 85, 247, 0.4)', background: 'rgba(168, 85, 247, 0.03)' }}>
+                                <div className="api-endpoint-box-header">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="api-method-badge get" style={{ background: '#a855f7', color: '#fff' }}>GET / POST</span>
+                                        <span className="api-path-badge">{baseUrl}/api/comments/*</span>
+                                    </div>
+                                    <span style={{ color: '#c084fc', fontSize: '0.8rem', fontWeight: 'bold' }}>💬 COMENTÁRIOS SINCRONIZADOS (SITE &amp; APK)</span>
+                                </div>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <MessageSquare size={18} color="#c084fc" /> Sistema Unificado de Comentários, Respostas &amp; Curtidas
+                                </h3>
+                                <p>
+                                    Tanto o site quanto o aplicativo compartilham exatamente os <strong>mesmos comentários em tempo real</strong>. 
+                                    Qualquer usuário pode <strong>ler comentários livremente</strong> (rota pública), mas para <strong>comentar, responder ou reagir (like/dislike)</strong>, 
+                                    o aplicativo <strong>deve enviar o usuário logado</strong> através do header <code>Authorization: Bearer &lt;JWT&gt;</code>. Usuários não autenticados receberão <code>401 Unauthorized</code>.
+                                </p>
+
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1.2rem', marginTop: '0.5rem' }}>
+                                    <code className="api-code-pill">GET /api/comments/:mediaType/:contentId (Público - Listar)</code>
+                                    <code className="api-code-pill">POST /api/comments (Requer Login - Postar/Responder)</code>
+                                    <code className="api-code-pill">POST /api/comments/react (Requer Login - Curtir/Descurtir)</code>
+                                    <code className="api-code-pill">POST /api/comments/report (Requer Login - Denunciar)</code>
+                                    <code className="api-code-pill">POST /api/comments/upload-sticker (Figurinhas/Imagens)</code>
+                                </div>
+
+                                {/* 1. Listar comentários */}
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">1) GET /api/comments/:mediaType/:contentId?episodeId=... (Público)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'comments-get' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`${baseUrl}/api/comments/movie/550\n${baseUrl}/api/comments/tv/1416?episodeId=ep_s01e01`, 'comments-get')}
+                                        >
+                                            {copiedIndex === 'comments-get' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'comments-get' ? 'Copiado!' : 'Copiar URLs'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`// Parâmetros de rota:
+// :mediaType -> "movie" | "tv" | "anime" | "manga"
+// :contentId -> TMDB ID ou ID da obra
+// ?episodeId -> (Opcional) Identificador do episódio/capítulo se quiser comentários específicos por episódio
+
+// Exemplo de Retorno JSON (HTTP 200):
+[
+  {
+    "id": 105,
+    "user_id": 12,
+    "nick": "ZoroSolos",
+    "avatar": "https://...",
+    "role": "vip",               // "free" | "vip" | "admin"
+    "parent_id": null,           // null = comentário raiz, número = resposta a outro comentário
+    "content_id": "550",
+    "media_type": "movie",
+    "episode_id": null,
+    "text": "Filme sensacional! A reviravolta no final é surreal 🔥",
+    "status": "visible",         // "visible" | "moderated"
+    "created_at": "2026-10-25 21:40:12",
+    "likes": 14,                 // Total de curtidas
+    "dislikes": 1                // Total de dislikes
+  }
+]`}</code></pre>
+                                </div>
+
+                                {/* 2. Postar Comentário */}
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">2) POST /api/comments (Apenas Usuários Logados)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'comments-post' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "contentId": "550",\n  "mediaType": "movie",\n  "text": "Muito bom esse filme!",\n  "parentId": null,\n  "episodeId": null\n}`, 'comments-post')}
+                                        >
+                                            {copiedIndex === 'comments-post' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'comments-post' ? 'Copiado!' : 'Copiar JSON'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`// Headers Obrigatórios:
+// Content-Type: application/json
+// Authorization: Bearer <JWT_DO_USUARIO_LOGADO>
+
+// Payload JSON (Body):
+{
+  "contentId": "550",           // TMDB ID da obra
+  "mediaType": "movie",         // "movie" | "tv" | "anime" | "manga"
+  "text": "Muito bom esse filme!",
+  "parentId": null,             // Envie o ID do comentário se for uma RESPOSTA
+  "episodeId": null             // Envie o ID do episódio se for comentário de episódio
+}
+
+// Resposta de Sucesso (HTTP 200):
+{
+  "id": 106,
+  "message": "Comentário postado com sucesso!"
+}
+
+// Resposta de Erro (HTTP 401 - Não logado):
+{
+  "error": "Você precisa estar logado para comentar."
+}`}</code></pre>
+                                </div>
+
+                                {/* 3. Curtir / Descurtir */}
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">3) POST /api/comments/react (Apenas Usuários Logados)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'comments-react' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`{\n  "commentId": 105,\n  "type": "like"\n}`, 'comments-react')}
+                                        >
+                                            {copiedIndex === 'comments-react' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'comments-react' ? 'Copiado!' : 'Copiar JSON'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`// Headers:
+// Authorization: Bearer <JWT_DO_USUARIO_LOGADO>
+// Content-Type: application/json
+
+// Payload JSON:
+{
+  "commentId": 105,
+  "type": "like"    // "like" ou "dislike"
+}
+
+// Resposta (HTTP 200):
+{
+  "message": "Reação salva!"
+}`}</code></pre>
+                                </div>
+
+                                {/* Exemplo Kotlin / Retrofit */}
+                                <div className="api-modern-code">
+                                    <div className="api-code-bar">
+                                        <span className="api-code-label">Implementação no Android APK (Retrofit / Kotlin)</span>
+                                        <button 
+                                            className={`api-copy-btn ${copiedIndex === 'comments-kotlin' ? 'copied' : ''}`}
+                                            onClick={() => handleCopy(`interface CommentsService {
+    @GET("api/comments/{mediaType}/{contentId}")
+    suspend fun getComments(
+        @Path("mediaType") mediaType: String,
+        @Path("contentId") contentId: String,
+        @Query("episodeId") episodeId: String? = null
+    ): List<CommentItem>
+
+    @POST("api/comments")
+    suspend fun postComment(
+        @Header("Authorization") token: String, // "Bearer " + jwtToken
+        @Body body: PostCommentRequest
+    ): PostCommentResponse
+
+    @POST("api/comments/react")
+    suspend fun reactComment(
+        @Header("Authorization") token: String,
+        @Body body: ReactCommentRequest
+    ): GenericResponse
+}`, 'comments-kotlin')}
+                                        >
+                                            {copiedIndex === 'comments-kotlin' ? <Check size={14} /> : <Copy size={14} />}
+                                            {copiedIndex === 'comments-kotlin' ? 'Copiado!' : 'Copiar Kotlin'}
+                                        </button>
+                                    </div>
+                                    <pre><code>{`interface CommentsService {
+    // 1) Listagem pública de comentários
+    @GET("api/comments/{mediaType}/{contentId}")
+    suspend fun getComments(
+        @Path("mediaType") mediaType: String,
+        @Path("contentId") contentId: String,
+        @Query("episodeId") episodeId: String? = null
+    ): List<CommentItem>
+
+    // 2) Postar comentário (exige login)
+    @POST("api/comments")
+    suspend fun postComment(
+        @Header("Authorization") token: String, // "Bearer $jwtToken"
+        @Body body: PostCommentRequest
+    ): PostCommentResponse
+
+    // 3) Reagir com Like / Dislike (exige login)
+    @POST("api/comments/react")
+    suspend fun reactComment(
+        @Header("Authorization") token: String, // "Bearer $jwtToken"
+        @Body body: ReactCommentRequest
+    ): GenericResponse
 }`}</code></pre>
                                 </div>
                             </div>
