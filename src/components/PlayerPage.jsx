@@ -690,7 +690,7 @@ export default function PlayerPage() {
                 } else {
                     // Filmes
                     // 1. Tentar por TMDB ID + Filme (Traz todas as versões: IPTV, upload manual, etc.)
-                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&limit=50`, { headers });
+                    let resTmdb = await fetch(`/api/sync/queue?tmdb_id=${id}&media_type=movie&limit=50`, { headers });
                     let dataTmdb = await resTmdb.json();
                     
                     if (dataTmdb?.items?.length > 0) {

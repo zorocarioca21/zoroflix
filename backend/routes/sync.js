@@ -638,6 +638,7 @@ export default function syncRoutes(db, io) {
             const filter = req.query.filter || 'all';
             const search = req.query.search || '';
             const tmdb_id = req.query.tmdb_id || '';
+            const media_type = req.query.media_type || '';
             const season_number = req.query.season_number || '';
             const episode_number = req.query.episode_number || '';
             const sortSize = req.query.sortSize || ''; // pode ser 'asc' ou 'desc'
@@ -673,6 +674,16 @@ export default function syncRoutes(db, io) {
             if (tmdb_id) {
                 queryCondition += ' AND tmdb_id = ?';
                 params.push(tmdb_id);
+            }
+            if (media_type) {
+                if (media_type === 'movie') {
+                    queryCondition += " AND (media_type = 'movie' OR media_type IS NULL) AND season_number IS NULL";
+                } else if (media_type === 'tv') {
+                    queryCondition += " AND (media_type = 'tv' OR season_number IS NOT NULL)";
+                } else {
+                    queryCondition += ' AND media_type = ?';
+                    params.push(media_type);
+                }
             }
             if (season_number !== '') {
                 queryCondition += ' AND season_number = ?';

@@ -315,12 +315,30 @@ export async function mapPendingTmdbItems(db, batchSize = 20) {
                     if (tmdbRes.status === 200) {
                         const tmdbData = tmdbRes.data;
                         if (tmdbData.results && tmdbData.results.length > 0) {
+                            const isTvSeries = season_number !== null || episode_number !== null;
+                            const preferredMediaType = isTvSeries ? 'tv' : 'movie';
+
+                            // 1. Tenta achar casando Ano + Tipo de mídia preferido (TV ou Filme)
                             if (year) {
                                 bestMatch = tmdbData.results.find(r => {
                                     const rYear = r.release_date ? r.release_date.split('-')[0] : (r.first_air_date ? r.first_air_date.split('-')[0] : null);
-                                    return rYear === year && (r.media_type === 'movie' || r.media_type === 'tv');
+                                    return rYear === year && r.media_type === preferredMediaType;
                                 });
+                                // Se não achou com o tipo preferido, tenta com qualquer tipo no mesmo ano
+                                if (!bestMatch) {
+                                    bestMatch = tmdbData.results.find(r => {
+                                        const rYear = r.release_date ? r.release_date.split('-')[0] : (r.first_air_date ? r.first_air_date.split('-')[0] : null);
+                                        return rYear === year && (r.media_type === 'movie' || r.media_type === 'tv');
+                                    });
+                                }
                             }
+
+                            // 2. Tenta achar priorizando o tipo de mídia correto
+                            if (!bestMatch) {
+                                bestMatch = tmdbData.results.find(r => r.media_type === preferredMediaType);
+                            }
+
+                            // 3. Fallback genérico para movie ou tv
                             if (!bestMatch) {
                                 bestMatch = tmdbData.results.find(r => r.media_type === 'movie' || r.media_type === 'tv');
                             }

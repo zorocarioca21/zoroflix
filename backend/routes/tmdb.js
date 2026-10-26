@@ -231,9 +231,21 @@ export default function tmdbRoutes(db, appDb) {
             for (const item of items) {
                 const itemKey = String(item.id);
                 if (completedMap.has(itemKey)) {
-                    const rows = completedMap.get(itemKey);
+                    const allRows = completedMap.get(itemKey);
+                    const targetType = item.media_type || defaultMediaType || allRows[0]?.media_type || 'movie';
+                    item.media_type = targetType;
+
+                    // Filtra apenas linhas do mesmo tipo de mídia para não misturar episódios de séries em filmes
+                    const rows = allRows.filter(r => {
+                        if (targetType === 'movie') {
+                            return (!r.media_type || r.media_type === 'movie') && (!r.season_number && r.season_number !== 0);
+                        } else {
+                            return r.media_type === 'tv' || r.season_number !== null;
+                        }
+                    });
+
+                    if (rows.length === 0) continue;
                     const matched = rows[0];
-                    item.media_type = item.media_type || defaultMediaType || matched.media_type || 'movie';
 
                     // Agrupamento completo de fontes, áudios e qualidades
                     const organized = organizeMediaSources(rows, item.title || item.name);
@@ -400,8 +412,9 @@ export default function tmdbRoutes(db, appDb) {
             if (!data) return res.status(404).json({ error: 'Filme não encontrado no TMDB' });
 
             // Busca TODAS as versões baixadas deste filme no Telegram (IPTV, manual, etc.)
+            // Filtra exclusivamente arquivos de filme (não inclui episódios de séries que tenham sido erroneamente linkados)
             const tgRows = await mainDb.all(
-                "SELECT telegram_message_id, title, file_size FROM sync_queue WHERE tmdb_id = ? AND status = 'completed' AND telegram_message_id IS NOT NULL",
+                "SELECT telegram_message_id, title, file_size FROM sync_queue WHERE tmdb_id = ? AND (media_type = 'movie' OR media_type IS NULL) AND season_number IS NULL AND status = 'completed' AND telegram_message_id IS NOT NULL",
                 [String(id)]
             );
 
