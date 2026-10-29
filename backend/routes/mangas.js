@@ -429,14 +429,15 @@ export default function createMangasRouter(db) {
                 const coverFileName = coverRel ? coverRel.attributes.fileName : null;
                 // Usa o proxy local para burlar o anti-hotlink do MangaDex (que manda logo deles em vez da capa real)
                 const cover_url = coverFileName ? `/api/mangas/cover-proxy?mangaId=${manga.id}&file=${coverFileName}` : null;
-                const synopsis = manga.attributes.description['pt-br'] || manga.attributes.description.en || '';
+                const origLang = manga.attributes.originalLanguage;
+                const type = (origLang === 'ko' || origLang === 'zh' || origLang === 'zh-hk') ? 'webtoon' : (origLang === 'en' ? 'hq' : 'manga');
 
                 return {
                     id: manga.id,
                     title,
                     synopsis,
                     cover_url,
-                    type: manga.attributes.originalLanguage === 'ko' ? 'webtoon' : (manga.attributes.originalLanguage === 'en' ? 'hq' : 'manga')
+                    type
                 };
             });
 
