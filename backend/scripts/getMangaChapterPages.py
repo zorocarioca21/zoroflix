@@ -63,17 +63,31 @@ def main():
             
         files = sorted([f for f in os.listdir(chapter_cache_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))])
         
-        # Gerenciamento de Espaço LRU: mantém no máximo 25 capítulos mais recentes em disco
+        # Gerenciamento de Espaço LRU Inteligente: Limite de até 5 GB de armazenamento em disco
         try:
-            MAX_CACHED_CHAPTERS = 25
+            MAX_CACHE_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB
+            
+            def get_dir_size(d):
+                total = 0
+                for root, dirs, files in os.walk(d):
+                    for f in files:
+                        total += os.path.getsize(os.path.join(root, f))
+                return total
+
             cached_dirs = [os.path.join(cache_dir, d) for d in os.listdir(cache_dir) if d.startswith('ch_msg_') and os.path.isdir(os.path.join(cache_dir, d))]
-            if len(cached_dirs) > MAX_CACHED_CHAPTERS:
+            total_cache_size = sum(get_dir_size(d) for d in cached_dirs)
+
+            # Se o cache total ultrapassar 5 GB, remove os capítulos mais antigos primeiro
+            if total_cache_size > MAX_CACHE_BYTES:
                 cached_dirs.sort(key=lambda d: os.path.getmtime(d)) # Mais antigos primeiro
-                to_remove = cached_dirs[:len(cached_dirs) - MAX_CACHED_CHAPTERS]
-                for old_dir in to_remove:
-                    import shutil
+                import shutil
+                for old_dir in cached_dirs:
+                    if total_cache_size <= MAX_CACHE_BYTES:
+                        break
+                    dir_sz = get_dir_size(old_dir)
                     shutil.rmtree(old_dir, ignore_errors=True)
-        except Exception:
+                    total_cache_size -= dir_sz
+        except Exception as e:
             pass
 
         print(json.dumps({"pages": files, "dir": chapter_cache_dir}))

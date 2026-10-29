@@ -24,6 +24,14 @@ export default function MangaDetailsPage() {
             const dataCh = await resCh.json();
             if (dataCh.chapters) {
                 setChapters(dataCh.chapters);
+
+                // Pré-carregamento imediato do 1º capítulo para abertura instantânea ao clicar em "Começar a Ler"
+                if (dataCh.chapters.length > 0) {
+                    const firstChId = dataCh.chapters[0].id;
+                    setTimeout(() => {
+                        fetch(`/api/mangas/chapters/${firstChId}/pages`).catch(() => {});
+                    }, 500);
+                }
             }
         } catch (err) {
             console.error('Erro ao buscar detalhes da obra:', err);
