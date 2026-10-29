@@ -43,10 +43,27 @@ class MangaQueueWorker {
     async init(database) {
         this.db = database;
         console.log('[Manga Worker] Serviço de fila de mangás inicializado.');
-        await this.loadAutoImporterConfig();
-        this.updateStats();
 
-        // Se estava ativo antes da reinicialização, retoma
+        // 1. Reseta quaisquer capítulos que ficaram travados em 'downloading' antes do restart para 'pending'
+        try {
+            const resReset = await this.db.run("UPDATE manga_download_queue SET status = 'pending' WHERE status = 'downloading'");
+            if (resReset.changes > 0) {
+                console.log(`[Manga Worker] 🔄 ${resReset.changes} capítulos interrompidos foram recuperados para a fila.`);
+            }
+        } catch (eReset) {
+            console.error('[Manga Worker] Erro ao recuperar capítulos interrompidos:', eReset.message);
+        }
+
+        await this.loadAutoImporterConfig();
+        await this.updateStats();
+
+        // 2. Se houver QUALQUER capítulo pendente na fila, inicia o download automaticamente!
+        if (this.stats.totalPending > 0) {
+            console.log(`[Manga Worker] 🚀 Retomando downloads automaticamente (${this.stats.totalPending} pendentes)...`);
+            this.start();
+        }
+
+        // 3. Se o auto-ingestor estava ativo antes da reinicialização, retoma também
         if (this.autoImporter.isEnabled) {
             this.startAutoImporter();
         }
