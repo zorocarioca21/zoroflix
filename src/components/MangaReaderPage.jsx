@@ -64,27 +64,14 @@ export default function MangaReaderPage() {
         fetchChapter();
     }, [mangaId, chapterId]);
 
-    // Navegação por teclado no modo single
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (readMode === 'single' && chapterData?.pages) {
-                if (e.key === 'ArrowRight' || e.key === 'd') {
-                    handleNextPage();
-                } else if (e.key === 'ArrowLeft' || e.key === 'a') {
-                    handlePrevPage();
-                }
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [readMode, currentPageIndex, chapterData]);
+    // Índices de navegação anterior/próximo
+    const currentChapterIndex = allChapters.findIndex(c => String(c.id) === String(chapterId));
+    const prevChapter = currentChapterIndex > 0 ? allChapters[currentChapterIndex - 1] : null;
+    const nextChapter = currentChapterIndex >= 0 && currentChapterIndex < allChapters.length - 1 ? allChapters[currentChapterIndex + 1] : null;
 
-    const currentIndexInList = allChapters.findIndex(c => String(c.id) === String(chapterId));
-    const prevChapter = currentIndexInList > 0 ? allChapters[currentIndexInList - 1] : null;
-    const nextChapter = currentIndexInList >= 0 && currentIndexInList < allChapters.length - 1 ? allChapters[currentIndexInList + 1] : null;
-
+    // Navegação de páginas no modo single
     const handleNextPage = () => {
-        if (!chapterData?.pages) return;
+        if (!chapterData || !chapterData.pages) return;
         if (currentPageIndex < chapterData.pages.length - 1) {
             setCurrentPageIndex(prev => prev + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -106,11 +93,19 @@ export default function MangaReaderPage() {
 
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', background: '#05070a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: '45px', height: '45px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#ff3366', borderRadius: '50%', margin: '0 auto 1.5rem auto', animation: 'spin 1s linear infinite' }}></div>
-                    <h3 style={{ margin: 0, color: '#f1f5f9' }}>Baixando e extraindo páginas do Telegram...</h3>
-                    <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>Isso leva apenas alguns instantes.</p>
+                    <div className="spinner" style={{
+                        width: '45px',
+                        height: '45px',
+                        border: '3px solid rgba(255,255,255,0.1)',
+                        borderTopColor: 'var(--primary)',
+                        borderRadius: '50%',
+                        margin: '0 auto 1.5rem auto',
+                        animation: 'spin 0.9s linear infinite'
+                    }}></div>
+                    <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem', fontWeight: '800' }}>Carregando páginas do capítulo...</h3>
+                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Preparando a melhor resolução para você ler.</p>
                 </div>
             </div>
         );
@@ -118,10 +113,10 @@ export default function MangaReaderPage() {
 
     if (!chapterData || !chapterData.pages || chapterData.pages.length === 0) {
         return (
-            <div style={{ minHeight: '100vh', background: '#05070a', color: '#fff', padding: '120px 5%', textAlign: 'center' }}>
-                <h2 style={{ color: '#f8fafc', marginBottom: '0.8rem' }}>Preparando as páginas do capítulo...</h2>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 1.5rem auto' }}>
-                    O arquivo ainda está sendo sincronizado do canal de armazenamento. Clique no botão abaixo para tentar abrir novamente.
+            <div className="catalog-container" style={{ padding: '80px 20px', textAlign: 'center' }}>
+                <h2 style={{ color: 'var(--text)', marginBottom: '0.8rem' }}>Preparando as páginas do capítulo...</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', maxWidth: '480px', margin: '0 auto 1.8rem auto', lineHeight: '1.6' }}>
+                    As páginas estão sendo carregadas no leitor. Se demorar, clique no botão abaixo para tentar novamente.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                     <button 
@@ -140,40 +135,59 @@ export default function MangaReaderPage() {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: '#051912', color: '#fff', display: 'flex', flexDirection: 'column' }}>
-            {/* Barra de Ferramentas Superior Fixa */}
-            <header style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '60px',
-                background: 'rgba(5, 25, 18, 0.95)',
-                backdropFilter: 'blur(12px)',
-                borderBottom: '1px solid rgba(0, 230, 118, 0.25)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                zIndex: 1000,
+        <div style={{ width: '100%', color: '#fff', display: 'flex', flexDirection: 'column' }}>
+            {/* Barra de Ferramentas / Controles do Leitor abaixo do main-header */}
+            <div style={{
+                width: '100%',
+                marginBottom: '2rem',
+                background: 'radial-gradient(ellipse at top left, rgba(0, 230, 118, 0.12) 0%, rgba(9, 42, 28, 0.6) 60%, rgba(5, 25, 18, 0.95) 100%)',
+                border: '1px solid rgba(0, 230, 118, 0.25)',
+                borderRadius: '16px',
+                padding: '0.85rem 1.5rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 1.5rem'
+                flexWrap: 'wrap',
+                gap: '1rem',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.45)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <button 
                         onClick={() => navigate(`/manga/${mangaId}`)}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: '600' }}
+                        style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(0, 230, 118, 0.2)',
+                            color: 'var(--text)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            fontSize: '0.85rem',
+                            fontWeight: '700',
+                            padding: '0.45rem 1rem',
+                            borderRadius: '20px',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                            e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 230, 118, 0.2)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'rgba(0, 230, 118, 0.2)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }}
                     >
-                        <ArrowLeft size={18} /> Obra
+                        <ArrowLeft size={16} color="var(--primary)" /> Obra
                     </button>
                     <div style={{ borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: '1rem' }}>
-                        <span style={{ fontWeight: '800', color: 'var(--text)', fontSize: '0.95rem' }}>{mangaTitle}</span>
+                        <span style={{ fontWeight: '800', color: 'var(--text)', fontSize: '0.98rem' }}>{mangaTitle}</span>
                         <span style={{ color: 'var(--primary)', fontWeight: 'bold', marginLeft: '0.5rem', fontSize: '0.85rem' }}>
                             Capítulo {chapterData.chapter_number}
                         </span>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
                     {/* Seletor de Modo de Leitura */}
                     <div style={{ display: 'flex', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(0, 230, 118, 0.2)', borderRadius: '25px', padding: '3px' }}>
                         <button 
@@ -181,7 +195,9 @@ export default function MangaReaderPage() {
                             style={{
                                 background: readMode === 'cascade' ? 'var(--primary)' : 'transparent',
                                 color: readMode === 'cascade' ? '#051912' : 'var(--text-muted)',
-                                border: 'none', padding: '0.35rem 0.9rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800'
+                                border: 'none', padding: '0.4rem 1rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '800',
+                                boxShadow: readMode === 'cascade' ? 'var(--glow)' : 'none',
+                                transition: 'all 0.2s ease'
                             }}
                         >
                             Cascata (Webtoon)
@@ -191,7 +207,9 @@ export default function MangaReaderPage() {
                             style={{
                                 background: readMode === 'single' ? 'var(--primary)' : 'transparent',
                                 color: readMode === 'single' ? '#051912' : 'var(--text-muted)',
-                                border: 'none', padding: '0.35rem 0.9rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '800'
+                                border: 'none', padding: '0.4rem 1rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '800',
+                                boxShadow: readMode === 'single' ? 'var(--glow)' : 'none',
+                                transition: 'all 0.2s ease'
                             }}
                         >
                             Página a Página
@@ -203,12 +221,12 @@ export default function MangaReaderPage() {
                         value={chapterId}
                         onChange={e => navigate(`/manga/${mangaId}/capitulo/${e.target.value}`)}
                         style={{
-                            background: 'rgba(9, 42, 28, 0.8)',
+                            background: 'rgba(9, 42, 28, 0.85)',
                             border: '1px solid rgba(0, 230, 118, 0.3)',
                             color: '#fff',
-                            padding: '0.4rem 0.8rem',
+                            padding: '0.45rem 1rem',
                             borderRadius: '12px',
-                            fontSize: '0.8rem',
+                            fontSize: '0.82rem',
                             fontWeight: '700',
                             outline: 'none',
                             cursor: 'pointer'
@@ -221,10 +239,10 @@ export default function MangaReaderPage() {
                         ))}
                     </select>
                 </div>
-            </header>
+            </div>
 
             {/* Conteúdo Principal do Leitor */}
-            <main style={{ marginTop: '70px', paddingBottom: '5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <main style={{ paddingBottom: '5rem', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {readMode === 'cascade' ? (
                     // MODO CASCATA (SCROLL VERTICAL CONTÍNUO)
                     <div style={{ maxWidth: '820px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -239,31 +257,31 @@ export default function MangaReaderPage() {
                         ))}
                     </div>
                 ) : (
-                    // MODO PÁGINA A PÁGINA (LEITURA TRADICIONAL)
-                    <div style={{ maxWidth: '900px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    // MODO PÁGINA A PÁGINA (LEITURA COM TAMANHO IGUAL AO MODO CASCATA)
+                    <div style={{ maxWidth: '820px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', cursor: 'pointer' }} onClick={handleNextPage}>
                             <img 
                                 src={chapterData.pages[currentPageIndex]} 
                                 alt={`Página ${currentPageIndex + 1}`} 
-                                style={{ maxWidth: '100%', maxHeight: '88vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 12px 35px rgba(0,0,0,0.85)' }}
+                                style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '6px', boxShadow: '0 12px 35px rgba(0,0,0,0.85)', background: '#051912' }}
                             />
                         </div>
 
                         {/* Controles de Navegação da Página */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '1.8rem' }}>
                             <button 
                                 onClick={handlePrevPage}
-                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', fontSize: '0.85rem' }}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', padding: '0.6rem 1.4rem', borderRadius: '25px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', fontSize: '0.85rem' }}
                             >
                                 <ChevronLeft size={18} /> Anterior
                             </button>
-                            <span style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 'bold' }}>
+                            <span style={{ fontSize: '0.95rem', color: 'var(--primary)', fontWeight: '800' }}>
                                 {currentPageIndex + 1} / {chapterData.pages.length}
                             </span>
                             <button 
                                 onClick={handleNextPage}
                                 className="btn btn-primary"
-                                style={{ padding: '0.6rem 1.4rem', fontSize: '0.85rem', gap: '0.4rem' }}
+                                style={{ padding: '0.6rem 1.5rem', fontSize: '0.85rem', gap: '0.4rem' }}
                             >
                                 Próxima <ChevronRight size={18} />
                             </button>
@@ -272,7 +290,7 @@ export default function MangaReaderPage() {
                 )}
 
                 {/* Rodapé de Navegação Entre Capítulos */}
-                <div style={{ marginTop: '3rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div style={{ marginTop: '3.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {prevChapter ? (
                         <button 
                             onClick={() => navigate(`/manga/${mangaId}/capitulo/${prevChapter.id}`)}
