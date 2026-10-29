@@ -185,10 +185,10 @@ class MangaQueueWorker {
     async runAutoImporterStep() {
         if (!this.autoImporter.isEnabled || this.autoImporter.isIngesting || !this.db) return;
 
-        // Se a fila de downloads estiver com mais de 30 capítulos pendentes, aguarda para não sobrecarregar
-        if (this.stats.totalPending >= 30) {
-            this.autoImporter.statusText = `Fila cheia (${this.stats.totalPending} caps). Aguardando worker processar...`;
-            this.autoImporter.loopTimeout = setTimeout(() => this.runAutoImporterStep(), 10000);
+        // REGRA DE OURO: Se a fila de downloads ainda tiver qualquer capítulo pendente, aguarda terminar TUDO da obra atual antes de puxar a próxima!
+        if (this.stats.totalPending > 0) {
+            this.autoImporter.statusText = `Baixando obra atual (${this.stats.totalPending} caps restantes). Aguardando concluir...`;
+            this.autoImporter.loopTimeout = setTimeout(() => this.runAutoImporterStep(), 5000);
             return;
         }
 
@@ -196,10 +196,11 @@ class MangaQueueWorker {
         const currentLang = this.autoImporter.primaryLanguage;
 
         try {
-            this.autoImporter.statusText = `Consultando MangaDex (offset: ${this.autoImporter.currentOffset}, ordem: ${this.autoImporter.orderBy})...`;
+            this.autoImporter.statusText = `Consultando MangaDex (offset: ${this.autoImporter.currentOffset})...`;
             
+            // Busca apenas 1 obra por vez!
             const params = {
-                limit: 10,
+                limit: 1,
                 offset: this.autoImporter.currentOffset,
                 'includes[]': 'cover_art',
                 [`order[${this.autoImporter.orderBy}]`]: 'desc'
@@ -224,105 +225,101 @@ class MangaQueueWorker {
                 return;
             }
 
-            for (const dexManga of mangaList) {
-                if (!this.autoImporter.isEnabled) break;
+            const dexManga = mangaList[0];
+            const dexId = dexManga.id;
+            const title = dexManga.attributes.title.en || 
+                          dexManga.attributes.title['pt-br'] || 
+                          dexManga.attributes.title['ja-ro'] || 
+                          Object.values(dexManga.attributes.title)[0] || 'Sem Título';
+            
+            const coverRel = dexManga.relationships?.find(r => r.type === 'cover_art');
+            const coverFileName = coverRel ? coverRel.attributes?.fileName : null;
+            const coverUrl = coverFileName ? `/api/mangas/cover-proxy?mangaId=${dexId}&file=${coverFileName}` : null;
+            const synopsis = dexManga.attributes.description?.['pt-br'] || dexManga.attributes.description?.en || '';
+            const type = dexManga.attributes.originalLanguage === 'ko' ? 'webtoon' : (dexManga.attributes.originalLanguage === 'en' ? 'hq' : 'manga');
 
-                const dexId = dexManga.id;
-                const title = dexManga.attributes.title.en || 
-                              dexManga.attributes.title['pt-br'] || 
-                              dexManga.attributes.title['ja-ro'] || 
-                              Object.values(dexManga.attributes.title)[0] || 'Sem Título';
+            // 1. Verifica se a obra já existe pelo anilist_id
+            let localManga = await this.db.get("SELECT * FROM mangas WHERE anilist_id = ?", [dexId]);
+
+            if (!localManga) {
+                this.autoImporter.statusText = `Cadastrando: ${title}`;
                 
-                const coverRel = dexManga.relationships?.find(r => r.type === 'cover_art');
-                const coverFileName = coverRel ? coverRel.attributes?.fileName : null;
-                const coverUrl = coverFileName ? `/api/mangas/cover-proxy?mangaId=${dexId}&file=${coverFileName}` : null;
-                const synopsis = dexManga.attributes.description?.['pt-br'] || dexManga.attributes.description?.en || '';
-                const type = dexManga.attributes.originalLanguage === 'ko' ? 'webtoon' : (dexManga.attributes.originalLanguage === 'en' ? 'hq' : 'manga');
-
-                // 1. Verifica se a obra já existe pelo anilist_id (que guarda o UUID do MangaDex)
-                let localManga = await this.db.get("SELECT * FROM mangas WHERE anilist_id = ?", [dexId]);
-
-                if (!localManga) {
-                    this.autoImporter.statusText = `Cadastrando: ${title}`;
-                    
-                    // Baixar capa local
-                    let localCoverUrl = coverUrl;
-                    try {
-                        const { downloadAndSaveCover } = await import('../routes/mangas.js');
-                        if (downloadAndSaveCover && coverUrl) {
-                            localCoverUrl = await downloadAndSaveCover(coverUrl, title);
-                        }
-                    } catch (eCover) {}
-
-                    const insRes = await this.db.run(`
-                        INSERT INTO mangas (title, original_title, synopsis, cover_url, type, anilist_id)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    `, [title, title, synopsis, localCoverUrl, type, dexId]);
-
-                    localManga = { id: insRes.lastID, title, anilist_id: dexId };
-                    this.autoImporter.importedCount++;
-                }
-
-                // 2. Se autoEnqueueChapters estiver ativo, busca capítulos faltantes e enfileira
-                if (this.autoImporter.autoEnqueueChapters && localManga?.id) {
-                    this.autoImporter.statusText = `Buscando capítulos de "${title}" em ${currentLang}...`;
-                    
-                    const targetLang = (currentLang === 'all' || !currentLang) ? 'pt-br' : currentLang;
-                    
-                    const feedRes = await axios.get(`https://api.mangadex.org/manga/${dexId}/feed`, {
-                        params: {
-                            limit: 250,
-                            'translatedLanguage[]': targetLang,
-                            'order[chapter]': 'asc',
-                            'includes[]': 'scanlation_group'
-                        },
-                        timeout: 15000
-                    });
-
-                    // FILTRAR ESTREITAMENTE: descarta capítulos externos da Comikey/MangaPlus e com 0 páginas!
-                    let dexChapters = (feedRes.data.data || [])
-                        .filter(ch => !ch.attributes.externalUrl && ch.attributes.pages > 0)
-                        .map(ch => {
-                            const scanRel = ch.relationships?.find(r => r.type === 'scanlation_group');
-                            const scanGroup = scanRel?.attributes?.name || 'Padrão';
-                            return {
-                                id: ch.id,
-                                chapter_number: parseFloat(ch.attributes.chapter) || 0,
-                                title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
-                                scan_group: scanGroup,
-                                pages: ch.attributes.pages
-                            };
-                        });
-
-                    // Se limitou max_chapters_per_manga
-                    if (this.autoImporter.maxChaptersPerManga > 0) {
-                        dexChapters = dexChapters.slice(0, this.autoImporter.maxChaptersPerManga);
+                // Baixar capa local
+                let localCoverUrl = coverUrl;
+                try {
+                    const { downloadAndSaveCover } = await import('../routes/mangas.js');
+                    if (downloadAndSaveCover && coverUrl) {
+                        localCoverUrl = await downloadAndSaveCover(coverUrl, title);
                     }
+                } catch (eCover) {}
 
-                    // Filtra apenas os que já temos baixados com ESSE MESMO scan_group e chapter_number
-                    const localCaps = await this.db.all("SELECT chapter_number, scan_group FROM manga_chapters WHERE manga_id = ? AND pages_count > 0", [localManga.id]);
-                    const localSet = new Set(localCaps.map(c => `${c.chapter_number}_${c.scan_group || 'Padrão'}`));
-                    const missing = dexChapters.filter(ch => !localSet.has(`${ch.chapter_number}_${ch.scan_group}`));
+                const insRes = await this.db.run(`
+                    INSERT INTO mangas (title, original_title, synopsis, cover_url, type, anilist_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `, [title, title, synopsis, localCoverUrl, type, dexId]);
 
-                    if (missing.length > 0) {
-                        await this.addMultipleChaptersToQueue(localManga.id, missing, targetLang);
-                        console.log(`[Manga Auto-Importer] Enfileirados ${missing.length} capítulos de "${title}" (${targetLang}).`);
-                    }
-                }
-
-                // Garante que o worker de download esteja ativo se enfileiramos algo
-                if (!this.isRunning) {
-                    this.start();
-                }
-
-                // Pequeno delay entre cada obra analisada
-                await new Promise(r => setTimeout(r, (this.autoImporter.delaySeconds || 3) * 1000));
+                localManga = { id: insRes.lastID, title, anilist_id: dexId };
+                this.autoImporter.importedCount++;
             }
 
-            // Incrementa o offset após processar as 10 obras
-            this.autoImporter.currentOffset += 10;
+            // 2. Se autoEnqueueChapters estiver ativo, busca capítulos faltantes e enfileira
+            let addedAny = false;
+            if (this.autoImporter.autoEnqueueChapters && localManga?.id) {
+                this.autoImporter.statusText = `Buscando capítulos de "${title}" em ${currentLang}...`;
+                
+                const targetLang = (currentLang === 'all' || !currentLang) ? 'pt-br' : currentLang;
+                
+                const feedRes = await axios.get(`https://api.mangadex.org/manga/${dexId}/feed`, {
+                    params: {
+                        limit: 250,
+                        'translatedLanguage[]': targetLang,
+                        'order[chapter]': 'asc',
+                        'includes[]': 'scanlation_group'
+                    },
+                    timeout: 15000
+                });
+
+                // FILTRAR ESTREITAMENTE: descarta capítulos externos da Comikey/MangaPlus e com 0 páginas!
+                let dexChapters = (feedRes.data.data || [])
+                    .filter(ch => !ch.attributes.externalUrl && ch.attributes.pages > 0)
+                    .map(ch => {
+                        const scanRel = ch.relationships?.find(r => r.type === 'scanlation_group');
+                        const scanGroup = scanRel?.attributes?.name || 'Padrão';
+                        return {
+                            id: ch.id,
+                            chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                            title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
+                            scan_group: scanGroup,
+                            pages: ch.attributes.pages
+                        };
+                    });
+
+                // Se limitou max_chapters_per_manga
+                if (this.autoImporter.maxChaptersPerManga > 0) {
+                    dexChapters = dexChapters.slice(0, this.autoImporter.maxChaptersPerManga);
+                }
+
+                // Filtra apenas os que já temos baixados com ESSE MESMO scan_group e chapter_number
+                const localCaps = await this.db.all("SELECT chapter_number, scan_group FROM manga_chapters WHERE manga_id = ? AND pages_count > 0", [localManga.id]);
+                const localSet = new Set(localCaps.map(c => `${c.chapter_number}_${c.scan_group || 'Padrão'}`));
+                const missing = dexChapters.filter(ch => !localSet.has(`${ch.chapter_number}_${ch.scan_group}`));
+
+                if (missing.length > 0) {
+                    await this.addMultipleChaptersToQueue(localManga.id, missing, targetLang);
+                    addedAny = true;
+                    console.log(`[Manga Auto-Importer] Enfileirados ${missing.length} capítulos de "${title}" (${targetLang}).`);
+                    this.autoImporter.statusText = `Obra "${title}" enfileirada com ${missing.length} capítulos. Baixando tudo antes da próxima...`;
+                }
+            }
+
+            // Garante que o worker de download esteja ativo
+            if (!this.isRunning) {
+                this.start();
+            }
+
+            // Avança o offset em 1 apenas quando tiver concluído ou enfileirado essa obra
+            this.autoImporter.currentOffset += 1;
             await this.saveAutoImporterConfig({ current_offset: this.autoImporter.currentOffset });
-            this.autoImporter.statusText = `Offset avançado para ${this.autoImporter.currentOffset}. Próximo lote em instantes...`;
 
         } catch (err) {
             console.error('[Manga Auto-Importer] Erro na rodada:', err.message);
@@ -330,9 +327,10 @@ class MangaQueueWorker {
         } finally {
             this.autoImporter.isIngesting = false;
             if (this.autoImporter.isEnabled) {
+                // Aguarda 5 segundos antes de checar se terminou de baixar para iniciar a próxima obra
                 this.autoImporter.loopTimeout = setTimeout(() => {
                     this.runAutoImporterStep();
-                }, (this.autoImporter.delaySeconds || 3) * 1000);
+                }, 5000);
             }
         }
     }
