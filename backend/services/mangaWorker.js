@@ -238,6 +238,7 @@ class MangaQueueWorker {
             // Identifica tipo pelo idioma original: Coreano (ko) ou Chinês (zh) vira webtoon/manhwa; Inglês (en) vira hq; Japonês (ja) vira manga
             const origLang = dexManga.attributes.originalLanguage;
             const type = (origLang === 'ko' || origLang === 'zh' || origLang === 'zh-hk') ? 'webtoon' : (origLang === 'en' ? 'hq' : 'manga');
+            const synopsis = dexManga.attributes.description?.['pt-br'] || dexManga.attributes.description?.en || '';
 
             // 1. Verifica se a obra já existe pelo anilist_id
             let localManga = await this.db.get("SELECT * FROM mangas WHERE anilist_id = ?", [dexId]);
