@@ -33,7 +33,12 @@ def main():
     
     with app:
         try:
-            app.delete_messages(CHANNEL_ID, message_ids=message_ids)
+            try:
+                app.get_chat(CHANNEL_ID)
+            except Exception:
+                for _ in app.get_dialogs(): pass
+
+            app.delete_messages(chat_id=CHANNEL_ID, message_ids=message_ids)
             print(f"Sucesso: Mensagens {message_ids} deletadas do canal de mangás.")
         except Exception as e:
             print(f"Erro ao deletar mensagens no Telegram: {e}")

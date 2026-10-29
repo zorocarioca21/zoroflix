@@ -396,6 +396,12 @@ class MangaQueueWorker {
         await this.updateStats();
     }
 
+    async clearAllQueue() {
+        if (!this.db) return;
+        await this.db.run("DELETE FROM manga_download_queue");
+        await this.updateStats();
+    }
+
     async retryErrors() {
         if (!this.db) return;
         await this.db.run("UPDATE manga_download_queue SET status = 'pending', error_message = NULL WHERE status = 'error'");

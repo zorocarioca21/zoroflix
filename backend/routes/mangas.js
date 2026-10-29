@@ -186,18 +186,43 @@ export default function createMangasRouter(db) {
             const chapters = await db.all("SELECT telegram_message_id FROM manga_chapters WHERE manga_id = ?", [id]);
             const msgIds = chapters.map(c => c.telegram_message_id).filter(Boolean);
 
-            // 1. Apaga mensagens do Telegram via script Python
+            // 1. Apaga mensagens do Telegram (Pyrogram com fallback GramJS)
             if (msgIds.length > 0) {
+                let deletedViaPy = false;
                 try {
                     const pyScript = path.join(__dirname, '..', 'scripts', 'deleteMangaMessages.py');
                     if (fs.existsSync(pyScript)) {
-                        const proc = spawn('python3', [pyScript, ...msgIds.map(String)]);
-                        proc.on('close', (code) => {
-                            console.log(`[Telegram Delete] Deletadas ${msgIds.length} mensagens com código: ${code}`);
+                        const pyResult = await new Promise((resolve) => {
+                            const proc = spawn('python3', [pyScript, ...msgIds.map(String)]);
+                            let output = '';
+                            proc.stdout.on('data', d => { output += d.toString(); });
+                            proc.stderr.on('data', d => { output += d.toString(); });
+                            proc.on('close', code => {
+                                resolve({ success: code === 0, output });
+                            });
                         });
+                        if (pyResult.success) {
+                            deletedViaPy = true;
+                            console.log(`[Telegram Delete] ${msgIds.length} mensagens deletadas via Pyrogram.`);
+                        }
                     }
                 } catch (tgErr) {
-                    console.warn(`[Telegram Delete] Falha ao acionar deleção no Telegram:`, tgErr.message);
+                    console.warn(`[Telegram Delete] Pyrogram falhou:`, tgErr.message);
+                }
+
+                // Fallback GramJS se Pyrogram não apagou
+                if (!deletedViaPy) {
+                    try {
+                        const tgClient = await getTelegramClient();
+                        const channelIdStr = process.env.TELEGRAM_MANGA_CHANNEL_ID;
+                        if (tgClient && channelIdStr) {
+                            const toEntity = await tgClient.getInputEntity(channelIdStr.includes('-100') ? parseInt(channelIdStr) : channelIdStr);
+                            await tgClient.deleteMessages(toEntity, msgIds, { revoke: true });
+                            console.log(`[Telegram Delete] ${msgIds.length} mensagens deletadas via GramJS fallback.`);
+                        }
+                    } catch (gramErr) {
+                        console.warn(`[Telegram Delete] GramJS fallback falhou:`, gramErr.message);
+                    }
                 }
             }
 
@@ -221,11 +246,14 @@ export default function createMangasRouter(db) {
                 } catch (delCoverErr) {}
             }
 
-            // 4. Remove do banco de dados
+            // 4. Remove do banco de dados (capítulos, fila e a obra)
             await db.run("DELETE FROM manga_chapters WHERE manga_id = ?", [id]);
+            await db.run("DELETE FROM manga_download_queue WHERE manga_id = ?", [id]);
             await db.run("DELETE FROM mangas WHERE id = ?", [id]);
 
-            res.json({ success: true, message: 'Mangá e capítulos apagados com sucesso!' });
+            mangaWorker.updateStats();
+
+            res.json({ success: true, message: 'Mangá, capítulos e itens da fila apagados com sucesso!' });
         } catch (e) {
             console.error('Erro ao deletar mangá:', e);
             res.status(500).json({ error: 'Erro interno ao deletar mangá' });
@@ -255,17 +283,32 @@ export default function createMangasRouter(db) {
             const chapter = await db.get("SELECT telegram_message_id, manga_id FROM manga_chapters WHERE id = ?", [chapterId]);
 
             if (chapter && chapter.telegram_message_id) {
-                // 1. Apaga a mensagem do Telegram
+                // 1. Apaga a mensagem do Telegram (Pyrogram com fallback GramJS)
+                let deletedViaPy = false;
                 try {
                     const pyScript = path.join(__dirname, '..', 'scripts', 'deleteMangaMessages.py');
                     if (fs.existsSync(pyScript)) {
-                        const proc = spawn('python3', [pyScript, String(chapter.telegram_message_id)]);
-                        proc.on('close', (code) => {
-                            console.log(`[Telegram Delete] Mensagem ${chapter.telegram_message_id} deletada com código: ${code}`);
+                        const pyResult = await new Promise((resolve) => {
+                            const proc = spawn('python3', [pyScript, String(chapter.telegram_message_id)]);
+                            proc.on('close', code => {
+                                resolve(code === 0);
+                            });
                         });
+                        deletedViaPy = pyResult;
                     }
                 } catch (tgErr) {
                     console.warn(`[Telegram Delete] Erro ao deletar no Telegram:`, tgErr.message);
+                }
+
+                if (!deletedViaPy) {
+                    try {
+                        const tgClient = await getTelegramClient();
+                        const channelIdStr = process.env.TELEGRAM_MANGA_CHANNEL_ID;
+                        if (tgClient && channelIdStr) {
+                            const toEntity = await tgClient.getInputEntity(channelIdStr.includes('-100') ? parseInt(channelIdStr) : channelIdStr);
+                            await tgClient.deleteMessages(toEntity, [chapter.telegram_message_id], { revoke: true });
+                        }
+                    } catch (gramErr) {}
                 }
 
                 // 2. Limpa cache local em disco do capítulo
@@ -662,6 +705,16 @@ export default function createMangasRouter(db) {
         try {
             await mangaWorker.clearCompletedQueue();
             res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Limpar TODA a fila (pendentes, concluídos e erros)
+    router.post('/queue/clear-all', async (req, res) => {
+        try {
+            await mangaWorker.clearAllQueue();
+            res.json({ success: true, message: 'Toda a fila de downloads foi limpa com sucesso!' });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

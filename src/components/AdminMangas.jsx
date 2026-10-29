@@ -469,6 +469,38 @@ export default function AdminMangas({ token }) {
                         >
                             Reiniciar Posição (Offset: {workerStatus.autoImporter?.currentOffset || 0})
                         </button>
+
+                        <button
+                            onClick={async () => {
+                                if (!window.confirm('Deseja limpar todos os itens da fila de download (pendentes e concluídos)?')) return;
+                                try {
+                                    const res = await fetch('/api/mangas/queue/clear-all', {
+                                        method: 'POST',
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    });
+                                    if (res.ok) {
+                                        fetchWorkerStatus();
+                                        window.alert('Fila de downloads limpa com sucesso!');
+                                    }
+                                } catch (e) {}
+                            }}
+                            title="Limpar todos os capítulos da fila de download"
+                            style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#ef4444',
+                                padding: '0.65rem 1rem',
+                                borderRadius: '10px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem'
+                            }}
+                        >
+                            <Trash2 size={15} /> Limpar Fila ({workerStatus.stats.totalPending + workerStatus.stats.totalCompleted})
+                        </button>
                     </div>
                 </div>
 
