@@ -496,15 +496,39 @@ class MangaQueueWorker {
             this.currentJob.step = `Baixando página ${i + 1}/${pagesCount}`;
             this.currentJob.progress = Math.round(((i + 1) / pagesCount) * 75); // 0% a 75%
 
-            const imgRes = await axios.get(imgUrl, { 
-                responseType: 'arraybuffer',
-                timeout: 15000,
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-            });
+            let imgData = null;
+            const primaryUrl = `${baseUrl}/data/${hash}/${imgName}`;
+            const officialFallbackUrl = `https://uploads.mangadex.org/data/${hash}/${imgName}`;
+            const dataSaverUrl = `${baseUrl}/data-saver/${hash}/${chapter.dataSaver?.[i] || imgName}`;
+
+            const tryUrls = [primaryUrl, officialFallbackUrl, dataSaverUrl];
+
+            for (const targetUrl of tryUrls) {
+                try {
+                    const imgRes = await axios.get(targetUrl, { 
+                        responseType: 'arraybuffer',
+                        timeout: 12000,
+                        headers: { 
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                            'Referer': 'https://mangadex.org/'
+                        }
+                    });
+                    if (imgRes.data && imgRes.data.byteLength > 100) {
+                        imgData = imgRes.data;
+                        break;
+                    }
+                } catch (ePage) {
+                    // Tenta o próximo espelho da lista
+                }
+            }
+
+            if (!imgData) {
+                throw new Error(`Página ${i + 1} indisponível em todos os servidores do MangaDex`);
+            }
 
             const ext = imgName.split('.').pop();
             const paddedName = String(i + 1).padStart(3, '0') + '.' + ext;
-            zip.addFile(paddedName, imgRes.data);
+            zip.addFile(paddedName, imgData);
         }
 
         // 3. Compactação do arquivo CBZ
