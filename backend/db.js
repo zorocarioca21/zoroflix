@@ -661,6 +661,28 @@ export async function initDB() {
         await db.exec("ALTER TABLE watch_history ADD COLUMN hidden INTEGER DEFAULT 0");
     } catch (err) { /* Já existe */ }
 
+    // Colunas de suporte a múltiplas versões / grupos de scan e idiomas nos capítulos de mangás
+    try {
+        await db.exec("ALTER TABLE manga_chapters ADD COLUMN scan_group TEXT DEFAULT 'Padrão'");
+    } catch (err) { /* Já existe */ }
+    try {
+        await db.exec("ALTER TABLE manga_chapters ADD COLUMN language TEXT DEFAULT 'pt-br'");
+    } catch (err) { /* Já existe */ }
+    try {
+        await db.exec("ALTER TABLE manga_chapters ADD COLUMN chapter_dex_id TEXT");
+    } catch (err) { /* Já existe */ }
+    try {
+        await db.exec("ALTER TABLE manga_download_queue ADD COLUMN scan_group TEXT DEFAULT 'Padrão'");
+    } catch (err) { /* Já existe */ }
+
+    // Limpeza automática de capítulos corrompidos com 0 páginas (como links externos da Comikey/MangaPlus)
+    try {
+        await db.run("DELETE FROM manga_chapters WHERE pages_count = 0 OR file_size < 100");
+        await db.run("DELETE FROM manga_download_queue WHERE error_message LIKE '%sem páginas%' OR status = 'error'");
+    } catch (cleanErr) {
+        console.warn('[DB Clean] Aviso na limpeza de capítulos zerados:', cleanErr.message);
+    }
+
     return db;
 }
 

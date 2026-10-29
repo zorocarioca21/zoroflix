@@ -216,7 +216,7 @@ export default function MangaReaderPage() {
                         </button>
                     </div>
 
-                    {/* Seletor de Capítulos */}
+                    {/* Seletor de Capítulos e Versões */}
                     <select 
                         value={chapterId}
                         onChange={e => navigate(`/manga/${mangaId}/capitulo/${e.target.value}`)}
@@ -234,7 +234,7 @@ export default function MangaReaderPage() {
                     >
                         {allChapters.map(c => (
                             <option key={c.id} value={c.id}>
-                                Cap. {c.chapter_number}
+                                Cap. {c.chapter_number} {c.scan_group && c.scan_group !== 'Padrão' ? `(${c.scan_group})` : ''}
                             </option>
                         ))}
                     </select>

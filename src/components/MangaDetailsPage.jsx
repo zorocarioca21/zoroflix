@@ -284,11 +284,19 @@ export default function MangaDetailsPage() {
                                     }}
                                 >
                                     <div>
-                                        <h4 style={{ margin: '0 0 0.3rem 0', fontSize: '1rem', color: 'var(--text)', fontWeight: '800' }}>
-                                            Capítulo {ch.chapter_number}
-                                        </h4>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text)', fontWeight: '800' }}>
+                                                Capítulo {ch.chapter_number}
+                                            </h4>
+                                            {ch.scan_group && ch.scan_group !== 'Padrão' && (
+                                                <span style={{ fontSize: '0.68rem', background: 'rgba(0, 230, 118, 0.15)', color: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '800' }}>
+                                                    {ch.scan_group}
+                                                </span>
+                                            )}
+                                        </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                             {ch.pages_count} {ch.pages_count === 1 ? 'página' : 'páginas'}
+                                            {ch.title && ch.title !== `Capítulo ${ch.chapter_number}` ? ` • ${ch.title}` : ''}
                                         </div>
                                     </div>
                                     <span style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '800' }}>

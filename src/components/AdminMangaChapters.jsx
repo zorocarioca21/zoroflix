@@ -124,8 +124,11 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
         }
     }, [queueStatus.stats.totalCompleted]);
 
-    const isLocal = (chapter_number) => {
-        return localChapters.some(lc => lc.chapter_number === chapter_number);
+    const isLocal = (chapter_number, scan_group) => {
+        return localChapters.some(lc => 
+            lc.chapter_number === chapter_number && 
+            (!scan_group || lc.scan_group === scan_group || lc.scan_group === 'Padrão')
+        );
     };
 
     const isEnqueued = (chapterDexId) => {
@@ -529,7 +532,14 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
                         {localChapters.map(lc => (
                             <div key={lc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(0, 230, 118, 0.06)', border: '1px solid rgba(0, 230, 118, 0.2)', borderRadius: '10px' }}>
                                 <div>
-                                    <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>Capítulo {lc.chapter_number}</strong>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>Capítulo {lc.chapter_number}</strong>
+                                        {lc.scan_group && (
+                                            <span style={{ fontSize: '0.68rem', background: 'rgba(0, 230, 118, 0.15)', color: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '800' }}>
+                                                {lc.scan_group}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{lc.pages_count} páginas • {(lc.file_size / 1024 / 1024).toFixed(1)} MB</div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
@@ -562,7 +572,7 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '550px', overflowY: 'auto' }}>
                         {loadingDex ? <p style={{ color: 'var(--text-muted)' }}>Buscando no MangaDex...</p> : mangadexChapters.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>Nenhum capítulo em {selectedLanguage.toUpperCase()} encontrado.</p> : null}
                         {mangadexChapters.map(ch => {
-                            const downloaded = isLocal(ch.chapter_number);
+                            const downloaded = isLocal(ch.chapter_number, ch.scan_group);
                             const inQueue = isEnqueued(ch.id);
                             const isSelected = selectedChapters.has(ch.id);
 
@@ -594,7 +604,14 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
                                             />
                                         )}
                                         <div>
-                                            <strong style={{ fontSize: '0.95rem' }}>Capítulo {ch.chapter_number}</strong>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <strong style={{ fontSize: '0.95rem' }}>Capítulo {ch.chapter_number}</strong>
+                                                {ch.scan_group && (
+                                                    <span style={{ fontSize: '0.68rem', background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '800' }}>
+                                                        {ch.scan_group}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{ch.title} • {ch.pages} págs</div>
                                         </div>
                                     </div>

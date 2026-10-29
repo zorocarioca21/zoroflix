@@ -273,26 +273,36 @@ class MangaQueueWorker {
                         params: {
                             limit: 250,
                             'translatedLanguage[]': targetLang,
-                            'order[chapter]': 'asc'
+                            'order[chapter]': 'asc',
+                            'includes[]': 'scanlation_group'
                         },
                         timeout: 15000
                     });
 
-                    let dexChapters = (feedRes.data.data || []).map(ch => ({
-                        id: ch.id,
-                        chapter_number: parseFloat(ch.attributes.chapter) || 0,
-                        title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`
-                    }));
+                    // FILTRAR ESTREITAMENTE: descarta capítulos externos da Comikey/MangaPlus e com 0 páginas!
+                    let dexChapters = (feedRes.data.data || [])
+                        .filter(ch => !ch.attributes.externalUrl && ch.attributes.pages > 0)
+                        .map(ch => {
+                            const scanRel = ch.relationships?.find(r => r.type === 'scanlation_group');
+                            const scanGroup = scanRel?.attributes?.name || 'Padrão';
+                            return {
+                                id: ch.id,
+                                chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                                title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
+                                scan_group: scanGroup,
+                                pages: ch.attributes.pages
+                            };
+                        });
 
                     // Se limitou max_chapters_per_manga
                     if (this.autoImporter.maxChaptersPerManga > 0) {
                         dexChapters = dexChapters.slice(0, this.autoImporter.maxChaptersPerManga);
                     }
 
-                    // Filtra os que já temos no banco
-                    const localCaps = await this.db.all("SELECT chapter_number FROM manga_chapters WHERE manga_id = ?", [localManga.id]);
-                    const localNums = new Set(localCaps.map(c => c.chapter_number));
-                    const missing = dexChapters.filter(ch => !localNums.has(ch.chapter_number));
+                    // Filtra apenas os que já temos baixados com ESSE MESMO scan_group e chapter_number
+                    const localCaps = await this.db.all("SELECT chapter_number, scan_group FROM manga_chapters WHERE manga_id = ? AND pages_count > 0", [localManga.id]);
+                    const localSet = new Set(localCaps.map(c => `${c.chapter_number}_${c.scan_group || 'Padrão'}`));
+                    const missing = dexChapters.filter(ch => !localSet.has(`${ch.chapter_number}_${ch.scan_group}`));
 
                     if (missing.length > 0) {
                         await this.addMultipleChaptersToQueue(localManga.id, missing, targetLang);
@@ -327,14 +337,14 @@ class MangaQueueWorker {
         }
     }
 
-    async addChapterToQueue(manga_id, chapter_dex_id, chapter_number, title, language = 'pt-br') {
+    async addChapterToQueue(manga_id, chapter_dex_id, chapter_number, title, language = 'pt-br', scan_group = 'Padrão') {
         if (!this.db) throw new Error('DB não inicializado');
         
-        // Verifica se já não foi baixado na tabela oficial de capítulos
+        // Verifica se já não foi baixado na tabela oficial de capítulos com ESSE grupo de scan
         const alreadyDownloaded = await this.db.get(`
             SELECT id FROM manga_chapters 
-            WHERE manga_id = ? AND chapter_number = ?
-        `, [manga_id, chapter_number]);
+            WHERE manga_id = ? AND chapter_number = ? AND (scan_group = ? OR chapter_dex_id = ?) AND pages_count > 0
+        `, [manga_id, chapter_number, scan_group, chapter_dex_id]);
 
         if (alreadyDownloaded) {
             return { added: false, reason: 'already_downloaded' };
@@ -342,10 +352,10 @@ class MangaQueueWorker {
 
         try {
             await this.db.run(`
-                INSERT INTO manga_download_queue (manga_id, chapter_dex_id, chapter_number, title, language, status)
-                VALUES (?, ?, ?, ?, ?, 'pending')
-                ON CONFLICT(manga_id, chapter_dex_id) DO UPDATE SET status = 'pending', error_message = NULL
-            `, [manga_id, chapter_dex_id, chapter_number, title, language]);
+                INSERT INTO manga_download_queue (manga_id, chapter_dex_id, chapter_number, title, language, scan_group, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                ON CONFLICT(manga_id, chapter_dex_id) DO UPDATE SET status = 'pending', scan_group = excluded.scan_group, error_message = NULL
+            `, [manga_id, chapter_dex_id, chapter_number, title, language, scan_group]);
 
             await this.updateStats();
 
@@ -364,12 +374,16 @@ class MangaQueueWorker {
     async addMultipleChaptersToQueue(manga_id, chapters, language = 'pt-br') {
         let addedCount = 0;
         for (const ch of chapters) {
+            // Ignora capítulos externos ou zerados
+            if (ch.pages === 0 || ch.externalUrl) continue;
+
             const res = await this.addChapterToQueue(
                 manga_id, 
                 ch.id || ch.chapter_dex_id, 
                 ch.chapter_number, 
                 ch.title, 
-                language
+                language,
+                ch.scan_group || 'Padrão'
             );
             if (res.added) addedCount++;
         }
@@ -445,7 +459,7 @@ class MangaQueueWorker {
     }
 
     async downloadAndUploadChapter(job) {
-        const { manga_id, chapter_dex_id, chapter_number, title, manga_title } = job;
+        const { manga_id, chapter_dex_id, chapter_number, title, manga_title, language, scan_group } = job;
         const channelIdStr = process.env.TELEGRAM_MANGA_CHANNEL_ID;
         if (!channelIdStr) throw new Error('Canal de mangás não configurado no .env');
 
@@ -455,6 +469,10 @@ class MangaQueueWorker {
         const serverRes = await axios.get(`https://api.mangadex.org/at-home/server/${chapter_dex_id}`, { timeout: 15000 });
         const { baseUrl, chapter } = serverRes.data;
         const { hash, data: images } = chapter;
+
+        if (!images || images.length === 0) {
+            throw new Error('Capítulo sem páginas no servidor do MangaDex (possível link externo)');
+        }
 
         const zip = new AdmZip();
         const pagesCount = images.length;
@@ -487,7 +505,8 @@ class MangaQueueWorker {
         this.currentJob.step = 'Compactando arquivo CBZ...';
         this.currentJob.progress = 80;
 
-        const fileName = `${manga_title.replace(/[^a-zA-Z0-9]/g, '_')}_Cap_${chapter_number}.cbz`;
+        const scanSafe = (scan_group || 'Padrao').replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${manga_title.replace(/[^a-zA-Z0-9]/g, '_')}_Cap_${chapter_number}_${scanSafe}.cbz`;
         const tempDir = path.join(__dirname, '..', '..', 'temp_mangas');
         const cacheDir = path.join(tempDir, 'cache');
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -502,7 +521,7 @@ class MangaQueueWorker {
         this.currentJob.progress = 90;
 
         let messageId = null;
-        const caption = `📚 **${manga_title}**\n\n📖 Capítulo: ${chapter_number}\n📝 Título: ${title || 'N/A'}\n📄 Páginas: ${pagesCount}`;
+        const caption = `📚 **${manga_title}**\n\n📖 Capítulo: ${chapter_number}\n📝 Título: ${title || 'N/A'}\n👥 Scan: ${scan_group || 'Padrão'}\n📄 Páginas: ${pagesCount}`;
 
         // 4.1 Pyrogram
         try {
@@ -565,11 +584,11 @@ class MangaQueueWorker {
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
         } catch (e) {}
 
-        // 7. Gravar capítulo no banco de dados
+        // 7. Gravar capítulo no banco de dados com a versão/scan e idioma
         await this.db.run(`
-            INSERT INTO manga_chapters (manga_id, chapter_number, title, telegram_message_id, file_size, pages_count)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `, [manga_id, chapter_number, title, messageId, fileSize, pagesCount]);
+            INSERT INTO manga_chapters (manga_id, chapter_number, title, telegram_message_id, file_size, pages_count, scan_group, language, chapter_dex_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [manga_id, chapter_number, title, messageId, fileSize, pagesCount, scan_group || 'Padrão', language || 'pt-br', chapter_dex_id]);
 
         this.currentJob.progress = 100;
         this.currentJob.step = 'Pronto!';

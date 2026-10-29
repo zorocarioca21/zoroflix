@@ -232,11 +232,15 @@ export default function createMangasRouter(db) {
         }
     });
 
-    // Listar capítulos de um mangá
+    // Listar capítulos de um mangá (com suporte a múltiplas versões / grupos de scan)
     router.get('/:id/chapters', async (req, res) => {
         try {
             const { id } = req.params;
-            const chapters = await db.all("SELECT * FROM manga_chapters WHERE manga_id = ? ORDER BY chapter_number ASC", [id]);
+            const chapters = await db.all(`
+                SELECT * FROM manga_chapters 
+                WHERE manga_id = ? AND pages_count > 0
+                ORDER BY chapter_number ASC, scan_group ASC
+            `, [id]);
             res.json({ chapters });
         } catch (e) {
             console.error('Erro ao listar capítulos:', e);
@@ -445,7 +449,7 @@ export default function createMangasRouter(db) {
         }
     });
 
-    // 2. Listar capítulos de um mangá no MangaDex (suporta filtro por qualquer idioma)
+    // 2. Listar capítulos de um mangá no MangaDex (suporta filtro por qualquer idioma e traz grupo de scan)
     router.get('/mangadex/:id/chapters', async (req, res) => {
         try {
             const { id } = req.params;
@@ -458,19 +462,28 @@ export default function createMangasRouter(db) {
                     limit,
                     offset,
                     'translatedLanguage[]': lang,
-                    'order[chapter]': 'asc'
+                    'order[chapter]': 'asc',
+                    'includes[]': 'scanlation_group'
                 }
             });
 
-            const chapters = response.data.data.map(ch => ({
-                id: ch.id,
-                chapter_number: parseFloat(ch.attributes.chapter) || 0,
-                title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
-                pages: ch.attributes.pages,
-                publishAt: ch.attributes.publishAt
-            }));
+            // Filtra links externos e capítulos vazios sem páginas
+            const validData = (response.data.data || []).filter(ch => !ch.attributes.externalUrl && ch.attributes.pages > 0);
 
-            res.json({ chapters, total: response.data.total });
+            const chapters = validData.map(ch => {
+                const scanRel = ch.relationships?.find(r => r.type === 'scanlation_group');
+                const scanGroup = scanRel?.attributes?.name || 'Padrão';
+                return {
+                    id: ch.id,
+                    chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                    title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
+                    scan_group: scanGroup,
+                    pages: ch.attributes.pages,
+                    publishAt: ch.attributes.publishAt
+                };
+            });
+
+            res.json({ chapters, total: chapters.length });
         } catch (e) {
             console.error('Erro ao listar capítulos do mangadex:', e);
             res.status(500).json({ error: 'Erro ao listar capítulos do MangaDex' });
@@ -607,25 +620,34 @@ export default function createMangasRouter(db) {
                         limit: 250,
                         offset,
                         'translatedLanguage[]': lang,
-                        'order[chapter]': 'asc'
+                        'order[chapter]': 'asc',
+                        'includes[]': 'scanlation_group'
                     }
                 });
                 total = response.data.total || 0;
-                const batch = response.data.data.map(ch => ({
-                    id: ch.id,
-                    chapter_number: parseFloat(ch.attributes.chapter) || 0,
-                    title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`
-                }));
+                const batch = (response.data.data || [])
+                    .filter(ch => !ch.attributes.externalUrl && ch.attributes.pages > 0)
+                    .map(ch => {
+                        const scanRel = ch.relationships?.find(r => r.type === 'scanlation_group');
+                        const scanGroup = scanRel?.attributes?.name || 'Padrão';
+                        return {
+                            id: ch.id,
+                            chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                            title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
+                            scan_group: scanGroup,
+                            pages: ch.attributes.pages
+                        };
+                    });
                 allDexChapters.push(...batch);
                 offset += 250;
-                if (batch.length === 0) break;
+                if ((response.data.data || []).length === 0) break;
             }
 
-            // Filtrar capítulos que já temos no banco
-            const localCaps = await db.all("SELECT chapter_number FROM manga_chapters WHERE manga_id = ?", [manga_id]);
-            const localNums = new Set(localCaps.map(c => c.chapter_number));
+            // Filtrar capítulos que já temos no banco com a mesma versão/scan
+            const localCaps = await db.all("SELECT chapter_number, scan_group FROM manga_chapters WHERE manga_id = ? AND pages_count > 0", [manga_id]);
+            const localSet = new Set(localCaps.map(c => `${c.chapter_number}_${c.scan_group || 'Padrão'}`));
 
-            const toAdd = allDexChapters.filter(ch => !localNums.has(ch.chapter_number));
+            const toAdd = allDexChapters.filter(ch => !localSet.has(`${ch.chapter_number}_${ch.scan_group}`));
 
             const result = await mangaWorker.addMultipleChaptersToQueue(manga_id, toAdd, lang);
             res.json({ success: true, totalFound: allDexChapters.length, added: result.addedCount });
