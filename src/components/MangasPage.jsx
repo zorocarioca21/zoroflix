@@ -9,7 +9,7 @@ export default function MangasPage() {
     const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
-        document.title = 'Mangás e HQs - CineGeek';
+        document.title = 'Leitura - Mangás, Manhwas, HQs & Livros - CineGeek';
         window.scrollTo(0, 0);
 
         const fetchMangas = async () => {
@@ -100,10 +100,10 @@ export default function MangasPage() {
                             color: 'var(--text)',
                             textShadow: '0 2px 10px rgba(0,0,0,0.5)'
                         }}>
-                            Mangás, Manhwas & HQs
+                            Mangás, Manhwas, HQs & Livros
                         </h1>
                         <p style={{ margin: '0.4rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                            Explore, descubra e leia capítulos com carregamento ultra rápido no CineGeek.
+                            Explore o catálogo completo de leitura com carregamento ultra rápido no CineGeek.
                         </p>
                     </div>
                 </div>
