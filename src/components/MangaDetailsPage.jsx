@@ -185,7 +185,7 @@ export default function MangaDetailsPage() {
                                 gap: '0.35rem'
                             }}>
                                 <Layers size={13} color="var(--primary)" />
-                                {chapters.length} {chapters.length === 1 ? 'Capítulo disponível' : 'Capítulos disponíveis'}
+                                {groupedChapters.length} {groupedChapters.length === 1 ? 'Capítulo disponível' : 'Capítulos disponíveis'}
                             </span>
                         </div>
                     </div>

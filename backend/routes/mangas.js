@@ -86,11 +86,11 @@ export default function createMangasRouter(db) {
             const includeEmpty = req.query.includeEmpty === 'true';
             let query = `
                 SELECT m.*, 
-                (SELECT COUNT(*) FROM manga_chapters WHERE manga_id = m.id) as chapters_count
+                (SELECT COUNT(DISTINCT chapter_number) FROM manga_chapters WHERE manga_id = m.id) as chapters_count
                 FROM mangas m
             `;
             if (!includeEmpty) {
-                query += " WHERE (SELECT COUNT(*) FROM manga_chapters WHERE manga_id = m.id) > 0";
+                query += " WHERE (SELECT COUNT(DISTINCT chapter_number) FROM manga_chapters WHERE manga_id = m.id) > 0";
             }
             query += " ORDER BY m.updated_at DESC";
 
