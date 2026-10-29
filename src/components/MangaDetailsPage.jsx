@@ -43,6 +43,25 @@ export default function MangaDetailsPage() {
         fetchDetails();
     }, [id]);
 
+    // Agrupamento inteligente por número de capítulo
+    // Se um capítulo tiver 2 ou mais scans, exibe 1 card único no índice
+    const groupedChapters = [];
+    const chapterMap = new Map();
+
+    for (const ch of chapters) {
+        const numKey = ch.chapter_number;
+        if (!chapterMap.has(numKey)) {
+            const groupItem = {
+                chapter_number: ch.chapter_number,
+                primaryChapter: ch,
+                versions: [ch]
+            };
+            chapterMap.set(numKey, groupItem);
+            groupedChapters.push(groupItem);
+        } else {
+            chapterMap.get(numKey).versions.push(ch);
+        }
+    }
 
     if (loading) {
         return (
@@ -230,7 +249,7 @@ export default function MangaDetailsPage() {
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Ordem cronológica</span>
                 </div>
 
-                {chapters.length === 0 ? (
+                {groupedChapters.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
                         padding: '3.5rem',
@@ -243,68 +262,85 @@ export default function MangaDetailsPage() {
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.1rem' }}>
-                        {chapters.map(ch => (
-                            <div 
-                                key={ch.id}
-                                style={{
-                                    background: 'rgba(9, 42, 28, 0.45)',
-                                    border: '1px solid rgba(0, 230, 118, 0.18)',
-                                    borderRadius: '14px',
-                                    padding: '1.1rem 1.3rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    transition: 'all 0.25s cubic-bezier(0.2, 0, 0.2, 1)',
-                                    gap: '1rem',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                                }}
-                                onMouseEnter={e => {
-                                    e.currentTarget.style.transform = 'translateY(-3px)';
-                                    e.currentTarget.style.borderColor = 'var(--primary)';
-                                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 230, 118, 0.2)';
-                                }}
-                                onMouseLeave={e => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.borderColor = 'rgba(0, 230, 118, 0.18)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-                                }}
-                            >
-                                <Link
-                                    to={`/manga/${manga.id}/capitulo/${ch.id}`}
-                                    onMouseEnter={() => {
-                                        fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
-                                    }}
+                        {groupedChapters.map(item => {
+                            const ch = item.primaryChapter;
+                            const hasMultiple = item.versions.length > 1;
+
+                            return (
+                                <div 
+                                    key={ch.id}
                                     style={{
-                                        textDecoration: 'none',
-                                        color: 'inherit',
-                                        flex: 1,
+                                        background: 'rgba(9, 42, 28, 0.45)',
+                                        border: '1px solid rgba(0, 230, 118, 0.18)',
+                                        borderRadius: '14px',
+                                        padding: '1.1rem 1.3rem',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'space-between'
+                                        justifyContent: 'space-between',
+                                        transition: 'all 0.25s cubic-bezier(0.2, 0, 0.2, 1)',
+                                        gap: '1rem',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateY(-3px)';
+                                        e.currentTarget.style.borderColor = 'var(--primary)';
+                                        e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 230, 118, 0.2)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.borderColor = 'rgba(0, 230, 118, 0.18)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
                                     }}
                                 >
-                                    <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                                            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text)', fontWeight: '800' }}>
-                                                Capítulo {ch.chapter_number}
-                                            </h4>
-                                            {ch.scan_group && ch.scan_group !== 'Padrão' && (
-                                                <span style={{ fontSize: '0.68rem', background: 'rgba(0, 230, 118, 0.15)', color: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '800' }}>
-                                                    {ch.scan_group}
-                                                </span>
-                                            )}
+                                    <Link
+                                        to={`/manga/${manga.id}/capitulo/${ch.id}`}
+                                        onMouseEnter={() => {
+                                            fetch(`/api/mangas/chapters/${ch.id}/pages`).catch(() => {});
+                                        }}
+                                        style={{
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}
+                                    >
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--text)', fontWeight: '800' }}>
+                                                    Capítulo {item.chapter_number}
+                                                </h4>
+                                                {hasMultiple ? (
+                                                    <span style={{
+                                                        fontSize: '0.68rem',
+                                                        background: 'rgba(0, 230, 118, 0.2)',
+                                                        color: 'var(--primary)',
+                                                        padding: '0.15rem 0.5rem',
+                                                        borderRadius: '6px',
+                                                        fontWeight: '800',
+                                                        border: '1px solid rgba(0, 230, 118, 0.35)'
+                                                    }}>
+                                                        {item.versions.length} scans disponíveis
+                                                    </span>
+                                                ) : ch.scan_group && ch.scan_group !== 'Padrão' ? (
+                                                    <span style={{ fontSize: '0.68rem', background: 'rgba(0, 230, 118, 0.15)', color: 'var(--primary)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: '800' }}>
+                                                        {ch.scan_group}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                {ch.pages_count} {ch.pages_count === 1 ? 'página' : 'páginas'}
+                                                {ch.title && ch.title !== `Capítulo ${item.chapter_number}` ? ` • ${ch.title}` : ''}
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                            {ch.pages_count} {ch.pages_count === 1 ? 'página' : 'páginas'}
-                                            {ch.title && ch.title !== `Capítulo ${ch.chapter_number}` ? ` • ${ch.title}` : ''}
-                                        </div>
-                                    </div>
-                                    <span style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '800' }}>
-                                        Ler &rarr;
-                                    </span>
-                                </Link>
-                            </div>
-                        ))}
+                                        <span style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '800' }}>
+                                            Ler &rarr;
+                                        </span>
+                                    </Link>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

@@ -216,10 +216,14 @@ export default function MangaReaderPage() {
                         </button>
                     </div>
 
-                    {/* Seletor de Capítulos e Versões */}
+                    {/* Seletor de Capítulos (1 por número) */}
                     <select 
-                        value={chapterId}
-                        onChange={e => navigate(`/manga/${mangaId}/capitulo/${e.target.value}`)}
+                        value={chapterData.chapter_number}
+                        onChange={e => {
+                            const targetNum = parseFloat(e.target.value);
+                            const found = allChapters.find(c => c.chapter_number === targetNum);
+                            if (found) navigate(`/manga/${mangaId}/capitulo/${found.id}`);
+                        }}
                         style={{
                             background: 'rgba(9, 42, 28, 0.85)',
                             border: '1px solid rgba(0, 230, 118, 0.3)',
@@ -232,12 +236,53 @@ export default function MangaReaderPage() {
                             cursor: 'pointer'
                         }}
                     >
-                        {allChapters.map(c => (
-                            <option key={c.id} value={c.id}>
-                                Cap. {c.chapter_number} {c.scan_group && c.scan_group !== 'Padrão' ? `(${c.scan_group})` : ''}
+                        {Array.from(new Set(allChapters.map(c => c.chapter_number))).sort((a,b)=>a-b).map(num => (
+                            <option key={num} value={num}>
+                                Capítulo {num}
                             </option>
                         ))}
                     </select>
+
+                    {/* Botão / Seletor Exclusivo para Trocar de Scan (se houver múltiplas versões) */}
+                    {(() => {
+                        const sameNumberVersions = allChapters.filter(c => c.chapter_number === chapterData.chapter_number);
+                        if (sameNumberVersions.length > 1) {
+                            return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0,0,0,0.4)', padding: '0.2rem 0.6rem', borderRadius: '12px', border: '1px solid rgba(0, 230, 118, 0.35)' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '800' }}>Scan:</span>
+                                    <select
+                                        value={chapterId}
+                                        onChange={e => navigate(`/manga/${mangaId}/capitulo/${e.target.value}`)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#fff',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {sameNumberVersions.map(v => (
+                                            <option key={v.id} value={v.id} style={{ background: '#092a1c', color: '#fff' }}>
+                                                {v.scan_group || 'Padrão'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            );
+                        } else {
+                            const curScan = sameNumberVersions[0]?.scan_group;
+                            if (curScan && curScan !== 'Padrão') {
+                                return (
+                                    <span style={{ fontSize: '0.75rem', background: 'rgba(0, 230, 118, 0.15)', color: 'var(--primary)', padding: '0.35rem 0.75rem', borderRadius: '10px', fontWeight: '800', border: '1px solid rgba(0, 230, 118, 0.25)' }}>
+                                        Scan: {curScan}
+                                    </span>
+                                );
+                            }
+                            return null;
+                        }
+                    })()}
                 </div>
             </div>
 
