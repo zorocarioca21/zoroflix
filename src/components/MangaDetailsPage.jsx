@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Layers, Trash2, Flame, Sparkles } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { ArrowLeft, BookOpen, Layers, Flame, Sparkles } from 'lucide-react';
 
 export default function MangaDetailsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
     const [manga, setManga] = useState(null);
     const [chapters, setChapters] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -45,50 +43,6 @@ export default function MangaDetailsPage() {
         fetchDetails();
     }, [id]);
 
-    const handleDeleteChapter = async (chapterId, capNum) => {
-        if (!window.confirm(`Tem certeza que deseja apagar o Capítulo ${capNum}? Ele será removido do site e do canal do Telegram.`)) return;
-        try {
-            const token = localStorage.getItem('cinegeek_token');
-            const res = await fetch(`/api/mangas/chapters/${chapterId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                if (data.mangaDeleted) {
-                    window.alert('O último capítulo foi deletado e a obra sem capítulos foi removida do catálogo.');
-                    navigate('/mangas');
-                } else {
-                    window.alert('Capítulo apagado com sucesso!');
-                    fetchDetails();
-                }
-            } else {
-                window.alert(data.error || 'Erro ao apagar capítulo');
-            }
-        } catch (e) {
-            window.alert('Falha na comunicação');
-        }
-    };
-
-    const handleDeleteManga = async () => {
-        if (!window.confirm(`Tem certeza que deseja apagar a obra "${manga.title}" completa e todos os seus capítulos do site e do canal?`)) return;
-        try {
-            const token = localStorage.getItem('cinegeek_token');
-            const res = await fetch(`/api/mangas/${manga.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                window.alert('Obra apagada com sucesso!');
-                navigate('/mangas');
-            } else {
-                window.alert(data.error || 'Erro ao apagar obra');
-            }
-        } catch (e) {
-            window.alert('Falha na comunicação');
-        }
-    };
 
     if (loading) {
         return (
@@ -215,29 +169,6 @@ export default function MangaDetailsPage() {
                                 {chapters.length} {chapters.length === 1 ? 'Capítulo disponível' : 'Capítulos disponíveis'}
                             </span>
                         </div>
-
-                        {user?.role === 'admin' && (
-                            <button
-                                onClick={handleDeleteManga}
-                                title="Excluir Obra Completa (Site e Telegram)"
-                                style={{
-                                    background: 'rgba(239, 68, 68, 0.15)',
-                                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                                    color: '#ef4444',
-                                    padding: '0.4rem 0.9rem',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 'bold',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.4rem',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                <Trash2 size={15} /> Excluir Obra
-                            </button>
-                        )}
                     </div>
 
                     <h1 style={{
@@ -364,25 +295,6 @@ export default function MangaDetailsPage() {
                                         Ler &rarr;
                                     </span>
                                 </Link>
-
-                                {user?.role === 'admin' && (
-                                    <button 
-                                        onClick={() => handleDeleteChapter(ch.id, ch.chapter_number)}
-                                        title="Apagar Capítulo (Banco e Telegram)"
-                                        style={{
-                                            background: 'rgba(239, 68, 68, 0.15)',
-                                            border: '1px solid rgba(239, 68, 68, 0.35)',
-                                            color: '#ef4444',
-                                            padding: '0.55rem',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center'
-                                        }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
                             </div>
                         ))}
                     </div>
