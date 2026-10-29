@@ -9,6 +9,7 @@ import { getTelegramClient } from '../telegram.js';
 import { CustomFile } from 'telegram/client/uploads.js';
 
 import { UPLOADS_PATH } from '../db.js';
+import mangaWorker from '../services/mangaWorker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +78,7 @@ async function downloadAndSaveCover(coverUrl, mangaSlugOrId) {
 
 export default function createMangasRouter(db) {
     const router = express.Router();
+    mangaWorker.init(db);
 
     // Listar mangás (admin e público)
     router.get('/', async (req, res) => {
@@ -399,14 +401,19 @@ export default function createMangasRouter(db) {
     });
 
 
-    // 2. Listar capítulos de um mangá no MangaDex
+    // 2. Listar capítulos de um mangá no MangaDex (suporta filtro por idioma)
     router.get('/mangadex/:id/chapters', async (req, res) => {
         try {
             const { id } = req.params;
+            const lang = req.query.lang || 'pt-br';
+            const limit = parseInt(req.query.limit) || 250;
+            const offset = parseInt(req.query.offset) || 0;
+
             const response = await axios.get(`https://api.mangadex.org/manga/${id}/feed`, {
                 params: {
-                    limit: 100, // Limite pra teste, ideal usar paginação dps
-                    'translatedLanguage[]': 'pt-br',
+                    limit,
+                    offset,
+                    'translatedLanguage[]': lang,
                     'order[chapter]': 'asc'
                 }
             });
@@ -415,13 +422,131 @@ export default function createMangasRouter(db) {
                 id: ch.id,
                 chapter_number: parseFloat(ch.attributes.chapter) || 0,
                 title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`,
-                pages: ch.attributes.pages
+                pages: ch.attributes.pages,
+                publishAt: ch.attributes.publishAt
             }));
 
-            res.json({ chapters });
+            res.json({ chapters, total: response.data.total });
         } catch (e) {
             console.error('Erro ao listar capítulos do mangadex:', e);
             res.status(500).json({ error: 'Erro ao listar capítulos do MangaDex' });
+        }
+    });
+
+    // ==========================================
+    // ROTAS DE CONTROLE DA FILA DE DOWNLOADS
+    // ==========================================
+
+    // Obter status completo da fila
+    router.get('/queue/status', async (req, res) => {
+        try {
+            const status = mangaWorker.getStatus();
+            // Buscar itens recentes da fila para visualização no painel
+            const queueItems = await db.all(`
+                SELECT q.*, m.title as manga_title 
+                FROM manga_download_queue q
+                JOIN mangas m ON m.id = q.manga_id
+                ORDER BY CASE WHEN q.status = 'downloading' THEN 0 WHEN q.status = 'pending' THEN 1 ELSE 2 END, q.id ASC
+                LIMIT 50
+            `);
+            res.json({ ...status, items: queueItems });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Iniciar a fila
+    router.post('/queue/start', (req, res) => {
+        mangaWorker.start();
+        res.json({ success: true, message: 'Fila iniciada com sucesso!', status: mangaWorker.getStatus() });
+    });
+
+    // Pausar a fila
+    router.post('/queue/pause', (req, res) => {
+        mangaWorker.pause();
+        res.json({ success: true, message: 'Fila pausada com sucesso!', status: mangaWorker.getStatus() });
+    });
+
+    // Adicionar capítulos selecionados à fila
+    router.post('/queue/add', async (req, res) => {
+        try {
+            const { manga_id, chapters, language } = req.body;
+            if (!manga_id || !chapters || !Array.isArray(chapters)) {
+                return res.status(400).json({ error: 'Dados inválidos' });
+            }
+            const result = await mangaWorker.addMultipleChaptersToQueue(manga_id, chapters, language || 'pt-br');
+            res.json({ success: true, ...result });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Enfileirar TODOS os capítulos faltantes de um mangá
+    router.post('/queue/add-all', async (req, res) => {
+        try {
+            const { manga_id, language } = req.body;
+            const lang = language || 'pt-br';
+            const manga = await db.get("SELECT * FROM mangas WHERE id = ?", [manga_id]);
+            if (!manga || !manga.anilist_id) {
+                return res.status(404).json({ error: 'Mangá ou ID do MangaDex não encontrado' });
+            }
+
+            // Buscar capítulos do MangaDex (paginando se houver mais de 500)
+            let allDexChapters = [];
+            let offset = 0;
+            let total = 1;
+
+            while (offset < total && offset < 1000) {
+                const response = await axios.get(`https://api.mangadex.org/manga/${manga.anilist_id}/feed`, {
+                    params: {
+                        limit: 250,
+                        offset,
+                        'translatedLanguage[]': lang,
+                        'order[chapter]': 'asc'
+                    }
+                });
+                total = response.data.total || 0;
+                const batch = response.data.data.map(ch => ({
+                    id: ch.id,
+                    chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                    title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`
+                }));
+                allDexChapters.push(...batch);
+                offset += 250;
+                if (batch.length === 0) break;
+            }
+
+            // Filtrar capítulos que já temos no banco
+            const localCaps = await db.all("SELECT chapter_number FROM manga_chapters WHERE manga_id = ?", [manga_id]);
+            const localNums = new Set(localCaps.map(c => c.chapter_number));
+
+            const toAdd = allDexChapters.filter(ch => !localNums.has(ch.chapter_number));
+
+            const result = await mangaWorker.addMultipleChaptersToQueue(manga_id, toAdd, lang);
+            res.json({ success: true, totalFound: allDexChapters.length, added: result.addedCount });
+        } catch (e) {
+            console.error('Erro ao adicionar todos à fila:', e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Limpar itens concluídos da fila
+    router.post('/queue/clear-completed', async (req, res) => {
+        try {
+            await mangaWorker.clearCompletedQueue();
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Reenfileirar capítulos com erro
+    router.post('/queue/retry-errors', async (req, res) => {
+        try {
+            await mangaWorker.retryErrors();
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
         }
     });
 

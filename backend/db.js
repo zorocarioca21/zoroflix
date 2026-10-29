@@ -591,6 +591,23 @@ export async function initDB() {
         )
     `);
 
+    // Fila de Downloads Automáticos de Capítulos
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS manga_download_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            manga_id INTEGER NOT NULL,
+            chapter_dex_id TEXT NOT NULL,
+            chapter_number REAL NOT NULL,
+            title TEXT,
+            language TEXT DEFAULT 'pt-br',
+            status TEXT DEFAULT 'pending', -- pending, downloading, completed, error
+            error_message TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(manga_id, chapter_dex_id)
+        )
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");
