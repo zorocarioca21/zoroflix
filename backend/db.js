@@ -608,6 +608,26 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Configuração e Estado do Auto-Ingestor de Mangás
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS manga_auto_importer_config (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            is_enabled INTEGER DEFAULT 0,
+            primary_language TEXT DEFAULT 'pt-br',
+            secondary_language TEXT DEFAULT 'en',
+            order_by TEXT DEFAULT 'followedCount',
+            delay_seconds INTEGER DEFAULT 3,
+            current_offset INTEGER DEFAULT 0,
+            auto_enqueue_chapters INTEGER DEFAULT 1,
+            max_chapters_per_manga INTEGER DEFAULT 0, -- 0 = todos
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await db.run(`
+        INSERT OR IGNORE INTO manga_auto_importer_config (id, is_enabled, primary_language, secondary_language, order_by, delay_seconds, current_offset, auto_enqueue_chapters, max_chapters_per_manga)
+        VALUES (1, 0, 'pt-br', 'en', 'followedCount', 3, 0, 1, 0)
+    `);
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

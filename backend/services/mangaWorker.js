@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 class MangaQueueWorker {
     constructor() {
         this.db = null;
-        this.isRunning = false; // Controle de pausa/início
+        this.isRunning = false; // Controle de pausa/início da fila de downloads
         this.isProcessing = false;
         this.currentJob = null; // { manga_id, manga_title, chapter_number, progress, step }
         this.stats = {
@@ -22,12 +22,84 @@ class MangaQueueWorker {
             totalError: 0
         };
         this.loopTimeout = null;
+
+        // Auto Importer / Auto Sync
+        this.autoImporter = {
+            isEnabled: false,
+            isIngesting: false,
+            primaryLanguage: 'pt-br',
+            secondaryLanguage: 'en',
+            orderBy: 'followedCount',
+            delaySeconds: 3,
+            currentOffset: 0,
+            autoEnqueueChapters: 1,
+            maxChaptersPerManga: 0,
+            statusText: 'Parado',
+            importedCount: 0,
+            loopTimeout: null
+        };
     }
 
-    init(database) {
+    async init(database) {
         this.db = database;
         console.log('[Manga Worker] Serviço de fila de mangás inicializado.');
+        await this.loadAutoImporterConfig();
         this.updateStats();
+
+        // Se estava ativo antes da reinicialização, retoma
+        if (this.autoImporter.isEnabled) {
+            this.startAutoImporter();
+        }
+    }
+
+    async loadAutoImporterConfig() {
+        if (!this.db) return;
+        try {
+            const cfg = await this.db.get("SELECT * FROM manga_auto_importer_config WHERE id = 1");
+            if (cfg) {
+                this.autoImporter.isEnabled = !!cfg.is_enabled;
+                this.autoImporter.primaryLanguage = cfg.primary_language || 'pt-br';
+                this.autoImporter.secondaryLanguage = cfg.secondary_language || 'en';
+                this.autoImporter.orderBy = cfg.order_by || 'followedCount';
+                this.autoImporter.delaySeconds = cfg.delay_seconds || 3;
+                this.autoImporter.currentOffset = cfg.current_offset || 0;
+                this.autoImporter.autoEnqueueChapters = cfg.auto_enqueue_chapters ?? 1;
+                this.autoImporter.maxChaptersPerManga = cfg.max_chapters_per_manga || 0;
+            }
+        } catch (e) {
+            console.error('[Manga Worker] Erro ao carregar config de auto-ingestor:', e.message);
+        }
+    }
+
+    async saveAutoImporterConfig(updates = {}) {
+        if (!this.db) return;
+        Object.assign(this.autoImporter, updates);
+        try {
+            await this.db.run(`
+                UPDATE manga_auto_importer_config SET
+                    is_enabled = ?,
+                    primary_language = ?,
+                    secondary_language = ?,
+                    order_by = ?,
+                    delay_seconds = ?,
+                    current_offset = ?,
+                    auto_enqueue_chapters = ?,
+                    max_chapters_per_manga = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = 1
+            `, [
+                this.autoImporter.isEnabled ? 1 : 0,
+                this.autoImporter.primaryLanguage,
+                this.autoImporter.secondaryLanguage,
+                this.autoImporter.orderBy,
+                this.autoImporter.delaySeconds,
+                this.autoImporter.currentOffset,
+                this.autoImporter.autoEnqueueChapters ? 1 : 0,
+                this.autoImporter.maxChaptersPerManga
+            ]);
+        } catch (e) {
+            console.error('[Manga Worker] Erro ao salvar config de auto-ingestor:', e.message);
+        }
     }
 
     async updateStats() {
@@ -57,7 +129,20 @@ class MangaQueueWorker {
             isRunning: this.isRunning,
             isProcessing: this.isProcessing,
             currentJob: this.currentJob,
-            stats: this.stats
+            stats: this.stats,
+            autoImporter: {
+                isEnabled: this.autoImporter.isEnabled,
+                isIngesting: this.autoImporter.isIngesting,
+                primaryLanguage: this.autoImporter.primaryLanguage,
+                secondaryLanguage: this.autoImporter.secondaryLanguage,
+                orderBy: this.autoImporter.orderBy,
+                delaySeconds: this.autoImporter.delaySeconds,
+                currentOffset: this.autoImporter.currentOffset,
+                autoEnqueueChapters: this.autoImporter.autoEnqueueChapters,
+                maxChaptersPerManga: this.autoImporter.maxChaptersPerManga,
+                statusText: this.autoImporter.statusText,
+                importedCount: this.autoImporter.importedCount
+            }
         };
     }
 
@@ -72,6 +157,174 @@ class MangaQueueWorker {
         this.isRunning = false;
         console.log('[Manga Worker] Fila de download PAUSADA pelo administrador.');
         if (this.loopTimeout) clearTimeout(this.loopTimeout);
+    }
+
+    // Controle do Auto Importer
+    async startAutoImporter() {
+        this.autoImporter.isEnabled = true;
+        await this.saveAutoImporterConfig({ is_enabled: true });
+        console.log('[Manga Auto-Importer] ▶️ Auto-Ingestão iniciada.');
+        this.autoImporter.statusText = 'Ativo - Buscando próximas obras...';
+        this.runAutoImporterStep();
+    }
+
+    async pauseAutoImporter() {
+        this.autoImporter.isEnabled = false;
+        await this.saveAutoImporterConfig({ is_enabled: false });
+        console.log('[Manga Auto-Importer] ⏸️ Auto-Ingestão pausada.');
+        this.autoImporter.statusText = 'Pausado';
+        if (this.autoImporter.loopTimeout) clearTimeout(this.autoImporter.loopTimeout);
+    }
+
+    async resetAutoImporterOffset() {
+        this.autoImporter.currentOffset = 0;
+        await this.saveAutoImporterConfig({ current_offset: 0 });
+        this.autoImporter.statusText = 'Offset reiniciado para 0.';
+    }
+
+    async runAutoImporterStep() {
+        if (!this.autoImporter.isEnabled || this.autoImporter.isIngesting || !this.db) return;
+
+        // Se a fila de downloads estiver com mais de 30 capítulos pendentes, aguarda para não sobrecarregar
+        if (this.stats.totalPending >= 30) {
+            this.autoImporter.statusText = `Fila cheia (${this.stats.totalPending} caps). Aguardando worker processar...`;
+            this.autoImporter.loopTimeout = setTimeout(() => this.runAutoImporterStep(), 10000);
+            return;
+        }
+
+        this.autoImporter.isIngesting = true;
+        const currentLang = this.autoImporter.primaryLanguage;
+
+        try {
+            this.autoImporter.statusText = `Consultando MangaDex (offset: ${this.autoImporter.currentOffset}, ordem: ${this.autoImporter.orderBy})...`;
+            
+            const params = {
+                limit: 10,
+                offset: this.autoImporter.currentOffset,
+                'includes[]': 'cover_art',
+                [`order[${this.autoImporter.orderBy}]`]: 'desc'
+            };
+
+            if (currentLang && currentLang !== 'all') {
+                params['availableTranslatedLanguage[]'] = currentLang;
+            }
+
+            const res = await axios.get('https://api.mangadex.org/manga', {
+                params,
+                timeout: 15000,
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
+
+            const mangaList = res.data.data || [];
+            if (mangaList.length === 0) {
+                this.autoImporter.statusText = 'Fim das obras encontradas no MangaDex.';
+                this.autoImporter.isEnabled = false;
+                await this.saveAutoImporterConfig({ is_enabled: false });
+                this.autoImporter.isIngesting = false;
+                return;
+            }
+
+            for (const dexManga of mangaList) {
+                if (!this.autoImporter.isEnabled) break;
+
+                const dexId = dexManga.id;
+                const title = dexManga.attributes.title.en || 
+                              dexManga.attributes.title['pt-br'] || 
+                              dexManga.attributes.title['ja-ro'] || 
+                              Object.values(dexManga.attributes.title)[0] || 'Sem Título';
+                
+                const coverRel = dexManga.relationships?.find(r => r.type === 'cover_art');
+                const coverFileName = coverRel ? coverRel.attributes?.fileName : null;
+                const coverUrl = coverFileName ? `/api/mangas/cover-proxy?mangaId=${dexId}&file=${coverFileName}` : null;
+                const synopsis = dexManga.attributes.description?.['pt-br'] || dexManga.attributes.description?.en || '';
+                const type = dexManga.attributes.originalLanguage === 'ko' ? 'webtoon' : (dexManga.attributes.originalLanguage === 'en' ? 'hq' : 'manga');
+
+                // 1. Verifica se a obra já existe pelo anilist_id (que guarda o UUID do MangaDex)
+                let localManga = await this.db.get("SELECT * FROM mangas WHERE anilist_id = ?", [dexId]);
+
+                if (!localManga) {
+                    this.autoImporter.statusText = `Cadastrando: ${title}`;
+                    
+                    // Baixar capa local
+                    let localCoverUrl = coverUrl;
+                    try {
+                        const { downloadAndSaveCover } = await import('../routes/mangas.js');
+                        if (downloadAndSaveCover && coverUrl) {
+                            localCoverUrl = await downloadAndSaveCover(coverUrl, title);
+                        }
+                    } catch (eCover) {}
+
+                    const insRes = await this.db.run(`
+                        INSERT INTO mangas (title, original_title, synopsis, cover_url, type, anilist_id)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    `, [title, title, synopsis, localCoverUrl, type, dexId]);
+
+                    localManga = { id: insRes.lastID, title, anilist_id: dexId };
+                    this.autoImporter.importedCount++;
+                }
+
+                // 2. Se autoEnqueueChapters estiver ativo, busca capítulos faltantes e enfileira
+                if (this.autoImporter.autoEnqueueChapters && localManga?.id) {
+                    this.autoImporter.statusText = `Buscando capítulos de "${title}" em ${currentLang}...`;
+                    
+                    const targetLang = (currentLang === 'all' || !currentLang) ? 'pt-br' : currentLang;
+                    
+                    const feedRes = await axios.get(`https://api.mangadex.org/manga/${dexId}/feed`, {
+                        params: {
+                            limit: 250,
+                            'translatedLanguage[]': targetLang,
+                            'order[chapter]': 'asc'
+                        },
+                        timeout: 15000
+                    });
+
+                    let dexChapters = (feedRes.data.data || []).map(ch => ({
+                        id: ch.id,
+                        chapter_number: parseFloat(ch.attributes.chapter) || 0,
+                        title: ch.attributes.title || `Capítulo ${ch.attributes.chapter}`
+                    }));
+
+                    // Se limitou max_chapters_per_manga
+                    if (this.autoImporter.maxChaptersPerManga > 0) {
+                        dexChapters = dexChapters.slice(0, this.autoImporter.maxChaptersPerManga);
+                    }
+
+                    // Filtra os que já temos no banco
+                    const localCaps = await this.db.all("SELECT chapter_number FROM manga_chapters WHERE manga_id = ?", [localManga.id]);
+                    const localNums = new Set(localCaps.map(c => c.chapter_number));
+                    const missing = dexChapters.filter(ch => !localNums.has(ch.chapter_number));
+
+                    if (missing.length > 0) {
+                        await this.addMultipleChaptersToQueue(localManga.id, missing, targetLang);
+                        console.log(`[Manga Auto-Importer] Enfileirados ${missing.length} capítulos de "${title}" (${targetLang}).`);
+                    }
+                }
+
+                // Garante que o worker de download esteja ativo se enfileiramos algo
+                if (!this.isRunning) {
+                    this.start();
+                }
+
+                // Pequeno delay entre cada obra analisada
+                await new Promise(r => setTimeout(r, (this.autoImporter.delaySeconds || 3) * 1000));
+            }
+
+            // Incrementa o offset após processar as 10 obras
+            this.autoImporter.currentOffset += 10;
+            await this.saveAutoImporterConfig({ current_offset: this.autoImporter.currentOffset });
+            this.autoImporter.statusText = `Offset avançado para ${this.autoImporter.currentOffset}. Próximo lote em instantes...`;
+
+        } catch (err) {
+            console.error('[Manga Auto-Importer] Erro na rodada:', err.message);
+            this.autoImporter.statusText = `Aviso: ${err.message}. Tentando novamente em 15s...`;
+        } finally {
+            this.autoImporter.isIngesting = false;
+            if (this.autoImporter.isEnabled) {
+                this.autoImporter.loopTimeout = setTimeout(() => {
+                    this.runAutoImporterStep();
+                }, (this.autoImporter.delaySeconds || 3) * 1000);
+            }
+        }
     }
 
     async addChapterToQueue(manga_id, chapter_dex_id, chapter_number, title, language = 'pt-br') {

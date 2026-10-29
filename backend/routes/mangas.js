@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Helper para baixar capa externa ou do MangaDex e salvar em disco local (/uploads/covers/mangas/)
-async function downloadAndSaveCover(coverUrl, mangaSlugOrId) {
+export async function downloadAndSaveCover(coverUrl, mangaSlugOrId) {
     if (!coverUrl) return null;
     
     // Se já for uma imagem local, retorna como está
@@ -400,8 +400,52 @@ export default function createMangasRouter(db) {
         }
     });
 
+    // 1.1 Estatísticas Globais do MangaDex em Tempo Real (Obras no mundo, PT-BR, EN, ES e capítulos)
+    router.get('/mangadex/global-stats', async (req, res) => {
+        try {
+            const [allManga, ptManga, enManga, esManga, allChapters, ptChapters] = await Promise.all([
+                axios.get('https://api.mangadex.org/manga?limit=1', { timeout: 8000 }).then(r => r.data.total).catch(() => 95000),
+                axios.get('https://api.mangadex.org/manga?limit=1&availableTranslatedLanguage[]=pt-br', { timeout: 8000 }).then(r => r.data.total).catch(() => 13150),
+                axios.get('https://api.mangadex.org/manga?limit=1&availableTranslatedLanguage[]=en', { timeout: 8000 }).then(r => r.data.total).catch(() => 54600),
+                axios.get('https://api.mangadex.org/manga?limit=1&availableTranslatedLanguage[]=es-la', { timeout: 8000 }).then(r => r.data.total).catch(() => 10000),
+                axios.get('https://api.mangadex.org/chapter?limit=1', { timeout: 8000 }).then(r => r.data.total).catch(() => 2024000),
+                axios.get('https://api.mangadex.org/chapter?limit=1&translatedLanguage[]=pt-br', { timeout: 8000 }).then(r => r.data.total).catch(() => 243500)
+            ]);
 
-    // 2. Listar capítulos de um mangá no MangaDex (suporta filtro por idioma)
+            res.json({
+                totalObrasMundo: allManga,
+                totalObrasPtBr: ptManga,
+                totalObrasEn: enManga,
+                totalObrasEsLa: esManga,
+                totalCapitulosMundo: allChapters,
+                totalCapitulosPtBr: ptChapters
+            });
+        } catch (e) {
+            console.error('Erro ao buscar stats globais do mangadex:', e);
+            res.status(500).json({ error: 'Erro ao obter estatísticas' });
+        }
+    });
+
+    // 1.2 Obter detalhes e TODAS as linguagens disponíveis da obra no MangaDex
+    router.get('/mangadex/:id/info', async (req, res) => {
+        try {
+            const { id } = req.params;
+            const response = await axios.get(`https://api.mangadex.org/manga/${id}`, { timeout: 10000 });
+            const mangaData = response.data.data;
+            const availableLanguages = mangaData?.attributes?.availableTranslatedLanguages || [];
+            
+            res.json({
+                id: mangaData.id,
+                title: mangaData.attributes.title,
+                availableLanguages
+            });
+        } catch (e) {
+            console.error('Erro ao buscar info do mangadex:', e.message);
+            res.status(500).json({ error: 'Erro ao buscar informações do mangá' });
+        }
+    });
+
+    // 2. Listar capítulos de um mangá no MangaDex (suporta filtro por qualquer idioma)
     router.get('/mangadex/:id/chapters', async (req, res) => {
         try {
             const { id } = req.params;
@@ -430,6 +474,67 @@ export default function createMangasRouter(db) {
         } catch (e) {
             console.error('Erro ao listar capítulos do mangadex:', e);
             res.status(500).json({ error: 'Erro ao listar capítulos do MangaDex' });
+        }
+    });
+
+    // ==========================================
+    // AUTO-INGESTÃO / AUTO-IMPORTADOR DE MANGÁS
+    // ==========================================
+
+    // Iniciar auto-ingestor
+    router.post('/auto-importer/start', async (req, res) => {
+        try {
+            await mangaWorker.startAutoImporter();
+            res.json({ success: true, message: 'Auto-ingestão iniciada!', status: mangaWorker.getStatus() });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Pausar auto-ingestor
+    router.post('/auto-importer/pause', async (req, res) => {
+        try {
+            await mangaWorker.pauseAutoImporter();
+            res.json({ success: true, message: 'Auto-ingestão pausada!', status: mangaWorker.getStatus() });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Salvar configurações do auto-ingestor
+    router.post('/auto-importer/config', async (req, res) => {
+        try {
+            const { 
+                primaryLanguage, 
+                orderBy, 
+                delaySeconds, 
+                currentOffset, 
+                autoEnqueueChapters, 
+                maxChaptersPerManga 
+            } = req.body;
+
+            await mangaWorker.saveAutoImporterConfig({
+                primaryLanguage: primaryLanguage || mangaWorker.autoImporter.primaryLanguage,
+                orderBy: orderBy || mangaWorker.autoImporter.orderBy,
+                delaySeconds: Number(delaySeconds) >= 1 ? Number(delaySeconds) : 3,
+                currentOffset: Number(currentOffset) >= 0 ? Number(currentOffset) : mangaWorker.autoImporter.currentOffset,
+                autoEnqueueChapters: autoEnqueueChapters !== undefined ? (autoEnqueueChapters ? 1 : 0) : 1,
+                maxChaptersPerManga: Number(maxChaptersPerManga) >= 0 ? Number(maxChaptersPerManga) : 0
+            });
+
+            res.json({ success: true, message: 'Configurações atualizadas com sucesso!', status: mangaWorker.getStatus() });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    // Resetar offset do auto-ingestor para o início (0)
+    router.post('/auto-importer/reset-offset', async (req, res) => {
+        try {
+            await mangaWorker.resetAutoImporterOffset();
+            res.json({ success: true, message: 'Offset reiniciado para 0!', status: mangaWorker.getStatus() });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
         }
     });
 

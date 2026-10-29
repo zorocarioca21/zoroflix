@@ -7,6 +7,7 @@ import {
 export default function AdminMangaChapters({ manga, token, onBack }) {
     const [localChapters, setLocalChapters] = useState([]);
     const [mangadexChapters, setMangadexChapters] = useState([]);
+    const [availableLanguages, setAvailableLanguages] = useState([]);
     const [loadingLocal, setLoadingLocal] = useState(false);
     const [loadingDex, setLoadingDex] = useState(false);
     const [selectedLanguage, setSelectedLanguage] = useState('pt-br');
@@ -23,6 +24,30 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
     // Seleção múltipla para download em lote
     const [selectedChapters, setSelectedChapters] = useState(new Set());
     const [actionLoading, setActionLoading] = useState(false);
+
+    // 0. Fetch Available Languages for this manga from MangaDex
+    const fetchMangaInfo = async () => {
+        if (!manga.anilist_id) return;
+        try {
+            const res = await fetch(`/api/mangas/mangadex/${manga.anilist_id}/info`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.availableLanguages && Array.isArray(data.availableLanguages)) {
+                setAvailableLanguages(data.availableLanguages);
+                // Se pt-br não estiver disponível nas linguagens da obra, seleciona a primeira disponível
+                if (data.availableLanguages.length > 0 && !data.availableLanguages.includes('pt-br')) {
+                    if (data.availableLanguages.includes('en')) {
+                        setSelectedLanguage('en');
+                    } else {
+                        setSelectedLanguage(data.availableLanguages[0]);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao buscar linguagens da obra:', e);
+        }
+    };
 
     // 1. Fetch Local Chapters
     const fetchLocalChapters = async () => {
@@ -76,6 +101,10 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
             }
         } catch (e) {}
     };
+
+    useEffect(() => {
+        fetchMangaInfo();
+    }, [manga.anilist_id]);
 
     useEffect(() => {
         fetchLocalChapters();
@@ -217,12 +246,37 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
         }
     };
 
-    const languages = [
-        { id: 'pt-br', label: '🇧🇷 Português (PT-BR)' },
-        { id: 'en', label: '🇺🇸 Inglês (EN)' },
-        { id: 'es-la', label: '🇪🇸 Espanhol (ES)' },
-        { id: 'ja', label: '🇯🇵 Japonês (JA)' }
-    ];
+    const LANGUAGE_NAMES = {
+        'pt-br': { flag: '🇧🇷', name: 'Português' },
+        'en': { flag: '🇺🇸', name: 'Inglês' },
+        'es-la': { flag: '🇲🇽', name: 'Espanhol Latino' },
+        'es': { flag: '🇪🇸', name: 'Espanhol' },
+        'ja': { flag: '🇯🇵', name: 'Japonês' },
+        'ko': { flag: '🇰🇷', name: 'Coreano' },
+        'zh': { flag: '🇨🇳', name: 'Chinês' },
+        'fr': { flag: '🇫🇷', name: 'Francês' },
+        'de': { flag: '🇩🇪', name: 'Alemão' },
+        'it': { flag: '🇮🇹', name: 'Italiano' },
+        'ru': { flag: '🇷🇺', name: 'Russo' },
+        'id': { flag: '🇮🇩', name: 'Indonésio' },
+        'tr': { flag: '🇹🇷', name: 'Turco' },
+        'pl': { flag: '🇵🇱', name: 'Polonês' },
+        'vi': { flag: '🇻🇳', name: 'Vietnamita' },
+        'ar': { flag: '🇸🇦', name: 'Árabe' },
+        'th': { flag: '🇹🇭', name: 'Tailandês' }
+    };
+
+    const languages = availableLanguages.length > 0 
+        ? availableLanguages.map(code => ({
+            id: code,
+            label: `${LANGUAGE_NAMES[code]?.flag || '🌐'} ${LANGUAGE_NAMES[code]?.name || code.toUpperCase()}`
+        }))
+        : [
+            { id: 'pt-br', label: '🇧🇷 Português' },
+            { id: 'en', label: '🇺🇸 Inglês' },
+            { id: 'es-la', label: '🇲🇽 Espanhol Latino' },
+            { id: 'ja', label: '🇯🇵 Japonês' }
+        ];
 
     const currentMangaItemsInQueue = queueStatus.items?.filter(i => i.manga_id === manga.id) || [];
 
@@ -405,10 +459,12 @@ export default function AdminMangaChapters({ manga, token, onBack }) {
 
             {/* SELETOR DE IDIOMAS EM PÍLULAS */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                     <Globe size={18} color="var(--primary)" />
-                    <span style={{ fontWeight: '800', fontSize: '0.9rem' }}>Idioma de Download:</span>
-                    <div style={{ display: 'flex', gap: '0.4rem', background: 'rgba(0,0,0,0.5)', padding: '3px', borderRadius: '25px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <span style={{ fontWeight: '800', fontSize: '0.9rem' }}>
+                        Idiomas Disponíveis na Obra ({languages.length}):
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', background: 'rgba(0,0,0,0.5)', padding: '4px', borderRadius: '25px', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '110px', overflowY: 'auto' }}>
                         {languages.map(lang => (
                             <button
                                 key={lang.id}
