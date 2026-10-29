@@ -551,7 +551,31 @@ class MangaQueueWorker {
         this.currentJob.progress = 90;
 
         let messageId = null;
-        const caption = `📚 **${manga_title}**\n\n📖 Capítulo: ${chapter_number}\n📝 Título: ${title || 'N/A'}\n👥 Scan: ${scan_group || 'Padrão'}\n📄 Páginas: ${pagesCount}`;
+
+        // Dicionário de bandeiras e nomes amigáveis para a legenda
+        const LANG_MAP = {
+            'pt-br': '🇧🇷 Português (Brasil)',
+            'en': '🇺🇸 Inglês',
+            'es-la': '🇲🇽 Espanhol (Latino)',
+            'es': '🇪🇸 Espanhol',
+            'ja': '🇯🇵 Japonês',
+            'ko': '🇰🇷 Coreano',
+            'zh': '🇨🇳 Chinês'
+        };
+        const langDisplay = LANG_MAP[language?.toLowerCase()] || `🌐 ${language?.toUpperCase() || 'PT-BR'}`;
+        const sizeMb = (fileSize / (1024 * 1024)).toFixed(1);
+
+        const caption = [
+            `📚 **${manga_title}**`,
+            ``,
+            `📖 **Capítulo:** ${chapter_number}`,
+            `📝 **Título:** ${title || 'Sem título específico'}`,
+            `👥 **Scan:** ${scan_group || 'Padrão'}`,
+            `🌐 **Idioma:** ${langDisplay}`,
+            `📄 **Páginas:** ${pagesCount} páginas`,
+            `📦 **Tamanho:** ${sizeMb} MB`,
+            `🏷️ **ID Dex:** \`${chapter_dex_id}\``
+        ].join('\n');
 
         // 4.1 Pyrogram
         try {
