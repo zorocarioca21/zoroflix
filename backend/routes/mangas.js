@@ -57,6 +57,44 @@ export default function createMangasRouter(db) {
         }
     });
 
+    // Proxy seguro de capas do MangaDex (com Referer e User-Agent para entregar a capa oficial colorida)
+    router.get('/cover-proxy', async (req, res) => {
+        try {
+            const { mangaId, file } = req.query;
+            if (!mangaId || !file) return res.status(400).send('Faltam parâmetros');
+
+            const targetUrl = `https://uploads.mangadex.org/covers/${mangaId}/${file}.512.jpg`;
+            const fallbackUrl = `https://uploads.mangadex.org/covers/${mangaId}/${file}`;
+
+            let imgRes;
+            try {
+                imgRes = await axios.get(targetUrl, {
+                    responseType: 'stream',
+                    headers: {
+                        'Referer': 'https://mangadex.org/',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    },
+                    timeout: 7000
+                });
+            } catch (err512) {
+                imgRes = await axios.get(fallbackUrl, {
+                    responseType: 'stream',
+                    headers: {
+                        'Referer': 'https://mangadex.org/',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    },
+                    timeout: 7000
+                });
+            }
+
+            res.setHeader('Content-Type', imgRes.headers['content-type'] || 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=604800'); // Cache de 7 dias
+            imgRes.data.pipe(res);
+        } catch (e) {
+            res.status(404).send('Erro ao carregar capa');
+        }
+    });
+
     // Obter detalhes de um mangá
     router.get('/:id', async (req, res) => {
         try {
@@ -284,43 +322,6 @@ export default function createMangasRouter(db) {
         }
     });
 
-    // Proxy seguro de capas do MangaDex (com Referer e User-Agent para entregar a capa oficial colorida)
-    router.get('/cover-proxy', async (req, res) => {
-        try {
-            const { mangaId, file } = req.query;
-            if (!mangaId || !file) return res.status(400).send('Faltam parâmetros');
-
-            const targetUrl = `https://uploads.mangadex.org/covers/${mangaId}/${file}.512.jpg`;
-            const fallbackUrl = `https://uploads.mangadex.org/covers/${mangaId}/${file}`;
-
-            let imgRes;
-            try {
-                imgRes = await axios.get(targetUrl, {
-                    responseType: 'stream',
-                    headers: {
-                        'Referer': 'https://mangadex.org/',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 7000
-                });
-            } catch (err512) {
-                imgRes = await axios.get(fallbackUrl, {
-                    responseType: 'stream',
-                    headers: {
-                        'Referer': 'https://mangadex.org/',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    },
-                    timeout: 7000
-                });
-            }
-
-            res.setHeader('Content-Type', imgRes.headers['content-type'] || 'image/jpeg');
-            res.setHeader('Cache-Control', 'public, max-age=604800'); // Cache de 7 dias
-            imgRes.data.pipe(res);
-        } catch (e) {
-            res.status(404).send('Erro ao carregar capa');
-        }
-    });
 
     // 2. Listar capítulos de um mangá no MangaDex
     router.get('/mangadex/:id/chapters', async (req, res) => {
