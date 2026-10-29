@@ -8,8 +8,72 @@ import { spawn } from 'child_process';
 import { getTelegramClient } from '../telegram.js';
 import { CustomFile } from 'telegram/client/uploads.js';
 
+import { UPLOADS_PATH } from '../db.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Helper para baixar capa externa ou do MangaDex e salvar em disco local (/uploads/covers/mangas/)
+async function downloadAndSaveCover(coverUrl, mangaSlugOrId) {
+    if (!coverUrl) return null;
+    
+    // Se já for uma imagem local, retorna como está
+    if (coverUrl.startsWith('/uploads/')) return coverUrl;
+
+    try {
+        const coversDir = path.join(UPLOADS_PATH, 'covers', 'mangas');
+        if (!fs.existsSync(coversDir)) {
+            fs.mkdirSync(coversDir, { recursive: true });
+        }
+
+        let targetUrl = coverUrl;
+        let reqHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        };
+
+        // Se for URL do nosso proxy local (/api/mangas/cover-proxy?mangaId=...&file=...)
+        if (coverUrl.includes('/api/mangas/cover-proxy')) {
+            const urlObj = new URL(coverUrl, 'http://localhost');
+            const mangaId = urlObj.searchParams.get('mangaId');
+            const file = urlObj.searchParams.get('file');
+            if (mangaId && file) {
+                targetUrl = `https://uploads.mangadex.org/covers/${mangaId}/${file}.512.jpg`;
+                reqHeaders['Referer'] = 'https://mangadex.org/';
+            }
+        } else if (coverUrl.includes('mangadex.org')) {
+            reqHeaders['Referer'] = 'https://mangadex.org/';
+        }
+
+        const safeId = String(mangaSlugOrId || Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filename = `manga_${safeId}_${Date.now()}.jpg`;
+        const destPath = path.join(coversDir, filename);
+
+        let response;
+        try {
+            response = await axios.get(targetUrl, {
+                responseType: 'arraybuffer',
+                headers: reqHeaders,
+                timeout: 10000
+            });
+        } catch (err512) {
+            // Se falhou o .512.jpg, tenta a URL normal sem .512.jpg
+            const fallbackUrl = targetUrl.replace('.512.jpg', '');
+            response = await axios.get(fallbackUrl, {
+                responseType: 'arraybuffer',
+                headers: reqHeaders,
+                timeout: 10000
+            });
+        }
+
+        fs.writeFileSync(destPath, response.data);
+        console.log(`[Manga Cover] Capa baixada com sucesso e salva em: ${destPath}`);
+        return `/uploads/covers/mangas/${filename}`;
+    } catch (e) {
+        console.warn(`[Manga Cover] Falha ao baixar capa local (${coverUrl}):`, e.message);
+        // Em caso de erro ao baixar, mantém a coverUrl original como fallback seguro
+        return coverUrl;
+    }
+}
 
 export default function createMangasRouter(db) {
     const router = express.Router();
@@ -45,12 +109,15 @@ export default function createMangasRouter(db) {
                 return res.status(400).json({ error: 'O título é obrigatório.' });
             }
 
+            // Baixar a capa para a VPS caso venha do MangaDex ou URL externa
+            const localCoverUrl = await downloadAndSaveCover(cover_url, title);
+
             const result = await db.run(`
                 INSERT INTO mangas (title, original_title, synopsis, cover_url, banner_url, author, genres, status, type, year, anilist_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [title, original_title, synopsis, cover_url, banner_url, author, genres, status, type, year, anilist_id]);
+            `, [title, original_title, synopsis, localCoverUrl, banner_url, author, genres, status, type, year, anilist_id]);
 
-            res.status(201).json({ success: true, id: result.lastID });
+            res.status(201).json({ success: true, id: result.lastID, cover_url: localCoverUrl });
         } catch (e) {
             console.error('Erro ao criar mangá:', e);
             res.status(500).json({ error: 'Erro interno do servidor.' });
@@ -143,7 +210,16 @@ export default function createMangasRouter(db) {
                 }
             } catch (cacheErr) {}
 
-            // 3. Remove do banco de dados
+            // 3. Remove a capa do disco se for local
+            const mangaToDelete = await db.get("SELECT cover_url FROM mangas WHERE id = ?", [id]);
+            if (mangaToDelete && mangaToDelete.cover_url && mangaToDelete.cover_url.startsWith('/uploads/covers/mangas/')) {
+                try {
+                    const localCoverFile = path.join(UPLOADS_PATH, mangaToDelete.cover_url.replace('/uploads/', ''));
+                    if (fs.existsSync(localCoverFile)) fs.unlinkSync(localCoverFile);
+                } catch (delCoverErr) {}
+            }
+
+            // 4. Remove do banco de dados
             await db.run("DELETE FROM manga_chapters WHERE manga_id = ?", [id]);
             await db.run("DELETE FROM mangas WHERE id = ?", [id]);
 
