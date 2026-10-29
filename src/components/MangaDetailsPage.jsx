@@ -288,7 +288,7 @@ export default function MangaDetailsPage() {
                                             Capítulo {ch.chapter_number}
                                         </h4>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                            {ch.pages_count} páginas • {(ch.file_size / 1024 / 1024).toFixed(1)} MB
+                                            {ch.pages_count} {ch.pages_count === 1 ? 'página' : 'páginas'}
                                         </div>
                                     </div>
                                     <span style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '800' }}>
