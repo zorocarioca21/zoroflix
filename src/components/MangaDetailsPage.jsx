@@ -45,10 +45,36 @@ export default function MangaDetailsPage() {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
+            const data = await res.json();
             if (res.ok) {
-                fetchDetails();
+                if (data.mangaDeleted) {
+                    window.alert('O último capítulo foi deletado e a obra sem capítulos foi removida do catálogo.');
+                    navigate('/mangas');
+                } else {
+                    fetchDetails();
+                }
             } else {
-                window.alert('Erro ao apagar capítulo');
+                window.alert(data.error || 'Erro ao apagar capítulo');
+            }
+        } catch (e) {
+            window.alert('Falha na comunicação');
+        }
+    };
+
+    const handleDeleteManga = async () => {
+        if (!window.confirm(`Tem certeza que deseja apagar a obra "${manga.title}" completa e todos os seus capítulos do site e do canal?`)) return;
+        try {
+            const token = localStorage.getItem('cinegeek_token');
+            const res = await fetch(`/api/mangas/${manga.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.alert('Obra apagada com sucesso!');
+                navigate('/mangas');
+            } else {
+                window.alert(data.error || 'Erro ao apagar obra');
             }
         } catch (e) {
             window.alert('Falha na comunicação');
@@ -113,21 +139,46 @@ export default function MangaDetailsPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                        <span style={{
-                            background: '#ff3366',
-                            color: '#fff',
-                            fontSize: '0.75rem',
-                            fontWeight: '800',
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '6px',
-                            textTransform: 'uppercase'
-                        }}>
-                            {manga.type || 'Manga'}
-                        </span>
-                        <span style={{ color: '#00ff88', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                            {chapters.length} {chapters.length === 1 ? 'Capítulo disponível' : 'Capítulos disponíveis'}
-                        </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <span style={{
+                                background: '#ff3366',
+                                color: '#fff',
+                                fontSize: '0.75rem',
+                                fontWeight: '800',
+                                padding: '0.2rem 0.6rem',
+                                borderRadius: '6px',
+                                textTransform: 'uppercase'
+                            }}>
+                                {manga.type || 'Manga'}
+                            </span>
+                            <span style={{ color: '#00ff88', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                {chapters.length} {chapters.length === 1 ? 'Capítulo disponível' : 'Capítulos disponíveis'}
+                            </span>
+                        </div>
+
+                        {user?.role === 'admin' && (
+                            <button
+                                onClick={handleDeleteManga}
+                                title="Excluir Obra Completa (Site e Telegram)"
+                                style={{
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                                    color: '#ef4444',
+                                    padding: '0.4rem 0.8rem',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 'bold',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Trash2 size={15} /> Excluir Obra
+                            </button>
+                        )}
                     </div>
 
                     <h1 style={{ margin: '0 0 0.8rem 0', fontSize: '2.2rem', fontWeight: '800' }}>{manga.title}</h1>

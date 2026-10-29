@@ -203,6 +203,23 @@ export default function MangasPage() {
                                 }}>
                                     {(manga.type || 'manga').toUpperCase()}
                                 </div>
+                                {manga.chapters_count !== undefined && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        bottom: '10px',
+                                        left: '10px',
+                                        background: 'rgba(0,0,0,0.75)',
+                                        backdropFilter: 'blur(4px)',
+                                        color: '#00ff88',
+                                        padding: '0.2rem 0.5rem',
+                                        borderRadius: '6px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: '700',
+                                        border: '1px solid rgba(0, 255, 136, 0.3)'
+                                    }}>
+                                        {manga.chapters_count} {manga.chapters_count === 1 ? 'Capítulo' : 'Capítulos'}
+                                    </div>
+                                )}
                             </div>
                             <div style={{ padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
                                 <h3 style={{

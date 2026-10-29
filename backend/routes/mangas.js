@@ -17,7 +17,18 @@ export default function createMangasRouter(db) {
     // Listar mangás (admin e público)
     router.get('/', async (req, res) => {
         try {
-            const mangas = await db.all("SELECT * FROM mangas ORDER BY updated_at DESC");
+            const includeEmpty = req.query.includeEmpty === 'true';
+            let query = `
+                SELECT m.*, 
+                (SELECT COUNT(*) FROM manga_chapters WHERE manga_id = m.id) as chapters_count
+                FROM mangas m
+            `;
+            if (!includeEmpty) {
+                query += " WHERE (SELECT COUNT(*) FROM manga_chapters WHERE manga_id = m.id) > 0";
+            }
+            query += " ORDER BY m.updated_at DESC";
+
+            const mangas = await db.all(query);
             res.json({ mangas });
         } catch (e) {
             console.error('Erro ao listar mangás:', e);
@@ -121,7 +132,7 @@ export default function createMangasRouter(db) {
     router.delete('/chapters/:chapterId', async (req, res) => {
         try {
             const { chapterId } = req.params;
-            const chapter = await db.get("SELECT telegram_message_id FROM manga_chapters WHERE id = ?", [chapterId]);
+            const chapter = await db.get("SELECT telegram_message_id, manga_id FROM manga_chapters WHERE id = ?", [chapterId]);
 
             if (chapter && chapter.telegram_message_id) {
                 // 1. Apaga a mensagem do Telegram
@@ -148,7 +159,22 @@ export default function createMangasRouter(db) {
 
             // 3. Remove do banco de dados
             await db.run("DELETE FROM manga_chapters WHERE id = ?", [chapterId]);
-            res.json({ success: true, message: 'Capítulo deletado com sucesso!' });
+
+            // 4. Se a obra ficou com 0 capítulos, remove a obra também para não ficar card vazio no site
+            let mangaDeleted = false;
+            if (chapter && chapter.manga_id) {
+                const remaining = await db.get("SELECT COUNT(*) as count FROM manga_chapters WHERE manga_id = ?", [chapter.manga_id]);
+                if (!remaining || remaining.count === 0) {
+                    await db.run("DELETE FROM mangas WHERE id = ?", [chapter.manga_id]);
+                    mangaDeleted = true;
+                }
+            }
+
+            res.json({ 
+                success: true, 
+                mangaDeleted,
+                message: mangaDeleted ? 'Capítulo e obra removidos com sucesso (sem mais capítulos restantes)!' : 'Capítulo deletado com sucesso!' 
+            });
         } catch (e) {
             console.error('Erro ao deletar capítulo:', e);
             res.status(500).json({ error: 'Erro interno ao deletar capítulo' });

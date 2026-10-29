@@ -18,7 +18,7 @@ export default function AdminMangas({ token }) {
     const fetchMangas = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/mangas', {
+            const res = await fetch('/api/mangas?includeEmpty=true', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
