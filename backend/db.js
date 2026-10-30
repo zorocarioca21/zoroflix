@@ -623,9 +623,19 @@ export async function initDB() {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
-    await db.run(`
-        INSERT OR IGNORE INTO manga_auto_importer_config (id, is_enabled, primary_language, secondary_language, order_by, delay_seconds, current_offset, auto_enqueue_chapters, max_chapters_per_manga)
-        VALUES (1, 0, 'pt-br', 'en', 'followedCount', 3, 0, 1, 0)
+    // Tabela de Salas de Watch Party (Persistência de salas, privacidade e senhas)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS watch_party_rooms (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            creator_id INTEGER,
+            creator_nick TEXT,
+            creator_avatar TEXT,
+            is_private INTEGER DEFAULT 0,
+            password TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
     `);
 
     // Inserir configurações padrão se não existirem

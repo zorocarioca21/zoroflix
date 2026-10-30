@@ -1254,43 +1254,70 @@ export default function WatchPartyPage() {
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    background: '#121217',
-                    height: isMobile ? 'calc(100vh - 360px)' : '100%',
-                    minHeight: isMobile ? '350px' : 'auto',
-                    position: 'relative'
+                    background: '#0d1310',
+                    borderLeft: isMobile ? 'none' : '1px solid rgba(0, 230, 118, 0.15)',
+                    height: isMobile ? '480px' : '100%',
+                    maxHeight: isMobile ? '480px' : 'calc(100vh - 67px)',
+                    position: 'relative',
+                    overflow: 'hidden'
                 }}>
                     {/* Cabeçalho do Chat */}
                     <div style={{
-                        padding: '1rem',
-                        borderBottom: '1px solid #27272a',
+                        padding: '0.85rem 1rem',
+                        borderBottom: '1px solid rgba(0, 230, 118, 0.12)',
+                        background: 'rgba(9, 30, 20, 0.7)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
+                        justifyContent: 'space-between',
+                        flexShrink: 0
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%',
-                                background: '#10b981',
-                                boxShadow: '0 0 8px #10b981'
+                                background: '#00e676',
+                                boxShadow: '0 0 10px #00e676'
                             }}></div>
-                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Chat da Sala</h3>
+                            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#fff' }}>Chat da Sala</h3>
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: '#71717a' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#00e676', fontWeight: '600' }}>
                             {roomState?.participantsCount || 1} online
                         </span>
                     </div>
 
-                    {/* Mensagens do Chat */}
-                    <div style={{
-                        flex: 1,
-                        padding: '1rem',
-                        overflowY: 'auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.8rem'
-                    }}>
+                    {/* Mensagens do Chat com Contenção de Altura Estilo Rave (~10 mensagens visíveis) */}
+                    <div 
+                        id="wp-chat-container"
+                        style={{
+                            flex: 1,
+                            padding: '1rem',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem',
+                            minHeight: 0,
+                            scrollBehavior: 'smooth'
+                        }}
+                    >
+                        {(!roomState?.chatMessages || roomState.chatMessages.length === 0) && (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%',
+                                color: '#6ee7b7',
+                                opacity: 0.6,
+                                textAlign: 'center',
+                                fontSize: '0.8rem',
+                                padding: '1rem'
+                            }}>
+                                <Sparkles size={24} style={{ marginBottom: '6px' }} />
+                                <span>Envie a primeira mensagem para a sala!</span>
+                            </div>
+                        )}
                         {roomState?.chatMessages?.map((msg) => (
                             <div key={msg.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                 <img
@@ -1304,21 +1331,21 @@ export default function WatchPartyPage() {
                                         objectFit: 'cover',
                                         cursor: msg.userId ? 'pointer' : 'default',
                                         transition: 'transform 0.15s',
-                                        border: msg.role === 'creator' ? '2px solid #eab308' : msg.role === 'subowner' ? '2px solid #38bdf8' : '1px solid #27272a'
+                                        border: msg.role === 'creator' ? '2px solid #eab308' : msg.role === 'subowner' ? '2px solid #00e676' : '1px solid #27272a',
+                                        flexShrink: 0
                                     }}
                                     onError={(e) => { e.target.src = '/default-avatar.svg'; }}
                                     title={msg.userId ? `Ver perfil de ${msg.nick}` : undefined}
                                 />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
                                         <span
                                             onClick={() => msg.userId && handleOpenUserProfile(msg.userId, msg)}
                                             style={{
                                                 fontSize: '0.85rem',
                                                 fontWeight: '700',
                                                 color: '#f4f4f5',
-                                                cursor: msg.userId ? 'pointer' : 'default',
-                                                textDecoration: msg.userId ? 'none' : 'none'
+                                                cursor: msg.userId ? 'pointer' : 'default'
                                             }}
                                             onMouseEnter={(e) => { if (msg.userId) e.target.style.textDecoration = 'underline'; }}
                                             onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
@@ -1327,17 +1354,17 @@ export default function WatchPartyPage() {
                                         </span>
                                         {/* Badges com Ícones Vetoriais SVG */}
                                         {msg.role === 'creator' && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
                                                 <Crown size={11} /> Dono
                                             </span>
                                         )}
                                         {msg.role === 'subowner' && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
                                                 <ShieldCheck size={11} /> Subdono
                                             </span>
                                         )}
                                         {msg.role === 'system' && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(0, 230, 118, 0.15)', color: '#00e676', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
                                                 <Sparkles size={11} /> Sala
                                             </span>
                                         )}
@@ -1367,14 +1394,14 @@ export default function WatchPartyPage() {
                             position: 'absolute',
                             bottom: '75px',
                             right: '15px',
-                            background: '#1c1c24',
-                            border: '1px solid #3f3f46',
+                            background: '#141c18',
+                            border: '1px solid rgba(0, 230, 118, 0.25)',
                             borderRadius: '16px',
                             padding: '12px',
                             width: '280px',
                             maxHeight: '220px',
                             overflowY: 'auto',
-                            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                            boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
                             zIndex: 1000,
                             display: 'grid',
                             gridTemplateColumns: 'repeat(6, 1fr)',
@@ -1393,7 +1420,7 @@ export default function WatchPartyPage() {
                                         borderRadius: '8px',
                                         transition: 'background 0.15s'
                                     }}
-                                    onMouseEnter={(e) => e.target.style.background = '#27272a'}
+                                    onMouseEnter={(e) => e.target.style.background = 'rgba(0, 230, 118, 0.2)'}
                                     onMouseLeave={(e) => e.target.style.background = 'transparent'}
                                 >
                                     {emoji}
@@ -1405,8 +1432,9 @@ export default function WatchPartyPage() {
                     {/* BARRA DE DIGITAÇÃO COM TRAVA DE MUTE */}
                     <div style={{
                         padding: '0.8rem 1rem',
-                        borderTop: '1px solid #27272a',
-                        background: '#18181f'
+                        borderTop: '1px solid rgba(0, 230, 118, 0.12)',
+                        background: 'rgba(9, 25, 17, 0.9)',
+                        flexShrink: 0
                     }}>
                         {isMutedInChat ? (
                             <div style={{
@@ -1430,16 +1458,17 @@ export default function WatchPartyPage() {
                                     type="button"
                                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                     style={{
-                                        background: showEmojiPicker ? '#ec4899' : '#27272a',
-                                        color: showEmojiPicker ? '#fff' : '#a1a1aa',
-                                        border: 'none',
+                                        background: showEmojiPicker ? '#00e676' : 'rgba(255,255,255,0.06)',
+                                        color: showEmojiPicker ? '#000' : '#a1a1aa',
+                                        border: '1px solid rgba(255,255,255,0.1)',
                                         width: '38px',
                                         height: '38px',
                                         borderRadius: '10px',
                                         cursor: 'pointer',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        flexShrink: 0
                                     }}
                                     title="Seletor de Emojis do Chat"
                                 >
@@ -1453,8 +1482,8 @@ export default function WatchPartyPage() {
                                     onChange={(e) => setChatInput(e.target.value)}
                                     style={{
                                         flex: 1,
-                                        background: '#09090b',
-                                        border: '1px solid #27272a',
+                                        background: '#090e0c',
+                                        border: '1px solid rgba(0, 230, 118, 0.2)',
                                         borderRadius: '10px',
                                         padding: '10px 14px',
                                         color: '#fff',
@@ -1467,8 +1496,8 @@ export default function WatchPartyPage() {
                                     type="submit"
                                     disabled={!chatInput.trim()}
                                     style={{
-                                        background: '#ec4899',
-                                        color: '#fff',
+                                        background: chatInput.trim() ? '#00e676' : 'rgba(0, 230, 118, 0.2)',
+                                        color: '#000',
                                         border: 'none',
                                         width: '38px',
                                         height: '38px',
@@ -1477,7 +1506,10 @@ export default function WatchPartyPage() {
                                         opacity: chatInput.trim() ? 1 : 0.5,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        fontWeight: '700',
+                                        flexShrink: 0,
+                                        boxShadow: chatInput.trim() ? '0 0 10px rgba(0, 230, 118, 0.4)' : 'none'
                                     }}
                                     title="Enviar mensagem"
                                 >
@@ -2653,12 +2685,13 @@ export default function WatchPartyPage() {
                                     style={{
                                         flex: 1,
                                         padding: '12px',
-                                        background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                                        color: '#fff',
+                                        background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                        color: '#000',
                                         border: 'none',
                                         borderRadius: '12px',
-                                        fontWeight: '700',
-                                        cursor: 'pointer'
+                                        fontWeight: '800',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 16px rgba(0, 230, 118, 0.4)'
                                     }}
                                 >
                                     Entrar na Sala

@@ -12,12 +12,91 @@ class WatchPartyService {
     init(io, db) {
         this.io = io;
         this.db = db;
-        console.log('[WatchParty] Serviço de Watch Party inicializado com WebSockets.');
+        console.log('[WatchParty] Serviço de Watch Party inicializado com WebSockets e DB.');
+
+        // Carrega do banco de dados salas persistidas
+        this.loadRoomsFromDB();
 
         // Intervalo periódico para salvar o progresso de todos os usuários em watch_history
         setInterval(() => {
             this.syncWatchProgressAllRooms();
         }, 15000); // A cada 15 segundos
+    }
+
+    async loadRoomsFromDB() {
+        if (!this.db) return;
+        try {
+            const rows = await this.db.all('SELECT * FROM watch_party_rooms');
+            for (const row of rows) {
+                // Cria a sala em memória com os dados persistidos no banco
+                this.rooms.set(row.id, {
+                    id: row.id,
+                    name: row.name || `Sala de ${row.creator_nick}`,
+                    creatorId: row.creator_id,
+                    creatorNick: row.creator_nick,
+                    creatorAvatar: row.creator_avatar || '/default-avatar.svg',
+                    isPrivate: !!row.is_private,
+                    password: row.password ? String(row.password).trim() : '',
+                    createdAt: new Date(row.created_at).getTime() || Date.now(),
+                    subowners: new Set(),
+                    mutedUsers: new Set(),
+                    bannedUsers: new Set(),
+                    participants: new Map(),
+                    pastParticipants: [],
+                    playerState: {
+                        currentMedia: null,
+                        isPlaying: false,
+                        currentTime: 0,
+                        updatedAt: Date.now()
+                    },
+                    queue: [],
+                    settings: {
+                        isPublic: !row.is_private,
+                        allowChat: true,
+                        anyoneCanAddQueue: true,
+                        anyoneCanInvite: true
+                    },
+                    chatMessages: []
+                });
+            }
+            console.log(`[WatchParty] ${rows.length} salas carregadas do DB.`);
+        } catch (err) {
+            console.error('[WatchParty] Erro ao carregar salas do DB:', err.message);
+        }
+    }
+
+    async saveRoomToDB(room) {
+        if (!this.db || !room) return;
+        try {
+            await this.db.run(`
+                INSERT INTO watch_party_rooms (id, name, creator_id, creator_nick, creator_avatar, is_private, password, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    is_private = excluded.is_private,
+                    password = excluded.password,
+                    updated_at = CURRENT_TIMESTAMP
+            `, [
+                room.id,
+                room.name,
+                room.creatorId,
+                room.creatorNick,
+                room.creatorAvatar,
+                room.isPrivate ? 1 : 0,
+                room.password ? String(room.password).trim() : ''
+            ]);
+        } catch (err) {
+            console.error('[WatchParty] Erro ao salvar sala no DB:', err.message);
+        }
+    }
+
+    async deleteRoomFromDB(roomId) {
+        if (!this.db) return;
+        try {
+            await this.db.run('DELETE FROM watch_party_rooms WHERE id = ?', [roomId]);
+        } catch (err) {
+            console.error('[WatchParty] Erro ao deletar sala do DB:', err.message);
+        }
     }
 
     // Salva progresso individual de cada usuário na sala na tabela watch_history
@@ -113,7 +192,8 @@ class WatchPartyService {
             const existing = this.rooms.get(roomId);
             if (roomOptions.name) existing.name = roomOptions.name;
             if (roomOptions.isPrivate !== undefined) existing.isPrivate = !!roomOptions.isPrivate;
-            if (roomOptions.password !== undefined) existing.password = roomOptions.password;
+            if (roomOptions.password !== undefined && roomOptions.password !== '') existing.password = String(roomOptions.password).trim();
+            this.saveRoomToDB(existing);
             return existing;
         }
 
@@ -124,7 +204,7 @@ class WatchPartyService {
             creatorNick: creatorUser ? creatorUser.nick : 'Anônimo',
             creatorAvatar: creatorUser ? creatorUser.avatar : '/default-avatar.svg',
             isPrivate: !!roomOptions.isPrivate,
-            password: roomOptions.password || '',
+            password: roomOptions.password ? String(roomOptions.password).trim() : '',
             createdAt: Date.now(),
             subowners: new Set(), // Set of userIds
             mutedUsers: new Set(), // Set of userIds
@@ -155,6 +235,7 @@ class WatchPartyService {
         };
 
         this.rooms.set(roomId, room);
+        this.saveRoomToDB(room);
         this.broadcastLobbyList();
         return room;
     }
@@ -308,11 +389,15 @@ class WatchPartyService {
 
         let room = this.createOrGetRoom(roomId, user, { name: roomName, isPrivate, password });
 
-        // Validação de Senha para Salas Privadas
+        // Validação Estrita de Senha para Salas Privadas
         if (room.isPrivate && room.password) {
             const isCreatorOrSubowner = room.creatorId && Number(room.creatorId) === Number(user.id);
             if (!isCreatorOrSubowner) {
-                if (!password || String(password).trim() !== String(room.password).trim()) {
+                const cleanInputPassword = password ? String(password).trim() : '';
+                const cleanRoomPassword = String(room.password).trim();
+
+                if (!cleanInputPassword || cleanInputPassword !== cleanRoomPassword) {
+                    console.log(`[WatchParty] Senha incorreta para sala ${roomId} por ${user.nick}.`);
                     socket.emit('wp_error', { code: 'password_required', message: 'Senha incorreta para esta sala.' });
                     return;
                 }
@@ -330,6 +415,7 @@ class WatchPartyService {
             room.creatorId = user.id;
             room.creatorNick = user.nick;
             room.creatorAvatar = user.avatar || '/default-avatar.svg';
+            this.saveRoomToDB(room);
         }
 
         socket.data.user = user;
@@ -374,6 +460,15 @@ class WatchPartyService {
 
             this.addSystemMessage(room, `${participant.nick} saiu da sala.`);
             
+            // Regra Estrita: Se não sobrou NINGUÉM na sala (0 participantes), ela é fechada imediatamente!
+            if (room.participants.size === 0) {
+                console.log(`[WatchParty] Sala ${roomId} esvaziou (0 participantes). Fechando e removendo do lobby e do DB...`);
+                this.rooms.delete(roomId);
+                this.deleteRoomFromDB(roomId);
+                this.broadcastLobbyList();
+                return;
+            }
+
             // Checa regra de sucessão automática se o Criador saiu sem deixar Subdono
             this.checkAutomaticSuccession(room);
 
@@ -703,6 +798,7 @@ class WatchPartyService {
             isPublic: !room.isPrivate
         };
 
+        this.saveRoomToDB(room);
         this.addSystemMessage(room, `Configurações da sala foram atualizadas.`);
         this.broadcastRoomState(room);
     }

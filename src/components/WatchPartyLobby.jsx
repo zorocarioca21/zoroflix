@@ -202,8 +202,8 @@ export default function WatchPartyLobby() {
     return (
         <div style={{
             minHeight: '100vh',
-            background: '#09090b',
-            color: '#f4f4f5',
+            background: 'transparent',
+            color: '#f8fafc',
             padding: '2rem 1.5rem',
             fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
         }}>
@@ -218,27 +218,28 @@ export default function WatchPartyLobby() {
                     gap: '1rem',
                     marginBottom: '2rem',
                     paddingBottom: '1.5rem',
-                    borderBottom: '1px solid #27272a'
+                    borderBottom: '1px solid rgba(0, 230, 118, 0.25)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{
                             width: '48px',
                             height: '48px',
                             borderRadius: '14px',
-                            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)',
-                            border: '1px solid rgba(236, 72, 153, 0.4)',
+                            background: 'rgba(0, 230, 118, 0.12)',
+                            border: '1px solid rgba(0, 230, 118, 0.4)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#ec4899'
+                            color: '#00e676',
+                            boxShadow: '0 0 15px rgba(0, 230, 118, 0.25)'
                         }}>
                             <Tv size={26} />
                         </div>
                         <div>
-                            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+                            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '800', letterSpacing: '-0.5px', color: '#fff' }}>
                                 Watch Party
                             </h1>
-                            <p style={{ margin: '3px 0 0 0', fontSize: '0.88rem', color: '#a1a1aa' }}>
+                            <p style={{ margin: '3px 0 0 0', fontSize: '0.88rem', color: '#94a3b8' }}>
                                 Assista filmes e séries sincronizados em tempo real com amigos
                             </p>
                         </div>
@@ -253,18 +254,18 @@ export default function WatchPartyLobby() {
                             setIsCreateModalOpen(true);
                         }}
                         style={{
-                            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                            color: '#fff',
+                            background: 'linear-gradient(135deg, #00e676 0%, #00b35c 100%)',
+                            color: '#051912',
                             border: 'none',
                             padding: '12px 22px',
                             borderRadius: '12px',
-                            fontWeight: '700',
+                            fontWeight: '800',
                             fontSize: '0.95rem',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            boxShadow: '0 4px 20px rgba(236, 72, 153, 0.35)',
+                            boxShadow: '0 4px 20px rgba(0, 230, 118, 0.35)',
                             transition: 'all 0.2s'
                         }}
                     >
@@ -286,7 +287,7 @@ export default function WatchPartyLobby() {
                         flex: 1,
                         minWidth: '240px'
                     }}>
-                        <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#71717a' }} />
+                        <Search size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
                         <input
                             type="text"
                             placeholder="Buscar por nome da sala, criador ou filme..."
@@ -294,8 +295,8 @@ export default function WatchPartyLobby() {
                             onChange={(e) => setSearchFilter(e.target.value)}
                             style={{
                                 width: '100%',
-                                background: '#13131a',
-                                border: '1px solid #27272a',
+                                background: 'rgba(9, 42, 28, 0.75)',
+                                border: '1px solid rgba(0, 230, 118, 0.25)',
                                 borderRadius: '12px',
                                 padding: '12px 14px 12px 42px',
                                 color: '#fff',
@@ -306,9 +307,9 @@ export default function WatchPartyLobby() {
                         />
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a1a1aa', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '0.85rem' }}>
                         <span>Salas ativas:</span>
-                        <strong style={{ color: '#fff', background: '#27272a', padding: '3px 9px', borderRadius: '8px' }}>
+                        <strong style={{ color: '#00e676', background: 'rgba(0, 230, 118, 0.12)', border: '1px solid rgba(0, 230, 118, 0.3)', padding: '3px 10px', borderRadius: '8px' }}>
                             {rooms.length}
                         </strong>
                     </div>
@@ -316,29 +317,31 @@ export default function WatchPartyLobby() {
 
                 {/* LISTAGEM DE SALAS (CARDS HORIZONTAIS MODERNOS) */}
                 {loadingRooms ? (
-                    <div style={{ textAlign: 'center', padding: '4rem 0', color: '#71717a' }}>
-                        <RefreshCw size={32} className="spin-anim" style={{ marginBottom: '1rem', color: '#ec4899' }} />
+                    <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
+                        <RefreshCw size={32} className="spin-anim" style={{ marginBottom: '1rem', color: '#00e676' }} />
                         <p style={{ margin: 0, fontSize: '0.95rem' }}>Carregando salas ativas...</p>
                     </div>
                 ) : filteredRooms.length === 0 ? (
                     <div style={{
-                        background: '#13131a',
-                        border: '1px solid #27272a',
+                        background: 'rgba(9, 42, 28, 0.65)',
+                        border: '1px solid rgba(0, 230, 118, 0.25)',
                         borderRadius: '20px',
                         padding: '4rem 2rem',
                         textAlign: 'center',
-                        color: '#71717a'
+                        color: '#94a3b8',
+                        backdropFilter: 'blur(10px)'
                     }}>
                         <div style={{
                             width: '64px',
                             height: '64px',
                             borderRadius: '50%',
-                            background: 'rgba(236, 72, 153, 0.08)',
-                            color: '#ec4899',
+                            background: 'rgba(0, 230, 118, 0.1)',
+                            color: '#00e676',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto'
+                            margin: '0 auto 1.5rem auto',
+                            border: '1px solid rgba(0, 230, 118, 0.3)'
                         }}>
                             <Film size={32} />
                         </div>
@@ -356,17 +359,18 @@ export default function WatchPartyLobby() {
                                 setIsCreateModalOpen(true);
                             }}
                             style={{
-                                background: '#ec4899',
-                                color: '#fff',
+                                background: '#00e676',
+                                color: '#051912',
                                 border: 'none',
                                 padding: '11px 24px',
                                 borderRadius: '12px',
-                                fontWeight: '700',
+                                fontWeight: '800',
                                 fontSize: '0.9rem',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '8px',
+                                boxShadow: '0 4px 15px rgba(0, 230, 118, 0.3)'
                             }}
                         >
                             <Plus size={18} />
@@ -378,15 +382,15 @@ export default function WatchPartyLobby() {
                         {filteredRooms.map((room) => {
                             const posterUrl = room.currentMedia?.poster
                                 ? (room.currentMedia.poster.startsWith('http') ? room.currentMedia.poster : `https://image.tmdb.org/t/p/w300${room.currentMedia.poster}`)
-                                : '/no-poster.svg';
+                                : null;
 
                             return (
                                 <div
                                     key={room.id}
                                     onClick={() => handleJoinClick(room)}
                                     style={{
-                                        background: '#13131a',
-                                        border: '1px solid #27272a',
+                                        background: 'rgba(9, 42, 28, 0.75)',
+                                        border: '1px solid rgba(0, 230, 118, 0.25)',
                                         borderRadius: '16px',
                                         padding: '1rem',
                                         display: 'flex',
@@ -394,14 +398,15 @@ export default function WatchPartyLobby() {
                                         gap: '1.2rem',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                                        backdropFilter: 'blur(10px)'
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = '#3f3f46';
+                                        e.currentTarget.style.borderColor = '#00e676';
                                         e.currentTarget.style.transform = 'translateY(-2px)';
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = '#27272a';
+                                        e.currentTarget.style.borderColor = 'rgba(0, 230, 118, 0.25)';
                                         e.currentTarget.style.transform = 'translateY(0)';
                                     }}
                                 >
@@ -411,21 +416,32 @@ export default function WatchPartyLobby() {
                                         height: '110px',
                                         borderRadius: '10px',
                                         overflow: 'hidden',
-                                        background: '#1c1c24',
+                                        background: 'linear-gradient(135deg, #092a1c 0%, #051912 100%)',
+                                        border: '1px solid rgba(0, 230, 118, 0.2)',
                                         flexShrink: 0,
-                                        position: 'relative'
+                                        position: 'relative',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
                                     }}>
-                                        <img
-                                            src={posterUrl}
-                                            alt={room.currentMedia?.title || 'Watch Party'}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onError={(e) => { e.target.src = '/no-poster.svg'; }}
-                                        />
+                                        {posterUrl ? (
+                                            <img
+                                                src={posterUrl}
+                                                alt={room.currentMedia?.title || 'Watch Party'}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                            />
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: '#00e676', opacity: 0.8 }}>
+                                                <Tv size={28} />
+                                                <span style={{ fontSize: '0.62rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SALA</span>
+                                            </div>
+                                        )}
                                         <div style={{
                                             position: 'absolute',
                                             bottom: 0, left: 0, right: 0,
                                             height: '40%',
-                                            background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)'
+                                            background: 'linear-gradient(to top, rgba(5,25,18,0.85), transparent)'
                                         }} />
                                     </div>
 
