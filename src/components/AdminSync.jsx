@@ -1406,13 +1406,13 @@ export default function AdminSync() {
                                     width: '10px', 
                                     height: '10px', 
                                     borderRadius: '50%', 
-                                    background: state.isRunning && !state.isPaused ? '#00ff88' : '#ff4444',
-                                    boxShadow: state.isRunning && !state.isPaused ? '0 0 10px #00ff88' : 'none'
+                                    background: !state.isPaused ? '#00ff88' : '#eab308',
+                                    boxShadow: !state.isPaused ? '0 0 10px #00ff88' : '0 0 10px #eab308'
                                 }} />
                                 <div>
                                     <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>Motor do Worker</span>
                                     <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>
-                                        {state.isRunning ? (state.isPaused ? 'Em Pausa' : 'Ativo & Processando') : 'Parado'}
+                                        {state.isPaused ? 'Download IPTV Pausado (Uploads Ativos)' : 'Ativo & Processando'}
                                     </div>
                                 </div>
                             </div>

@@ -91,38 +91,26 @@ export function initSyncWorker(db, io) {
 export function setPauseState(paused) {
     isPaused = paused;
     if (paused) {
-        isRunning = false;
-        // Interrompe processos ativos
+        // Interrompe APENAS o processo de download da IPTV
         if (activeDownloadController) {
             activeDownloadController.abort();
             activeDownloadController = null;
         }
-        if (activeChildProcessPython) {
-            activeChildProcessPython.kill();
-            activeChildProcessPython = null;
-        }
-        if (activeUploadControllerDocker) {
-            activeUploadControllerDocker.abort();
-            activeUploadControllerDocker = null;
-        }
         
-        // Devolve tasks pro status adequado no BD para serem retomadas depois
+        // Devolve apenas a task de download para pending no banco
         if (downloadTask && downloadTask.id) {
             dbInstance.run("UPDATE sync_queue SET status = 'pending' WHERE id = ?", [downloadTask.id]);
         }
-        if (uploadTaskDocker && uploadTaskDocker.id) {
-            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTaskDocker.id]);
-        }
-        if (uploadTaskPython && uploadTaskPython.id) {
-            dbInstance.run("UPDATE sync_queue SET status = 'pending_upload' WHERE id = ?", [uploadTaskPython.id]);
-        }
-        
         downloadTask = null;
-        uploadTaskDocker = null;
-        uploadTaskPython = null;
+
+        // Inicia o worker para manter o uploadLoop rodando caso ainda não estivesse rodando
+        if (!isRunning) {
+            startWorker();
+        }
+
         broadcastState();
     } else {
-        // Retoma worker
+        // Retoma downloads IPTV
         if (!isRunning) {
             startWorker();
         }
@@ -152,7 +140,7 @@ function broadcastState() {
 }
 
 export async function startWorker() {
-    if (isRunning || isPaused) return;
+    if (isRunning) return;
     isRunning = true;
     broadcastState();
 
@@ -261,7 +249,7 @@ async function downloadLoop() {
 // ==========================================
 
 async function uploadLoop() {
-    while (!isPaused) {
+    while (true) {
         try {
             // Busca o próximo item pronto para ser enviado (pending_upload), priorizando prioridades altas
             const item = await dbInstance.get("SELECT id, title, url FROM sync_queue WHERE status = 'pending_upload' ORDER BY priority DESC, id ASC LIMIT 1");
@@ -293,8 +281,8 @@ async function uploadLoop() {
 
             const success = await processUpload(item, workerType);
             
-            if (!success || isPaused) {
-                break; // Se deu erro fatal ou pausou, sai do loop
+            if (!success) {
+                await new Promise(r => setTimeout(r, 3000));
             }
         } catch (err) {
             console.error("Erro no loop de upload:", err);
@@ -500,8 +488,6 @@ async function processUpload(movie, workerType) {
             messageId = await uploadViaPython(movie.title, tmpPath, movie.id);
         }
 
-        if (isPaused) return false;
-
         // Concluído
         if (messageId) {
             await dbInstance.run("UPDATE sync_queue SET status = 'completed', priority = 0, telegram_message_id = ?, old_telegram_message_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [messageId, movie.id]);
@@ -526,15 +512,13 @@ async function processUpload(movie, workerType) {
         
     } catch (err) {
         console.error(`Erro no upload de ${movie.title} via ${workerType}:`, err);
-        if (!isPaused) {
-            await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [err.message, movie.id]);
-        }
+        await dbInstance.run("UPDATE sync_queue SET status = 'error', error_message = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [err.message, movie.id]);
     } finally {
         if (workerType === 'docker') uploadTaskDocker = null;
         else uploadTaskPython = null;
         broadcastState();
         
-        if (!isPaused && fs.existsSync(tmpPath)) {
+        if (fs.existsSync(tmpPath)) {
             try { fs.unlinkSync(tmpPath); } catch (e) {}
         }
         return true;
