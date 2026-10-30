@@ -155,8 +155,87 @@ export default function streamRoutes(db) {
         }
     });
 
+    // POST /api/stream/generate-rave
+    // Gera link direto seguro e compatível com o aplicativo Rave (Watch Party) exclusivo para VIPs
+    router.post('/generate-rave', (req, res) => {
+        try {
+            const { isVip } = getClientIdentifier(req);
+            if (!isVip) {
+                return res.status(403).json({
+                    error: 'vip_only',
+                    message: 'O recurso de Watch Party no Rave é exclusivo para assinantes VIP!'
+                });
+            }
+
+            let { messageId, streamUrl, title, channelId: targetChannelId } = req.body;
+            let parsedMsgId = parseInt(messageId);
+
+            if (!parsedMsgId && streamUrl) {
+                try {
+                    let sToken = streamUrl.split('/s/')[1]?.split('.')[0] || streamUrl;
+                    sToken = sToken.replace(/-/g, '+').replace(/_/g, '/');
+                    while (sToken.length % 4) sToken += '=';
+                    const textoDecodificado = Buffer.from(sToken, 'base64').toString('utf-8');
+                    const textoSubstituido = textoDecodificado.replace(/§/g, 'a').replace(/¶/g, 'b').replace(/©/g, 'c');
+                    const textoOriginal = textoSubstituido.split('').reverse().join('');
+                    const streamData = JSON.parse(textoOriginal);
+                    parsedMsgId = parseInt(streamData.id);
+                    if (!targetChannelId && streamData.channelId) {
+                        targetChannelId = streamData.channelId;
+                    }
+                } catch (e) {
+                    console.error('Erro ao extrair messageId de streamUrl para Rave:', e);
+                }
+            }
+
+            if (!parsedMsgId) {
+                return res.status(400).json({ error: 'ID de mídia não encontrado.' });
+            }
+
+            // Gera token com app: true para que não trave em apenas 1 IP (permitindo que os amigos na sala do Rave assistam juntos)
+            // Validade de 12 horas para a sessão da Watch Party
+            const expiration = Date.now() + (12 * 3600 * 1000);
+            const payload = JSON.stringify({
+                id: parsedMsgId,
+                title: title || 'Rave Watch Party',
+                channelId: targetChannelId || null,
+                exp: expiration,
+                app: true
+            });
+            const textoInvertido = payload.split('').reverse().join('');
+            const textoSubstituido = textoInvertido.replace(/a/g, '§').replace(/b/g, '¶').replace(/c/g, '©');
+            let token = Buffer.from(textoSubstituido, 'utf-8').toString('base64');
+            token = token.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            const host = req.get('host') || 'www.cinegeek.shop';
+            const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'https';
+            const raveUrl = `${protocol}://${host}/api/stream/s/${token}.mp4`;
+
+            return res.json({
+                success: true,
+                raveUrl,
+                expiresIn: '12h'
+            });
+        } catch (err) {
+            console.error('Erro ao gerar link para o Rave:', err);
+            return res.status(500).json({ error: 'Erro ao gerar link compatível com o Rave.' });
+        }
+    });
+
     async function handleStreamRequest(req, res, messageId, overrideTitle = null, targetChannel = null) {
         if (!messageId) return res.status(400).send("Message ID inválido");
+
+        // Headers essenciais para o app Rave e clientes externos realizarem stream CORS livre
+        res.set({
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Range, Content-Type, Accept, Authorization',
+            'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges'
+        });
+
+        if (req.method === 'OPTIONS') {
+            return res.status(204).end();
+        }
 
         const tgClient = await getTelegramClient();
         if (!tgClient) return res.status(500).send("Erro interno ao conectar ao Telegram");

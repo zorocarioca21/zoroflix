@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles, Flag, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ArrowLeft, Check, Download, Loader, Mic, Subtitles, Flag, AlertCircle, Share2, Users, Copy } from 'lucide-react';
 import CommentSection from './CommentSection';
 import { fetchWithProxy } from '../utils/api';
 import CustomVideoPlayer from './CustomVideoPlayer';
@@ -41,6 +41,13 @@ export default function PlayerPage() {
     const [adTimer, setAdTimer] = useState(10);
     const [debugMatches, setDebugMatches] = useState(null);
     const prevLanguageType = useRef(null); 
+
+    // Estado do Modal do Rave (Watch Party) exclusivo para VIPs
+    const [raveSelector, setRaveSelector] = useState(false);
+    const [raveModalOpen, setRaveModalOpen] = useState(false);
+    const [raveLink, setRaveLink] = useState('');
+    const [raveLoading, setRaveLoading] = useState(false);
+    const [raveCopied, setRaveCopied] = useState(false); 
 
     // Estado do Modal de Reporte de Conteúdo
     const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -100,6 +107,47 @@ export default function PlayerPage() {
         } catch (err) {
             console.error('Erro ao solicitar download seguro:', err);
             window.alert('Falha ao comunicar com o servidor de download.');
+        }
+    };
+
+    // Solicita link direto otimizado para o Rave (Watch Party) exclusivo para VIPs
+    const requestRaveLink = async (targetMsgId, finalTitle, targetStream) => {
+        setRaveLoading(true);
+        setRaveCopied(false);
+        setRaveModalOpen(true);
+        try {
+            const token = localStorage.getItem('cinegeek_token');
+            const res = await fetch('/api/stream/generate-rave', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({ 
+                    messageId: targetMsgId, 
+                    title: finalTitle,
+                    streamUrl: targetStream || streamUrl 
+                })
+            });
+            const data = await res.json();
+            if (data && data.raveUrl) {
+                setRaveLink(data.raveUrl);
+                // Copia automaticamente para a área de transferência
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(data.raveUrl).then(() => {
+                        setRaveCopied(true);
+                    }).catch(() => {});
+                }
+            } else {
+                window.alert(data?.message || 'Erro ao gerar link para o Rave.');
+                setRaveModalOpen(false);
+            }
+        } catch (err) {
+            console.error('Erro ao solicitar link para o Rave:', err);
+            window.alert('Falha ao comunicar com o servidor de streaming.');
+            setRaveModalOpen(false);
+        } finally {
+            setRaveLoading(false);
         }
     };
 
@@ -1242,6 +1290,51 @@ export default function PlayerPage() {
                                 </button>
                             )}
 
+                            {/* Botão EXCLUSIVO PARA VIP: Gerar Link para o RAVE (Watch Party) */}
+                            {(user?.role === 'vip' || user?.role === 'admin') && (telegramMessageId || languageOptions || streamUrl) && (
+                                <button 
+                                    className="nav-btn-modern" 
+                                    onClick={() => {
+                                        let targetStreamUrl = null;
+                                        let targetMsgId = telegramMessageId;
+                                        
+                                        if (!targetMsgId) {
+                                            const opts = languageOptions && languageOptions[currentQuality];
+                                            if (opts) {
+                                                if (opts.dub && !opts.leg) {
+                                                    targetStreamUrl = opts.dub.stream_url;
+                                                    targetMsgId = opts.dub.id || opts.dub;
+                                                } else if (!opts.dub && opts.leg) {
+                                                    targetStreamUrl = opts.leg.stream_url;
+                                                    targetMsgId = opts.leg.id || opts.leg;
+                                                } else if (opts.dub && opts.leg) {
+                                                    setRaveSelector(true);
+                                                    return;
+                                                }
+                                            }
+                                        }
+
+                                        let mediaName = title.split(' - ')[0].trim();
+                                        if (season && episode) {
+                                            mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                        }
+                                        let finalTitle = `${mediaName} (Rave Watch Party)`;
+
+                                        requestRaveLink(targetMsgId, finalTitle, targetStreamUrl);
+                                    }} 
+                                    style={{ 
+                                        color: '#ec4899', 
+                                        borderColor: '#ec4899',
+                                        background: 'rgba(236, 72, 153, 0.1)',
+                                        boxShadow: '0 0 15px rgba(236, 72, 153, 0.15)'
+                                    }}
+                                    title="Assistir junto com amigos no aplicativo Rave (Watch Party VIP)"
+                                >
+                                    <Users size={20} style={{ color: '#ec4899' }} />
+                                    Assistir no Rave
+                                </button>
+                            )}
+
                             {/* Botão de Reporte de Conteúdo (abre pop-up) */}
                             <button
                                 className="action-btn report-btn"
@@ -1430,6 +1523,205 @@ export default function PlayerPage() {
                             }} style={{ background: '#00ff88', color: '#000', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
                         </div>
                         <button onClick={() => setDownloadSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Seleção de Idioma para o RAVE (VIP) */}
+            {raveSelector && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 9999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid #3b1828',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        width: '90%',
+                        maxWidth: '420px',
+                        textAlign: 'center',
+                        boxShadow: '0 0 30px rgba(236, 72, 153, 0.2)'
+                    }}>
+                        <div style={{ display: 'inline-flex', padding: '12px', background: 'rgba(236, 72, 153, 0.1)', borderRadius: '50%', marginBottom: '1rem', color: '#ec4899' }}>
+                            <Users size={28} />
+                        </div>
+                        <h3 style={{ color: '#fff', marginBottom: '0.5rem', fontSize: '1.3rem' }}>Assistir no Rave (Watch Party)</h3>
+                        <p style={{ color: '#a1a1aa', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Qual versão de áudio você deseja sincronizar com seus amigos?</p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button onClick={() => {
+                                setRaveSelector(false);
+                                let mediaName = title.split(' - ')[0].trim();
+                                if (season && episode) {
+                                    mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                let finalTitle = `${mediaName} (Dublado)`;
+                                const dubObj = languageOptions[currentQuality]?.dub;
+                                const dubMsgId = dubObj?.id || dubObj;
+                                requestRaveLink(dubMsgId, finalTitle, dubObj?.stream_url);
+                            }} style={{ background: '#ec4899', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Dublado</button>
+                            
+                            <button onClick={() => {
+                                setRaveSelector(false);
+                                let mediaName = title.split(' - ')[0].trim();
+                                if (season && episode) {
+                                    mediaName += ` S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+                                }
+                                let finalTitle = `${mediaName} (Legendado)`;
+                                const legObj = languageOptions[currentQuality]?.leg;
+                                const legMsgId = legObj?.id || legObj;
+                                requestRaveLink(legMsgId, finalTitle, legObj?.stream_url);
+                            }} style={{ background: '#ec4899', color: '#fff', padding: '0.8rem 1.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Legendado</button>
+                        </div>
+                        <button onClick={() => setRaveSelector(false)} style={{ marginTop: '1.5rem', background: 'transparent', color: '#888', border: 'none', cursor: 'pointer' }}>Cancelar</button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Link Gerado para o RAVE com Instruções */}
+            {raveModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.88)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 99999,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid #ec4899',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        width: '92%',
+                        maxWidth: '520px',
+                        textAlign: 'center',
+                        boxShadow: '0 0 40px rgba(236, 72, 153, 0.25)'
+                    }}>
+                        <div style={{ display: 'inline-flex', padding: '14px', background: 'rgba(236, 72, 153, 0.15)', borderRadius: '50%', marginBottom: '1rem', color: '#ec4899' }}>
+                            <Users size={32} />
+                        </div>
+                        <h3 style={{ color: '#fff', margin: '0 0 0.5rem 0', fontSize: '1.4rem' }}>
+                            Link para o Rave (Watch Party)
+                        </h3>
+                        <p style={{ color: '#00ff88', fontSize: '0.85rem', fontWeight: '600', marginBottom: '1rem' }}>
+                            ⭐ RECURSO EXCLUSIVO VIP - LINK DIRETO COM SUPORTE A RANGE (206)
+                        </p>
+
+                        {raveLoading ? (
+                            <div style={{ padding: '2rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                                <Loader className="spin" size={36} style={{ color: '#ec4899' }} />
+                                <span style={{ color: '#aaa' }}>Gerando link direto para Watch Party...</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{
+                                    background: '#0d0d12',
+                                    border: '1px solid #27272a',
+                                    borderRadius: '12px',
+                                    padding: '0.8rem 1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.6rem',
+                                    marginBottom: '1rem'
+                                }}>
+                                    <input 
+                                        type="text" 
+                                        readOnly 
+                                        value={raveLink} 
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: '#e4e4e7',
+                                            fontSize: '0.85rem',
+                                            width: '100%',
+                                            outline: 'none',
+                                            textOverflow: 'ellipsis'
+                                        }}
+                                        onClick={(e) => e.target.select()}
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                navigator.clipboard.writeText(raveLink);
+                                                setRaveCopied(true);
+                                            }
+                                        }}
+                                        style={{
+                                            background: raveCopied ? '#00ff88' : '#ec4899',
+                                            color: raveCopied ? '#000' : '#fff',
+                                            border: 'none',
+                                            padding: '0.5rem 0.9rem',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 'bold',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {raveCopied ? <Check size={16} /> : <Copy size={16} />}
+                                        {raveCopied ? 'Copiado!' : 'Copiar'}
+                                    </button>
+                                </div>
+
+                                {raveCopied && (
+                                    <div style={{ color: '#00ff88', fontSize: '0.85rem', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                        <Check size={16} /> Link copiado para a sua área de transferência!
+                                    </div>
+                                )}
+
+                                <div style={{
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '12px',
+                                    padding: '1rem',
+                                    textAlign: 'left',
+                                    fontSize: '0.85rem',
+                                    color: '#d4d4d8',
+                                    lineHeight: '1.5',
+                                    marginBottom: '1.5rem',
+                                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                                }}>
+                                    <strong style={{ color: '#fff' }}>📱 Como usar no Rave:</strong>
+                                    <ol style={{ margin: '0.5rem 0 0 1.2rem', padding: 0 }}>
+                                        <li>Abra o aplicativo <strong>Rave</strong> no seu celular ou PC.</li>
+                                        <li>Toque no botão <strong>'+'</strong> (Criar Rave).</li>
+                                        <li>Escolha a opção <strong>'Link' / 'Web'</strong>.</li>
+                                        <li>Cole o link copiado acima e toque em <strong>Play</strong>.</li>
+                                        <li>Convide seus amigos para a sala e assistam sincronizados!</li>
+                                    </ol>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+                                    <button 
+                                        onClick={() => setRaveModalOpen(false)}
+                                        style={{
+                                            background: '#27272a',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '0.7rem 1.8rem',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600'
+                                        }}
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
