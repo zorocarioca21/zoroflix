@@ -28,6 +28,7 @@ import TurnstileGatekeeper from './components/TurnstileGatekeeper'
 import MangasPage from './components/MangasPage'
 import MangaDetailsPage from './components/MangaDetailsPage'
 import MangaReaderPage from './components/MangaReaderPage'
+import WatchPartyPage from './components/WatchPartyPage'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -379,6 +380,9 @@ function AppContent() {
                     <Link to="/pontos" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#00ff88' }}>
                       <Award size={16} /> Pontos & Pedidos
                     </Link>
+                    <Link to="/sala" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#ec4899' }}>
+                      <Tv size={16} /> Sala
+                    </Link>
                     {user.role === 'admin' && (
                         <Link to="/downloads" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)}>
                         <Download size={16} /> Meus Downloads
@@ -436,6 +440,10 @@ function AppContent() {
         <Route path="/api-docs" element={<ApiDocsPage />} />
         <Route path="/storage" element={<StoragePage />} />
         <Route path="/app-update" element={<AppUpdatePage />} />
+        
+        {/* Rotas de Watch Party (Salas Sincronizadas estilo Rave) */}
+        <Route path="/sala" element={<WatchPartyPage />} />
+        <Route path="/sala/:roomId" element={<WatchPartyPage />} />
         
         {/* Rotas Embed API */}
         <Route path="/docs" element={<EmbedDocsPage />} />

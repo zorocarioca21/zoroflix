@@ -43,6 +43,7 @@ import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
 import { runScanner } from './backend/scripts/scan_iptv.js';
+import { watchPartyService } from './backend/services/watchPartyService.js';
 import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -355,18 +356,58 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
         res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
 
+    // Inicializa o serviço de Watch Party
+    watchPartyService.init(io, db);
+
     io.on('connection', (socket) => {
-        console.log('Admin conectado via WebSocket', socket.id);
-        
-        // Dispara o estado atual imediatamente para não parecer que parou ao dar F5
+        // Dispara o estado de sync para admins
         import('./backend/services/syncWorker.js').then(worker => {
             if (worker.broadcastStateTo) {
                 worker.broadcastStateTo(socket);
             }
         });
 
+        // ==========================================
+        // EVENTOS DE WATCH PARTY (SALAS ESTILO RAVE)
+        // ==========================================
+        socket.on('wp_join_room', ({ roomId, user }) => {
+            watchPartyService.handleJoin(socket, roomId, user);
+        });
+
+        socket.on('wp_player_sync', (data) => {
+            watchPartyService.handlePlayerSync(socket, data);
+        });
+
+        socket.on('wp_add_queue', (media) => {
+            watchPartyService.handleAddToQueue(socket, media);
+        });
+
+        socket.on('wp_manage_queue', (data) => {
+            watchPartyService.handleManageQueue(socket, data);
+        });
+
+        socket.on('wp_send_chat', (text) => {
+            watchPartyService.handleChatMessage(socket, text);
+        });
+
+        socket.on('wp_toggle_subowner', (targetUserId) => {
+            watchPartyService.handleToggleSubowner(socket, targetUserId);
+        });
+
+        socket.on('wp_toggle_mute', (targetUserId) => {
+            watchPartyService.handleToggleMute(socket, targetUserId);
+        });
+
+        socket.on('wp_kick_user', (targetUserId) => {
+            watchPartyService.handleKickUser(socket, targetUserId);
+        });
+
+        socket.on('wp_update_settings', (settings) => {
+            watchPartyService.handleUpdateSettings(socket, settings);
+        });
+
         socket.on('disconnect', () => {
-            console.log('Admin desconectado', socket.id);
+            watchPartyService.handleLeave(socket);
         });
     });
 
