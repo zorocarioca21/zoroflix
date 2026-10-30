@@ -494,9 +494,49 @@ export default function AdminSync() {
         }
     };
 
+    const [animeAutoBoot, setAnimeAutoBoot] = useState(true);
+    const [isSavingAnimeAutoBoot, setIsSavingAnimeAutoBoot] = useState(false);
+
+    const fetchAnimeAutoBootSetting = async () => {
+        try {
+            const res = await fetch('/api/hybrid/anime-worker/auto-boot-setting');
+            const data = await res.json();
+            if (data.success) {
+                setAnimeAutoBoot(data.enabled);
+            }
+        } catch (e) {}
+    };
+
+    const toggleAnimeAutoBootSetting = async () => {
+        setIsSavingAnimeAutoBoot(true);
+        const nextVal = !animeAutoBoot;
+        try {
+            const res = await fetch('/api/hybrid/anime-worker/auto-boot-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: nextVal })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAnimeAutoBoot(nextVal);
+                dialog.alert(
+                    nextVal 
+                        ? 'Auto-início ATIVADO! Quando o servidor reiniciar, os downloads de Animes & Doramas iniciarão sozinhos.' 
+                        : 'Auto-início DESATIVADO! Quando o servidor reiniciar, os downloads de Animes & Doramas ficarão desligados.',
+                    { variant: nextVal ? 'success' : 'warning', title: 'Reinicialização Animes/Doramas' }
+                );
+            }
+        } catch (e) {
+            dialog.alert('Erro ao atualizar preferência de auto-início de animes.', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsSavingAnimeAutoBoot(false);
+        }
+    };
+
     useEffect(() => {
         fetchM3uUrl();
         fetchAutoBootSetting();
+        fetchAnimeAutoBootSetting();
     }, []);
 
     const saveM3uUrl = async () => {
@@ -1516,6 +1556,31 @@ export default function AdminSync() {
                                             </button>
                                         </>
                                     )}
+
+                                    {/* Botão de Ativar/Desativar Auto-Início no Reinício para Animes & Doramas */}
+                                    <button
+                                        onClick={toggleAnimeAutoBootSetting}
+                                        disabled={isSavingAnimeAutoBoot}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            padding: '0.4rem 0.65rem',
+                                            fontSize: '0.74rem',
+                                            fontWeight: 700,
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            background: animeAutoBoot ? 'rgba(249, 115, 22, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                                            color: animeAutoBoot ? '#fb923c' : '#f87171',
+                                            border: `1px solid ${animeAutoBoot ? 'rgba(249, 115, 22, 0.35)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                            marginLeft: '6px'
+                                        }}
+                                        title={animeAutoBoot ? "Auto-início de Animes ATIVADO: quando o servidor reiniciar, os downloads iniciarão sozinhos. Clique para desativar." : "Auto-início de Animes DESATIVADO: quando o servidor reiniciar, os downloads ficarão desligados. Clique para ativar."}
+                                    >
+                                        <Power size={12} color={animeAutoBoot ? '#f97316' : '#ef4444'} />
+                                        <span>Auto-boot: {animeAutoBoot ? 'LIGADO' : 'DESLIGADO'}</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>

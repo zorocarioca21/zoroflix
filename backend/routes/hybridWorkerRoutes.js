@@ -132,6 +132,85 @@ export default function hybridWorkerRoutes(db, io) {
         });
     });
 
+    // Helper para iniciar o processo Python do Worker de Animes
+    async function startAnimeWorkerProcess() {
+        if (animeWorkerProcess && !animeWorkerProcess.killed) {
+            return false;
+        }
+
+        const { spawn } = await import('child_process');
+        const path = await import('path');
+        const scriptPath = path.resolve('backend/scripts/animeDoramaWorker.py');
+
+        console.log(`[Anime Worker] 🚀 Iniciando processo Python no servidor: ${scriptPath}`);
+        animeWorkerProcess = spawn('python3', [scriptPath], {
+            cwd: path.resolve('.'),
+            env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        });
+
+        animeWorkerProcess.stdout.on('data', (d) => {
+            const line = d.toString().trim();
+            if (line) console.log(`[Anime Worker] ${line}`);
+        });
+
+        animeWorkerProcess.stderr.on('data', (d) => {
+            const line = d.toString().trim();
+            if (line) console.error(`[Anime Worker ERR] ${line}`);
+        });
+
+        animeWorkerProcess.on('close', (code) => {
+            console.log(`[Anime Worker] 🛑 Processo finalizado com código ${code}`);
+            animeWorkerProcess = null;
+            if (remoteWorkersState['ANIME_WORKER']) {
+                delete remoteWorkersState['ANIME_WORKER'];
+                broadcastRemoteStates();
+            }
+        });
+
+        return true;
+    }
+
+    // Auto-início no boot do servidor (se configurado anime_auto_start !== '0')
+    (async () => {
+        try {
+            const autoBootRow = await db.get("SELECT value FROM system_settings WHERE key = 'anime_auto_start'");
+            const autoStartEnabled = autoBootRow ? autoBootRow.value === '1' || autoBootRow.value === 'true' : true;
+            if (autoStartEnabled) {
+                console.log('[Anime Worker] 🚀 Auto-início no boot ativado: iniciando worker de animes & doramas...');
+                await startAnimeWorkerProcess();
+            } else {
+                console.log('[Anime Worker] ⏸️ Auto-início no boot desativado: worker de animes permanecerá desligado.');
+            }
+        } catch (e) {
+            console.error('[Anime Worker] Erro ao verificar auto-início no boot:', e);
+        }
+    })();
+
+    router.get('/anime-worker/auto-boot-setting', async (req, res) => {
+        try {
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'anime_auto_start'");
+            const enabled = row ? row.value === '1' || row.value === 'true' : true;
+            res.json({ success: true, enabled });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    router.post('/anime-worker/auto-boot-setting', async (req, res) => {
+        try {
+            const { enabled } = req.body;
+            const valStr = enabled ? '1' : '0';
+            await db.run(
+                `INSERT INTO system_settings (key, value, updated_at) VALUES ('anime_auto_start', ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [valStr]
+            );
+            res.json({ success: true, enabled: !!enabled });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     router.post('/anime-worker/start', async (req, res) => {
         try {
             animeWorkerPaused = false;
@@ -141,35 +220,7 @@ export default function hybridWorkerRoutes(db, io) {
                 return res.json({ success: true, message: 'Worker já está em execução no servidor.', isRunning: true });
             }
 
-            const { spawn } = await import('child_process');
-            const path = await import('path');
-            const scriptPath = path.resolve('backend/scripts/animeDoramaWorker.py');
-
-            console.log(`[Anime Worker] 🚀 Iniciando processo Python no servidor: ${scriptPath}`);
-            animeWorkerProcess = spawn('python3', [scriptPath], {
-                cwd: path.resolve('.'),
-                env: { ...process.env, PYTHONUNBUFFERED: '1' }
-            });
-
-            animeWorkerProcess.stdout.on('data', (d) => {
-                const line = d.toString().trim();
-                if (line) console.log(`[Anime Worker] ${line}`);
-            });
-
-            animeWorkerProcess.stderr.on('data', (d) => {
-                const line = d.toString().trim();
-                if (line) console.error(`[Anime Worker ERR] ${line}`);
-            });
-
-            animeWorkerProcess.on('close', (code) => {
-                console.log(`[Anime Worker] 🛑 Processo finalizado com código ${code}`);
-                animeWorkerProcess = null;
-                if (remoteWorkersState['ANIME_WORKER']) {
-                    delete remoteWorkersState['ANIME_WORKER'];
-                    broadcastRemoteStates();
-                }
-            });
-
+            await startAnimeWorkerProcess();
             res.json({ success: true, message: 'Worker de Animes iniciado com sucesso!', isRunning: true });
         } catch (err) {
             console.error('[Anime Worker] Erro ao iniciar processo:', err);
