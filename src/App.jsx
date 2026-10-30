@@ -314,7 +314,7 @@ function AppContent() {
           </div>
         </div>
       )}
-      {!location.pathname.startsWith('/embed') && (
+      {!location.pathname.startsWith('/embed') && !location.pathname.startsWith('/sala') && (
       <header className="main-header">
         <div className="logo-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
           <Link to="/" className="logo-brand" onClick={() => { setSearchQuery(''); setSearchResults([]); }}>

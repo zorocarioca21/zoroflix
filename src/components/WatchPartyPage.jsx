@@ -13,7 +13,7 @@ import {
     Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize,
     Crown, ShieldCheck, Shield, MicOff, MessageSquareOff, Lock,
     ChevronUp, ChevronDown, Trash2, Send, Smile, X, Search, Check,
-    AlertCircle, LogOut, Loader, UserMinus, ShieldAlert, Sparkles
+    AlertCircle, LogOut, Loader, UserMinus, ShieldAlert, Sparkles, ArrowLeft
 } from 'lucide-react';
 
 const COMMON_EMOJIS = [
@@ -63,6 +63,13 @@ export default function WatchPartyPage() {
     const [isMuted, setIsMuted] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Ignora eventos de sync disparados por ações próprias para evitar loop
     const ignoreNextSyncRef = useRef(false);
@@ -318,54 +325,73 @@ export default function WatchPartyPage() {
             <header style={{
                 background: 'rgba(18, 18, 23, 0.95)',
                 borderBottom: '1px solid #27272a',
-                padding: '0.8rem 1.5rem',
+                padding: isMobile ? '0.6rem 0.8rem' : '0.8rem 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 flexWrap: 'wrap',
-                gap: '1rem',
+                gap: '0.8rem',
                 backdropFilter: 'blur(10px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <button
+                        onClick={() => navigate('/')}
+                        style={{
+                            background: '#27272a',
+                            border: '1px solid #3f3f46',
+                            color: '#e4e4e7',
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                        title="Voltar ao início"
+                    >
+                        <ArrowLeft size={18} />
+                    </button>
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
+                        width: isMobile ? '36px' : '42px',
+                        height: isMobile ? '36px' : '42px',
+                        borderRadius: '10px',
                         background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                        color: '#fff'
+                        color: '#fff',
+                        flexShrink: 0
                     }}>
-                        <Tv size={24} />
+                        <Tv size={isMobile ? 20 : 24} />
                     </div>
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <h1 style={{ fontSize: '1.15rem', fontWeight: '700', margin: 0, letterSpacing: '-0.3px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <h1 style={{ fontSize: isMobile ? '1rem' : '1.15rem', fontWeight: '700', margin: 0, letterSpacing: '-0.3px' }}>
                                 Watch Party
                             </h1>
                             <span style={{
                                 background: '#27272a',
                                 color: '#a1a1aa',
-                                fontSize: '0.75rem',
-                                padding: '2px 8px',
+                                fontSize: '0.7rem',
+                                padding: '2px 6px',
                                 borderRadius: '6px',
                                 fontWeight: '600'
                             }}>
                                 {roomId}
                             </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#a1a1aa' }}>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#a1a1aa' }}>
                             Criador: <strong style={{ color: '#fff' }}>{roomState?.creatorNick || 'Iniciando...'}</strong>
                         </p>
                     </div>
                 </div>
 
                 {/* Barra de Ações da Sala (Ícones Vetoriais SVG) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
                     {/* 1. Escolher Filme/Série */}
                     <button
                         onClick={() => setIsCatalogModalOpen(true)}
@@ -376,16 +402,18 @@ export default function WatchPartyPage() {
                             background: '#27272a',
                             color: '#fff',
                             border: '1px solid #3f3f46',
-                            padding: '8px 14px',
+                            padding: isMobile ? '6px 10px' : '8px 14px',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            fontSize: '0.85rem',
+                            fontSize: isMobile ? '0.75rem' : '0.85rem',
                             fontWeight: '600',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            flex: isMobile ? '1 1 auto' : 'none',
+                            justifyContent: 'center'
                         }}
                         title="Escolher Filme ou Série do catálogo"
                     >
-                        <PlusCircle size={18} style={{ color: '#ec4899' }} />
+                        <PlusCircle size={16} style={{ color: '#ec4899' }} />
                         Escolher Filme/Série
                     </button>
 
@@ -399,15 +427,17 @@ export default function WatchPartyPage() {
                             background: '#27272a',
                             color: '#fff',
                             border: '1px solid #3f3f46',
-                            padding: '8px 14px',
+                            padding: isMobile ? '6px 10px' : '8px 14px',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '600'
+                            fontSize: isMobile ? '0.75rem' : '0.85rem',
+                            fontWeight: '600',
+                            flex: isMobile ? '1 1 auto' : 'none',
+                            justifyContent: 'center'
                         }}
                         title="Lista de Próxima Reprodução"
                     >
-                        <ListVideo size={18} style={{ color: '#38bdf8' }} />
+                        <ListVideo size={16} style={{ color: '#38bdf8' }} />
                         Fila ({roomState?.queue?.length || 0})
                     </button>
 
@@ -421,16 +451,18 @@ export default function WatchPartyPage() {
                             background: '#27272a',
                             color: '#fff',
                             border: '1px solid #3f3f46',
-                            padding: '8px 14px',
+                            padding: isMobile ? '6px 10px' : '8px 14px',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '600'
+                            fontSize: isMobile ? '0.75rem' : '0.85rem',
+                            fontWeight: '600',
+                            flex: isMobile ? '1 1 auto' : 'none',
+                            justifyContent: 'center'
                         }}
                         title="Membros na sala e histórico"
                     >
-                        <Users size={18} style={{ color: '#a855f7' }} />
-                        Participantes ({roomState?.participantsCount || 1})
+                        <Users size={16} style={{ color: '#a855f7' }} />
+                        ({roomState?.participantsCount || 1})
                     </button>
 
                     {/* 4. Convidar (Liberado para todos copiarem) */}
@@ -443,16 +475,18 @@ export default function WatchPartyPage() {
                             background: copySuccess ? '#059669' : '#ec4899',
                             color: '#fff',
                             border: 'none',
-                            padding: '8px 14px',
+                            padding: isMobile ? '6px 12px' : '8px 14px',
                             borderRadius: '10px',
                             cursor: 'pointer',
-                            fontSize: '0.85rem',
+                            fontSize: isMobile ? '0.75rem' : '0.85rem',
                             fontWeight: '700',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            flex: isMobile ? '1 1 auto' : 'none',
+                            justifyContent: 'center'
                         }}
                         title="Copiar link para convidar amigos"
                     >
-                        {copySuccess ? <Check size={18} /> : <Share2 size={18} />}
+                        {copySuccess ? <Check size={16} /> : <Share2 size={16} />}
                         {copySuccess ? 'Copiado!' : 'Convidar'}
                     </button>
 
@@ -463,47 +497,56 @@ export default function WatchPartyPage() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '38px',
-                            height: '38px',
+                            width: isMobile ? '32px' : '38px',
+                            height: isMobile ? '32px' : '38px',
                             background: '#27272a',
                             color: '#e4e4e7',
                             border: '1px solid #3f3f46',
                             borderRadius: '10px',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            flexShrink: 0
                         }}
                         title="Configurações da Sala"
                     >
-                        <Settings size={18} />
+                        <Settings size={16} />
                     </button>
                 </div>
             </header>
 
-            {/* ÁREA PRINCIPAL: PLAYER (SUPERIOR) + CHAT (INFERIOR/LATERAL) */}
+            {/* ÁREA PRINCIPAL: NO CELULAR (PLAYER TOPO + CHAT BASE); NO PC (GRID LADO A LADO) */}
             <main style={{
                 flex: 1,
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) 380px',
+                gridTemplateColumns: isMobile ? '100%' : 'minmax(0, 1fr) 380px',
+                gridTemplateRows: isMobile ? 'auto 1fr' : '1fr',
                 gap: 0,
-                height: 'calc(100vh - 67px)',
-                overflow: 'hidden'
+                height: isMobile ? 'auto' : 'calc(100vh - 67px)',
+                minHeight: isMobile ? 'calc(100vh - 120px)' : 'auto',
+                overflow: isMobile ? 'visible' : 'hidden'
             }}>
-                {/* COLUNA ESQUERDA: PLAYER DE VÍDEO SINCRONIZADO */}
+                {/* COLUNA ESQUERDA / SUPERIOR: PLAYER DE VÍDEO SINCRONIZADO */}
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
                     background: '#000',
-                    borderRight: '1px solid #27272a',
-                    height: '100%',
-                    position: 'relative'
+                    borderRight: isMobile ? 'none' : '1px solid #27272a',
+                    borderBottom: isMobile ? '2px solid #27272a' : 'none',
+                    height: isMobile ? 'auto' : '100%',
+                    position: isMobile ? 'sticky' : 'relative',
+                    top: isMobile ? 0 : 'auto',
+                    zIndex: isMobile ? 50 : 1
                 }}>
                     {currentMedia ? (
                         <div style={{
-                            flex: 1,
+                            flex: isMobile ? 'none' : 1,
                             position: 'relative',
                             background: '#000',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            width: '100%',
+                            aspectRatio: isMobile ? '16/9' : 'auto',
+                            minHeight: isMobile ? '220px' : 'auto'
                         }}>
                             <video
                                 ref={videoRef}
@@ -511,10 +554,13 @@ export default function WatchPartyPage() {
                                 style={{
                                     width: '100%',
                                     height: '100%',
-                                    maxHeight: 'calc(100vh - 150px)',
-                                    objectFit: 'contain'
+                                    maxHeight: isMobile ? '45vh' : 'calc(100vh - 150px)',
+                                    objectFit: 'contain',
+                                    display: 'block'
                                 }}
                                 playsInline
+                                webkit-playsinline="true"
+                                controls={false}
                                 onEnded={() => {
                                     if (canControl) {
                                         handleQueueAction('play_next', null);
@@ -734,7 +780,8 @@ export default function WatchPartyPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     background: '#121217',
-                    height: '100%',
+                    height: isMobile ? 'calc(100vh - 360px)' : '100%',
+                    minHeight: isMobile ? '350px' : 'auto',
                     position: 'relative'
                 }}>
                     {/* Cabeçalho do Chat */}
