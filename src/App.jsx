@@ -381,7 +381,7 @@ function AppContent() {
                     <Link to="/pontos" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#00ff88' }}>
                       <Award size={16} /> Pontos & Pedidos
                     </Link>
-                    <Link to="/salas" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#ec4899' }}>
+                    <Link to="/salas" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#00e676' }}>
                       <Tv size={16} /> Sala
                     </Link>
                     {user.role === 'admin' && (

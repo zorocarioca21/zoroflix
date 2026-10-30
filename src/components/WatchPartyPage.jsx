@@ -463,13 +463,13 @@ export default function WatchPartyPage() {
                         width: '72px',
                         height: '72px',
                         borderRadius: '50%',
-                        background: 'rgba(236, 72, 153, 0.12)',
-                        color: '#ec4899',
+                        background: 'rgba(0, 230, 118, 0.12)',
+                        color: '#00e676',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem auto',
-                        border: '1px solid rgba(236, 72, 153, 0.3)'
+                        border: '1px solid rgba(0, 230, 118, 0.3)'
                     }}>
                         <Lock size={34} />
                     </div>
@@ -486,15 +486,15 @@ export default function WatchPartyPage() {
                         <button
                             onClick={() => navigate('/login?tab=register')}
                             style={{
-                                background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                                color: '#fff',
+                                background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                color: '#000',
                                 border: 'none',
                                 padding: '13px 20px',
                                 borderRadius: '12px',
-                                fontWeight: '700',
+                                fontWeight: '800',
                                 fontSize: '0.95rem',
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 20px rgba(236, 72, 153, 0.35)',
+                                boxShadow: '0 4px 20px rgba(0, 230, 118, 0.35)',
                                 transition: 'all 0.2s'
                             }}
                         >
@@ -596,9 +596,10 @@ export default function WatchPartyPage() {
                         width: isMobile ? '36px' : '42px',
                         height: isMobile ? '36px' : '42px',
                         borderRadius: '10px',
-                        background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                        color: '#fff',
-                        flexShrink: 0
+                        background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                        color: '#000',
+                        flexShrink: 0,
+                        boxShadow: '0 0 12px rgba(0, 230, 118, 0.35)'
                     }}>
                         <Tv size={isMobile ? 20 : 24} />
                     </div>
@@ -647,7 +648,7 @@ export default function WatchPartyPage() {
                         }}
                         title="Escolher Filme ou Série do catálogo"
                     >
-                        <PlusCircle size={16} style={{ color: '#ec4899' }} />
+                        <PlusCircle size={16} style={{ color: '#00e676' }} />
                         Escolher Filme/Série
                     </button>
 
@@ -671,7 +672,7 @@ export default function WatchPartyPage() {
                         }}
                         title="Lista de Próxima Reprodução"
                     >
-                        <ListVideo size={16} style={{ color: '#38bdf8' }} />
+                        <ListVideo size={16} style={{ color: '#00e676' }} />
                         Fila ({roomState?.queue?.length || 0})
                     </button>
 
@@ -695,7 +696,7 @@ export default function WatchPartyPage() {
                         }}
                         title="Membros na sala e histórico"
                     >
-                        <Users size={16} style={{ color: '#a855f7' }} />
+                        <Users size={16} style={{ color: '#00e676' }} />
                         ({roomState?.participantsCount || 1})
                     </button>
 
@@ -706,17 +707,18 @@ export default function WatchPartyPage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
-                            background: copySuccess ? '#059669' : '#ec4899',
-                            color: '#fff',
+                            background: copySuccess ? '#059669' : '#00e676',
+                            color: copySuccess ? '#fff' : '#000',
                             border: 'none',
                             padding: isMobile ? '6px 12px' : '8px 14px',
                             borderRadius: '10px',
                             cursor: 'pointer',
                             fontSize: isMobile ? '0.75rem' : '0.85rem',
-                            fontWeight: '700',
+                            fontWeight: '800',
                             transition: 'all 0.2s',
                             flex: isMobile ? '1 1 auto' : 'none',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: copySuccess ? 'none' : '0 2px 10px rgba(0, 230, 118, 0.3)'
                         }}
                         title="Copiar link para convidar amigos"
                     >
@@ -814,7 +816,7 @@ export default function WatchPartyPage() {
                                     left: '16px',
                                     background: 'rgba(0,0,0,0.75)',
                                     backdropFilter: 'blur(8px)',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    border: '1px solid rgba(0, 230, 118, 0.2)',
                                     padding: '6px 14px',
                                     borderRadius: '20px',
                                     display: 'flex',
@@ -824,7 +826,7 @@ export default function WatchPartyPage() {
                                     color: '#a1a1aa',
                                     zIndex: 10
                                 }}>
-                                    <Lock size={14} style={{ color: '#ec4899' }} />
+                                    <Lock size={14} style={{ color: '#00e676' }} />
                                     Sincronizado pelo Dono/Subdono
                                 </div>
                             )}
@@ -836,7 +838,7 @@ export default function WatchPartyPage() {
                                 right: '16px',
                                 background: 'rgba(0,0,0,0.75)',
                                 backdropFilter: 'blur(8px)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(0, 230, 118, 0.2)',
                                 padding: '6px 14px',
                                 borderRadius: '20px',
                                 display: 'flex',
@@ -847,7 +849,7 @@ export default function WatchPartyPage() {
                                 fontWeight: '600',
                                 zIndex: 10
                             }}>
-                                <Film size={15} style={{ color: '#ec4899' }} />
+                                <Film size={15} style={{ color: '#00e676' }} />
                                 {currentMedia.title}
                             </div>
                         </div>
@@ -866,12 +868,13 @@ export default function WatchPartyPage() {
                                 width: '80px',
                                 height: '80px',
                                 borderRadius: '50%',
-                                background: 'rgba(236, 72, 153, 0.1)',
-                                color: '#ec4899',
+                                background: 'rgba(0, 230, 118, 0.1)',
+                                color: '#00e676',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                marginBottom: '1.5rem'
+                                marginBottom: '1.5rem',
+                                border: '1px solid rgba(0, 230, 118, 0.2)'
                             }}>
                                 <Film size={40} />
                             </div>
@@ -884,18 +887,18 @@ export default function WatchPartyPage() {
                             <button
                                 onClick={() => setIsCatalogModalOpen(true)}
                                 style={{
-                                    background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                                    color: '#fff',
+                                    background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                    color: '#000',
                                     border: 'none',
                                     padding: '12px 28px',
                                     borderRadius: '12px',
-                                    fontWeight: '700',
+                                    fontWeight: '800',
                                     fontSize: '0.95rem',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    boxShadow: '0 4px 20px rgba(236, 72, 153, 0.3)'
+                                    boxShadow: '0 4px 20px rgba(0, 230, 118, 0.35)'
                                 }}
                             >
                                 <PlusCircle size={20} />
@@ -1012,7 +1015,7 @@ export default function WatchPartyPage() {
                                         </>
                                     ) : (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a1a1aa', fontSize: '0.8rem' }}>
-                                            <Lock size={14} style={{ color: '#ec4899' }} />
+                                            <Lock size={14} style={{ color: '#00e676' }} />
                                             <span>Controle pelo Criador/Subdonos</span>
                                         </div>
                                     )}
@@ -1556,8 +1559,8 @@ export default function WatchPartyPage() {
                             alignItems: 'center'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Film size={20} style={{ color: '#ec4899' }} />
-                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700' }}>
+                                <Film size={20} style={{ color: '#00e676' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#fff' }}>
                                     {selectedMediaDetail ? selectedMediaDetail.title || selectedMediaDetail.name : 'Escolher do Catálogo'}
                                 </h3>
                             </div>
@@ -1586,7 +1589,7 @@ export default function WatchPartyPage() {
                                                 style={{
                                                     width: '100%',
                                                     background: '#09090b',
-                                                    border: '1px solid #27272a',
+                                                    border: '1px solid rgba(0, 230, 118, 0.25)',
                                                     borderRadius: '10px',
                                                     padding: '10px 14px 10px 38px',
                                                     color: '#fff',
@@ -1600,13 +1603,14 @@ export default function WatchPartyPage() {
                                             type="submit"
                                             disabled={searching}
                                             style={{
-                                                background: '#ec4899',
-                                                color: '#fff',
+                                                background: '#00e676',
+                                                color: '#000',
                                                 border: 'none',
                                                 padding: '0 20px',
                                                 borderRadius: '10px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer'
+                                                fontWeight: '800',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 0 10px rgba(0, 230, 118, 0.3)'
                                             }}
                                         >
                                             {searching ? 'Buscando...' : 'Buscar'}
@@ -1657,7 +1661,7 @@ export default function WatchPartyPage() {
                                 <div>
                                     <button
                                         onClick={() => setSelectedMediaDetail(null)}
-                                        style={{ background: 'transparent', border: 'none', color: '#ec4899', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', marginBottom: '1rem' }}
+                                        style={{ background: 'transparent', border: 'none', color: '#00e676', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', marginBottom: '1rem' }}
                                     >
                                         ← Voltar para a pesquisa
                                     </button>
@@ -1692,16 +1696,17 @@ export default function WatchPartyPage() {
                                                     poster: selectedMediaDetail.poster_path
                                                 })}
                                                 style={{
-                                                    background: '#ec4899',
-                                                    color: '#fff',
+                                                    background: '#00e676',
+                                                    color: '#000',
                                                     border: 'none',
                                                     padding: '12px 24px',
                                                     borderRadius: '12px',
-                                                    fontWeight: '700',
+                                                    fontWeight: '800',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '8px'
+                                                    gap: '8px',
+                                                    boxShadow: '0 2px 12px rgba(0, 230, 118, 0.4)'
                                                 }}
                                             >
                                                 <PlusCircle size={18} />
@@ -1728,14 +1733,14 @@ export default function WatchPartyPage() {
                                                             } catch (e) {}
                                                         }}
                                                         style={{
-                                                            background: selectedMediaDetail.selectedSeasonNum === s.season_number ? '#ec4899' : '#27272a',
-                                                            color: '#fff',
+                                                            background: selectedMediaDetail.selectedSeasonNum === s.season_number ? '#00e676' : '#27272a',
+                                                            color: selectedMediaDetail.selectedSeasonNum === s.season_number ? '#000' : '#fff',
                                                             border: 'none',
                                                             padding: '8px 16px',
                                                             borderRadius: '8px',
                                                             cursor: 'pointer',
                                                             fontSize: '0.85rem',
-                                                            fontWeight: '600'
+                                                            fontWeight: '700'
                                                         }}
                                                     >
                                                         Temp {s.season_number}
@@ -1772,14 +1777,14 @@ export default function WatchPartyPage() {
                                                                         poster: selectedMediaDetail.poster_path
                                                                     })}
                                                                     style={{
-                                                                        background: '#ec4899',
-                                                                        color: '#fff',
+                                                                        background: '#00e676',
+                                                                        color: '#000',
                                                                         border: 'none',
-                                                                        padding: '4px 12px',
+                                                                        padding: '5px 14px',
                                                                         borderRadius: '6px',
                                                                         cursor: 'pointer',
                                                                         fontSize: '0.75rem',
-                                                                        fontWeight: '700'
+                                                                        fontWeight: '800'
                                                                     }}
                                                                 >
                                                                     Tocar na Sala
@@ -1848,13 +1853,13 @@ export default function WatchPartyPage() {
                         <div style={{ padding: '1.2rem 1.5rem', overflowY: 'auto', flex: 1 }}>
                             {/* Tocando Agora */}
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <span style={{ fontSize: '0.75rem', color: '#ec4899', fontWeight: '700', textTransform: 'uppercase' }}>
+                                <span style={{ fontSize: '0.75rem', color: '#00e676', fontWeight: '700', textTransform: 'uppercase' }}>
                                     Reproduzindo Agora
                                 </span>
                                 {currentMedia ? (
                                     <div style={{
-                                        background: 'rgba(236, 72, 153, 0.1)',
-                                        border: '1px solid rgba(236, 72, 153, 0.3)',
+                                        background: 'rgba(0, 230, 118, 0.1)',
+                                        border: '1px solid rgba(0, 230, 118, 0.3)',
                                         padding: '10px 14px',
                                         borderRadius: '12px',
                                         marginTop: '6px',
@@ -1863,7 +1868,7 @@ export default function WatchPartyPage() {
                                         justifyContent: 'space-between'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <Play size={16} style={{ color: '#ec4899' }} />
+                                            <Play size={16} style={{ color: '#00e676' }} />
                                             <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{currentMedia.title}</span>
                                         </div>
                                     </div>
@@ -2256,8 +2261,8 @@ export default function WatchPartyPage() {
                             alignItems: 'center'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Settings size={20} style={{ color: '#ec4899' }} />
-                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700' }}>
+                                <Settings size={20} style={{ color: '#00e676' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#fff' }}>
                                     Configurações da Sala
                                 </h3>
                             </div>
@@ -2272,12 +2277,12 @@ export default function WatchPartyPage() {
                         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             {!canControl && (
                                 <div style={{
-                                    background: 'rgba(236, 72, 153, 0.1)',
-                                    border: '1px solid rgba(236, 72, 153, 0.3)',
+                                    background: 'rgba(0, 230, 118, 0.1)',
+                                    border: '1px solid rgba(0, 230, 118, 0.3)',
                                     padding: '8px 12px',
                                     borderRadius: '10px',
                                     fontSize: '0.8rem',
-                                    color: '#ec4899',
+                                    color: '#00e676',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px'
@@ -2298,7 +2303,7 @@ export default function WatchPartyPage() {
                                     checked={roomState?.settings?.allowChat || false}
                                     disabled={!canControl}
                                     onChange={(e) => handleUpdateSetting('allowChat', e.target.checked)}
-                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#ec4899' }}
+                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#00e676' }}
                                 />
                             </div>
 
@@ -2313,7 +2318,7 @@ export default function WatchPartyPage() {
                                     checked={roomState?.settings?.anyoneCanAddQueue || false}
                                     disabled={!canControl}
                                     onChange={(e) => handleUpdateSetting('anyoneCanAddQueue', e.target.checked)}
-                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#ec4899' }}
+                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#00e676' }}
                                 />
                             </div>
 
@@ -2328,7 +2333,7 @@ export default function WatchPartyPage() {
                                     checked={roomState?.settings?.anyoneCanInvite || false}
                                     disabled={!canControl}
                                     onChange={(e) => handleUpdateSetting('anyoneCanInvite', e.target.checked)}
-                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#ec4899' }}
+                                    style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#00e676' }}
                                 />
                             </div>
 
@@ -2449,7 +2454,7 @@ export default function WatchPartyPage() {
                         {/* Header Gradient */}
                         <div style={{
                             height: '90px',
-                            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f43f5e 100%)',
+                            background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
                             position: 'relative'
                         }}>
                             <button

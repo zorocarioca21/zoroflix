@@ -82,13 +82,13 @@ export default function WatchPartyLobby() {
                         width: '72px',
                         height: '72px',
                         borderRadius: '50%',
-                        background: 'rgba(236, 72, 153, 0.12)',
-                        color: '#ec4899',
+                        background: 'rgba(0, 230, 118, 0.12)',
+                        color: '#00e676',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem auto',
-                        border: '1px solid rgba(236, 72, 153, 0.3)'
+                        border: '1px solid rgba(0, 230, 118, 0.3)'
                     }}>
                         <Lock size={34} />
                     </div>
@@ -105,15 +105,15 @@ export default function WatchPartyLobby() {
                         <button
                             onClick={() => navigate('/login?tab=register')}
                             style={{
-                                background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                                color: '#fff',
+                                background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                color: '#000',
                                 border: 'none',
                                 padding: '13px 20px',
                                 borderRadius: '12px',
-                                fontWeight: '700',
+                                fontWeight: '800',
                                 fontSize: '0.95rem',
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 20px rgba(236, 72, 153, 0.35)',
+                                boxShadow: '0 4px 20px rgba(0, 230, 118, 0.35)',
                                 transition: 'all 0.2s'
                             }}
                         >
@@ -496,10 +496,9 @@ export default function WatchPartyLobby() {
                                             )}
                                         </div>
 
-                                        {/* Informações da Mídia Tocando Agora */}
-                                        <p style={{
-                                            margin: '0 0 8px 0',
-                                            fontSize: '0.88rem',
+                                        {/* Informaçõe                                        <p style={{
+                                            margin: '0 0 10px 0',
+                                            fontSize: '0.85rem',
                                             color: '#e4e4e7',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -508,7 +507,7 @@ export default function WatchPartyLobby() {
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis'
                                         }}>
-                                            <Film size={15} style={{ color: '#ec4899', flexShrink: 0 }} />
+                                            <Film size={15} style={{ color: '#00e676', flexShrink: 0 }} />
                                             <span>
                                                 {room.currentMedia ? (
                                                     <strong>{room.currentMedia.title}</strong>
@@ -531,8 +530,8 @@ export default function WatchPartyLobby() {
                                             </div>
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                <Users size={14} style={{ color: '#38bdf8' }} />
-                                                <span style={{ color: '#38bdf8', fontWeight: '700' }}>
+                                                <Users size={14} style={{ color: '#00e676' }} />
+                                                <span style={{ color: '#00e676', fontWeight: '700' }}>
                                                     {room.participantsCount || 1}
                                                 </span>
                                                 <span>assistindo</span>
@@ -547,9 +546,9 @@ export default function WatchPartyLobby() {
                                             handleJoinClick(room);
                                         }}
                                         style={{
-                                            background: '#27272a',
-                                            color: '#fff',
-                                            border: '1px solid #3f3f46',
+                                            background: 'rgba(0, 230, 118, 0.1)',
+                                            color: '#00e676',
+                                            border: '1px solid rgba(0, 230, 118, 0.3)',
                                             padding: '10px 18px',
                                             borderRadius: '10px',
                                             fontWeight: '700',
@@ -562,12 +561,14 @@ export default function WatchPartyLobby() {
                                             transition: 'all 0.2s'
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = '#ec4899';
-                                            e.currentTarget.style.borderColor = '#ec4899';
+                                            e.currentTarget.style.background = '#00e676';
+                                            e.currentTarget.style.color = '#000';
+                                            e.currentTarget.style.borderColor = '#00e676';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = '#27272a';
-                                            e.currentTarget.style.borderColor = '#3f3f46';
+                                            e.currentTarget.style.background = 'rgba(0, 230, 118, 0.1)';
+                                            e.currentTarget.style.color = '#00e676';
+                                            e.currentTarget.style.borderColor = 'rgba(0, 230, 118, 0.3)';
                                         }}
                                     >
                                         <Play size={15} />
@@ -612,8 +613,8 @@ export default function WatchPartyLobby() {
                             alignItems: 'center'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <PlusCircle size={20} style={{ color: '#ec4899' }} />
-                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700' }}>
+                                <PlusCircle size={20} style={{ color: '#00e676' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#fff' }}>
                                     Criar Nova Sala
                                 </h3>
                             </div>
@@ -744,14 +745,14 @@ export default function WatchPartyLobby() {
                                     type="submit"
                                     style={{
                                         flex: 1,
-                                        background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                                        color: '#fff',
+                                        background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                        color: '#000',
                                         border: 'none',
                                         padding: '12px',
                                         borderRadius: '10px',
-                                        fontWeight: '700',
+                                        fontWeight: '800',
                                         cursor: 'pointer',
-                                        boxShadow: '0 4px 15px rgba(236, 72, 153, 0.35)'
+                                        boxShadow: '0 4px 15px rgba(0, 230, 118, 0.4)'
                                     }}
                                 >
                                     Criar e Entrar
@@ -865,14 +866,14 @@ export default function WatchPartyLobby() {
                                     type="submit"
                                     style={{
                                         flex: 1,
-                                        background: '#ec4899',
-                                        color: '#fff',
+                                        background: 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
+                                        color: '#000',
                                         border: 'none',
                                         padding: '11px',
                                         borderRadius: '10px',
-                                        fontWeight: '700',
+                                        fontWeight: '800',
                                         cursor: 'pointer',
-                                        boxShadow: '0 4px 15px rgba(236, 72, 153, 0.35)'
+                                        boxShadow: '0 4px 15px rgba(0, 230, 118, 0.4)'
                                     }}
                                 >
                                     Acessar Sala
