@@ -10,10 +10,11 @@ import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import { 
     Tv, Film, PlusCircle, ListVideo, Users, Share2, Settings, 
-    Play, Pause, RotateCcw, Volume2, VolumeX, Maximize, Minimize,
-    Crown, ShieldCheck, Shield, MicOff, MessageSquareOff, Lock,
+    Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize,
+    Crown, ShieldCheck, Shield, MicOff, MessageSquareOff, Lock, Unlock,
     ChevronUp, ChevronDown, Trash2, Send, Smile, X, Search, Check,
-    AlertCircle, LogOut, Loader, UserMinus, ShieldAlert, Sparkles, ArrowLeft
+    AlertCircle, LogOut, Loader, UserMinus, ShieldAlert, Sparkles, ArrowLeft,
+    Headphones, Cast, Award, Calendar, KeyRound
 } from 'lucide-react';
 
 const COMMON_EMOJIS = [
@@ -57,13 +58,33 @@ export default function WatchPartyPage() {
     const chatEndRef = useRef(null);
 
     // Player Ref e Estado Local
+    // Player Ref e Estado Local
     const videoRef = useRef(null);
-    const [isLocallyPaused, setIsLocallyPaused] = useState(false);
+    const containerRef = useRef(null);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Controles Avançados do Player (Estilo Player Padrão)
+    const [showQualityMenu, setShowQualityMenu] = useState(false);
+    const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+    const [currentQuality, setCurrentQuality] = useState('HD');
+    const [currentAudio, setCurrentAudio] = useState('dub');
+    const [isCastAvailable, setIsCastAvailable] = useState(false);
+    const pointsAwardedRef = useRef(false);
+
+    // Modal de Senha para Acesso Direto a Sala Privada
+    const [needsPassword, setNeedsPassword] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+
+    // Popover Card do Perfil do Usuário
+    const [popoverUser, setPopoverUser] = useState(null);
+    const [popoverLoading, setPopoverLoading] = useState(false);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -71,31 +92,98 @@ export default function WatchPartyPage() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Ignora eventos de sync disparados por ações próprias para evitar loop
-    const ignoreNextSyncRef = useRef(false);
+    // Detecta suporte a Cast / AirPlay
+    useEffect(() => {
+        if (window.chrome && window.chrome.cast && window.chrome.cast.isAvailable) {
+            setIsCastAvailable(true);
+        } else if (window.WebKitPlaybackTargetAvailabilityEvent) {
+            setIsCastAvailable(true);
+        }
+    }, []);
+
+    // Abre o perfil público de qualquer usuário ao clicar na foto ou nick
+    const handleOpenUserProfile = async (targetUserId, fallbackData = {}) => {
+        if (!targetUserId) {
+            setPopoverUser({
+                id: 0,
+                nick: fallbackData.nick || 'Usuário',
+                avatar: fallbackData.avatar || '/default-avatar.svg',
+                role: fallbackData.role || 'membro',
+                points: 0,
+                created_at: null
+            });
+            return;
+        }
+
+        setPopoverLoading(true);
+        try {
+            const res = await fetch(`/api/profile/public/${targetUserId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPopoverUser({
+                    ...data,
+                    roomRole: fallbackData.role || 'member'
+                });
+            } else {
+                setPopoverUser({
+                    id: targetUserId,
+                    nick: fallbackData.nick || 'Usuário',
+                    avatar: fallbackData.avatar || '/default-avatar.svg',
+                    role: fallbackData.role || 'free',
+                    points: 0,
+                    created_at: null,
+                    roomRole: fallbackData.role || 'member'
+                });
+            }
+        } catch (err) {
+            setPopoverUser({
+                id: targetUserId,
+                nick: fallbackData.nick || 'Usuário',
+                avatar: fallbackData.avatar || '/default-avatar.svg',
+                role: 'free',
+                points: 0,
+                created_at: null,
+                roomRole: fallbackData.role || 'member'
+            });
+        } finally {
+            setPopoverLoading(false);
+        }
+    };
 
     // 1. Conexão WebSocket com o Servidor
     useEffect(() => {
         if (authLoading) return;
+        if (!user) return; // Auth Guard: não conecta deslogado
 
         const newSocket = io({ path: '/socket.io' });
+
+        // Verifica se há parâmetros de inicialização de sala no sessionStorage
+        let initParams = {};
+        const savedInit = sessionStorage.getItem(`wp_room_init_${roomId}`);
+        if (savedInit) {
+            try { initParams = JSON.parse(savedInit); } catch (e) {}
+        }
+        const savedPass = sessionStorage.getItem(`wp_room_pass_${roomId}`);
 
         newSocket.on('connect', () => {
             console.log('[WatchParty] Conectado ao servidor Socket.io:', newSocket.id);
             newSocket.emit('wp_join_room', {
                 roomId,
-                user: user ? { id: user.id, nick: user.nick, avatar: user.avatar, role: user.role } : null
+                user: { id: user.id, nick: user.nick, avatar: user.avatar, role: user.role },
+                password: savedPass || initParams.password || '',
+                roomName: initParams.name || '',
+                isPrivate: initParams.isPrivate || false
             });
         });
 
         newSocket.on('wp_room_state', (state) => {
             setRoomState(state);
+            setNeedsPassword(false);
         });
 
         newSocket.on('wp_chat_message', (msg) => {
             setRoomState(prev => {
                 if (!prev) return prev;
-                // Evita duplicar mensagem se já constar
                 if (prev.chatMessages?.some(m => m.id === msg.id)) return prev;
                 return {
                     ...prev,
@@ -106,13 +194,18 @@ export default function WatchPartyPage() {
 
         newSocket.on('wp_kicked', (data) => {
             alert(data.message || 'Você foi expulso da sala.');
-            navigate('/');
+            navigate('/salas');
         });
 
         newSocket.on('wp_error', (data) => {
-            if (data.code === 'banned') {
+            if (data.code === 'auth_required') {
+                navigate('/login');
+            } else if (data.code === 'password_required') {
+                setNeedsPassword(true);
+                setPasswordError(data.message || 'Senha requerida para esta sala.');
+            } else if (data.code === 'banned') {
                 alert(data.message);
-                navigate('/');
+                navigate('/salas');
             } else {
                 setErrorMsg(data.message);
                 setTimeout(() => setErrorMsg(null), 4000);
@@ -146,7 +239,6 @@ export default function WatchPartyPage() {
 
         if (targetPlaying && video.paused) {
             video.play().catch(() => {
-                // Navegadores bloqueiam autoplay sem interação prévia; mudo resolve
                 video.muted = true;
                 setIsMuted(true);
                 video.play().catch(() => {});
@@ -155,6 +247,62 @@ export default function WatchPartyPage() {
             video.pause();
         }
     }, [roomState?.playerState]);
+
+    // Reseta flag de pontos quando troca a mídia
+    useEffect(() => {
+        pointsAwardedRef.current = false;
+    }, [roomState?.playerState?.currentMedia?.id]);
+
+    // Atualização periódica do tempo de reprodução e verificação dos 80% (Pontos)
+    const handleTimeUpdate = () => {
+        const video = videoRef.current;
+        if (!video) return;
+        setCurrentTime(video.currentTime);
+        if (video.duration && isFinite(video.duration)) {
+            setDuration(video.duration);
+            
+            // Regra dos 80% de visualização: credita pontos na conta do usuário logado
+            if (!pointsAwardedRef.current && video.duration > 30) {
+                const ratio = video.currentTime / video.duration;
+                if (ratio >= 0.8) {
+                    pointsAwardedRef.current = true;
+                    const media = roomState?.playerState?.currentMedia;
+                    const token = localStorage.getItem('cinegeek_token');
+                    if (media && token) {
+                        fetch('/api/points/watch-reward', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                tmdb_id: String(media.id),
+                                media_type: media.season !== undefined && media.season !== null ? 'tv' : 'movie',
+                                season: media.season !== undefined ? parseInt(media.season, 10) : null,
+                                episode: media.episode !== undefined ? parseInt(media.episode, 10) : null,
+                                source: 'watch_party'
+                            })
+                        }).then(r => r.json()).then(data => {
+                            if (data && data.success) {
+                                console.log('[WatchParty] Recompensa de 80% creditada com sucesso:', data.pointsAwarded);
+                            }
+                        }).catch(e => console.error('[WatchParty] Erro ao creditar pontos:', e));
+                    }
+                }
+            }
+        }
+    };
+
+    const formatTime = (secs) => {
+        if (!secs || isNaN(secs) || !isFinite(secs)) return '00:00';
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        if (h > 0) {
+            return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
 
     // Permissões
     const canControl = roomState?.canControl || false;
@@ -287,6 +435,92 @@ export default function WatchPartyPage() {
     };
 
     const currentMedia = roomState?.playerState?.currentMedia;
+
+    // Bloqueio Estrito para Usuários Não Logados (Auth Guard Total)
+    if (!authLoading && !user) {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2rem 1rem',
+                background: '#09090b',
+                fontFamily: 'Inter, system-ui, sans-serif'
+            }}>
+                <div style={{
+                    background: '#13131a',
+                    border: '1px solid #27272a',
+                    borderRadius: '24px',
+                    padding: '2.5rem 2rem',
+                    maxWidth: '460px',
+                    width: '100%',
+                    textAlign: 'center',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                    backdropFilter: 'blur(16px)'
+                }}>
+                    <div style={{
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '50%',
+                        background: 'rgba(236, 72, 153, 0.12)',
+                        color: '#ec4899',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 1.5rem auto',
+                        border: '1px solid rgba(236, 72, 153, 0.3)'
+                    }}>
+                        <Lock size={34} />
+                    </div>
+
+                    <h2 style={{ color: '#fff', fontSize: '1.45rem', fontWeight: '800', margin: '0 0 0.8rem 0' }}>
+                        Crie uma conta para entrar nas salas
+                    </h2>
+                    
+                    <p style={{ color: '#a1a1aa', fontSize: '0.9rem', lineHeight: '1.6', margin: '0 0 2rem 0' }}>
+                        O acesso ao Watch Party é exclusivo para usuários cadastrados. Faça login ou crie sua conta agora para assistir em sincronia com seus amigos.
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                        <button
+                            onClick={() => navigate('/login?tab=register')}
+                            style={{
+                                background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '13px 20px',
+                                borderRadius: '12px',
+                                fontWeight: '700',
+                                fontSize: '0.95rem',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 20px rgba(236, 72, 153, 0.35)',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            Criar Conta
+                        </button>
+                        <button
+                            onClick={() => navigate('/login')}
+                            style={{
+                                background: '#27272a',
+                                color: '#f4f4f5',
+                                border: '1px solid #3f3f46',
+                                padding: '12px 20px',
+                                borderRadius: '12px',
+                                fontWeight: '600',
+                                fontSize: '0.95rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            Fazer Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
@@ -537,17 +771,20 @@ export default function WatchPartyPage() {
                     zIndex: isMobile ? 50 : 1
                 }}>
                     {currentMedia ? (
-                        <div style={{
-                            flex: isMobile ? 'none' : 1,
-                            position: 'relative',
-                            background: '#000',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%',
-                            aspectRatio: isMobile ? '16/9' : 'auto',
-                            minHeight: isMobile ? '220px' : 'auto'
-                        }}>
+                        <div 
+                            ref={containerRef}
+                            style={{
+                                flex: isMobile ? 'none' : 1,
+                                position: 'relative',
+                                background: '#000',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                aspectRatio: isMobile ? '16/9' : 'auto',
+                                minHeight: isMobile ? '220px' : 'auto'
+                            }}
+                        >
                             <video
                                 ref={videoRef}
                                 src={currentMedia.streamUrl}
@@ -561,6 +798,7 @@ export default function WatchPartyPage() {
                                 playsInline
                                 webkit-playsinline="true"
                                 controls={false}
+                                onTimeUpdate={handleTimeUpdate}
                                 onEnded={() => {
                                     if (canControl) {
                                         handleQueueAction('play_next', null);
@@ -583,7 +821,8 @@ export default function WatchPartyPage() {
                                     alignItems: 'center',
                                     gap: '6px',
                                     fontSize: '0.75rem',
-                                    color: '#a1a1aa'
+                                    color: '#a1a1aa',
+                                    zIndex: 10
                                 }}>
                                     <Lock size={14} style={{ color: '#ec4899' }} />
                                     Sincronizado pelo Dono/Subdono
@@ -605,7 +844,8 @@ export default function WatchPartyPage() {
                                 gap: '8px',
                                 fontSize: '0.85rem',
                                 color: '#fff',
-                                fontWeight: '600'
+                                fontWeight: '600',
+                                zIndex: 10
                             }}>
                                 <Film size={15} style={{ color: '#ec4899' }} />
                                 {currentMedia.title}
@@ -664,112 +904,347 @@ export default function WatchPartyPage() {
                         </div>
                     )}
 
-                    {/* BARRA DE CONTROLES DO PLAYER (PLAY/PAUSE/SEEK) */}
+                    {/* BARRA DE CONTROLES DO PLAYER (IDÊNTICA AO PLAYER ORIGINAL DO SITE) */}
                     {currentMedia && (
                         <div style={{
                             background: '#121217',
                             borderTop: '1px solid #27272a',
-                            padding: '1rem 1.5rem',
+                            padding: '0.8rem 1.2rem',
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '1rem'
+                            flexDirection: 'column',
+                            gap: '0.6rem'
                         }}>
+                            {/* Barra de Progresso com Preview/Tempo */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                {canControl ? (
-                                    <>
+                                <span style={{ color: '#a1a1aa', fontSize: '0.8rem', width: '48px', textAlign: 'right', fontWeight: '600' }}>
+                                    {formatTime(currentTime)}
+                                </span>
+                                <input
+                                    type="range"
+                                    min={0}
+                                    max={duration > 0 && isFinite(duration) ? duration : 100}
+                                    value={currentTime}
+                                    disabled={!canControl}
+                                    onChange={(e) => {
+                                        if (canControl) handleTimelineChange(e);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        accentColor: '#00ff88',
+                                        height: '4px',
+                                        cursor: canControl ? 'pointer' : 'not-allowed',
+                                        opacity: canControl ? 1 : 0.7
+                                    }}
+                                />
+                                <span style={{ color: '#71717a', fontSize: '0.8rem', width: '48px', fontWeight: '600' }}>
+                                    {duration > 0 && isFinite(duration) ? formatTime(duration) : '00:00'}
+                                </span>
+                            </div>
+
+                            {/* Linha de Botões e Controles */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.8rem' }}>
+                                
+                                {/* Controles Coletivos (Play/Pause, Retroceder 10s, Avançar 10s) */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    {canControl ? (
+                                        <>
+                                            <button
+                                                onClick={handleTogglePlay}
+                                                style={{
+                                                    background: '#00ff88',
+                                                    border: 'none',
+                                                    color: '#000',
+                                                    width: '38px',
+                                                    height: '38px',
+                                                    borderRadius: '50%',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    boxShadow: '0 0 12px rgba(0, 255, 136, 0.4)'
+                                                }}
+                                                title={roomState?.playerState?.isPlaying ? 'Pausar para todos' : 'Iniciar para todos'}
+                                            >
+                                                {roomState?.playerState?.isPlaying ? <Pause size={18} color="#000" /> : <Play size={18} color="#000" style={{ marginLeft: '2px' }} />}
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleSeek(-10)}
+                                                style={{
+                                                    background: '#27272a',
+                                                    border: '1px solid #3f3f46',
+                                                    color: '#e4e4e7',
+                                                    padding: '7px 10px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: '700',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                                title="Retroceder 10s para todos"
+                                            >
+                                                <RotateCcw size={14} />
+                                                -10s
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleSeek(10)}
+                                                style={{
+                                                    background: '#27272a',
+                                                    border: '1px solid #3f3f46',
+                                                    color: '#e4e4e7',
+                                                    padding: '7px 10px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.78rem',
+                                                    fontWeight: '700',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                                title="Avançar 10s para todos"
+                                            >
+                                                <RotateCw size={14} />
+                                                +10s
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a1a1aa', fontSize: '0.8rem' }}>
+                                            <Lock size={14} style={{ color: '#ec4899' }} />
+                                            <span>Controle pelo Criador/Subdonos</span>
+                                        </div>
+                                    )}
+
+                                    {/* Controle de Volume Local */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '0.4rem' }}>
                                         <button
-                                            onClick={handleTogglePlay}
+                                            onClick={() => {
+                                                if (videoRef.current) {
+                                                    videoRef.current.muted = !isMuted;
+                                                    setIsMuted(!isMuted);
+                                                }
+                                            }}
+                                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
+                                            title={isMuted ? 'Ativar som' : 'Silenciar áudio local'}
+                                        >
+                                            {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.05"
+                                            value={isMuted ? 0 : volume}
+                                            onChange={(e) => {
+                                                const v = parseFloat(e.target.value);
+                                                setVolume(v);
+                                                if (videoRef.current) {
+                                                    videoRef.current.volume = v;
+                                                    videoRef.current.muted = (v === 0);
+                                                }
+                                                setIsMuted(v === 0);
+                                            }}
+                                            style={{ width: '65px', accentColor: '#00ff88', height: '4px', cursor: 'pointer' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Controles do Lado Direito: Áudio, Qualidade, Transmitir e Tela Cheia */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    
+                                    {/* Seletor de Idiomas / Áudio (Dublado / Legendado) */}
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            onClick={() => {
+                                                setShowLanguageMenu(!showLanguageMenu);
+                                                setShowQualityMenu(false);
+                                            }}
                                             style={{
-                                                background: '#ec4899',
+                                                background: 'transparent',
                                                 border: 'none',
-                                                color: '#fff',
-                                                width: '42px',
-                                                height: '42px',
-                                                borderRadius: '50%',
+                                                color: showLanguageMenu ? '#00ff88' : '#fff',
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                boxShadow: '0 0 15px rgba(236, 72, 153, 0.4)'
+                                                gap: '4px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700'
                                             }}
-                                            title={roomState?.playerState?.isPlaying ? 'Pausar para todos' : 'Iniciar para todos'}
+                                            title="Opções de Áudio (Dublado / Legendado)"
                                         >
-                                            {roomState?.playerState?.isPlaying ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: '2px' }} />}
+                                            <Headphones size={18} />
+                                            <span>{currentAudio === 'leg' ? 'Legendado' : 'Dublado'}</span>
                                         </button>
 
-                                        <button
-                                            onClick={() => handleSeek(-10)}
-                                            style={{
-                                                background: '#27272a',
-                                                border: '1px solid #3f3f46',
-                                                color: '#e4e4e7',
-                                                padding: '8px 12px',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '600'
-                                            }}
-                                            title="Voltar 10 segundos"
-                                        >
-                                            -10s
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleSeek(10)}
-                                            style={{
-                                                background: '#27272a',
-                                                border: '1px solid #3f3f46',
-                                                color: '#e4e4e7',
-                                                padding: '8px 12px',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '600'
-                                            }}
-                                            title="Avançar 10 segundos"
-                                        >
-                                            +10s
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a1a1aa', fontSize: '0.85rem' }}>
-                                        <Lock size={16} style={{ color: '#ec4899' }} />
-                                        <span>Controle exclusivo do Criador/Subdonos</span>
+                                        {showLanguageMenu && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '120%',
+                                                right: 0,
+                                                background: 'rgba(20,20,25,0.96)',
+                                                borderRadius: '10px',
+                                                padding: '8px',
+                                                minWidth: '130px',
+                                                border: '1px solid #333',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '4px',
+                                                backdropFilter: 'blur(10px)',
+                                                zIndex: 100,
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+                                            }}>
+                                                <div style={{ color: '#71717a', fontSize: '0.72rem', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    Idioma
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setCurrentAudio('dub');
+                                                        setShowLanguageMenu(false);
+                                                    }}
+                                                    style={{
+                                                        padding: '7px 10px',
+                                                        background: currentAudio === 'dub' ? 'rgba(0,255,136,0.15)' : 'transparent',
+                                                        color: currentAudio === 'dub' ? '#00ff88' : '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        textAlign: 'left',
+                                                        fontWeight: '700',
+                                                        fontSize: '0.8rem'
+                                                    }}
+                                                >
+                                                    Dublado
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setCurrentAudio('leg');
+                                                        setShowLanguageMenu(false);
+                                                    }}
+                                                    style={{
+                                                        padding: '7px 10px',
+                                                        background: currentAudio === 'leg' ? 'rgba(0,255,136,0.15)' : 'transparent',
+                                                        color: currentAudio === 'leg' ? '#00ff88' : '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        textAlign: 'left',
+                                                        fontWeight: '700',
+                                                        fontSize: '0.8rem'
+                                                    }}
+                                                >
+                                                    Legendado
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            {/* Controles de Volume Local e Tela Cheia */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <button
-                                    onClick={() => {
-                                        if (videoRef.current) {
-                                            videoRef.current.muted = !isMuted;
-                                            setIsMuted(!isMuted);
-                                        }
-                                    }}
-                                    style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}
-                                    title={isMuted ? 'Ativar som' : 'Silenciar áudio local'}
-                                >
-                                    {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                                </button>
+                                    {/* Seletor de Qualidade */}
+                                    <div style={{ position: 'relative' }}>
+                                        <button
+                                            onClick={() => {
+                                                setShowQualityMenu(!showQualityMenu);
+                                                setShowLanguageMenu(false);
+                                            }}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: showQualityMenu ? '#00ff88' : '#fff',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                fontSize: '0.8rem',
+                                                fontWeight: '700'
+                                            }}
+                                            title="Qualidade de Reprodução"
+                                        >
+                                            <Settings size={18} />
+                                            <span>{currentQuality}</span>
+                                        </button>
 
-                                <button
-                                    onClick={() => {
-                                        if (videoRef.current) {
-                                            if (!document.fullscreenElement) {
-                                                videoRef.current.requestFullscreen().catch(() => {});
+                                        {showQualityMenu && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                bottom: '120%',
+                                                right: 0,
+                                                background: 'rgba(20,20,25,0.96)',
+                                                borderRadius: '10px',
+                                                padding: '8px',
+                                                minWidth: '120px',
+                                                border: '1px solid #333',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '4px',
+                                                backdropFilter: 'blur(10px)',
+                                                zIndex: 100,
+                                                boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+                                            }}>
+                                                <div style={{ color: '#71717a', fontSize: '0.72rem', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                    Qualidade
+                                                </div>
+                                                {['4K', 'FHD', 'HD', 'SD'].map((q) => (
+                                                    <button
+                                                        key={q}
+                                                        onClick={() => {
+                                                            setCurrentQuality(q);
+                                                            setShowQualityMenu(false);
+                                                        }}
+                                                        style={{
+                                                            padding: '7px 10px',
+                                                            background: currentQuality === q ? 'rgba(0,255,136,0.15)' : 'transparent',
+                                                            color: currentQuality === q ? '#00ff88' : '#fff',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            textAlign: 'left',
+                                                            fontWeight: '700',
+                                                            fontSize: '0.8rem'
+                                                        }}
+                                                    >
+                                                        {q}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Transmitir para a TV (Chromecast / AirPlay) */}
+                                    <button
+                                        onClick={() => {
+                                            if (videoRef.current?.remote?.prompt) {
+                                                videoRef.current.remote.prompt().catch(() => {});
+                                            } else if (videoRef.current?.webkitShowPlaybackTargetPicker) {
+                                                videoRef.current.webkitShowPlaybackTargetPicker();
                                             } else {
-                                                document.exitFullscreen().catch(() => {});
+                                                alert('Para transmitir, use o recurso Transmitir do Google Chrome ou espelhamento AirPlay de seu aparelho.');
                                             }
-                                        }
-                                    }}
-                                    style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}
-                                    title="Tela cheia"
-                                >
-                                    <Maximize size={20} />
-                                </button>
+                                        }}
+                                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
+                                        title="Transmitir para a TV (Chromecast / AirPlay)"
+                                    >
+                                        <Cast size={20} />
+                                    </button>
+
+                                    {/* Tela Cheia */}
+                                    <button
+                                        onClick={() => {
+                                            const container = containerRef.current || videoRef.current;
+                                            if (!document.fullscreenElement) {
+                                                if (container?.requestFullscreen) container.requestFullscreen().catch(() => {});
+                                                setIsFullscreen(true);
+                                            } else {
+                                                if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                                                setIsFullscreen(false);
+                                            }
+                                        }}
+                                        style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
+                                        title="Tela cheia"
+                                    >
+                                        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -821,18 +1296,33 @@ export default function WatchPartyPage() {
                                 <img
                                     src={msg.avatar || '/default-avatar.svg'}
                                     alt={msg.nick}
+                                    onClick={() => msg.userId && handleOpenUserProfile(msg.userId, msg)}
                                     style={{
                                         width: '32px',
                                         height: '32px',
                                         borderRadius: '50%',
                                         objectFit: 'cover',
+                                        cursor: msg.userId ? 'pointer' : 'default',
+                                        transition: 'transform 0.15s',
                                         border: msg.role === 'creator' ? '2px solid #eab308' : msg.role === 'subowner' ? '2px solid #38bdf8' : '1px solid #27272a'
                                     }}
                                     onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                                    title={msg.userId ? `Ver perfil de ${msg.nick}` : undefined}
                                 />
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#f4f4f5' }}>
+                                        <span
+                                            onClick={() => msg.userId && handleOpenUserProfile(msg.userId, msg)}
+                                            style={{
+                                                fontSize: '0.85rem',
+                                                fontWeight: '700',
+                                                color: '#f4f4f5',
+                                                cursor: msg.userId ? 'pointer' : 'default',
+                                                textDecoration: msg.userId ? 'none' : 'none'
+                                            }}
+                                            onMouseEnter={(e) => { if (msg.userId) e.target.style.textDecoration = 'underline'; }}
+                                            onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                                        >
                                             {msg.nick}
                                         </span>
                                         {/* Badges com Ícones Vetoriais SVG */}
@@ -1543,12 +2033,21 @@ export default function WatchPartyPage() {
                                                     <img
                                                         src={p.avatar || '/default-avatar.svg'}
                                                         alt={p.nick}
-                                                        style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
+                                                        onClick={() => p.userId && handleOpenUserProfile(p.userId, p)}
+                                                        style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', cursor: p.userId ? 'pointer' : 'default' }}
                                                         onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                                                        title={p.userId ? `Ver perfil de ${p.nick}` : undefined}
                                                     />
                                                     <div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                            <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>{p.nick}</span>
+                                                            <span
+                                                                onClick={() => p.userId && handleOpenUserProfile(p.userId, p)}
+                                                                style={{ fontWeight: '600', fontSize: '0.9rem', cursor: p.userId ? 'pointer' : 'default' }}
+                                                                onMouseEnter={(e) => { if (p.userId) e.target.style.textDecoration = 'underline'; }}
+                                                                onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                                                            >
+                                                                {p.nick}
+                                                            </span>
                                                             {/* Badges Vetoriais */}
                                                             {isCreator && (
                                                                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', fontWeight: '700' }}>
@@ -1654,11 +2153,20 @@ export default function WatchPartyPage() {
                                                     <img
                                                         src={past.avatar || '/default-avatar.svg'}
                                                         alt={past.nick}
-                                                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                                                        onClick={() => past.userId && handleOpenUserProfile(past.userId, past)}
+                                                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', cursor: past.userId ? 'pointer' : 'default' }}
                                                         onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                                                        title={past.userId ? `Ver perfil de ${past.nick}` : undefined}
                                                     />
                                                     <div>
-                                                        <p style={{ margin: 0, fontWeight: '600', fontSize: '0.85rem' }}>{past.nick}</p>
+                                                        <p
+                                                            onClick={() => past.userId && handleOpenUserProfile(past.userId, past)}
+                                                            style={{ margin: 0, fontWeight: '600', fontSize: '0.85rem', cursor: past.userId ? 'pointer' : 'default' }}
+                                                            onMouseEnter={(e) => { if (past.userId) e.target.style.textDecoration = 'underline'; }}
+                                                            onMouseLeave={(e) => { e.target.style.textDecoration = 'none'; }}
+                                                        >
+                                                            {past.nick}
+                                                        </p>
                                                         <span style={{
                                                             fontSize: '0.75rem',
                                                             color: past.action === 'Expulso da sala' ? '#ef4444' : '#a1a1aa'
@@ -1792,10 +2300,79 @@ export default function WatchPartyPage() {
                                 />
                             </div>
 
+                            {/* Config 4: Privacidade da Sala (Pública / Privada com Senha) */}
+                            <div style={{ borderTop: '1px solid #27272a', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {roomState?.isPrivate ? <Lock size={16} style={{ color: '#ef4444' }} /> : <Unlock size={16} style={{ color: '#10b981' }} />}
+                                            <p style={{ margin: 0, fontWeight: '600', fontSize: '0.9rem' }}>
+                                                {roomState?.isPrivate ? 'Sala Privada' : 'Sala Pública'}
+                                            </p>
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', color: '#71717a' }}>
+                                            {roomState?.isPrivate ? 'Apenas quem tem a senha pode entrar' : 'Visível para todos no lobby'}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={roomState?.isPrivate || false}
+                                        disabled={!canControl}
+                                        onChange={(e) => handleUpdateSetting('isPrivate', e.target.checked)}
+                                        style={{ width: '20px', height: '20px', cursor: canControl ? 'pointer' : 'default', accentColor: '#ef4444' }}
+                                    />
+                                </div>
+
+                                {roomState?.isPrivate && canControl && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.8rem', color: '#a1a1aa', fontWeight: '600' }}>
+                                            Senha de Acesso à Sala
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="password"
+                                                defaultValue={roomState?.password || ''}
+                                                id="room-settings-password-input"
+                                                placeholder="Definir nova senha"
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px 12px',
+                                                    background: '#18181f',
+                                                    border: '1px solid #3f3f46',
+                                                    borderRadius: '8px',
+                                                    color: '#fff',
+                                                    fontSize: '0.85rem',
+                                                    outline: 'none'
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const val = document.getElementById('room-settings-password-input')?.value;
+                                                    handleUpdateSetting('password', val);
+                                                    alert('Senha da sala atualizada com sucesso!');
+                                                }}
+                                                style={{
+                                                    background: '#10b981',
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                    padding: '8px 14px',
+                                                    borderRadius: '8px',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                Salvar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <button
                                 onClick={() => setIsSettingsModalOpen(false)}
                                 style={{
-                                    marginTop: '1rem',
+                                    marginTop: '0.5rem',
                                     background: '#27272a',
                                     color: '#fff',
                                     border: 'none',
@@ -1808,6 +2385,286 @@ export default function WatchPartyPage() {
                                 Fechar
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* MODAL 5: MINI-MODAL DE PERFIL (POPOVER CARD DO USUÁRIO) */}
+            {/* ========================================================= */}
+            {popoverUser && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 11000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1.5rem'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid #27272a',
+                        borderRadius: '24px',
+                        width: '100%',
+                        maxWidth: '380px',
+                        overflow: 'hidden',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.8)',
+                        position: 'relative'
+                    }}>
+                        {/* Header Gradient */}
+                        <div style={{
+                            height: '90px',
+                            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f43f5e 100%)',
+                            position: 'relative'
+                        }}>
+                            <button
+                                onClick={() => setPopoverUser(null)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '12px',
+                                    right: '12px',
+                                    background: 'rgba(0,0,0,0.5)',
+                                    border: 'none',
+                                    color: '#fff',
+                                    borderRadius: '50%',
+                                    width: '32px',
+                                    height: '32px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Conteúdo do Perfil */}
+                        <div style={{ padding: '0 1.5rem 1.5rem', marginTop: '-45px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            {/* Avatar */}
+                            <img
+                                src={popoverUser.avatar || '/default-avatar.svg'}
+                                alt={popoverUser.nick}
+                                style={{
+                                    width: '90px',
+                                    height: '90px',
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                    border: '4px solid #13131a',
+                                    boxShadow: '0 8px 20px rgba(0,0,0,0.5)',
+                                    marginBottom: '12px'
+                                }}
+                                onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                            />
+
+                            <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '800', color: '#fff' }}>
+                                {popoverUser.nick}
+                            </h3>
+
+                            {/* Badges de Cargo */}
+                            <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                {popoverUser.roomRole === 'creator' && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
+                                        <Crown size={12} /> Dono da Sala
+                                    </span>
+                                )}
+                                {popoverUser.roomRole === 'subowner' && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', fontWeight: '700' }}>
+                                        <ShieldCheck size={12} /> Subdono
+                                    </span>
+                                )}
+                                {popoverUser.role && popoverUser.role !== 'free' && popoverUser.role !== 'membro' && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7', fontSize: '0.75rem', padding: '3px 8px', borderRadius: '6px', fontWeight: '700', textTransform: 'uppercase' }}>
+                                        <Award size={12} /> {popoverUser.role}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Informações detalhadas: Pontos e Criação */}
+                            <div style={{
+                                width: '100%',
+                                marginTop: '1.2rem',
+                                background: '#18181f',
+                                border: '1px solid #27272a',
+                                borderRadius: '16px',
+                                padding: '14px',
+                                display: 'flex',
+                                justifyContent: 'space-around'
+                            }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#eab308' }}>
+                                        <Award size={18} />
+                                        <span style={{ fontSize: '1.1rem', fontWeight: '800', color: '#fff' }}>
+                                            {popoverUser.points || 0}
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Pontos CineGeek
+                                    </span>
+                                </div>
+
+                                <div style={{ width: '1px', background: '#27272a' }}></div>
+
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#38bdf8' }}>
+                                        <Calendar size={18} />
+                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#fff' }}>
+                                            {popoverUser.created_at ? new Date(popoverUser.created_at).toLocaleDateString('pt-BR') : 'Membro'}
+                                        </span>
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Cadastro
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setPopoverUser(null)}
+                                style={{
+                                    marginTop: '1.2rem',
+                                    width: '100%',
+                                    padding: '10px',
+                                    background: '#27272a',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* MODAL 6: SENHA DE ACESSO DIRETO A SALA PRIVADA */}
+            {/* ========================================================= */}
+            {needsPassword && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.92)',
+                    backdropFilter: 'blur(16px)',
+                    zIndex: 12000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1.5rem'
+                }}>
+                    <div style={{
+                        background: '#13131a',
+                        border: '1px solid #27272a',
+                        borderRadius: '24px',
+                        width: '100%',
+                        maxWidth: '420px',
+                        padding: '2rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+                    }}>
+                        <div style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '16px',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '1rem',
+                            color: '#ef4444'
+                        }}>
+                            <Lock size={28} />
+                        </div>
+
+                        <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: '800', color: '#fff' }}>
+                            Sala Privada com Senha
+                        </h3>
+                        <p style={{ margin: '0 0 1.5rem', fontSize: '0.85rem', color: '#a1a1aa', lineHeight: '1.4' }}>
+                            Esta sala requer uma senha definida pelo criador para liberar o acesso à transmissão.
+                        </p>
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!socket) return;
+                                setPasswordError('');
+                                socket.emit('wp_join_room', {
+                                    roomId,
+                                    user: { id: user.id, nick: user.nick, avatar: user.avatar, role: user.role },
+                                    password: passwordInput.trim()
+                                });
+                                sessionStorage.setItem(`wp_room_pass_${roomId}`, passwordInput.trim());
+                            }}
+                            style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                        >
+                            <input
+                                type="password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                placeholder="Digite a senha da sala"
+                                autoFocus
+                                required
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    background: '#18181f',
+                                    border: passwordError ? '1px solid #ef4444' : '1px solid #3f3f46',
+                                    borderRadius: '12px',
+                                    color: '#fff',
+                                    fontSize: '0.95rem',
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+
+                            {passwordError && (
+                                <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: '600' }}>
+                                    {passwordError}
+                                </span>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/salas')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        background: '#27272a',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Voltar ao Lobby
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Entrar na Sala
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

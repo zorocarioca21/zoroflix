@@ -80,5 +80,27 @@ export default function profileRoutes(db) {
         }
     });
 
+    // PERFIL PÚBLICO (Para Popover Card na Watch Party e comentários)
+    router.get('/public/:userId', async (req, res) => {
+        try {
+            const user = await db.get(
+                'SELECT id, nick, avatar, role, points, created_at FROM users WHERE id = ?',
+                [req.params.userId]
+            );
+            if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
+            res.json({
+                id: user.id,
+                nick: user.nick,
+                avatar: user.avatar || '/default-avatar.svg',
+                role: user.role || 'free',
+                points: user.points || 0,
+                created_at: user.created_at
+            });
+        } catch (err) {
+            console.error('[PROFILE] Erro ao buscar perfil público:', err);
+            res.status(500).json({ error: 'Erro ao buscar dados do perfil.' });
+        }
+    });
+
     return router;
 }

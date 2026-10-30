@@ -370,8 +370,12 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
         // ==========================================
         // EVENTOS DE WATCH PARTY (SALAS ESTILO RAVE)
         // ==========================================
-        socket.on('wp_join_room', ({ roomId, user }) => {
-            watchPartyService.handleJoin(socket, roomId, user);
+        socket.on('wp_get_rooms', () => {
+            socket.emit('wp_lobby_update', watchPartyService.getRoomsList());
+        });
+
+        socket.on('wp_join_room', (data) => {
+            watchPartyService.handleJoin(socket, data);
         });
 
         socket.on('wp_player_sync', (data) => {

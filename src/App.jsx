@@ -29,6 +29,7 @@ import MangasPage from './components/MangasPage'
 import MangaDetailsPage from './components/MangaDetailsPage'
 import MangaReaderPage from './components/MangaReaderPage'
 import WatchPartyPage from './components/WatchPartyPage'
+import WatchPartyLobby from './components/WatchPartyLobby'
 
 // Auth & User Components
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -380,7 +381,7 @@ function AppContent() {
                     <Link to="/pontos" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#00ff88' }}>
                       <Award size={16} /> Pontos & Pedidos
                     </Link>
-                    <Link to="/sala" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#ec4899' }}>
+                    <Link to="/salas" className="user-drop-item" onClick={() => setIsUserMenuOpen(false)} style={{ color: '#ec4899' }}>
                       <Tv size={16} /> Sala
                     </Link>
                     {user.role === 'admin' && (
@@ -442,7 +443,8 @@ function AppContent() {
         <Route path="/app-update" element={<AppUpdatePage />} />
         
         {/* Rotas de Watch Party (Salas Sincronizadas estilo Rave) */}
-        <Route path="/sala" element={<WatchPartyPage />} />
+        <Route path="/salas" element={<WatchPartyLobby />} />
+        <Route path="/sala" element={<WatchPartyLobby />} />
         <Route path="/sala/:roomId" element={<WatchPartyPage />} />
         
         {/* Rotas Embed API */}
