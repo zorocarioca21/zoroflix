@@ -201,6 +201,7 @@ export default function WatchPartyPage() {
             if (data.code === 'auth_required') {
                 navigate('/login');
             } else if (data.code === 'password_required') {
+                sessionStorage.removeItem(`wp_room_pass_${roomId}`);
                 setNeedsPassword(true);
                 setPasswordError(data.message || 'Senha requerida para esta sala.');
             } else if (data.code === 'banned') {

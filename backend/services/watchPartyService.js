@@ -189,12 +189,7 @@ class WatchPartyService {
     // Cria ou recupera uma sala
     createOrGetRoom(roomId, creatorUser, roomOptions = {}) {
         if (this.rooms.has(roomId)) {
-            const existing = this.rooms.get(roomId);
-            if (roomOptions.name) existing.name = roomOptions.name;
-            if (roomOptions.isPrivate !== undefined) existing.isPrivate = !!roomOptions.isPrivate;
-            if (roomOptions.password !== undefined && roomOptions.password !== '') existing.password = String(roomOptions.password).trim();
-            this.saveRoomToDB(existing);
-            return existing;
+            return this.rooms.get(roomId);
         }
 
         const room = {
