@@ -25,7 +25,6 @@ export default function PlayerPage() {
     const hasTracked = useRef(false);
     const [resolvedChannel, setResolvedChannel] = useState(null);
     const [seriesDetail, setSeriesDetail] = useState(null);
-    const [episodeGroup, setEpisodeGroup] = useState(null);
     const [showNextSeasonModal, setShowNextSeasonModal] = useState(false);
 
     const [activeSidebarSeason, setActiveSidebarSeason] = useState(null);
@@ -1124,42 +1123,7 @@ export default function PlayerPage() {
 
                 {showList && (
                     <div className="player-ep-sidebar">
-                        {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
-                            <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
-                                <select
-                                    value={activeSidebarSeason || season}
-                                    onChange={(e) => {
-                                        setActiveSidebarSeason(parseInt(e.target.value));
-                                    }}
-                                    style={{
-                                        width: '100%',
-                                        background: '#1c1c24',
-                                        color: '#00ff88',
-                                        border: '1px solid #333',
-                                        borderRadius: '8px',
-                                        padding: '0.6rem',
-                                        fontSize: '0.95rem',
-                                        fontWeight: '700',
-                                        outline: 'none',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {episodeGroup.groups.map((g, idx) => {
-                                        const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
-                                        const rawName = g.name || `Temporada ${sNum}`;
-                                        const displayName = rawName
-                                            .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
-                                            .replace(/\bSpecials?\b/gi, 'Especiais');
-                                        return (
-                                            <option key={g.id || sNum} value={sNum} style={{ background: '#13131a', color: '#fff' }}>
-                                                {displayName} ({g.episodes?.length || 0} eps)
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-
-                            </div>
-                        ) : seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
+                        {seriesDetail && seriesDetail.seasons && seriesDetail.seasons.length > 0 ? (
                             <div className="season-select-wrapper" style={{ margin: '0.2rem 0 1rem 0', width: '100%' }}>
                                 <select
                                     value={activeSidebarSeason || season}

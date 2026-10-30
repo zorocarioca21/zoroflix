@@ -27,7 +27,6 @@ export default function DetailsPage() {
   const [trailerKey, setTrailerKey] = useState(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [watchedEpisodes, setWatchedEpisodes] = useState([]);
-  const [episodeGroup, setEpisodeGroup] = useState(null);
   const [anilistData, setAnilistData] = useState(null);
   const { user, uuid, loading: authLoading } = useAuth();
 
@@ -194,35 +193,7 @@ export default function DetailsPage() {
               .catch(() => {});
           }
 
-          // Para animes, buscamos os Episode Groups (Seasons) oficiais do TMDB para organizar as temporadas corretamente no dropdown
-          if (isAnimeOrAnimation) {
-            fetch(`${BASE_URL}/tv/${id}/episode_groups?api_key=${API_KEY}`)
-              .then(r => r.json())
-              .then(async gData => {
-                const groups = gData.results || [];
-                const targetGroup = groups.find(g => g.name && g.name.toLowerCase() === 'seasons')
-                  || groups.find(g => g.type === 6)
-                  || groups.find(g => g.type === 1);
-
-                if (targetGroup && isCurrent) {
-                  try {
-                    const detResp = await fetch(`${BASE_URL}/tv/episode_group/${targetGroup.id}?api_key=${API_KEY}&language=pt-BR`);
-                    const detData = await detResp.json();
-                    if (isCurrent && Array.isArray(detData.groups) && detData.groups.length > 0) {
-                      setEpisodeGroup(detData);
-                      fetchEpisodes(1, detData);
-                      return;
-                    }
-                  } catch (e) {}
-                }
-                if (isCurrent) fetchEpisodes(1, null);
-              })
-              .catch(() => {
-                if (isCurrent) fetchEpisodes(1, null);
-              });
-          } else {
-            fetchEpisodes(1, null);
-          }
+          fetchEpisodes(1, null);
 
           const certResp = await fetch(`${BASE_URL}/tv/${id}/content_ratings?api_key=${API_KEY}`);
           const certData = await certResp.json();
@@ -264,20 +235,7 @@ export default function DetailsPage() {
 
 
 
-  const fetchEpisodes = async (seasonNumber, groupObj = episodeGroup) => {
-    const sNum = parseInt(seasonNumber, 10);
-    
-    // Se temos um episodeGroup (ex: temporadas organizadas para animes)
-    if (groupObj && Array.isArray(groupObj.groups) && groupObj.groups.length > 0) {
-      const targetGroup = groupObj.groups.find(g => (g.order !== undefined && g.order !== 0 ? g.order : groupObj.groups.indexOf(g) + 1) === sNum)
-        || groupObj.groups[sNum - 1]
-        || groupObj.groups[0];
-      if (targetGroup && Array.isArray(targetGroup.episodes)) {
-        setEpisodes(targetGroup.episodes);
-        return;
-      }
-    }
-    
+  const fetchEpisodes = async (seasonNumber) => {
     try {
       let data = null;
       try {
@@ -435,28 +393,9 @@ export default function DetailsPage() {
                   value={selectedSeason}
                   onChange={(e) => handleSeasonChange(e.target.value)}
                 >
-                  {episodeGroup && Array.isArray(episodeGroup.groups) && episodeGroup.groups.length > 0 ? (
-                    episodeGroup.groups
-                      .filter(g => g.order !== 0 && !/specials?/i.test(g.name || ''))
-                      .sort((a, b) => (a.order || 0) - (b.order || 0))
-                      .map((g, idx) => {
-                        const sNum = g.order !== undefined && g.order !== 0 ? g.order : idx + 1;
-                        const rawName = g.name || `Temporada ${sNum}`;
-                        const displayName = rawName
-                          .replace(/\bSeason\s*(\d+)\b/gi, 'Temporada $1')
-                          .replace(/\bSpecials?\b/gi, 'Especiais');
-                        return (
-                          <option key={g.id || sNum} value={sNum}>
-                            {displayName} ({g.episodes?.length || 0} eps)
-                          </option>
-                        );
-                      })
-                  ) : (
-                    data.seasons?.filter(s => s.season_number > 0).map(s => (
-                      <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
-                    ))
-                  )}
-
+                  {data.seasons?.filter(s => s.season_number > 0).map(s => (
+                    <option key={s.id} value={s.season_number}>Temporada {s.season_number}</option>
+                  ))}
                 </select>
 
               </div>
@@ -464,9 +403,7 @@ export default function DetailsPage() {
               <div className="episodes-grid-modern">
                 {episodes.map((ep, idx) => {
                   const showSlug = getSlug(data.name);
-                  const relEpNum = idx + 1;
-                  const displayEpNum = episodeGroup ? relEpNum : ep.episode_number;
-                  const isWatched = watchedEpisodes.some(we => we.season === parseInt(selectedSeason) && (we.episode === parseInt(ep.episode_number) || we.episode === relEpNum));
+                  const isWatched = watchedEpisodes.some(we => we.season === parseInt(selectedSeason) && we.episode === parseInt(ep.episode_number));
                   return (
                   <div key={ep.id} className="episode-card-modern" onClick={() => navigate(`/serie/${showSlug}/${selectedSeason}/${ep.episode_number}/player`, { state: { id, title: `${data.name} - ${ep.name}`, poster_path: data.poster_path } })}>
                     <div className="ep-image-wrap">
