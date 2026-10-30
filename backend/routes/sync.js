@@ -42,8 +42,23 @@ export default function syncRoutes(db, io) {
     // Inicializa o worker singleton
     initSyncWorker(db, io);
     
-    // Inicia automaticamente o worker assim que o servidor ligar
-    startWorker();
+    // Inicia automaticamente o worker no boot apenas se auto-start estiver ativo (padrão true se não configurado)
+    (async () => {
+        try {
+            const autoBootRow = await db.get("SELECT value FROM system_settings WHERE key = 'iptv_auto_start'");
+            const autoStartEnabled = autoBootRow ? autoBootRow.value === '1' || autoBootRow.value === 'true' : true;
+            if (autoStartEnabled) {
+                console.log('[Sync] 🚀 Auto-início no boot ativado: iniciando downloads IPTV...');
+                startWorker();
+            } else {
+                console.log('[Sync] ⏸️ Auto-início no boot desativado: downloads IPTV permanecerão parados.');
+                setPauseState(true);
+            }
+        } catch (e) {
+            console.error('[Sync] Erro ao verificar auto-start no boot:', e);
+            startWorker();
+        }
+    })();
 
     // Configuração do Multer para Upload Manual (Chunks)
     const upload = multer({ 
@@ -1423,6 +1438,33 @@ export default function syncRoutes(db, io) {
         } catch (err) {
             console.error("Erro delete-telegram-broken:", err);
             res.status(500).json({ error: 'Erro ao apagar mensagens corrompidas do Telegram: ' + err.message });
+        }
+    });
+
+    // Rota para consultar configuração de auto-início no boot
+    router.get('/auto-boot-setting', async (req, res) => {
+        try {
+            const row = await db.get("SELECT value FROM system_settings WHERE key = 'iptv_auto_start'");
+            const enabled = row ? row.value === '1' || row.value === 'true' : true;
+            res.json({ success: true, enabled });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Rota para salvar configuração de auto-início no boot
+    router.post('/auto-boot-setting', async (req, res) => {
+        try {
+            const { enabled } = req.body;
+            const valStr = enabled ? '1' : '0';
+            await db.run(
+                `INSERT INTO system_settings (key, value, updated_at) VALUES ('iptv_auto_start', ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [valStr]
+            );
+            res.json({ success: true, enabled: !!enabled });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
         }
     });
 

@@ -73,13 +73,21 @@ def run_worker():
     current_sitemap = state.get('current_sitemap', 1)
     processed_urls = state.get('processed_urls', {})
     
-    while current_sitemap <= 46:
+    while True:
+        if current_sitemap > 46:
+            print("[Worker] 🔄 Todos os 46 sitemaps foram verificados! Reiniciando verificação a partir do sitemap 1 para novos lançamentos...")
+            current_sitemap = 1
+            state['current_sitemap'] = 1
+            save_state(state)
+            time.sleep(10)
+
         urls = fetch_sitemap_urls(current_sitemap)
         if not urls:
             print(f"[Worker] Sitemap {current_sitemap} vazio ou inacessível. Avançando...")
             current_sitemap += 1
             state['current_sitemap'] = current_sitemap
             save_state(state)
+            time.sleep(2)
             continue
 
         print(f"[Worker] Encontrados {len(urls)} episódios no sitemap {current_sitemap}. Processando...")

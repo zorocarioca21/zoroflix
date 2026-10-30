@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List, Bot, MessageSquare, Loader2, Maximize2, Minimize2, Trash, Copy } from 'lucide-react';
+import { Play, Pause, Trash2, Edit, HardDriveDownload, Send, Search, ArrowDownUp, SkipForward, Download, RefreshCcw, Eraser, ChevronsUp, X, Radio, AlertTriangle, CheckCircle2, Info, XCircle, Clock, Star, CheckCircle, Database, Rocket, Sparkles, Check, Server, ListFilter, Activity, Film, List, Bot, MessageSquare, Loader2, Maximize2, Minimize2, Trash, Copy, Power } from 'lucide-react';
 import './AdminSync.css';
 
 // ==========================================
@@ -455,8 +455,48 @@ export default function AdminSync() {
         } catch (e) {}
     };
 
+    const [iptvAutoBoot, setIptvAutoBoot] = useState(true);
+    const [isSavingAutoBoot, setIsSavingAutoBoot] = useState(false);
+
+    const fetchAutoBootSetting = async () => {
+        try {
+            const res = await fetch('/api/sync/auto-boot-setting');
+            const data = await res.json();
+            if (data.success) {
+                setIptvAutoBoot(data.enabled);
+            }
+        } catch (e) {}
+    };
+
+    const toggleAutoBootSetting = async () => {
+        setIsSavingAutoBoot(true);
+        const nextVal = !iptvAutoBoot;
+        try {
+            const res = await fetch('/api/sync/auto-boot-setting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: nextVal })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setIptvAutoBoot(nextVal);
+                dialog.alert(
+                    nextVal 
+                        ? 'Auto-início ATIVADO! Quando o servidor reiniciar, os downloads IPTV iniciarão sozinhos.' 
+                        : 'Auto-início DESATIVADO! Quando o servidor reiniciar, os downloads IPTV ficarão desligados/pausados.',
+                    { variant: nextVal ? 'success' : 'warning', title: 'Reinicialização IPTV' }
+                );
+            }
+        } catch (e) {
+            dialog.alert('Erro ao atualizar preferência de auto-início.', { variant: 'error', title: 'Erro' });
+        } finally {
+            setIsSavingAutoBoot(false);
+        }
+    };
+
     useEffect(() => {
         fetchM3uUrl();
+        fetchAutoBootSetting();
     }, []);
 
     const saveM3uUrl = async () => {
@@ -1382,6 +1422,31 @@ export default function AdminSync() {
                                         title="Pausar Download IPTV"
                                     >
                                         <Pause size={13} /> Pausar
+                                    </button>
+
+                                    {/* Botão de Ativar/Desativar Auto-Início no Reinício da VPS */}
+                                    <button
+                                        onClick={toggleAutoBootSetting}
+                                        disabled={isSavingAutoBoot}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            padding: '0.4rem 0.65rem',
+                                            fontSize: '0.74rem',
+                                            fontWeight: 700,
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            background: iptvAutoBoot ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                                            color: iptvAutoBoot ? '#34d399' : '#f87171',
+                                            border: `1px solid ${iptvAutoBoot ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                            marginLeft: '6px'
+                                        }}
+                                        title={iptvAutoBoot ? "Auto-início ATIVADO: quando o servidor reiniciar, os downloads iniciarão sozinhos. Clique para desativar." : "Auto-início DESATIVADO: quando o servidor reiniciar, os downloads ficarão desligados. Clique para ativar."}
+                                    >
+                                        <Power size={12} color={iptvAutoBoot ? '#10b981' : '#ef4444'} />
+                                        <span>Auto-boot: {iptvAutoBoot ? 'LIGADO' : 'DESLIGADO'}</span>
                                     </button>
                                 </div>
 
