@@ -420,5 +420,16 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
         
         // Agendar para rodar a cada 1 hora (sem varredura imediata ao iniciar o servidor)
         setInterval(runScanner, 60 * 60 * 1000);
+
+        // Agendar manutenção automática do cache de mangás a cada 30 minutos (limite de 4.5 GB)
+        const cleanMangaScript = path.join(__dirname, 'backend', 'scripts', 'cleanMangaCache.py');
+        const mangaCacheDir = path.join(__dirname, 'temp_mangas', 'cache');
+        const runMangaCleaner = () => {
+            if (fs.existsSync(cleanMangaScript) && fs.existsSync(mangaCacheDir)) {
+                spawn('python3', [cleanMangaScript, mangaCacheDir, '4.5'], { detached: true, stdio: 'ignore' }).unref();
+            }
+        };
+        setInterval(runMangaCleaner, 30 * 60 * 1000);
+        runMangaCleaner(); // Executa uma vez no boot
     });
 });

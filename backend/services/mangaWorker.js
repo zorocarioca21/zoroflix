@@ -655,6 +655,14 @@ class MangaQueueWorker {
             if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
         } catch (e) {}
 
+        // 6.1 Executar manutenção LRU automática garantindo que o cache não ultrapasse 4.5 GB
+        try {
+            const cleanScript = path.join(__dirname, '..', 'scripts', 'cleanMangaCache.py');
+            if (fs.existsSync(cleanScript)) {
+                spawn('python3', [cleanScript, cacheDir, '4.5'], { detached: true, stdio: 'ignore' }).unref();
+            }
+        } catch (lruErr) {}
+
         // 7. Gravar capítulo no banco de dados com a versão/scan e idioma
         await this.db.run(`
             INSERT INTO manga_chapters (manga_id, chapter_number, title, telegram_message_id, file_size, pages_count, scan_group, language, chapter_dex_id)

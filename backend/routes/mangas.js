@@ -395,8 +395,15 @@ export default function createMangasRouter(db) {
     router.get('/pages/:msgId/:filename', (req, res) => {
         const { msgId, filename } = req.params;
         const safeFilename = path.basename(filename);
-        const imgPath = path.join(__dirname, '..', 'temp_mangas', 'cache', `ch_msg_${msgId}`, safeFilename);
+        const chapterDir = path.join(__dirname, '..', 'temp_mangas', 'cache', `ch_msg_${msgId}`);
+        const imgPath = path.join(chapterDir, safeFilename);
         if (fs.existsSync(imgPath)) {
+            // Atualiza o mtime/atime do diretório para manter o LRU preciso (evita remover o que está sendo lido)
+            try {
+                const now = new Date();
+                fs.utimes(chapterDir, now, now, () => {});
+            } catch (uErr) {}
+
             res.setHeader('Cache-Control', 'public, max-age=86400');
             res.sendFile(imgPath);
         } else {
