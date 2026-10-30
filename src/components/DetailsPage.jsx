@@ -443,7 +443,7 @@ export default function DetailsPage() {
                       )}
                     </div>
                     <div className="ep-info-modern">
-                        <p className="ep-title-meta">EP {displayEpNum} <span className="ep-real-title">{ep.name}</span></p>
+                        <p className="ep-title-meta">EP {ep.episode_number} <span className="ep-real-title">{ep.name}</span></p>
                         <p className="ep-overview-modern">{ep.overview || "Sinopse indisponível."}</p>
                     </div>
                   </div>
