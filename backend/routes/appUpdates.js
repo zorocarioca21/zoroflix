@@ -119,6 +119,55 @@ const upload = multer({
 });
 
 export default function appUpdatesRoutes(db) {
+    // Rota pública de configurações dinâmicas do App Mobile
+    router.get('/config', async (req, res) => {
+        try {
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS app_dynamic_config (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT OR IGNORE INTO app_dynamic_config (key, value) VALUES ('adblock_protection', 'false');
+            `);
+
+            const row = await db.get(`SELECT value FROM app_dynamic_config WHERE key = 'adblock_protection'`);
+            const isEnabled = row ? (row.value === 'true' || row.value === '1') : false;
+
+            res.json({
+                success: true,
+                adblock_protection: isEnabled
+            });
+        } catch (err) {
+            res.json({ success: true, adblock_protection: false });
+        }
+    });
+
+    // Rota para alternar Adblock Protection On/Off via URL com chave de segurança simples
+    router.get('/toggle-adblock', async (req, res) => {
+        try {
+            const { secret, enable } = req.query;
+            if (secret !== 'cinegeek_admin_2026') {
+                return res.status(403).json({ error: 'Chave secreta inválida. Use ?secret=cinegeek_admin_2026&enable=true/false' });
+            }
+
+            const newState = (enable === 'true' || enable === '1') ? 'true' : 'false';
+            await db.run(
+                `INSERT INTO app_dynamic_config (key, value, updated_at) VALUES ('adblock_protection', ?, CURRENT_TIMESTAMP)
+                  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [newState]
+            );
+
+            res.json({
+                success: true,
+                message: `Proteção contra AdBlock atualizada com sucesso para: ${newState.toUpperCase()}`,
+                adblock_protection: newState === 'true'
+            });
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+    
     // Rota Pública: Obter a última atualização
     router.get('/latest', async (req, res) => {
         try {
@@ -134,7 +183,8 @@ export default function appUpdatesRoutes(db) {
                 version_code: latest.version_code,
                 release_notes: latest.release_notes,
                 force_update: latest.force_update === 1,
-                download_url: `${baseUrl}/downloads/app/${latest.apk_filename}`
+                download_url: `${baseUrl}/downloads/app/${latest.apk_filename}`,
+                adblock_protection: false
             });
         } catch (err) {
             console.error('Erro ao buscar latest app update:', err);
