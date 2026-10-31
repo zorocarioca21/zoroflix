@@ -10,19 +10,50 @@ export default function ThemeInjector() {
     useEffect(() => {
         let isMounted = true;
 
+        const isPreviewMode = window.location.search.includes('theme_preview=1') || window.self !== window.top;
+
         const loadActiveTheme = async () => {
+            // Se estiver em modo preview com dados salvos no localStorage, não sobrescreve com o tema público
+            if (isPreviewMode) {
+                const savedPreview = localStorage.getItem('cinegeek_theme_preview_storage');
+                if (savedPreview) {
+                    try {
+                        const parsed = JSON.parse(savedPreview);
+                        if (isMounted) updatePreviewState(parsed);
+                        return;
+                    } catch (e) {}
+                }
+            }
+
             try {
                 const res = await fetch('/api/theme/active');
                 if (res.ok) {
                     const data = await res.json();
                     if (isMounted && data) {
-                        setTheme(data);
+                        // Se estiver no preview, só aplica se ainda não tiver recebido o preview
+                        setTheme(prev => {
+                            if (isPreviewMode && (prev?.custom_css || prev?.custom_html_body || prev?.custom_html_head)) {
+                                return prev;
+                            }
+                            return data;
+                        });
                     }
                 }
             } catch (err) {
                 // Silencioso para o usuário
             }
         };
+
+        // Carrega inicialmente do localStorage se for preview para não dar flash de tema padrão
+        if (isPreviewMode) {
+            const savedPreview = localStorage.getItem('cinegeek_theme_preview_storage');
+            if (savedPreview) {
+                try {
+                    const parsed = JSON.parse(savedPreview);
+                    updatePreviewState(parsed);
+                } catch (e) {}
+            }
+        }
 
         loadActiveTheme();
 
@@ -64,14 +95,6 @@ export default function ThemeInjector() {
                 } catch (err) {}
             }
         };
-
-        // Se abriu a página diretamente como preview (ex: ?theme_preview=1), checa se já há dados em localStorage
-        if (window.location.search.includes('theme_preview=1')) {
-            const savedPreview = localStorage.getItem('cinegeek_theme_preview_storage');
-            if (savedPreview) {
-                try { updatePreviewState(JSON.parse(savedPreview)); } catch (err) {}
-            }
-        }
 
         window.addEventListener('message', handleMessage);
         window.addEventListener('storage', handleStorage);

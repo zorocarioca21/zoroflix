@@ -581,10 +581,12 @@ export default function ThemeLiveEditor() {
             {/* LAYOUT GRID DINÂMICO (SPLIT VIEW, FULLSCREEN OU APENAS EDITOR) */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: previewLayout === 'split' ? 'minmax(420px, 1fr) 1.25fr' : (previewLayout === 'fullscreen' ? '0fr 1fr' : '1fr'),
+                gridTemplateColumns: previewLayout === 'split' ? 'minmax(420px, 1fr) 1.25fr' : '1fr',
                 gap: previewLayout === 'split' ? '1.2rem' : '0',
                 flex: 1,
-                minHeight: 0
+                minHeight: '75vh',
+                height: 'calc(100vh - 180px)',
+                width: '100%'
             }}>
                 {/* COLUNA ESQUERDA: LIVE CODE EDITOR */}
                 <div style={{
