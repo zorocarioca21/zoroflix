@@ -438,6 +438,28 @@ export default function ThemeLiveEditor() {
                         <Save size={16} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
 
+                    {/* BOTÃO PRINCIPAL: ABRIR PRÉVIA EM NOVA ABA (TELA INTEIRA REAL) */}
+                    <button
+                        onClick={handleOpenExternalFullPreview}
+                        style={{
+                            background: '#18181f',
+                            color: '#00e676',
+                            border: '1px solid rgba(0, 230, 118, 0.5)',
+                            borderRadius: '10px',
+                            padding: '9px 16px',
+                            fontWeight: '800',
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            boxShadow: '0 0 15px rgba(0, 230, 118, 0.15)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <ExternalLink size={16} /> Abrir Prévia em Tela Cheia (Nova Aba)
+                    </button>
+
                     <button
                         onClick={handlePublishTheme}
                         disabled={activating || isCurrentlyPublished}
