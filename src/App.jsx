@@ -18,6 +18,7 @@ import ApiDocsPage from './components/ApiDocsPage'
 import DownloadsPage from './components/DownloadsPage'
 import UserListPage from './components/UserListPage'
 import AntiDevTools from './components/AntiDevTools'
+import ThemeInjector from './components/ThemeInjector'
 import StoragePage from './components/StoragePage'
 import EmbedPlayerPage from './components/EmbedPlayerPage'
 import ApiLandingPage from './components/ApiLandingPage'
@@ -456,6 +457,7 @@ function AppContent() {
       </Routes>
       {configsReady && globalConfigs.anti_adblock && <AntiAdBlock />}
       {configsReady && globalConfigs.anti_devtools && <AntiDevTools />}
+      <ThemeInjector />
       {!location.pathname.startsWith('/embed') && (!user || user.role !== 'admin') && <WhatsappPopup />}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <TvGuideModal isOpen={isTvGuideOpen} onClose={() => setIsTvGuideOpen(false)} />

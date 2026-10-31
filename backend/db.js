@@ -638,6 +638,35 @@ export async function initDB() {
         )
     `);
 
+    // Tabela de Temas e Live Code Editor (Snapshots de Custom CSS e HTML Injection)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS site_themes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            custom_css TEXT DEFAULT '',
+            custom_html_head TEXT DEFAULT '',
+            custom_html_body TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Cria o Tema Padrão Neon caso a tabela esteja vazia
+    const themeCount = await db.get("SELECT COUNT(*) as count FROM site_themes");
+    if (!themeCount || themeCount.count === 0) {
+        await db.run(`
+            INSERT INTO site_themes (name, custom_css, custom_html_head, custom_html_body, is_active)
+            VALUES (
+                'Padrão CineGeek Neon',
+                '/* Tema Oficial CineGeek - Adicione ou sobrescreva estilos livremente */\n:root {\n  --primary-accent: #00e676;\n}\n',
+                '',
+                '',
+                1
+            )
+        `);
+    }
+
     // Inserir configurações padrão se não existirem
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_enabled', '0')");
     await db.run("INSERT OR IGNORE INTO configs (key, value) VALUES ('ads_popunder', '0')");

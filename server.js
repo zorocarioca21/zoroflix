@@ -39,6 +39,7 @@ import anilistRoutes from './backend/routes/anilist.js';
 import contentReportsRoutes from './backend/routes/contentReports.js';
 import appReportsRoutes from './backend/routes/appReports.js';
 import pointsRoutes from './backend/routes/points.js';
+import themesRoutes from './backend/routes/themes.js';
 import { initStorageDB } from './backend/storageDB.js';
 import { initTmdbCatalogDB } from './backend/tmdbCatalogDB.js';
 import { getTelegramClient } from './backend/telegram.js';
@@ -99,6 +100,11 @@ Promise.all([initDB(), initStorageDB(), initTmdbCatalogDB()]).then(([db, storage
 
     // Sistema de Pontos e Pedidos de Conteúdo
     app.use('/api/points', pointsRoutes(db, tmdbDb));
+
+    // Live Code Editor & Gerenciador de Snapshots de Temas (/api/theme/active e /api/admin/themes)
+    const themesHandler = themesRoutes(db);
+    app.use('/api/theme', themesHandler);
+    app.use('/api', themesHandler);
 
     // Validação do Cloudflare Turnstile no servidor
     app.post('/api/turnstile/verify', async (req, res) => {

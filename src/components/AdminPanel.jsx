@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award, Bug, Code } from 'lucide-react';
+import { Shield, MessageSquare, AlertTriangle, Users, Search, Trash2, CheckCircle, UserCheck, ExternalLink, Ghost, EyeOff, MoreHorizontal, ChartBar, Key, Copy, Power, Plus, Eye, Clock, Heart, Calendar, X, Film, Tv, Mail, User, HardDriveUpload, Smartphone, Cpu, BookOpen, RefreshCw, Flag, Award, Bug, Code, Paintbrush } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import AdminSync from './AdminSync';
@@ -9,6 +9,7 @@ import AdminBotManager from './AdminBotManager';
 import AdminMangas from './AdminMangas';
 import AdminIptvLists from './AdminIptvLists';
 import AdminSystemUpdates from './AdminSystemUpdates';
+import ThemeLiveEditor from './ThemeLiveEditor';
 
 import './AdminPanel.css';
 
@@ -709,6 +710,9 @@ export default function AdminPanel() {
                     <div className="admin-nav-category">
                         <span className="admin-nav-cat-label">Infraestrutura</span>
                         <div className="admin-nav-pills">
+                            <button className={`admin-tab-btn ${activeTab === 'themes' ? 'active' : ''}`} onClick={() => setActiveTab('themes')} style={{ border: '1px solid rgba(0, 230, 118, 0.4)' }}>
+                                <Paintbrush size={16} color="#00e676" /> Temas & Live CSS
+                            </button>
                             <button className={`admin-tab-btn ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>
                                 <ChartBar size={16} /> Analytics
                             </button>
@@ -735,6 +739,11 @@ export default function AdminPanel() {
             {/* Old analytics block removed */}
 
             <div className="admin-content-area">
+                {/* ABA LIVE CODE EDITOR & SNAPSHOTS DE TEMAS */}
+                {activeTab === 'themes' && (
+                    <ThemeLiveEditor />
+                )}
+
                 {/* ABA DENÚNCIAS */}
                 {activeTab === 'reports' && (
                     <div className="admin-card-list">
