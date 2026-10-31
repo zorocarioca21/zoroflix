@@ -26,26 +26,61 @@ export default function ThemeInjector() {
 
         loadActiveTheme();
 
-        // 2. Listener de Live Sandbox Preview para quando estiver sendo renderizado dentro do iframe do /paineladm
+        // 2. Listener de Live Sandbox Preview para quando estiver no iframe ou em outra aba de tela inteira
+        const updatePreviewState = (data) => {
+            if (!data || typeof data !== 'object') return;
+            const { custom_css, custom_html_body, custom_html_head } = data;
+            setTheme(prev => ({
+                ...(prev || {}),
+                custom_css: custom_css !== undefined ? custom_css : (prev?.custom_css || ''),
+                custom_html_head: custom_html_head !== undefined ? custom_html_head : (prev?.custom_html_head || ''),
+                custom_html_body: custom_html_body !== undefined ? custom_html_body : (prev?.custom_html_body || '')
+            }));
+        };
+
         const handleMessage = (event) => {
-            // Aceita mensagens de sandbox do mesmo domínio
-            if (!event.data || typeof event.data !== 'object') return;
-            if (event.data.type === 'CINEGEEK_THEME_PREVIEW') {
-                const { custom_css, custom_html_body, custom_html_head } = event.data;
-                setTheme(prev => ({
-                    ...(prev || {}),
-                    custom_css: custom_css !== undefined ? custom_css : (prev?.custom_css || ''),
-                    custom_html_head: custom_html_head !== undefined ? custom_html_head : (prev?.custom_html_head || ''),
-                    custom_html_body: custom_html_body !== undefined ? custom_html_body : (prev?.custom_html_body || '')
-                }));
+            if (event.data?.type === 'CINEGEEK_THEME_PREVIEW') {
+                updatePreviewState(event.data);
             }
         };
 
+        // BroadcastChannel para sincronizar aba externa aberta em tela cheia
+        let broadcastChannel = null;
+        try {
+            broadcastChannel = new BroadcastChannel('cinegeek_theme_preview_channel');
+            broadcastChannel.onmessage = (event) => {
+                if (event.data?.type === 'CINEGEEK_THEME_PREVIEW') {
+                    updatePreviewState(event.data);
+                }
+            };
+        } catch (e) {}
+
+        // Fallback via storage event
+        const handleStorage = (e) => {
+            if (e.key === 'cinegeek_theme_preview_storage' && e.newValue) {
+                try {
+                    const parsed = JSON.parse(e.newValue);
+                    updatePreviewState(parsed);
+                } catch (err) {}
+            }
+        };
+
+        // Se abriu a página diretamente como preview (ex: ?theme_preview=1), checa se já há dados em localStorage
+        if (window.location.search.includes('theme_preview=1')) {
+            const savedPreview = localStorage.getItem('cinegeek_theme_preview_storage');
+            if (savedPreview) {
+                try { updatePreviewState(JSON.parse(savedPreview)); } catch (err) {}
+            }
+        }
+
         window.addEventListener('message', handleMessage);
+        window.addEventListener('storage', handleStorage);
 
         return () => {
             isMounted = false;
             window.removeEventListener('message', handleMessage);
+            window.removeEventListener('storage', handleStorage);
+            if (broadcastChannel) broadcastChannel.close();
         };
     }, []);
 

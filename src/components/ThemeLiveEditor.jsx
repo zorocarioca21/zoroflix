@@ -5,7 +5,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     Paintbrush, Save, Plus, Rocket, Trash2, Smartphone, Monitor, 
-    RotateCcw, Code, Eye, Sparkles, Check, AlertCircle, Layers, CheckCircle
+    RotateCcw, Code, Eye, Sparkles, Check, AlertCircle, Layers, CheckCircle,
+    Maximize2, ExternalLink, EyeOff
 } from 'lucide-react';
 
 export default function ThemeLiveEditor() {
@@ -17,6 +18,13 @@ export default function ThemeLiveEditor() {
     const [customHtmlHead, setCustomHtmlHead] = useState('');
     const [activeTab, setActiveTab] = useState('css'); // 'css' | 'body' | 'head'
     const [previewMode, setPreviewMode] = useState('desktop'); // 'desktop' | 'mobile'
+    const [previewLayout, setPreviewLayout] = useState('split'); // 'split' | 'fullscreen' | 'hidden'
+
+    const handleOpenExternalFullPreview = () => {
+        // Envia os dados atuais para o localStorage antes de abrir a aba
+        broadcastToPreview(customCss, customHtmlBody, customHtmlHead);
+        window.open('/?theme_preview=1', '_blank');
+    };
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -101,19 +109,33 @@ export default function ThemeLiveEditor() {
         }
     };
 
-    // 2. Envia modificações de CSS/HTML para o iframe do preview via postMessage (Tempo Real / Live Sandbox)
+    // 2. Envia modificações de CSS/HTML para o iframe e para qualquer aba externa de preview em tela cheia
     const broadcastToPreview = (css, htmlBody, htmlHead) => {
-        if (!iframeRef.current || !iframeRef.current.contentWindow) return;
-        try {
-            iframeRef.current.contentWindow.postMessage({
-                type: 'CINEGEEK_THEME_PREVIEW',
-                custom_css: css,
-                custom_html_body: htmlBody,
-                custom_html_head: htmlHead
-            }, '*');
-        } catch (e) {
-            console.warn('[LivePreview] Falha ao enviar postMessage:', e);
+        const payload = {
+            type: 'CINEGEEK_THEME_PREVIEW',
+            custom_css: css,
+            custom_html_body: htmlBody,
+            custom_html_head: htmlHead
+        };
+
+        // Envia para o iframe local se existir
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            try {
+                iframeRef.current.contentWindow.postMessage(payload, '*');
+            } catch (e) {}
         }
+
+        // Envia para abas abertas externamente em tela inteira via BroadcastChannel
+        try {
+            const bc = new BroadcastChannel('cinegeek_theme_preview_channel');
+            bc.postMessage(payload);
+            bc.close();
+        } catch (e) {}
+
+        // Guarda em localStorage para persistência em reload da aba externa
+        try {
+            localStorage.setItem('cinegeek_theme_preview_storage', JSON.stringify(payload));
+        } catch (e) {}
     };
 
     // Dispara a sincronização com debounce leve de 150ms enquanto digita
@@ -460,14 +482,20 @@ export default function ThemeLiveEditor() {
                 </div>
             </div>
 
-            {/* LAYOUT SPLIT VIEW (COLUNA DA ESQUERDA: EDITOR | COLUNA DA DIREITA: LIVE PREVIEW) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(420px, 1fr) 1.25fr', gap: '1.2rem', flex: 1, minHeight: 0 }}>
+            {/* LAYOUT GRID DINÂMICO (SPLIT VIEW, FULLSCREEN OU APENAS EDITOR) */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: previewLayout === 'split' ? 'minmax(420px, 1fr) 1.25fr' : (previewLayout === 'fullscreen' ? '0fr 1fr' : '1fr'),
+                gap: previewLayout === 'split' ? '1.2rem' : '0',
+                flex: 1,
+                minHeight: 0
+            }}>
                 {/* COLUNA ESQUERDA: LIVE CODE EDITOR */}
                 <div style={{
                     background: '#13131a',
                     border: '1px solid #27272a',
                     borderRadius: '18px',
-                    display: 'flex',
+                    display: previewLayout === 'fullscreen' ? 'none' : 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
                 }}>
@@ -539,9 +567,52 @@ export default function ThemeLiveEditor() {
                             </button>
                         </div>
 
-                        <span style={{ fontSize: '0.75rem', color: '#71717a', fontFamily: 'monospace' }}>
-                            {activeTab === 'css' ? `${customCss.length} caracteres` : `${customHtmlBody.length + customHtmlHead.length} caracteres`}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <button
+                                onClick={handleOpenExternalFullPreview}
+                                title="Abrir prévia do site em tela cheia em outra aba"
+                                style={{
+                                    background: 'transparent',
+                                    color: '#00e676',
+                                    border: 'none',
+                                    fontSize: '0.78rem',
+                                    fontWeight: '800',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px'
+                                }}
+                            >
+                                <ExternalLink size={14} /> Prévia em Nova Aba
+                            </button>
+
+                            <button
+                                onClick={() => setPreviewLayout(prev => prev === 'hidden' ? 'split' : 'hidden')}
+                                title={previewLayout === 'hidden' ? 'Exibir Preview ao lado' : 'Ocultar Preview para focar no código'}
+                                style={{
+                                    background: previewLayout === 'hidden' ? '#27272a' : 'transparent',
+                                    color: '#a1a1aa',
+                                    border: '1px solid #3f3f46',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px'
+                                }}
+                            >
+                                <EyeOff size={13} />
+                                {previewLayout === 'hidden' ? 'Mostrar Preview' : 'Ocultar Preview'}
+                            </button>
+
+                            <span style={{ fontSize: '0.75rem', color: '#71717a', fontFamily: 'monospace' }}>
+                                {activeTab === 'css' ? `${customCss.length} caracteres` : `${customHtmlBody.length + customHtmlHead.length} caracteres`}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Área de Edição com Fonte Monospaced */}
@@ -622,7 +693,7 @@ export default function ThemeLiveEditor() {
                     background: '#13131a',
                     border: '1px solid #27272a',
                     borderRadius: '18px',
-                    display: 'flex',
+                    display: previewLayout === 'hidden' ? 'none' : 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
                 }}>
@@ -643,43 +714,89 @@ export default function ThemeLiveEditor() {
                             <span style={{ fontSize: '0.75rem', color: '#71717a' }}>• Atualização Instantânea</span>
                         </div>
 
-                        {/* Alternador Desktop / Mobile */}
-                        <div style={{ display: 'flex', background: '#1c1c24', borderRadius: '8px', padding: '3px', gap: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {/* Alternador Desktop / Mobile */}
+                            <div style={{ display: 'flex', background: '#1c1c24', borderRadius: '8px', padding: '3px', gap: '2px' }}>
+                                <button
+                                    onClick={() => setPreviewMode('desktop')}
+                                    style={{
+                                        background: previewMode === 'desktop' ? '#00e676' : 'transparent',
+                                        color: previewMode === 'desktop' ? '#000' : '#a1a1aa',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 10px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '800',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    <Monitor size={14} /> Desktop
+                                </button>
+                                <button
+                                    onClick={() => setPreviewMode('mobile')}
+                                    style={{
+                                        background: previewMode === 'mobile' ? '#00e676' : 'transparent',
+                                        color: previewMode === 'mobile' ? '#000' : '#a1a1aa',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 10px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '800',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    <Smartphone size={14} /> Mobile
+                                </button>
+                            </div>
+
+                            {/* Botão Tela Inteira (Maximizar no Painel) */}
                             <button
-                                onClick={() => setPreviewMode('desktop')}
+                                onClick={() => setPreviewLayout(prev => prev === 'fullscreen' ? 'split' : 'fullscreen')}
+                                title={previewLayout === 'fullscreen' ? 'Restaurar Split View' : 'Maximizar Preview na Tela Inteira'}
                                 style={{
-                                    background: previewMode === 'desktop' ? '#00e676' : 'transparent',
-                                    color: previewMode === 'desktop' ? '#000' : '#a1a1aa',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    padding: '4px 10px',
+                                    background: previewLayout === 'fullscreen' ? 'rgba(0, 230, 118, 0.2)' : '#1c1c24',
+                                    color: previewLayout === 'fullscreen' ? '#00e676' : '#f4f4f5',
+                                    border: '1px solid #3f3f46',
+                                    borderRadius: '8px',
+                                    padding: '6px 10px',
                                     fontSize: '0.75rem',
                                     fontWeight: '800',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '6px'
                                 }}
                             >
-                                <Monitor size={14} /> Desktop
+                                <Maximize2 size={14} />
+                                {previewLayout === 'fullscreen' ? 'Restaurar Editor' : 'Tela Inteira'}
                             </button>
+
+                            {/* Botão Abrir em Nova Aba (Full Page Live Sandbox) */}
                             <button
-                                onClick={() => setPreviewMode('mobile')}
+                                onClick={handleOpenExternalFullPreview}
+                                title="Abrir o site em outra aba com Live Preview sincronizado em tempo real"
                                 style={{
-                                    background: previewMode === 'mobile' ? '#00e676' : 'transparent',
-                                    color: previewMode === 'mobile' ? '#000' : '#a1a1aa',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    padding: '4px 10px',
+                                    background: 'linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%)',
+                                    color: '#00e676',
+                                    border: '1px solid rgba(0, 230, 118, 0.4)',
+                                    borderRadius: '8px',
+                                    padding: '6px 12px',
                                     fontSize: '0.75rem',
                                     fontWeight: '800',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '6px'
                                 }}
                             >
-                                <Smartphone size={14} /> Mobile
+                                <ExternalLink size={14} />
+                                Abrir em Nova Aba
                             </button>
                         </div>
                     </div>
