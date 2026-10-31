@@ -17,7 +17,7 @@ async function seedHalloweenTheme() {
   --border-neon: 1px solid rgba(255, 106, 0, 0.4) !important;
 }
 
-/* Fundo Temático com Abóboras e Noite Sombria */
+/* Fundo Temático com Abóboras e Noite Sombria apenas no site geral (não na página de detalhes) */
 body {
   background-color: #08020d !important;
   background-image: url('/bg-halloween.png') !important;
@@ -36,6 +36,18 @@ body::after {
   display: none !important;
 }
 
+/* Na página de detalhes (/filme/..., /serie/...), manter o backdrop oficial da produção com degradê temático */
+.details-container {
+  position: relative !important;
+  background: transparent !important;
+}
+
+.details-hero {
+  opacity: 0.65 !important;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(8, 2, 13, 0) 100%) !important;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(8, 2, 13, 0) 100%) !important;
+}
+
 /* Substituição da Logo para CineGeek Halloween em Chamas */
 .logo-brand .logo-img {
   content: url('/logo-halloween.png') !important;
@@ -47,7 +59,7 @@ body::after {
 
 /* Navbar Temática Roxa & Laranja */
 .nav-pill {
-  background: rgba(20, 8, 30, 0.85) !important;
+  background: rgba(20, 8, 30, 0.88) !important;
   border: 1px solid rgba(255, 106, 0, 0.45) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 18px rgba(255, 106, 0, 0.25) !important;
 }
@@ -137,10 +149,103 @@ body::after {
   transform: translateY(-50%) scaleX(-1) rotate(-12deg) scale(1.15) !important;
 }
 
-/* Destaques e cards */
-.movie-card:hover {
+/* TAGS DOS CARDS: FILME, SÉRIE, ANIME, DORAMA */
+.media-type-badge,
+[class*="media-type-badge"],
+.card-media-wrapper .card-badges-top + div > div,
+.search-card-type,
+.media-pill,
+.details-type {
+  background-color: #ff6a00 !important;
+  color: #120300 !important;
+  border-color: #ff8800 !important;
+  box-shadow: 0 0 10px rgba(255, 106, 0, 0.6) !important;
+  font-weight: 900 !important;
+}
+
+/* TAGS DE TEMPORADA E EPISÓDIO (T01E01, etc.) */
+.recent-ep-badge,
+.episodes-badge,
+.card-ep-badge,
+.custom-poster-card span[style*="position: absolute"] {
+  color: #ff8800 !important;
+  border: 1px solid rgba(255, 106, 0, 0.5) !important;
+  background: rgba(18, 5, 26, 0.92) !important;
+  box-shadow: 0 0 8px rgba(255, 106, 0, 0.3) !important;
+}
+
+/* CÍRCULO DA NOTA / PORCENTAGEM (SVG) */
+.rating-circle-container svg circle:nth-child(2),
+.rating-circle-meter {
+  stroke: #ff6a00 !important;
+  filter: drop-shadow(0 0 5px rgba(255, 106, 0, 0.8)) !important;
+}
+
+/* SEÇÃO DE ELENCO E INFORMAÇÕES DE FILME/SÉRIE */
+.details-cast-section {
+  background: #14081c !important;
+  border: 1px solid rgba(255, 106, 0, 0.25) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.cast-grid-scroll {
+  scrollbar-color: #ff6a00 transparent !important;
+}
+.cast-grid-scroll::-webkit-scrollbar-thumb {
+  background: #ff6a00 !important;
+  box-shadow: 0 0 10px rgba(255, 106, 0, 0.6) !important;
+}
+
+.btn-main-play {
+  background: linear-gradient(135deg, #ff7b00 0%, #ff4500 100%) !important;
+  color: #120300 !important;
+  box-shadow: 0 0 25px rgba(255, 106, 0, 0.7) !important;
+  border: none !important;
+}
+.btn-main-play:hover {
+  background: linear-gradient(135deg, #ff9100 0%, #ff5500 100%) !important;
+  box-shadow: 0 0 35px rgba(255, 106, 0, 1) !important;
+}
+
+/* BORDAS, CONTORNOS E EFEITOS NOS CARDS */
+.movie-card:hover,
+.hover-video-card:hover,
+.custom-poster-card:hover {
+  border-color: #ff6a00 !important;
+  box-shadow: 0 10px 30px rgba(255, 106, 0, 0.5) !important;
+}
+
+/* CARDS E BOTÕES DA PÁGINA DE CANAIS / TRANSMISSÕES / JOGOS */
+.premium-match-card {
+  background: #15091e !important;
+  border-color: rgba(255, 106, 0, 0.3) !important;
+}
+.premium-match-card:hover {
   border-color: #ff6a00 !important;
   box-shadow: 0 10px 30px rgba(255, 106, 0, 0.4) !important;
+}
+.match-card-overlay {
+  background: linear-gradient(135deg, rgba(28, 10, 40, 0.95) 0%, rgba(13, 3, 20, 0.85) 100%) !important;
+}
+.watch-btn-main {
+  background: rgba(255, 106, 0, 0.15) !important;
+  border-color: #ff6a00 !important;
+  color: #ff8800 !important;
+}
+.watch-btn-main:hover {
+  background: #ff6a00 !important;
+  color: #120300 !important;
+  box-shadow: 0 0 15px rgba(255, 106, 0, 0.8) !important;
+}
+.live-score, .vs-text {
+  color: #ff8800 !important;
+  text-shadow: 0 0 10px rgba(255, 106, 0, 0.5) !important;
+}
+
+/* BARRAS DE ROLAGEM GLOBAIS */
+::-webkit-scrollbar-thumb {
+  background: #ff6a00 !important;
+  box-shadow: 0 0 12px rgba(255, 106, 0, 0.5) !important;
 }
 `;
 

@@ -93,7 +93,7 @@ export default function HoverVideoCard({ id, type, poster, title, onClick, badge
           <AgeBadge rating={certification} />
         </div>
         <div style={{ position: 'absolute', zIndex: 3, bottom: '10px', left: '10px' }}>
-          <div style={{ backgroundColor: '#00e676', color: '#000', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', letterSpacing: '0.5px' }}>
+          <div className="media-type-badge" style={{ backgroundColor: 'var(--primary, #00e676)', color: '#000', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', letterSpacing: '0.5px' }}>
             {mediaLabel}
           </div>
         </div>

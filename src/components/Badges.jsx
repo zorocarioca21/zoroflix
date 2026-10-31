@@ -19,6 +19,7 @@ export function RatingCircle({ rating }) {
           strokeWidth="3" 
         />
         <circle 
+          className="rating-circle-meter"
           cx="20" cy="20" r={radius} 
           fill="none" 
           stroke={color} 

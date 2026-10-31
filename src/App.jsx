@@ -605,9 +605,9 @@ function Home({ onOpenDetails }) {
                       );
                     })()}
                     {item.season && item.episode && (
-                      <span style={{
+                      <span className="recent-ep-badge" style={{
                         position: 'absolute', bottom: '6px', left: '6px',
-                        background: 'rgba(0,0,0,0.8)', color: '#00e676',
+                        background: 'rgba(0,0,0,0.85)', color: 'var(--primary, #00e676)',
                         fontSize: '0.65rem', fontWeight: '700', borderRadius: '4px',
                         padding: '2px 5px', letterSpacing: '0.05em'
                       }}>
