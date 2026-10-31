@@ -612,7 +612,7 @@ export default function AdminPanel() {
 
 
     return (
-        <div className="admin-page-container">
+        <div className={`admin-page-container ${activeTab === 'themes' ? 'admin-page-fluid' : ''}`}>
             <div className="admin-header-main">
                 <div className="admin-title-wrap">
                     <div className="admin-brand-cluster">

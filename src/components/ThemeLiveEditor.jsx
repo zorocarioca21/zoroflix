@@ -323,37 +323,40 @@ export default function ThemeLiveEditor() {
                 </div>
             )}
 
-            {/* BARRA SUPERIOR DE CONTROLE E AÇÕES RÁPIDAS */}
+            {/* BARRA SUPERIOR DE CONTROLE E AÇÕES RÁPIDAS (COMPACTA & RESPONSIVA) */}
             <div style={{
                 background: '#13131a',
                 border: '1px solid #27272a',
-                borderRadius: '16px',
-                padding: '1rem 1.4rem',
+                borderRadius: '14px',
+                padding: '0.75rem 1rem',
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '1rem'
+                gap: '0.75rem',
+                width: '100%',
+                boxSizing: 'border-box'
             }}>
                 {/* Seletor de Tema Salvo */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 300px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', flex: '1 1 auto' }}>
                     <div style={{
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '8px',
                         background: 'rgba(0, 230, 118, 0.15)',
                         color: '#00e676',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        flexShrink: 0
                     }}>
-                        <Paintbrush size={20} />
+                        <Paintbrush size={18} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <span style={{ fontSize: '0.75rem', color: '#a1a1aa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Snapshot de Tema
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '160px' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#a1a1aa', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Tema Ativo no Editor
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <select
                                 value={selectedThemeId || ''}
                                 onChange={handleSelectTheme}
@@ -361,19 +364,18 @@ export default function ThemeLiveEditor() {
                                     background: '#1c1c24',
                                     color: '#fff',
                                     border: '1px solid #3f3f46',
-                                    borderRadius: '8px',
-                                    padding: '6px 12px',
-                                    fontSize: '0.95rem',
+                                    borderRadius: '6px',
+                                    padding: '5px 8px',
+                                    fontSize: '0.88rem',
                                     fontWeight: '700',
                                     outline: 'none',
                                     cursor: 'pointer',
-                                    width: '100%',
-                                    maxWidth: '260px'
+                                    maxWidth: '220px'
                                 }}
                             >
                                 {themes.map(t => (
                                     <option key={t.id} value={t.id}>
-                                        {t.name} {t.is_active === 1 ? '🌟 (Ativo Público)' : ''}
+                                        {t.name} {t.is_active === 1 ? '🌟 (No Ar)' : ''}
                                     </option>
                                 ))}
                             </select>
@@ -383,9 +385,9 @@ export default function ThemeLiveEditor() {
                                     background: 'rgba(0, 230, 118, 0.2)',
                                     color: '#00e676',
                                     border: '1px solid rgba(0, 230, 118, 0.4)',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '0.75rem',
+                                    padding: '3px 6px',
+                                    borderRadius: '5px',
+                                    fontSize: '0.7rem',
                                     fontWeight: '800'
                                 }}>
                                     NO AR
@@ -395,69 +397,141 @@ export default function ThemeLiveEditor() {
                     </div>
                 </div>
 
+                {/* Alternador de Modo de Visualização do Painel (Editor, Dividido, Tela Cheia) */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#1c1c24',
+                    padding: '3px',
+                    borderRadius: '8px',
+                    border: '1px solid #27272a',
+                    gap: '2px'
+                }}>
+                    <button
+                        onClick={() => setPreviewLayout('hidden')}
+                        title="Ver apenas o editor de código"
+                        style={{
+                            background: previewLayout === 'hidden' ? '#27272a' : 'transparent',
+                            color: previewLayout === 'hidden' ? '#00e676' : '#a1a1aa',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 9px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        <Code size={13} /> Só Código
+                    </button>
+                    <button
+                        onClick={() => setPreviewLayout('split')}
+                        title="Ver código e prévia lado a lado"
+                        style={{
+                            background: previewLayout === 'split' ? '#27272a' : 'transparent',
+                            color: previewLayout === 'split' ? '#00e676' : '#a1a1aa',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 9px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        <Layers size={13} /> Dividido
+                    </button>
+                    <button
+                        onClick={() => setPreviewLayout('fullscreen')}
+                        title="Ver prévia ocupando toda a tela"
+                        style={{
+                            background: previewLayout === 'fullscreen' ? '#00e676' : 'transparent',
+                            color: previewLayout === 'fullscreen' ? '#000' : '#a1a1aa',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '5px 9px',
+                            fontSize: '0.75rem',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        <Maximize2 size={13} /> Só Prévia
+                    </button>
+                </div>
+
                 {/* Botões de Ação do Tema */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     <button
                         onClick={() => setIsNewThemeModalOpen(true)}
+                        title="Salvar o código atual como um novo snapshot de tema"
                         style={{
                             background: '#27272a',
                             color: '#f4f4f5',
                             border: '1px solid #3f3f46',
-                            borderRadius: '10px',
-                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            padding: '6px 11px',
                             fontWeight: '700',
-                            fontSize: '0.85rem',
+                            fontSize: '0.78rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '5px',
                             cursor: 'pointer',
-                            transition: 'all 0.2s'
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        <Plus size={16} /> Salvar como Novo Tema
+                        <Plus size={14} /> Novo Tema
                     </button>
 
                     <button
                         onClick={handleSaveCurrentTheme}
                         disabled={saving}
+                        title="Salvar alterações no tema selecionado"
                         style={{
                             background: '#3f3f46',
                             color: '#fff',
                             border: 'none',
-                            borderRadius: '10px',
-                            padding: '9px 16px',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
                             fontWeight: '700',
-                            fontSize: '0.85rem',
+                            fontSize: '0.78rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '5px',
                             cursor: 'pointer',
-                            opacity: saving ? 0.6 : 1
+                            opacity: saving ? 0.6 : 1,
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        <Save size={16} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
+                        <Save size={14} /> {saving ? 'Salvando...' : 'Salvar'}
                     </button>
 
                     {/* BOTÃO PRINCIPAL: ABRIR PRÉVIA EM NOVA ABA (TELA INTEIRA REAL) */}
                     <button
                         onClick={handleOpenExternalFullPreview}
+                        title="Abrir o site oficial em outra aba com sincronização ao vivo do tema"
                         style={{
-                            background: '#18181f',
+                            background: 'rgba(0, 230, 118, 0.1)',
                             color: '#00e676',
-                            border: '1px solid rgba(0, 230, 118, 0.5)',
-                            borderRadius: '10px',
-                            padding: '9px 16px',
+                            border: '1px solid rgba(0, 230, 118, 0.4)',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
                             fontWeight: '800',
-                            fontSize: '0.85rem',
+                            fontSize: '0.78rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
+                            gap: '5px',
                             cursor: 'pointer',
-                            boxShadow: '0 0 15px rgba(0, 230, 118, 0.15)',
-                            transition: 'all 0.2s'
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        <ExternalLink size={16} /> Abrir Prévia em Tela Cheia (Nova Aba)
+                        <ExternalLink size={14} /> Nova Aba
                     </button>
 
                     <button
@@ -465,24 +539,24 @@ export default function ThemeLiveEditor() {
                         disabled={activating || isCurrentlyPublished}
                         style={{
                             background: isCurrentlyPublished 
-                                ? '#18181f' 
+                                ? '#1c1c24' 
                                 : 'linear-gradient(135deg, #00e676 0%, #00b0ff 100%)',
                             color: isCurrentlyPublished ? '#71717a' : '#000',
                             border: isCurrentlyPublished ? '1px solid #27272a' : 'none',
-                            borderRadius: '10px',
-                            padding: '9px 18px',
+                            borderRadius: '8px',
+                            padding: '6px 14px',
                             fontWeight: '900',
-                            fontSize: '0.88rem',
+                            fontSize: '0.8rem',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '8px',
+                            gap: '6px',
                             cursor: isCurrentlyPublished ? 'default' : 'pointer',
-                            boxShadow: isCurrentlyPublished ? 'none' : '0 4px 16px rgba(0, 230, 118, 0.4)',
-                            transition: 'all 0.2s'
+                            boxShadow: isCurrentlyPublished ? 'none' : '0 2px 10px rgba(0, 230, 118, 0.3)',
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        <Rocket size={17} />
-                        {activating ? 'Publicando...' : isCurrentlyPublished ? 'Tema Já Publicado' : '🚀 Publicar Este Tema para Todos'}
+                        <Rocket size={14} />
+                        {activating ? 'Publicando...' : isCurrentlyPublished ? 'Publicado' : 'Publicar'}
                     </button>
 
                     {!isCurrentlyPublished && (
@@ -493,12 +567,12 @@ export default function ThemeLiveEditor() {
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 color: '#ef4444',
                                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '10px',
-                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                padding: '6px 9px',
                                 cursor: 'pointer'
                             }}
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                         </button>
                     )}
                 </div>
@@ -719,35 +793,38 @@ export default function ThemeLiveEditor() {
                     flexDirection: 'column',
                     overflow: 'hidden'
                 }}>
-                    {/* Barra de Ferramentas da Sandbox */}
+                    {/* Barra de Ferramentas da Sandbox (Compacta e Flexível) */}
                     <div style={{
                         background: '#0d0d12',
                         borderBottom: '1px solid #27272a',
-                        padding: '8px 16px',
+                        padding: '6px 12px',
                         display: 'flex',
+                        flexWrap: 'wrap',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
+                        justifyContent: 'space-between',
+                        gap: '6px'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Eye size={16} color="#00e676" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fff' }}>
-                                Live Preview (Sandbox)
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '120px' }}>
+                            <Eye size={15} color="#00e676" />
+                            <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#fff' }}>
+                                Prévia
                             </span>
-                            <span style={{ fontSize: '0.75rem', color: '#71717a' }}>• Atualização Instantânea</span>
+                            <span style={{ fontSize: '0.7rem', color: '#71717a' }}>• Ao Vivo</span>
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {/* Alternador Desktop / Mobile */}
-                            <div style={{ display: 'flex', background: '#1c1c24', borderRadius: '8px', padding: '3px', gap: '2px' }}>
+                            <div style={{ display: 'flex', background: '#1c1c24', borderRadius: '6px', padding: '2px', gap: '2px' }}>
                                 <button
                                     onClick={() => setPreviewMode('desktop')}
+                                    title="Modo Desktop"
                                     style={{
                                         background: previewMode === 'desktop' ? '#00e676' : 'transparent',
                                         color: previewMode === 'desktop' ? '#000' : '#a1a1aa',
                                         border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '4px 10px',
-                                        fontSize: '0.75rem',
+                                        borderRadius: '5px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.72rem',
                                         fontWeight: '800',
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -755,17 +832,18 @@ export default function ThemeLiveEditor() {
                                         gap: '4px'
                                     }}
                                 >
-                                    <Monitor size={14} /> Desktop
+                                    <Monitor size={13} /> PC
                                 </button>
                                 <button
                                     onClick={() => setPreviewMode('mobile')}
+                                    title="Modo Mobile (390px)"
                                     style={{
                                         background: previewMode === 'mobile' ? '#00e676' : 'transparent',
                                         color: previewMode === 'mobile' ? '#000' : '#a1a1aa',
                                         border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '4px 10px',
-                                        fontSize: '0.75rem',
+                                        borderRadius: '5px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.72rem',
                                         fontWeight: '800',
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -773,7 +851,7 @@ export default function ThemeLiveEditor() {
                                         gap: '4px'
                                     }}
                                 >
-                                    <Smartphone size={14} /> Mobile
+                                    <Smartphone size={13} /> Celular
                                 </button>
                             </div>
 
@@ -785,18 +863,18 @@ export default function ThemeLiveEditor() {
                                     background: previewLayout === 'fullscreen' ? 'rgba(0, 230, 118, 0.2)' : '#1c1c24',
                                     color: previewLayout === 'fullscreen' ? '#00e676' : '#f4f4f5',
                                     border: '1px solid #3f3f46',
-                                    borderRadius: '8px',
-                                    padding: '6px 10px',
-                                    fontSize: '0.75rem',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.72rem',
                                     fontWeight: '800',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '4px'
                                 }}
                             >
-                                <Maximize2 size={14} />
-                                {previewLayout === 'fullscreen' ? 'Restaurar Editor' : 'Tela Inteira'}
+                                <Maximize2 size={13} />
+                                {previewLayout === 'fullscreen' ? 'Dividir' : 'Expandir'}
                             </button>
 
                             {/* Botão Abrir em Nova Aba (Full Page Live Sandbox) */}
@@ -804,21 +882,21 @@ export default function ThemeLiveEditor() {
                                 onClick={handleOpenExternalFullPreview}
                                 title="Abrir o site em outra aba com Live Preview sincronizado em tempo real"
                                 style={{
-                                    background: 'linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%)',
+                                    background: 'rgba(0, 230, 118, 0.1)',
                                     color: '#00e676',
                                     border: '1px solid rgba(0, 230, 118, 0.4)',
-                                    borderRadius: '8px',
-                                    padding: '6px 12px',
-                                    fontSize: '0.75rem',
+                                    borderRadius: '6px',
+                                    padding: '4px 9px',
+                                    fontSize: '0.72rem',
                                     fontWeight: '800',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '4px'
                                 }}
                             >
-                                <ExternalLink size={14} />
-                                Abrir em Nova Aba
+                                <ExternalLink size={13} />
+                                Nova Aba
                             </button>
                         </div>
                     </div>

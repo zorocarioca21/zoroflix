@@ -36,6 +36,13 @@
   color: var(--adm-text-main);
 }
 
+.admin-page-container.admin-page-fluid {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 0.8rem 1rem !important;
+  overflow-x: hidden;
+}
+
 /* Ambient glow in background */
 .admin-page-container::before {
   content: '';
